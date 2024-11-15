@@ -1,0 +1,9 @@
+services:
+  webesptool:
+    build: webesptool/
+    restart: unless-stopped
+    volumes:
+      - ./webesptool/log:/home/webesptool/log
+      - /home/user/meshfw:/home/webesptool/data
+    ports:
+      - 8000:8000

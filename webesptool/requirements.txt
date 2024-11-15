@@ -1,0 +1,10 @@
+pyyaml==6.0.2
+jsonmerge==1.9.2
+fastapi==0.115.4
+uvicorn[standard]==0.32.0
+schedule==1.2.2
+jinja2==3.1.4
+aiofiles==24.1.0
+packaging==24.1
+markdown==3.7
+

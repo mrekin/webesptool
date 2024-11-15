@@ -1,0 +1,9 @@
+enviroment: "dev"
+
+base:
+  fwDirs:
+    - "data/"
+
+enviroments:
+  dev:
+  prod:

@@ -1,0 +1,120 @@
+{% extends "shared/base.html" %}
+
+{% block title %} 
+  <title>Custom Meshtastic builds</title>
+{% endblock title %} 
+
+{% block notes %}
+<h4>Please take attention!!!</h4>
+<p>This is <b>unofficial</b> Meshtastic firmware builds, not all builds are tested and intended only for development purposes.</p>
+<p style="color: red">All on your own risk!</p>
+<p></p>
+<p>Some notes:</p>
+<ul>
+  <li>Not all pairs _board_-_version_ builded. Open issue to build your variant.</li>
+  <li>"-ru" means firmware builded with 'ru' language support without any other mods. The same for other languages if exist.</li>
+  <li>"*.daily" firmware - build from master branch (like 'nightly builds'), Now build twice a day (5:00 GMT/17:00 GMT).</li>
+  <li>Custom boards configs: <a href="https://github.com/mrekin/MeshtasticCustomBoards" target="_blank">Github</a>.  Fill free to open issue/PR.</li>
+  <li>Firmware source used without changes, only build/board/variants changes applied. </li>
+</ul>
+{% endblock notes %}
+
+{% block head %} 
+  <h1>Custom Meshtastic builds web installer</h1>
+{% endblock head %}
+
+{% block fwinfo %} 
+  <div id="fwverblock" name="fwverblock"></div>
+  <div id="fwinfoblock" name="fwinfoblock"></div>
+{% endblock fwinfo %}
+
+{% block info %} 
+  <div id="infoblock"></div>  
+{% endblock info %}
+
+{% block content %} 
+
+<p>Select your device</p>
+<select name="type" class="radios form-select">
+<option value="">please select</option>
+  <optgroup label="ESP32 devices">
+    {% for device in data.espdevices %}
+      <option value={{ device }}>{{ device }}</option>
+    {% endfor %}
+  </optgroup>
+  <optgroup label="NRF52 devices">
+    {% for device in data.uf2devices %}
+      <option value={{ device }}>{{ device }}</option>
+    {% endfor %}
+  </optgroup>
+  <optgroup label="RP2040 devices">
+    {% for device in data.rp2040devices %}
+      <option value={{ device }}>{{ device }}</option>
+    {% endfor %}
+  </optgroup>
+</select>
+<p>Select firmware version</p>
+<select name="version" class="radios form-select">
+<option value="">please select</option>
+
+{% for version in data.versions %}
+  <option value={{ version }}>{{ version }}</option>
+{% endfor %}
+
+</select>
+<p>Select update or reinstall</p>
+<select name="update" class="radios form-select">
+  <option value="1">update device</option>
+  <option value="2">wipe and reinstall device</option>
+</select>
+<div>
+<p class="button-row" style="text-align: center">
+  <esp-web-install-button class="invisible"></esp-web-install-button>
+  <!--uf2-web-install-button class="invisible"><slot name="activate"><button >Download</button></slot></uf2-web-install-button-->
+  <uf2-web-install-button class="invisible"><button ">Download UF2</button></uf2-web-install-button>
+  <nrfota-web-install-button class="invisible"><button ">Download OTA</button></nrfota-web-install-button>
+</p>
+</div>
+{% endblock content %}
+
+{% block footer %}
+
+<div class="footer">
+  <a href="https://meshtastic.org/"
+    >Meshtastic</a
+  > &mdash;
+  Installer powered by <a href="https://flasher.meshtastic.org/">Meshtastic flasher</a> and <a href="https://esphome.github.io/esp-web-tools/">ESP Web Tools</a>.
+  <div>
+    Flasher mirrors: <a href="https://mrekin.duckdns.org/flasher/"> mrekin.duckdns.org/flasher </a> |
+     <a href="https://de2-vardas.duckdns.org"> de2-vardas.duckdns.org </a>
+  </div>
+</div>
+
+{% endblock footer %} 
+
+{% block scripts %} 
+<script>
+  let espd = [
+    {% for d in data.espdevices %}
+      '{{d}}',
+    {% endfor %}
+    ];
+  let nrfd = [
+    {% for d in data.uf2devices %}
+      '{{d}}',
+    {% endfor %}
+    ];
+  let rp2040d = [
+    {% for d in data.rp2040devices %}
+      '{{d}}',
+    {% endfor %}
+    ];
+  let dates =[]
+
+
+</script>
+{% endblock scripts %} 
+
+</div>
+
+
