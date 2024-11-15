@@ -1,0 +1,5 @@
+!.gitignore
+\.*/
+log/
+webesptool/data*
+*.pyc
