@@ -22,7 +22,7 @@ RUN mkdir -p ${dir} ${dir}/log ${dir}/data ${dir}/bin
 COPY *.py ${dir}
 ADD utils ${dir}/utils
 ADD config ${dir}/config
-ADD apps ${dir}/apps
+#ADD apps ${dir}/apps
 ADD templates ${dir}/templates
 ADD bin ${dir}/bin
 ADD static ${dir}/static
