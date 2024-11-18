@@ -127,7 +127,7 @@ async def getAvailibleFirmwares():
                 # Remove hidden versions
                 versions = versions.union(set([d for d in dirs if not bool(hidden_regex.match(d))]))
                 for d in dirs:
-                    files = await aiofiles.os.scandir(address+"/"+d)
+                    files = await aiofiles.os.scandir(os.path.join(address,d))
                     uf2find = False
                     otafind = False
                     for f in files:
@@ -167,8 +167,8 @@ async def buildInfoblock(t:str = None, v:str = None):
     rmfile = "readme.md"
     
     for rootFolder in config['fwDirs']:
-        if(await aiofiles.os.path.isfile(rootFolder+t+"/"+rmfile)):
-            rmfile = rootFolder+t+'/'+rmfile
+        if(await aiofiles.os.path.isfile(os.path.join(rootFolder,t,rmfile))):
+            rmfile = os.path.join(rootFolder,t,rmfile)
             break
     
     try:
@@ -190,8 +190,10 @@ async def buildVersions(t:str = None):
     for rootFolder in config['fwDirs']:
         address_pattern = re.compile("^"+rootFolder+"[^/]+$")
         reg = r"^(?P<mver>([\w\d]+\.){2}([\w\d]+))\.(?P<n>[\w\d]+)\.*(?P<daily>daily)*$"
-
-        for address, dirs, files in await aiofiles.os.walk(rootFolder+t, topdown=True, onerror=None, followlinks=False):
+        path = os.path.join(rootFolder,t)
+        if os.path.commonprefix((os.path.realpath(path),os.path.realpath(rootFolder))) != os.path.realpath(rootFolder):
+            break # Something incorrect with path, maybe traversal attack
+        for address, dirs, files in await aiofiles.os.walk(path, topdown=True, onerror=None, followlinks=False):
             if address == rootFolder:
                 dataDirs = dirs
             if bool(address_pattern.match(address)):
@@ -199,7 +201,7 @@ async def buildVersions(t:str = None):
                     if bool(hidden_regex.match(d)):
                         log.info(f"Skipping version '{d}' - marked as hidden")
                         continue
-                    files = await aiofiles.os.scandir(address+"/"+d)
+                    files = await aiofiles.os.scandir(os.path.join(address,d))
                     info_find = False
                     
                     for file in files:
@@ -342,31 +344,31 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
     #check which source folder used
     rootFolder = ''
     for rf in config['fwDirs']:
-        if(await aiofiles.os.path.isdir(rf+t+"/"+v)):
+        if(await aiofiles.os.path.isdir(os.path.join(rf,t,v))):
             rootFolder = rf
             break
     
     #need additional logic for -s3 and install
     if not e: #not esp32
         if u=="4": #ota
-            path = rootFolder+f"{t}/{v}/firmware-ota.zip"
+            path = os.path.join(rootFolder,t,v,"firmware-ota.zip")
             if(not await aiofiles.os.path.isfile(path)):
-                path = rootFolder+f"{t}/{v}/firmware.zip"
+                path = os.path.join(rootFolder,t,v,"firmware.zip")
             filename = t+"-"+v+"-ota.zip"
         else: #uf2
-            path = rootFolder+f"{t}/{v}/firmware.uf2"
+            path = os.path.join(rootFolder,t,v,"firmware.uf2")
             filename = t+"-"+v+".uf2"
             
     else :
         if u=="1": #update
-            path = rootFolder+f"{t}/{v}/firmware.bin"
+            path = os.path.join(rootFolder,t,v,"firmware.bin")
             filename = t+"-"+v+".bin"
         elif u=="2":  #install
             if p == 'fw':
-                path = rootFolder+f"{t}/{v}/firmware.factory.bin"
+                path = os.path.join(rootFolder,t,v,"firmware.factory.bin")
                 filename = t+"-"+v+".factory.bin"
             if p == 'littlefs':
-                path = rootFolder+f"{t}/{v}/littlefs.bin"
+                path = os.path.join(rootFolder,t,v,"littlefs.bin")
                 filename = "littlefs.bin"
             if 'bleota' in p:
                 if '-s3' in p: # possible need different ota for c3
