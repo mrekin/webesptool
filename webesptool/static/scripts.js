@@ -1,46 +1,36 @@
 function getSelectElem(name) {
     return document.querySelector(`select[name=${name}]`);
+}
+
+function loadJSON(path, success, type, error) {
+    fetch(path)
+      .then(response => response.json())
+      .then(data => {
+        success(data, type);
+      })
+      .catch(error => {
+        console.error(error);
+      });
   }
 
-  function loadJSON(path, success, type, error) {
-    var xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = function () {
-      if (xhr.readyState === 4) {
-        if (xhr.status === 200) {
-          success(JSON.parse(xhr.responseText), type);
-        }
-        else {
-          error(xhr);
-        }
-      }
-    };
-    xhr.open('GET', path, true);
-    xhr.send();
-  }
-
-  function downloadFw(manifest, type){
-      //console.log(manifest);
-      //window.location = manifest.pathfw;
-      //window.open(manifest.pathfw, '_blank');
-      var link=document.createElement('a');
-      if (type =='uf2') {
+function downloadFw(manifest, type){
+    var link=document.createElement('a');
+    if (type =='uf2') {
         link.href = manifest.pathfw;
         link.download = manifest.name+'-'+manifest.version+'.uf2';
-      }
-      if (type =='ota') {
+    }
+    if (type =='ota') {
         link.href = manifest.pathota;
         link.download = manifest.name+'-'+manifest.version+'-ota.zip';
-      }
-      //manifest.pathfw.substr(manifest.pathfw.lastIndexOf('/') + 1);
-      link.click();
-  }
+    }
+    link.click();
+}
 
-  function getManifestUrl() {
+function getManifestUrl() {
     return `./api/manifest?t=${getSelectElem('type').value}&v=${getSelectElem('version').value}&u=${getSelectElem('update').value}`;
-  }
+}
 
-
-  function onSelectionChanged() {
+function onSelectionChanged() {
     const button = document.querySelector('esp-web-install-button');
     const buttonuf2 = document.querySelector('uf2-web-install-button');
     const buttonnrfota = document.querySelector('nrfota-web-install-button');
@@ -71,32 +61,27 @@ function getSelectElem(name) {
     }
   }
 
-  function loadDeviceInfo() {
+function loadDeviceInfo() {
     path = `./api/infoblock?t=${getSelectElem('type').value}`
     const infoblock = document.querySelector('#infoblock');
-    var xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = function () {
-      if (xhr.readyState === 4) {
-        if (xhr.status === 200) {
-          infoblock.innerHTML= JSON.parse(xhr.responseText).info;
-        }
-        else {
-          error(xhr);
-        }
-      }
-    };
-    xhr.open('GET', path, true);
-    xhr.send();
-
+    fetch(path)
+      .then(response => response.json())
+      .then(data => {
+        infoblock.innerHTML = data.info;
+      })
+      .catch(error => {
+        console.error(error);
+      });
   }
 
-  function loadVersionInfo() {
+
+function loadVersionInfo() {
     verblock = document.querySelector('#fwverblock');
     manageReleaseNotes(verblock);
     manageBuildDate(verblock);
   }
 
-  function manageReleaseNotes(element) {
+function manageReleaseNotes(element) {
     var notes_link = element.querySelector('#releaseNotes');
     var pnl = element.querySelector('#pnl');
     v = getSelectElem('version').value;
@@ -140,7 +125,8 @@ function getSelectElem(name) {
     }
   }
 
-  function manageBuildDate(element) {
+
+function manageBuildDate(element) {
     var pbd = element.querySelector('#pbd');
     var v = getSelectElem('version').value;
     date = dates[v];
@@ -161,7 +147,7 @@ function getSelectElem(name) {
   }
 
 
-  function loadDeviceVersions() {
+function loadDeviceVersions() {
     path = `./api/versions?t=${getSelectElem('type').value}`
     var xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function () {
@@ -191,6 +177,7 @@ function getSelectElem(name) {
     xhr.send();
 
   }
+
 
   getSelectElem('type').addEventListener('change', onSelectionChanged);
   getSelectElem('type').addEventListener('change', loadDeviceInfo);

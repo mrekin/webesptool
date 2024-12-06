@@ -67,12 +67,12 @@
   <option value="1">update device</option>
   <option value="2">wipe and reinstall device</option>
 </select>
-<div>
+<div id="button-row-c">
 <p class="button-row" style="text-align: center">
   <esp-web-install-button class="invisible"></esp-web-install-button>
   <!--uf2-web-install-button class="invisible"><slot name="activate"><button >Download</button></slot></uf2-web-install-button-->
-  <uf2-web-install-button class="invisible"><button ">Download UF2</button></uf2-web-install-button>
-  <nrfota-web-install-button class="invisible"><button ">Download OTA</button></nrfota-web-install-button>
+  <uf2-web-install-button class="invisible"><button >Download UF2</button></uf2-web-install-button>
+  <nrfota-web-install-button class="invisible"><button >Download OTA</button></nrfota-web-install-button>
 </p>
 </div>
 {% endblock content %}
@@ -82,7 +82,7 @@
 <div class="footer">
   <a href="https://meshtastic.org/"
     >Meshtastic</a
-  > &mdash;
+  > &mdash; 
   Installer powered by <a href="https://flasher.meshtastic.org/">Meshtastic flasher</a> and <a href="https://esphome.github.io/esp-web-tools/">ESP Web Tools</a>.
   <div>
     Flasher mirrors: <a href="https://mrekin.duckdns.org/flasher/"> mrekin.duckdns.org/flasher </a> |
@@ -116,5 +116,3 @@
 {% endblock scripts %} 
 
 </div>
-
-

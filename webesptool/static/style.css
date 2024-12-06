@@ -28,7 +28,6 @@ a {
 }
 
 .button-row {
-    height: 27px !important;
     margin-top: 0.3em !important;
 }
 
@@ -95,3 +94,12 @@ td {
     --esp-tools-button-color: #6b6b6b;
     --esp-tools-button-border-radius: 0%;
 }
+
+button-row-c {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    margin-top: 20px;
+    justify-content: space-between;
+    flex: 1;
+  }
