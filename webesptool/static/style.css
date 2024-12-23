@@ -103,3 +103,13 @@ button-row-c {
     justify-content: space-between;
     flex: 1;
   }
+
+  body {
+    background-image: url('radio.webp');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+  }
+  .border {
+        background-color:  rgba(146, 90, 7, 0.5);
+  }
