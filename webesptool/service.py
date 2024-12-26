@@ -340,7 +340,7 @@ async def getSources(request: Request, t:str = None):
 
 @app.get("/api/firmware" )
 async def download_file(request: Request, t:str = None, v:str = None, u:str = "1", p:str = None, e:bool = True):
-    
+    #u: 4 - ota, 1 - update, 2 - install
     #check which source folder used
     rootFolder = ''
     for rf in config['fwDirs']:
@@ -377,6 +377,7 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
                 else:
                     path = "bin/bleota.bin"
                     filename = "bleota.bin"
+    log.info(f"DownloadFile: type: {t}, version: {v}, path: {path}, filename: {filename}")
     return FileResponse(path=path, filename=filename, media_type='multipart/form-data')
 
 
