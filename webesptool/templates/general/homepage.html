@@ -39,17 +39,17 @@
 <option value="">please select</option>
   <optgroup label="ESP32 devices">
     {% for device in data.espdevices %}
-      <option value={{ device }}>{{ device }}</option>
+      <option value={{ device }}>{{ data.device_names[device] or device }}</option>
     {% endfor %}
   </optgroup>
   <optgroup label="NRF52 devices">
     {% for device in data.uf2devices %}
-      <option value={{ device }}>{{ device }}</option>
+      <option value={{ device }}>{{ data.device_names[device] or device }}</option>
     {% endfor %}
   </optgroup>
   <optgroup label="RP2040 devices">
     {% for device in data.rp2040devices %}
-      <option value={{ device }}>{{ device }}</option>
+      <option value={{ device }}>{{ data.device_names[device] or device }}</option>
     {% endfor %}
   </optgroup>
 </select>
@@ -110,7 +110,6 @@
     {% endfor %}
     ];
   let dates =[]
-
 
 </script>
 {% endblock scripts %} 

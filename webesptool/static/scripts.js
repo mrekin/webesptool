@@ -74,11 +74,24 @@ function loadDeviceInfo() {
       });
   }
 
+// Function managePioTarget to add pio_target info to verblock based on selected device type
+function managePioTarget(element) {
+    var pbt = element.querySelector('#pbt');
+    
+        if(!pbt) {
+            var pbt = document.createElement('p');
+            pbt.id = "pbt";
+            element.append(pbt);
+        }
+        pbt.innerHTML = "PIO target: "+getSelectElem('type').value;
+
+  }
 
 function loadVersionInfo() {
     verblock = document.querySelector('#fwverblock');
     manageReleaseNotes(verblock);
     manageBuildDate(verblock);
+    managePioTarget(verblock);
   }
 
 function manageReleaseNotes(element) {

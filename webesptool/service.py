@@ -101,7 +101,7 @@ def init():
 hidden_regex = re.compile(r"^_.*")  
 
 async def getAvailibleFirmwares():
-    data = {"espdevices":[], "uf2devices":[], "rp2040devices":[], "versions":[]}
+    data = {"espdevices":[], "uf2devices":[], "rp2040devices":[], "versions":[], "device_names":[]}
 
     uf2files_pattern = re.compile(".*\.uf2")
     otafiles_pattern = re.compile(".*\.zip")
@@ -114,6 +114,7 @@ async def getAvailibleFirmwares():
     espdevices = set()
     rp2040devices = set()
     versions = set()
+    device_names = {}
     
     for rootFolder in config['fwDirs']:
         address_pattern = re.compile("^"+rootFolder+"[^/]+$")  
@@ -124,32 +125,55 @@ async def getAvailibleFirmwares():
                 if bool(hidden_regex.match(Path(address).name)):
                     log.info(f"Skipping device {Path(address).name} - marked as hidden")
                     continue
+                
+                # Find device.info file and read it as json if exists   
+                content = None
+                jdev = None
+                for file in files:
+                    if "device.info" == file:
+                        if(await aiofiles.os.path.isfile(os.path.join(address,file))):
+                            async with aiofiles.open(os.path.join(address,file),'r') as f:
+                                content = await f.read()
+                            if content:
+                                jdev = json.loads(content)
+                                if(jdev.get('name')):
+                                    if(jdev.get('type')=='esp32'):
+                                        espdevices.add(Path(address).name)
+                                    if(jdev.get('type')=='nrf52'):
+                                        uf2devices.add(Path(address).name)
+                                    if(jdev.get('type')=='rp2040'):
+                                        rp2040devices.add(Path(address).name)
+                                    device_names[jdev.get('pio_target')] = jdev.get('name')
+                            break
+                                
                 # Remove hidden versions
                 versions = versions.union(set([d for d in dirs if not bool(hidden_regex.match(d))]))
-                for d in dirs:
-                    files = await aiofiles.os.scandir(os.path.join(address,d))
-                    uf2find = False
-                    otafind = False
-                    for f in files:
-                        if uf2files_pattern.match(f.name):
-                            #uf2devices.add(Path(address).name)
-                            uf2find = True
-                            #break        
-                        if otafiles_pattern.match(f.name):
-                            #uf2devices.add(Path(address).name)
-                            otafind = True
-                            #break                                
-                    if not uf2find:
-                        espdevices.add(Path(address).name)
-                    if uf2find and otafind: #nrf devices
-                        uf2devices.add(Path(address).name)
-                    if uf2find and not otafind: #rp2040 devices
-                        rp2040devices.add(Path(address).name)                                        
+                if not jdev:
+                    for d in dirs:
+                        files = await aiofiles.os.scandir(os.path.join(address,d))
+                        uf2find = False
+                        otafind = False
+                        for f in files:
+                            if uf2files_pattern.match(f.name):
+                                #uf2devices.add(Path(address).name)
+                                uf2find = True
+                                #break        
+                            if otafiles_pattern.match(f.name):
+                                #uf2devices.add(Path(address).name)
+                                otafind = True
+                                #break                                
+                        if not uf2find:
+                            espdevices.add(Path(address).name)
+                        if uf2find and otafind: #nrf devices
+                            uf2devices.add(Path(address).name)
+                        if uf2find and not otafind: #rp2040 devices
+                            rp2040devices.add(Path(address).name)                                        
 
         
     data["espdevices"] = list(set(data["espdevices"]).union(espdevices))
     data["uf2devices"] = list(set(data["uf2devices"]).union(uf2devices))
     data["rp2040devices"] = list(set(data["rp2040devices"]).union(rp2040devices))
+    data["device_names"] = device_names
     data["versions"] = list(set(data["versions"]).union(versions))
 
     data["espdevices"].sort()
@@ -216,6 +240,7 @@ async def buildVersions(t:str = None):
                             jver = json.loads(content)
                                     
                             matches= re.search(reg, jver.get('version'))
+                            
                             # Assume that `latestTag`` exist only for daily versions
                             if jver.get('latestTag',None):
                                 latestTags[jver.get('version')] = jver.get('latestTag',None)
