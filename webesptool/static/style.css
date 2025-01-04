@@ -104,12 +104,12 @@ button-row-c {
     flex: 1;
   }
 
-  body {
+  bbody {
     background-image: url('radio.webp');
     background-size: cover;
     background-repeat: no-repeat;
     background-position: center;
   }
-  .border {
+  .bborder {
         background-color:  rgba(146, 90, 7, 0.5);
   }
