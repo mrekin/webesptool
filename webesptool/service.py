@@ -367,6 +367,7 @@ async def getSources(request: Request, t:str = None):
 async def download_file(request: Request, t:str = None, v:str = None, u:str = "1", p:str = None, e:bool = True):
     #u: 4 - ota, 1 - update, 2 - install
     #check which source folder used
+    logInd = True
     rootFolder = ''
     for rf in config['fwDirs']:
         if(await aiofiles.os.path.isdir(os.path.join(rf,t,v))):
@@ -393,16 +394,19 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
                 path = os.path.join(rootFolder,t,v,"firmware.factory.bin")
                 filename = t+"-"+v+".factory.bin"
             if p == 'littlefs':
+                logInd = False # Do not log additional files downloads
                 path = os.path.join(rootFolder,t,v,"littlefs.bin")
                 filename = "littlefs.bin"
             if 'bleota' in p:
+                logInd = False # Do not log additional files downloads
                 if '-s3' in p: # possible need different ota for c3
                     path = "bin/bleota-s3.bin"
                     filename = "bleota-s3.bin"
                 else:
                     path = "bin/bleota.bin"
                     filename = "bleota.bin"
-    log.info(f"DownloadFile: type: {t}, version: {v}, path: {path}, filename: {filename}")
+    if logInd:
+        log.info(f"DownloadFile: type: {t}, version: {v}, path: {path}, filename: {filename}, url: {str(request.url)}, client: {str(request.client)}, headers: {str(request.headers)}")
     return FileResponse(path=path, filename=filename, media_type='multipart/form-data')
 
 
