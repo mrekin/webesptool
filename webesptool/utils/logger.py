@@ -6,8 +6,8 @@ def getLogger():
     rfh = logging.handlers.RotatingFileHandler(
         filename='log/service.log', 
         mode='a',
-        maxBytes=5*1024*1024,
-        backupCount=3,
+        maxBytes=50*1024*1024,
+        backupCount=2,
         encoding='utf-8',
         delay=0
     )
