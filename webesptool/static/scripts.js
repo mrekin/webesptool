@@ -87,11 +87,30 @@ function managePioTarget(element) {
 
   }
 
+// Function manageNotes to add notes info to verblock based on selected device type and version
+function manageNotes(element) {
+  var nt = element.querySelector('#notes');
+  var v = getSelectElem('version').value;
+  note = notes[v];
+      if(!nt) {
+          var nt = document.createElement('p');
+          nt.id = "notes";
+          element.append(nt);
+      }
+  if(note) {
+    nt.innerHTML = "Note: "+ note;
+  } else {
+      element.removeChild(nt); 
+  }
+
+}  
+
 function loadVersionInfo() {
     verblock = document.querySelector('#fwverblock');
     manageReleaseNotes(verblock);
     manageBuildDate(verblock);
     managePioTarget(verblock);
+    manageNotes(verblock);
   }
 
 function manageReleaseNotes(element) {
@@ -168,6 +187,7 @@ function loadDeviceVersions() {
         if (xhr.status === 200) {
           versions = JSON.parse(xhr.responseText).versions;
           dates = JSON.parse(xhr.responseText).dates;
+          notes = JSON.parse(xhr.responseText).notes;
           latestTags = JSON.parse(xhr.responseText).latestTags;
           select = getSelectElem('version');
           select.innerHTML = '';

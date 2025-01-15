@@ -209,6 +209,7 @@ async def buildVersions(t:str = None):
     data = {"versions":[]}
     versions_map = {}
     dates_map = {}
+    notes_map = {}
     latestTags = {}
 
     for rootFolder in config['fwDirs']:
@@ -248,7 +249,8 @@ async def buildVersions(t:str = None):
                             sver = f"{matches.group('mver')} {jver.get('date')} {matches.group('daily')}"
                             versions_map[sver] = jver.get('version')
                             dates_map[jver.get('version')] = jver.get('date')
-                                    #data.get('versions',[]).append(sver) 
+                            notes_map[jver.get('version')] = jver.get('notes')
+                            #data.get('versions',[]).append(sver) 
                     else:
                                 #reg = r"^(?P<mver>([\w\d]+\.){2}([\w\d]+))\.(?P<n>[\w\d]+)\.*(?P<daily>daily)*$"
                         matches= re.search(reg, d)
@@ -263,6 +265,7 @@ async def buildVersions(t:str = None):
     data["versions"] = list(dict.fromkeys(data["versions"]))
     data["dates"] = dates_map
     data["latestTags"] = latestTags
+    data["notes"] = notes_map
 
     #data["versions"] = list(set(data["versions"]))
     #data["versions"].sort(reverse=True, key=CustomLooseVersion)
