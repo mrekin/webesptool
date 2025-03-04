@@ -371,11 +371,16 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
     #u: 4 - ota, 1 - update, 2 - install
     #check which source folder used
     logInd = True
-    rootFolder = ''
+    rootFolder = None
+    if not v:
+        v = await buildVersions(t)
+        v = v.get('versions',{})[0]
     for rf in config['fwDirs']:
         if(await aiofiles.os.path.isdir(os.path.join(rf,t,v))):
             rootFolder = rf
             break
+    if not rootFolder:
+        return {'error': 'No such firmware found'}
     
     #need additional logic for -s3 and install
     if not e: #not esp32
