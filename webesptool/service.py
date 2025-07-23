@@ -69,6 +69,58 @@ class CustomLooseVersion(LooseVersion):
             return 1
 
 
+# Copied from device-install.sh
+BIGDB_8MB=(
+	"picomputer-s3"
+	"unphone"
+	"seeed-sensecap-indicator"
+	"crowpanel-esp32s3"
+	"heltec_capsule_sensor_v3"
+	"heltec-v3"
+	"heltec-vision-master-e213"
+	"heltec-vision-master-e290"
+	"heltec-vision-master-t190"
+	"heltec-wireless-paper"
+	"heltec-wireless-tracker"
+	"heltec-wsl-v3"
+	"icarus"
+	"seeed-xiao-s3"
+	"tbeam-s3-core"
+	"tracksenger"
+)
+BIGDB_16MB=(
+	"t-deck"
+	"mesh-tab"
+	"t-energy-s3"
+	"dreamcatcher"
+	"ESP32-S3-Pico"
+	"m5stack-cores3"
+	"station-g2"
+    "t-eth-elite"
+    "t-watch-s3"
+    "elecrow-adv-35-tft"
+    "elecrow-adv-24-28-tft"
+    "elecrow-adv1-43-50-70-tft"
+)
+S3_VARIANTS=(
+    "s3"
+    "-v3"
+    "t-deck"
+    "wireless-paper"
+    "wireless-tracker"
+    "station-g2"
+    "unphone"
+    "t-eth-elite"
+    "mesh-tab"
+    "dreamcatcher"
+    "ESP32-S3-Pico"
+    "seeed-sensecap-indicator"
+    "heltec_capsule_sensor_v3"
+    "vision-master"
+    "icarus"
+    "tracksenger"
+    "elecrow-adv"
+)
 
 #period_pattern = re.compile("^\d{4}-\d{1,2}$")
 fwfiles = None
@@ -272,6 +324,28 @@ async def buildVersions(t:str = None):
 
     return data
 
+async def loadInfo(t = None, v = None):
+    jver = {}
+    rootFolder = None
+
+    for rf in config['fwDirs']:
+        if(await aiofiles.os.path.isdir(os.path.join(rf,t,v))):
+            rootFolder = rf
+            break
+    if not rootFolder:
+        return {}
+    
+    ipath = os.path.join(rootFolder,t,"device.info")
+
+    if(not await aiofiles.os.path.isfile(ipath)):
+            return {}
+    content = None
+    async with aiofiles.open(ipath,'r') as f:
+            content = await f.read()
+    if content:
+        jver = json.loads(content)
+    
+    return jver
 
 async def buildManifest(t:str = None, v:str = None, u:str = "1"):
     log.debug("Build manifest: %s, %s",t,v)
@@ -289,18 +363,29 @@ async def buildManifest(t:str = None, v:str = None, u:str = "1"):
             }
         ]
     }
+
+    devinfo = await loadInfo(t,v)
+
     update_offset = 65536
     install_fw_offset = 0
     install_bleota_offset = 2490368
     install_littlefs_offset = 3145728
+
+    if t in BIGDB_8MB or devinfo.get("flashSize", None) == '8MB':
+        install_littlefs_offset=0x670000
+        install_bleota_offset=0x340000
+    elif t in BIGDB_16MB or devinfo.get("flashSize", None) == '16MB':
+        install_littlefs_offset=0xc90000
+        install_bleota_offset=0x650000
+
     #s3 -v3 t-deck wireless-paper wireless-tracker 
     bleotav = 'bleota'
     
     chip_family = "ESP32"
-    if ("s3" in t) or ("-v3" in t) or ("t-deck" in t) or ("wireless-paper" in t) or ("wireless-tracker" in t):
+    if ("s3" in t) or ("-v3" in t) or ("t-deck" in t) or ("wireless-paper" in t) or ("wireless-tracker" in t) or devinfo.get("chip", None) == 'esp32s3':
         chip_family = "ESP32-S3"
         bleotav = 'bleota-s3'
-    elif ("c3" in t):
+    elif ("c3" in t or devinfo.get("chip", None) == 'esp32c3'):
         chip_family = "ESP32-C3"
     else:  # Need to check nrf52/rp2040 somehow
         data = await getAvailibleFirmwares()
