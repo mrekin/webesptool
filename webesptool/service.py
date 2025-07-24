@@ -12,7 +12,7 @@ import uvicorn
 from threading import Thread
 from fastapi import APIRouter
 from fastapi import Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles 
 
@@ -22,8 +22,11 @@ import aiofiles.os
 import os
 import re
 import markdown
+import zipfile
 from pathlib import Path
 from distutils.version import LooseVersion
+import io
+
 
 
 class CustomLooseVersion(LooseVersion):
@@ -347,6 +350,31 @@ async def loadInfo(t = None, v = None):
     
     return jver
 
+async def generate_zip(folder_path):
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for root, dirs, files in await aiofiles.os.walk(folder_path):
+            for file in files:
+                file_path = os.path.join(root, file)
+                arcname = os.path.relpath(file_path, folder_path)
+                zipf.write(file_path, arcname)
+    zip_buffer.seek(0)
+    return zip_buffer
+
+async def getRootFolder(t, v = None):
+    rootFolder = None
+    try:
+        if not v:
+            v = await buildVersions(t)
+            v = v.get('versions',{})[0]
+        for rf in config['fwDirs']:
+            if(await aiofiles.os.path.isdir(os.path.join(rf,t,v))):
+                rootFolder = rf
+                break
+    except Exception:
+        rootFolder = None
+    return rootFolder
+
 async def buildManifest(t:str = None, v:str = None, u:str = "1"):
     log.debug("Build manifest: %s, %s",t,v)
     manifest = {
@@ -397,11 +425,13 @@ async def buildManifest(t:str = None, v:str = None, u:str = "1"):
             chip_family = "RP2040"
 
     manifest["builds"][0]["chipFamily"] = chip_family
+    manifest['pathfw'] = "api/firmware?v={0}&t={1}&u={2}&e=false".format(v,t,u)
     if chip_family == 'NRF52':
-        manifest['pathfw'] = "api/firmware?v={0}&t={1}&u={2}&e=false".format(v,t,u)
+        #manifest['pathfw'] = "api/firmware?v={0}&t={1}&u={2}&e=false".format(v,t,u)
         manifest['pathota'] = "api/firmware?v={0}&t={1}&u=4&e=false".format(v,t,u) #u=4 for ota
     elif chip_family == 'RP2040':
-        manifest['pathfw'] = "api/firmware?v={0}&t={1}&u={2}&e=false".format(v,t,u)
+        #manifest['pathfw'] = "api/firmware?v={0}&t={1}&u={2}&e=false".format(v,t,u)
+        pass
     elif u =="1":
         offset= update_offset
         path = "firmware?v={0}&t={1}&u={2}".format(v,t,u)
@@ -453,7 +483,7 @@ async def getSources(request: Request, t:str = None):
 
 @app.get("/api/firmware" )
 async def download_file(request: Request, t:str = None, v:str = None, u:str = "1", p:str = None, e:bool = True):
-    #u: 4 - ota, 1 - update, 2 - install
+    #u: 5 - zip, 4 - ota, 1 - update, 2 - install
     #check which source folder used
     logInd = True
     rootFolder = None
@@ -467,6 +497,19 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
     if not rootFolder:
         return {'error': 'No such firmware found'}
     
+    #return zipped firmware folder
+    if u == "5":
+        rf = await getRootFolder(t,v)
+        if not rf:
+            return JSONResponse(content={'error': 'No such firmware found'}, status_code=404)
+        dir = os.path.join(rootFolder,t,v)
+        zip_buffer = await generate_zip(dir)
+        return StreamingResponse(
+            zip_buffer,
+            media_type="multipart/form-data",
+            headers={"Content-Disposition": f"attachment; filename={t}-{v}.zip"}
+        )
+
     #need additional logic for -s3 and install
     if not e: #not esp32
         if u=="4": #ota
@@ -504,7 +547,7 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
 
 
 def unirun():
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info", root_path="/flasher")
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info", root_path="/")
 
 
 #Loading config

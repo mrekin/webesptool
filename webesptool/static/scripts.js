@@ -23,17 +23,30 @@ function downloadFw(manifest, type){
         link.href = manifest.pathota;
         link.download = manifest.name+'-'+manifest.version+'-ota.zip';
     }
+    if (type =='zip') {
+        link.href = manifest.pathfw;
+        link.download = manifest.name+'-'+manifest.version+'.zip';
+    }    
     link.click();
 }
 
-function getManifestUrl() {
-    return `./api/manifest?t=${getSelectElem('type').value}&v=${getSelectElem('version').value}&u=${getSelectElem('update').value}`;
+function getManifestUrl(u = getSelectElem('update').value) {
+    return `./api/manifest?t=${getSelectElem('type').value}&v=${getSelectElem('version').value}&u=${u}`;
+}
+
+const copyNodeStyle = (sourceNode, targetNode) => {
+  const computedStyle = window.getComputedStyle(sourceNode);
+  for (const key of computedStyle) {
+    targetNode.style.setProperty(key, computedStyle.getPropertyValue(key), computedStyle.getPropertyPriority(key))
+  }
 }
 
 function onSelectionChanged() {
     const button = document.querySelector('esp-web-install-button');
     const buttonuf2 = document.querySelector('uf2-web-install-button');
     const buttonnrfota = document.querySelector('nrfota-web-install-button');
+    const buttonfwzip = document.querySelector('fwzip-web-install-button');
+
     buttonuf2.onclick =function(){ 
       loadJSON(getManifestUrl(), downloadFw,'uf2','jsonp');
     };
@@ -41,23 +54,31 @@ function onSelectionChanged() {
       loadJSON(getManifestUrl(), downloadFw,'ota','jsonp');
     };
 
+    buttonfwzip.onclick = function() {
+        loadJSON(getManifestUrl(u=5), downloadFw, 'zip', 'jsonp');
+    };
+
     button.manifest = getManifestUrl();
+    
     if (getSelectElem('type').value !== '' && getSelectElem('version').value !== '' && espd.includes(getSelectElem('type').value)) {
+      //copyNodeStyle(buttonuf2.ge,button);
       button.classList.remove('invisible');
       buttonuf2.classList.add('invisible');
       buttonnrfota.classList.add('invisible');
+      buttonfwzip.classList.remove('invisible');
     } else if (getSelectElem('type').value !== '' && getSelectElem('version').value !== '' && nrfd.includes(getSelectElem('type').value)) {
       buttonuf2.classList.remove('invisible');
       buttonnrfota.classList.remove('invisible');
       button.classList.add('invisible');
-      
+      buttonfwzip.classList.remove('invisible');
     } else if (getSelectElem('type').value !== '' && getSelectElem('version').value !== '' && rp2040d.includes(getSelectElem('type').value)) {
       buttonuf2.classList.remove('invisible');
       buttonnrfota.classList.add('invisible');
       button.classList.add('invisible');
-      
+      buttonfwzip.classList.remove('invisible');      
     } else {
       button.classList.add('invisible');
+      buttonfwzip.classList.add('invisible');
     }
   }
 
