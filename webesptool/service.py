@@ -24,7 +24,7 @@ import re
 import markdown
 import zipfile
 from pathlib import Path
-from distutils.version import LooseVersion
+from looseversion import LooseVersion
 import io
 
 
@@ -35,7 +35,7 @@ class CustomLooseVersion(LooseVersion):
         # from the parsed tuple -- so I just store the string here for
         # use by __str__
         self.vstring = vstring
-        components = re.split('[\. ]',vstring)
+        components = re.split(r'[\. ]',vstring)
         for i, obj in enumerate(components):
             try:
                 components[i] = int(obj)
@@ -59,9 +59,9 @@ class CustomLooseVersion(LooseVersion):
             except Exception as e:
                 pass
         
-        if "daily" in self.vstring and "daily" not in other.vstring:
+        if "daily" in self.vstring and "daily" not in other.vstring and self.version[:len(self.version)-1] == other.version[:len(other.version)-1]:
             return 1
-        if "daily" not in self.vstring and "daily" in other.vstring:
+        if "daily" not in self.vstring and "daily" in other.vstring and self.version[:len(self.version)-1] == other.version[:len(other.version)-1]:
             return -1
 
         if self.version == other.version:
@@ -158,8 +158,8 @@ hidden_regex = re.compile(r"^_.*")
 async def getAvailibleFirmwares():
     data = {"espdevices":[], "uf2devices":[], "rp2040devices":[], "versions":[], "device_names":[]}
 
-    uf2files_pattern = re.compile(".*\.uf2")
-    otafiles_pattern = re.compile(".*\.zip")
+    uf2files_pattern = re.compile(r".*\.uf2")
+    otafiles_pattern = re.compile(r".*\.zip")
 
     
     # Builds output folders with pattern 'device'/'version'
@@ -560,7 +560,7 @@ if __name__ == "__main__":
     
 
     t2 = Thread(target=unirun)
-    t2.isDaemon =True
+    t2.daemon = True
     t2.start()
 
     t2.join()
