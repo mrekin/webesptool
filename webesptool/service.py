@@ -155,7 +155,7 @@ def init():
 
 hidden_regex = re.compile(r"^_.*")  
 
-async def getAvailibleFirmwares():
+async def getAvailibleFirmwares(src = None, rootFolder = None):
     data = {"espdevices":[], "uf2devices":[], "rp2040devices":[], "versions":[], "device_names":[]}
 
     uf2files_pattern = re.compile(r".*\.uf2")
@@ -163,15 +163,28 @@ async def getAvailibleFirmwares():
 
     
     # Builds output folders with pattern 'device'/'version'
-    #rootFolder = "data2/" 
+    #rootFolder = None
 
     uf2devices = set()
     espdevices = set()
     rp2040devices = set()
     versions = set()
     device_names = {}
+
+    rootFolder = await getRootFolder(src=src)
+
+    paths = [rf if isinstance(rf, str) else rf.get('path', None) for rf in config['fwDirs']]
+    srcs =  [rf.get('src', None) for rf in config['fwDirs'] if isinstance(rf,dict) and rf.get('src', None)]
+    if not rootFolder and src in srcs:
+        for rf in config['fwDirs']:
+            if isinstance(rf,dict) and src == rf.get('src', None) and rf.get('path', None):
+                rootFolder = rf.get('path')
+                break
     
-    for rootFolder in config['fwDirs']:
+    # Get devices and versions at first path if not provided
+    if not rootFolder and paths:
+        rootFolder = paths[0]
+    if rootFolder:
         address_pattern = re.compile("^"+rootFolder+"[^/]+$")  
         for address, dirs, files in await aiofiles.os.walk(rootFolder, topdown=True, onerror=None, followlinks=False):
             if address == rootFolder:
@@ -234,6 +247,7 @@ async def getAvailibleFirmwares():
     data["espdevices"].sort()
     data["uf2devices"].sort()
     data["rp2040devices"].sort()
+    data["srcs"] = srcs
     
 
     data["versions"].sort(reverse=True, key=CustomLooseVersion)
@@ -241,14 +255,13 @@ async def getAvailibleFirmwares():
 
     return data
 
-async def buildInfoblock(t:str = None, v:str = None):
+async def buildInfoblock(t:str = None, v:str = None, src:str = None):
     infoblock={'info':""}
     rmfile = "readme.md"
     
-    for rootFolder in config['fwDirs']:
-        if(await aiofiles.os.path.isfile(os.path.join(rootFolder,t,rmfile))):
-            rmfile = os.path.join(rootFolder,t,rmfile)
-            break
+    rootFolder = await getRootFolder(t,v,src)
+    if rootFolder:
+        rmfile = os.path.join(rootFolder,t,rmfile)
     
     try:
         async with aiofiles.open(rmfile,'r') as file:
@@ -260,58 +273,61 @@ async def buildInfoblock(t:str = None, v:str = None):
         infoblock['info'] = "Readme.md file not found in variant repository"
     return infoblock
 
-async def buildVersions(t:str = None):
+async def buildVersions(t:str = None, src:str = None):
     data = {"versions":[]}
     versions_map = {}
     dates_map = {}
     notes_map = {}
     latestTags = {}
 
-    for rootFolder in config['fwDirs']:
+    rootFolder = await getRootFolder(t=t, src=src)
+
+    if rootFolder:
         address_pattern = re.compile("^"+rootFolder+"[^/]+$")
         reg = r"^(?P<mver>([\w\d]+\.){2}([\w\d]+))\.(?P<n>[\w\d]+)\.*(?P<daily>daily)*$"
         path = os.path.join(rootFolder,t)
         if os.path.commonprefix((os.path.realpath(path),os.path.realpath(rootFolder))) != os.path.realpath(rootFolder):
-            break # Something incorrect with path, maybe traversal attack
-        for address, dirs, files in await aiofiles.os.walk(path, topdown=True, onerror=None, followlinks=False):
-            if address == rootFolder:
-                dataDirs = dirs
-            if bool(address_pattern.match(address)):
-                for d in dirs:
-                    if bool(hidden_regex.match(d)):
-                        log.info(f"Skipping version '{d}' - marked as hidden")
-                        continue
-                    files = await aiofiles.os.scandir(os.path.join(address,d))
-                    info_find = False
-                    
-                    for file in files:
-                        if "ver.info" == file.name:
-                            info_find = True
-                            break
-                    if info_find:
-                        content = None
-                        async with aiofiles.open(file.path,'r') as f:
-                            content = await f.read()
-                        if content:
-                            jver = json.loads(content)
-                                    
-                            matches= re.search(reg, jver.get('version'))
-                            
-                            # Assume that `latestTag`` exist only for daily versions
-                            if jver.get('latestTag',None):
-                                latestTags[jver.get('version')] = jver.get('latestTag',None)
-                                    
-                            sver = f"{matches.group('mver')} {jver.get('date')} {matches.group('daily')}"
-                            versions_map[sver] = jver.get('version')
-                            dates_map[jver.get('version')] = jver.get('date')
-                            notes_map[jver.get('version')] = jver.get('notes')
-                            #data.get('versions',[]).append(sver) 
-                    else:
-                                #reg = r"^(?P<mver>([\w\d]+\.){2}([\w\d]+))\.(?P<n>[\w\d]+)\.*(?P<daily>daily)*$"
-                        matches= re.search(reg, d)
-                        sver = f"{matches.group('mver')} 00:00:00 {matches.group('daily')}"
-                        versions_map[sver] = d
-                                #data.get('versions',[]).append(sver)    
+            pass # Something incorrect with path, maybe traversal attack
+        else:
+            for address, dirs, files in await aiofiles.os.walk(path, topdown=True, onerror=None, followlinks=False):
+                if address == rootFolder:
+                    dataDirs = dirs
+                if bool(address_pattern.match(address)):
+                    for d in dirs:
+                        if bool(hidden_regex.match(d)):
+                            log.info(f"Skipping version '{d}' - marked as hidden")
+                            continue
+                        files = await aiofiles.os.scandir(os.path.join(address,d))
+                        info_find = False
+                        
+                        for file in files:
+                            if "ver.info" == file.name:
+                                info_find = True
+                                break
+                        if info_find:
+                            content = None
+                            async with aiofiles.open(file.path,'r') as f:
+                                content = await f.read()
+                            if content:
+                                jver = json.loads(content)
+                                        
+                                matches= re.search(reg, jver.get('version'))
+                                
+                                # Assume that `latestTag`` exist only for daily versions
+                                if jver.get('latestTag',None):
+                                    latestTags[jver.get('version')] = jver.get('latestTag',None)
+                                        
+                                sver = f"{matches.group('mver')} {jver.get('date')} {matches.group('daily')}"
+                                versions_map[sver] = jver.get('version')
+                                dates_map[jver.get('version')] = jver.get('date')
+                                notes_map[jver.get('version')] = jver.get('notes')
+                                #data.get('versions',[]).append(sver) 
+                        else:
+                                    #reg = r"^(?P<mver>([\w\d]+\.){2}([\w\d]+))\.(?P<n>[\w\d]+)\.*(?P<daily>daily)*$"
+                            matches= re.search(reg, d)
+                            sver = f"{matches.group('mver')} 00:00:00 {matches.group('daily')}"
+                            versions_map[sver] = d
+                                    #data.get('versions',[]).append(sver)    
 
     versorted = list(versions_map.keys())
     versorted.sort(reverse=True, key=CustomLooseVersion)
@@ -327,16 +343,20 @@ async def buildVersions(t:str = None):
 
     return data
 
-async def loadInfo(t = None, v = None):
+async def loadInfo(t = None, v = None, rootFolder = None):
     jver = {}
-    rootFolder = None
-
-    for rf in config['fwDirs']:
-        if(await aiofiles.os.path.isdir(os.path.join(rf,t,v))):
-            rootFolder = rf
-            break
+    #rootFolder = None
+    if rootFolder:
+        if not (await aiofiles.os.path.isdir(os.path.join(rootFolder,t,v))):
+                rootFolder = None        
     if not rootFolder:
-        return {}
+        for rf in config['fwDirs']:
+            if(await aiofiles.os.path.isdir(os.path.join(rf,t,v))):
+                rootFolder = rf
+                break
+        if not rootFolder:
+            return {}
+
     
     ipath = os.path.join(rootFolder,t,"device.info")
 
@@ -361,22 +381,36 @@ async def generate_zip(folder_path):
     zip_buffer.seek(0)
     return zip_buffer
 
-async def getRootFolder(t, v = None):
+async def getRootFolder(t = None, v = None, src:str = None):
     rootFolder = None
-    try:
-        if not v:
-            v = await buildVersions(t)
-            v = v.get('versions',{})[0]
+
+    paths = [rf if isinstance(rf, str) else rf.get('path', None) for rf in config['fwDirs']]
+    srcs =  [rf.get('src', None) for rf in config['fwDirs'] if isinstance(rf,dict) and rf.get('src', None)]
+    if not rootFolder and src in srcs:
         for rf in config['fwDirs']:
-            if(await aiofiles.os.path.isdir(os.path.join(rf,t,v))):
-                rootFolder = rf
-                break
-    except Exception:
-        rootFolder = None
+            if isinstance(rf,dict) and src == rf.get('src', None) and rf.get('path', None):
+                rootFolder = rf.get('path')
+                return rootFolder
+    
+    # Get devices and versions at first path if not provided
+    if not rootFolder and paths:
+        try:
+            for rf in paths:
+                if v: 
+                    path = os.path.join(rf,t,v)
+                elif t:
+                    path = os.path.join(rf,t)
+                else:
+                    path = os.path.join(rf)
+                if(await aiofiles.os.path.isdir(path)):
+                    return rf
+                    
+        except Exception:
+            rootFolder = None
     return rootFolder
 
-async def buildManifest(t:str = None, v:str = None, u:str = "1"):
-    log.debug("Build manifest: %s, %s",t,v)
+async def buildManifest(t:str = None, v:str = None, u:str = "1", src:str = None):
+    log.debug("Build manifest: %s, %s for %s",t,v, src)
     manifest = {
         "name": t,
         "version": v,
@@ -392,7 +426,7 @@ async def buildManifest(t:str = None, v:str = None, u:str = "1"):
         ]
     }
 
-    devinfo = await loadInfo(t,v)
+    devinfo = await loadInfo(t,v, await getRootFolder(t,v,src))
 
     update_offset = 65536
     install_fw_offset = 0
@@ -425,23 +459,23 @@ async def buildManifest(t:str = None, v:str = None, u:str = "1"):
             chip_family = "RP2040"
 
     manifest["builds"][0]["chipFamily"] = chip_family
-    manifest['pathfw'] = "api/firmware?v={0}&t={1}&u={2}&e=false".format(v,t,u)
+    manifest['pathfw'] = "api/firmware?v={0}&t={1}&u={2}&e=false&src={3}".format(v,t,u,src)
     if chip_family == 'NRF52':
         #manifest['pathfw'] = "api/firmware?v={0}&t={1}&u={2}&e=false".format(v,t,u)
-        manifest['pathota'] = "api/firmware?v={0}&t={1}&u=4&e=false".format(v,t,u) #u=4 for ota
+        manifest['pathota'] = "api/firmware?v={0}&t={1}&u=4&e=false&src={3}".format(v,t,u,src) #u=4 for ota
     elif chip_family == 'RP2040':
         #manifest['pathfw'] = "api/firmware?v={0}&t={1}&u={2}&e=false".format(v,t,u)
         pass
     elif u =="1":
         offset= update_offset
-        path = "firmware?v={0}&t={1}&u={2}".format(v,t,u)
+        path = "firmware?v={0}&t={1}&u={2}&src={3}".format(v,t,u,src)
         manifest["builds"][0]["parts"].append({ "path": path, "offset": offset })
         
     else:
 
-        pathfw = "firmware?v={0}&t={1}&u={2}&p={3}".format(v,t,u,'fw')
-        pathbleota = "firmware?v={0}&t={1}&u={2}&p={3}".format(v,t,u, bleotav)
-        pathlittlefs = "firmware?v={0}&t={1}&u={2}&p={3}".format(v,t,u,'littlefs')
+        pathfw = "firmware?v={0}&t={1}&u={2}&p={3}&src={4}".format(v,t,u,'fw',src)
+        pathbleota = "firmware?v={0}&t={1}&u={2}&p={3}&src={4}".format(v,t,u, bleotav,src)
+        pathlittlefs = "firmware?v={0}&t={1}&u={2}&p={3}&src={4}".format(v,t,u,'littlefs',src)
         manifest["builds"][0]["parts"].append({ "path": pathfw, "offset": install_fw_offset })
         manifest["builds"][0]["parts"].append({ "path": pathbleota, "offset": install_bleota_offset })
         manifest["builds"][0]["parts"].append({ "path": pathlittlefs, "offset": install_littlefs_offset })
@@ -462,46 +496,40 @@ general_pages_router = APIRouter()
 
 # Page with script
 @app.get("/", status_code=200)
-async def homepage(request: Request):
+async def homepage(request: Request, src:str = None):
     log.debug("Main page builder: %s, %s, %s", str(request.url), str(request.client), str(request.headers))
-    return templates.TemplateResponse("general/homepage.html",{"request":request, "data" : await getAvailibleFirmwares()})
+    return templates.TemplateResponse("general/homepage.html",{"request":request, "data" : await getAvailibleFirmwares(src)})
 
 # Manifest.json
 @app.get("/api/manifest", status_code=200)
-async def getSources(request: Request, t:str = None, v:str = None, u:str = "1"):
-    return JSONResponse(content= await buildManifest(t, v, u))
+async def getSources(request: Request, t:str = None, v:str = None, u:str = "1", src:str = None):
+    return JSONResponse(content= await buildManifest(t, v, u, src))
 
 # Infoblock (HTML)
 @app.get("/api/infoblock", status_code=200)
-async def getSources(request: Request, t:str = None, v:str = 'current'):
-    return JSONResponse(content= await buildInfoblock(t,v))
+async def getSources(request: Request, t:str = None, v:str = None, src:str = None):
+    return JSONResponse(content= await buildInfoblock(t,v, src))
 
 # Versions for device
 @app.get("/api/versions", status_code=200)
-async def getSources(request: Request, t:str = None):
-    return JSONResponse(content= await buildVersions(t))
+async def getSources(request: Request, t:str = None, src:str = None):
+    return JSONResponse(content= await buildVersions(t=t, src=src))
 
 @app.get("/api/firmware" )
-async def download_file(request: Request, t:str = None, v:str = None, u:str = "1", p:str = None, e:bool = True):
+async def download_file(request: Request, t:str = None, v:str = None, u:str = "1", p:str = None, e:bool = True, src = None):
     #u: 5 - zip, 4 - ota, 1 - update, 2 - install
     #check which source folder used
     logInd = True
-    rootFolder = None
-    if not v:
-        v = await buildVersions(t)
-        v = v.get('versions',{})[0]
-    for rf in config['fwDirs']:
-        if(await aiofiles.os.path.isdir(os.path.join(rf,t,v))):
-            rootFolder = rf
-            break
+    rootFolder = await getRootFolder(t,v,src)
+
     if not rootFolder:
         return {'error': 'No such firmware found'}
     
     #return zipped firmware folder
     if u == "5":
-        rf = await getRootFolder(t,v)
-        if not rf:
-            return JSONResponse(content={'error': 'No such firmware found'}, status_code=404)
+        #rf = await getRootFolder(t,v)
+        #if not rf:
+        #    return JSONResponse(content={'error': 'No such firmware found'}, status_code=404)
         dir = os.path.join(rootFolder,t,v)
         zip_buffer = await generate_zip(dir)
         return StreamingResponse(

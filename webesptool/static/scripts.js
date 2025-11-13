@@ -31,7 +31,7 @@ function downloadFw(manifest, type){
 }
 
 function getManifestUrl(u = getSelectElem('update').value) {
-    return `./api/manifest?t=${getSelectElem('type').value}&v=${getSelectElem('version').value}&u=${u}`;
+    return `./api/manifest?t=${getSelectElem('type').value}&v=${getSelectElem('version').value}&u=${u}&src=${src}`;
 }
 
 const copyNodeStyle = (sourceNode, targetNode) => {
@@ -83,7 +83,7 @@ function onSelectionChanged() {
   }
 
 function loadDeviceInfo() {
-    path = `./api/infoblock?t=${getSelectElem('type').value}`
+    path = `./api/infoblock?t=${getSelectElem('type').value}&src=${src}`
     const infoblock = document.querySelector('#infoblock');
     fetch(path)
       .then(response => response.json())
@@ -201,7 +201,7 @@ function manageBuildDate(element) {
 
 
 function loadDeviceVersions() {
-    path = `./api/versions?t=${getSelectElem('type').value}`
+    path = `./api/versions?t=${getSelectElem('type').value}&src=${src}`
     var xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function () {
       if (xhr.readyState === 4) {
@@ -239,3 +239,6 @@ function loadDeviceVersions() {
   getSelectElem('version').addEventListener('change', onSelectionChanged);
   getSelectElem('version').addEventListener('change', loadVersionInfo);
   getSelectElem('update').addEventListener('change', onSelectionChanged);
+
+var getParams = new URLSearchParams(window.location.search);
+const src = getParams.get('src');
