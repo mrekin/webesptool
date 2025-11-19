@@ -211,7 +211,7 @@ async def getAvailibleFirmwares(src = None, rootFolder = None):
                                         uf2devices.add(Path(address).name)
                                     if(jdev.get('type')=='rp2040'):
                                         rp2040devices.add(Path(address).name)
-                                    device_names[jdev.get('pio_target')] = jdev.get('name')
+                                    device_names[Path(address).name] = jdev.get('name')
                             break
                                 
                 # Remove hidden versions
