@@ -371,14 +371,21 @@ async def loadInfo(t = None, v = None, rootFolder = None):
     
     return jver
 
-async def generate_zip(folder_path):
+async def generate_zip(folder_path, json_data:str = None):
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        # Добавляем файл с JSON данными
+        if json_data:
+            json_str = json.dumps(json_data, ensure_ascii=False, indent=2)
+            zipf.writestr("manifest.json", json_str)
+        
+        # Добавляем файлы из папки
         for root, dirs, files in await aiofiles.os.walk(folder_path):
             for file in files:
                 file_path = os.path.join(root, file)
                 arcname = os.path.relpath(file_path, folder_path)
                 zipf.write(file_path, arcname)
+    
     zip_buffer.seek(0)
     return zip_buffer
 
@@ -532,7 +539,7 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
         #if not rf:
         #    return JSONResponse(content={'error': 'No such firmware found'}, status_code=404)
         dir = os.path.join(rootFolder,t,v)
-        zip_buffer = await generate_zip(dir)
+        zip_buffer = await generate_zip(dir, await buildManifest(t = t, v = v, u = u, src = src))
         return StreamingResponse(
             zip_buffer,
             media_type="multipart/form-data",
