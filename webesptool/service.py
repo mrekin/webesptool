@@ -155,7 +155,7 @@ def init():
 
 hidden_regex = re.compile(r"^_.*")  
 
-async def getAvailibleFirmwares(src = None, rootFolder = None):
+async def getAvailibleFirmwares(src = None, rootFolder = None, t:str = None):
     data = {"espdevices":[], "uf2devices":[], "rp2040devices":[], "versions":[], "device_names":[]}
 
     uf2files_pattern = re.compile(r".*\.uf2")
@@ -215,7 +215,8 @@ async def getAvailibleFirmwares(src = None, rootFolder = None):
                             break
                                 
                 # Remove hidden versions
-                versions = versions.union(set([d for d in dirs if not bool(hidden_regex.match(d))]))
+                if (t and address.endswith(t)) or (not t):
+                    versions = versions.union(set([d for d in dirs if not bool(hidden_regex.match(d))]))
                 if not jdev:
                     for d in dirs:
                         files = await aiofiles.os.scandir(os.path.join(address,d))
@@ -498,7 +499,7 @@ general_pages_router = APIRouter()
 @app.get("/", status_code=200)
 async def homepage(request: Request, src:str = None, t:str = None):
     log.debug("Main page builder: %s, %s, %s", str(request.url), str(request.client), str(request.headers))
-    return templates.TemplateResponse("general/homepage.html",{"request":request, "data" : await getAvailibleFirmwares(src), "defaultDevice" : t})
+    return templates.TemplateResponse("general/homepage.html",{"request":request, "data" : await getAvailibleFirmwares(src = src, t =t), "defaultDevice" : t})
 
 # Manifest.json
 @app.get("/api/manifest", status_code=200)
