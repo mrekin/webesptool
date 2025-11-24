@@ -496,9 +496,9 @@ general_pages_router = APIRouter()
 
 # Page with script
 @app.get("/", status_code=200)
-async def homepage(request: Request, src:str = None):
+async def homepage(request: Request, src:str = None, t:str = None):
     log.debug("Main page builder: %s, %s, %s", str(request.url), str(request.client), str(request.headers))
-    return templates.TemplateResponse("general/homepage.html",{"request":request, "data" : await getAvailibleFirmwares(src)})
+    return templates.TemplateResponse("general/homepage.html",{"request":request, "data" : await getAvailibleFirmwares(src), "defaultDevice" : t})
 
 # Manifest.json
 @app.get("/api/manifest", status_code=200)
