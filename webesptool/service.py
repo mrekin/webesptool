@@ -155,7 +155,7 @@ def init():
 
 hidden_regex = re.compile(r"^_.*")  
 
-async def getAvailibleFirmwares(src = None, rootFolder = None, t:str = None):
+async def getAvailableFirmwares(src = None, rootFolder = None, t:str = None):
     data = {"espdevices":[], "uf2devices":[], "rp2040devices":[], "versions":[], "device_names":[]}
 
     uf2files_pattern = re.compile(r".*\.uf2")
@@ -458,7 +458,7 @@ async def buildManifest(t:str = None, v:str = None, u:str = "1", src:str = None)
     elif ("c3" in t or devinfo.get("chip", None) == 'esp32c3'):
         chip_family = "ESP32-C3"
     else:  # Need to check nrf52/rp2040 somehow
-        data = await getAvailibleFirmwares()
+        data = await getAvailableFirmwares()
         if t in data.get('uf2devices'):
             chip_family = "NRF52"
         elif  t in data.get('espdevices'):
@@ -506,7 +506,12 @@ general_pages_router = APIRouter()
 @app.get("/", status_code=200)
 async def homepage(request: Request, src:str = None, t:str = None):
     log.debug("Main page builder: %s, %s, %s", str(request.url), str(request.client), str(request.headers))
-    return templates.TemplateResponse("general/homepage.html",{"request":request, "data" : await getAvailibleFirmwares(src = src, t =t), "defaultDevice" : t})
+    return templates.TemplateResponse("general/homepage.html",{"request":request, "data" : await getAvailableFirmwares(src = src, t =t), "defaultDevice" : t})
+
+# availableFirmwares.json
+@app.get("/api/availableFirmwares", status_code=200)
+async def getSources(request: Request, src:str = None):
+    return JSONResponse(content= await getAvailableFirmwares(src = src))
 
 # Manifest.json
 @app.get("/api/manifest", status_code=200)
