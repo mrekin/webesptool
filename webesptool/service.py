@@ -174,7 +174,7 @@ async def getAvailableFirmwares(src = None, rootFolder = None, t:str = None):
     rootFolder = await getRootFolder(src=src)
 
     paths = [rf if isinstance(rf, str) else rf.get('path', None) for rf in config['fwDirs']]
-    srcs =  [rf.get('src', None) for rf in config['fwDirs'] if isinstance(rf,dict) and rf.get('src', None)]
+    srcs =  [{'src': rf.get('src', None), 'desc': rf.get('desc', '')} for rf in config['fwDirs'] if isinstance(rf,dict) and rf.get('src', None)]
     if not rootFolder and src in srcs:
         for rf in config['fwDirs']:
             if isinstance(rf,dict) and src == rf.get('src', None) and rf.get('path', None):
