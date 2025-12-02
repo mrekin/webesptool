@@ -1,48 +1,25 @@
 <script lang="ts">
-  import { uiState } from '$lib/stores';
-
   // Local state
-  let showSecurityWarning = true;
+  let showMoreSection = false;
+  let showImportantNotes = false;
+  let showHowTo = false;
 
-  // Subscribe to stores
-  $: showSecurityWarningStore = $uiState.showSecurityWarning;
-
-  // Update local state when store changes
-  $: {
-    showSecurityWarning = showSecurityWarningStore;
+  // Toggle more section
+  function toggleMore() {
+    showMoreSection = !showMoreSection;
   }
 
-  // Dismiss security warning
-  function dismissWarning() {
-    showSecurityWarning = false;
-    // This would update the store in a real implementation
-    if (typeof uiState.subscribe === 'function') {
-      // For now, just update local state
-    }
+  // Toggle important notes
+  function toggleImportantNotes() {
+    showImportantNotes = !showImportantNotes;
   }
 
-  // Security warning content
-  const securityWarnings = [
-    {
-      icon: '⚠️',
-      title: 'Unofficial Builds',
-      description: 'These are not official Meshtastic firmware builds and are not supported by the Meshtastic project.',
-      type: 'critical'
-    },
-    {
-      icon: '🔬',
-      title: 'Development Use Only',
-      description: 'These builds are intended for testing and development purposes, not production use.',
-      type: 'warning'
-    },
-    {
-      icon: '🚨',
-      title: 'Use at Your Own Risk',
-      description: 'Installing unofficial firmware may void your warranty and could potentially damage your device.',
-      type: 'critical'
-    }
-  ];
+  // Toggle how to section
+  function toggleHowTo() {
+    showHowTo = !showHowTo;
+  }
 
+  
   // Build information
   const buildInfo = [
     {
@@ -104,135 +81,161 @@
   ];
 </script>
 
-  <!-- Security Warning Section -->
-  {#if showSecurityWarning}
-    <div class="mb-6 p-4 bg-red-900 bg-opacity-30 border border-red-600 rounded-lg">
-      <div class="flex items-start justify-between mb-3">
-        <h3 class="text-lg font-semibold text-red-200 flex items-center">
-          <span class="mr-2">🚨</span>
-          Security & Warning Notice
-        </h3>
-        <button
-          on:click={dismissWarning}
-          class="text-red-300 hover:text-red-200 p-1 rounded transition-colors"
-          aria-label="Dismiss warning"
-        >
-          ✕
-        </button>
-      </div>
-
-      <div class="space-y-3">
-        {#each securityWarnings as warning}
-          <div class="flex items-start space-x-3 p-3 bg-red-800 bg-opacity-20 rounded border border-red-700">
-            <span class="text-xl flex-shrink-0 mt-1">{warning.icon}</span>
-            <div class="flex-1">
-              <h4 class="font-medium text-red-200 mb-1">{warning.title}</h4>
-              <p class="text-red-300 text-sm">{warning.description}</p>
-            </div>
-          </div>
-        {/each}
-      </div>
-
-      <div class="mt-4 p-3 bg-red-800 bg-opacity-40 border border-red-700 rounded">
-        <p class="text-red-200 font-medium text-center">
-          <strong>IMPORTANT:</strong> By proceeding with firmware installation, you acknowledge and accept these risks.
-        </p>
-      </div>
-    </div>
-  {/if}
 
   <!-- General Information Section -->
   <div class="p-4 bg-gray-800 border border-orange-600 rounded-lg">
-    <h3 class="text-lg font-semibold text-orange-200 mb-4 flex items-center">
-      <span class="mr-2">📝</span>
-      Important Information
-    </h3>
-
-    <!-- Build Information -->
+    <!-- HowTo Section -->
     <div class="mb-6">
-      <h4 class="font-medium text-orange-200 mb-3 flex items-center">
-        <span class="mr-2">🏗️</span>
-        Build Information
-      </h4>
-      <div class="space-y-3 text-sm text-orange-100">
-        {#each buildInfo as info}
-          <div class="flex items-start space-x-3">
-            <span class="text-base flex-shrink-0 mt-0.5">{info.icon}</span>
-            <div class="flex-1">
-              <h5 class="font-medium text-orange-200 mb-1">{info.title}</h5>
-              <p class="text-orange-300">{info.description}</p>
-              {#if info.link}
-                <a
-                  href={info.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="text-orange-400 hover:text-orange-300 underline text-xs mt-1 inline-block"
-                >
-                  🔗 View on GitHub
-                </a>
-              {/if}
-            </div>
-          </div>
-        {/each}
-      </div>
-    </div>
+      <button
+        on:click={toggleHowTo}
+        class="w-full flex items-center justify-between p-3 bg-orange-900 bg-opacity-30 border border-orange-600 rounded hover:bg-orange-900 bg-opacity-40 transition-colors text-left"
+        aria-expanded={showHowTo}
+        aria-controls="howto-content"
+      >
+        <h3 class="text-lg font-semibold text-orange-200 flex items-center">
+          <span class="mr-2">📖</span>
+          HowTo
+        </h3>
+        <span class="text-orange-300 transform transition-transform duration-200" style="transform: {showHowTo ? 'rotate(180deg)' : 'rotate(0deg)'}">
+          ▼
+        </span>
+      </button>
 
-    <!-- Best Practices -->
-    <div class="mb-6">
-      <h4 class="font-medium text-orange-200 mb-3 flex items-center">
-        <span class="mr-2">✅</span>
-        Best Practices
-      </h4>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-orange-100">
-        {#each bestPractices as practice}
-          <div class="flex items-start space-x-3 p-3 bg-orange-900 bg-opacity-20 rounded border border-orange-700">
-            <span class="text-base flex-shrink-0 mt-0.5">{practice.icon}</span>
-            <div class="flex-1">
-              <h5 class="font-medium text-orange-200 mb-1">{practice.title}</h5>
-              <p class="text-orange-300">{practice.description}</p>
-            </div>
+      {#if showHowTo}
+        <div id="howto-content" class="mt-3 space-y-4 animate-fade-in">
+          <!-- Content will be added later -->
+          <div class="text-orange-300 text-sm">
+            <p>HowTo content coming soon...</p>
           </div>
-        {/each}
-      </div>
+        </div>
+      {/if}
     </div>
+    <button
+      on:click={toggleImportantNotes}
+      class="w-full flex items-center justify-between p-3 bg-orange-900 bg-opacity-30 border border-orange-600 rounded hover:bg-orange-900 bg-opacity-40 transition-colors text-left mb-4"
+      aria-expanded={showImportantNotes}
+      aria-controls="important-notes-content"
+    >
+      <h3 class="text-lg font-semibold text-orange-200 flex items-center">
+        <span class="mr-2">📝</span>
+        Important Notes
+      </h3>
+      <span class="text-orange-300 transform transition-transform duration-200" style="transform: {showImportantNotes ? 'rotate(180deg)' : 'rotate(0deg)'}">
+        ▼
+      </span>
+    </button>
 
-    <!-- Help and Support -->
-    <div class="p-3 bg-orange-900 bg-opacity-30 border border-orange-600 rounded">
-      <h4 class="font-medium text-orange-200 mb-2 flex items-center">
-        <span class="mr-2">💬</span>
-        Need Help?
-      </h4>
-      <div class="space-y-2 text-sm text-orange-100">
-        <p>
-          If you encounter issues with these firmware builds, please:
-        </p>
-        <ul class="list-disc list-inside space-y-1 ml-4">
-          <li>Check the device compatibility list</li>
-          <li>Verify you're using the correct firmware variant</li>
-          <li>Consult the official Meshtastic documentation</li>
-          <li>Report issues on the relevant GitHub repository</li>
-        </ul>
-        <div class="mt-3 space-x-4">
-          <a
-            href="https://github.com/meshtastic/firmware/issues"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-flex items-center px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors text-sm"
-          >
-            <span class="mr-2">🐛</span>
-            Report Issue
-          </a>
-          <a
-            href="https://meshtastic.org/docs/"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-flex items-center px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors text-sm ml-2"
-          >
-            <span class="mr-2">📚</span>
-            Documentation
-          </a>
+    {#if showImportantNotes}
+      <div id="important-notes-content" class="space-y-6 animate-fade-in">
+        <!-- Build Information -->
+        <div class="mb-6">
+          <h4 class="font-medium text-orange-200 mb-3 flex items-center">
+            <span class="mr-2">🏗️</span>
+            Build Information
+          </h4>
+          <div class="space-y-3 text-sm text-orange-100">
+            {#each buildInfo as info}
+              <div class="flex items-start space-x-3">
+                <span class="text-base flex-shrink-0 mt-0.5">{info.icon}</span>
+                <div class="flex-1">
+                  <h5 class="font-medium text-orange-200 mb-1">{info.title}</h5>
+                  <p class="text-orange-300">{info.description}</p>
+                  {#if info.link}
+                    <a
+                      href={info.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-orange-400 hover:text-orange-300 underline text-xs mt-1 inline-block"
+                    >
+                      🔗 View on GitHub
+                    </a>
+                  {/if}
+                </div>
+              </div>
+            {/each}
+          </div>
         </div>
       </div>
+    {/if}
+
+    <!-- More Section (Best Practices + Need Help) -->
+    <div class="mb-6">
+      <button
+        on:click={toggleMore}
+        class="w-full flex items-center justify-between p-3 bg-orange-900 bg-opacity-30 border border-orange-600 rounded hover:bg-orange-900 bg-opacity-40 transition-colors text-left"
+        aria-expanded={showMoreSection}
+        aria-controls="more-content"
+      >
+        <h4 class="font-medium text-orange-200 flex items-center">
+          <span class="mr-2">📋</span>
+          More..
+        </h4>
+        <span class="text-orange-300 transform transition-transform duration-200" style="transform: {showMoreSection ? 'rotate(180deg)' : 'rotate(0deg)'}">
+          ▼
+        </span>
+      </button>
+
+      {#if showMoreSection}
+        <div id="more-content" class="mt-3 space-y-4 animate-fade-in">
+          <!-- Best Practices -->
+          <div>
+            <h5 class="font-medium text-orange-200 mb-3 flex items-center">
+              <span class="mr-2">✅</span>
+              Best Practices
+            </h5>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-orange-100">
+              {#each bestPractices as practice}
+                <div class="flex items-start space-x-3 p-3 bg-orange-900 bg-opacity-20 rounded border border-orange-700">
+                  <span class="text-base flex-shrink-0 mt-0.5">{practice.icon}</span>
+                  <div class="flex-1">
+                    <h6 class="font-medium text-orange-200 mb-1">{practice.title}</h6>
+                    <p class="text-orange-300">{practice.description}</p>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          </div>
+
+          <!-- Help and Support -->
+          <div class="p-3 bg-orange-900 bg-opacity-30 border border-orange-600 rounded">
+            <h5 class="font-medium text-orange-200 mb-2 flex items-center">
+              <span class="mr-2">💬</span>
+              Need Help?
+            </h5>
+            <div class="space-y-2 text-sm text-orange-100">
+              <p>
+                If you encounter issues with these firmware builds, please:
+              </p>
+              <ul class="list-disc list-inside space-y-1 ml-4">
+                <li>Check the device compatibility list</li>
+                <li>Verify you're using the correct firmware variant</li>
+                <li>Consult the official Meshtastic documentation</li>
+                <li>Report issues on the relevant GitHub repository</li>
+              </ul>
+              <div class="mt-3 space-x-4">
+                <a
+                  href="https://github.com/meshtastic/firmware/issues"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex items-center px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors text-sm"
+                >
+                  <span class="mr-2">🐛</span>
+                  Report Issue
+                </a>
+                <a
+                  href="https://meshtastic.org/docs/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex items-center px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors text-sm ml-2"
+                >
+                  <span class="mr-2">📚</span>
+                  Documentation
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      {/if}
     </div>
 
     <!-- Version Information -->

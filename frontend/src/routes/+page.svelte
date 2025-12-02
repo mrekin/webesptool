@@ -137,17 +137,17 @@
             <FirmwareInfo />
           </div>
 
-          <!-- Important Notes -->
-          <div class="p-6 bg-gray-800 border border-orange-600 rounded-lg">
-            <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center">
-              <span class="mr-3">📝</span>
-              Important Notes
-            </h2>
-            <Notes />
           </div>
-        </div>
       </div>
   
+    <!-- Important Notes - Full Width Section -->
+    <div class="p-6 bg-gray-800 border border-orange-600 rounded-lg max-w-6xl mx-auto mt-8">
+      <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center">
+        <span class="mr-3">📝</span>
+        Important Notes
+      </h2>
+      <Notes />
+    </div>
     <!-- Information section -->
     {#if !error}
       <div class="max-w-4xl mx-auto mt-8">

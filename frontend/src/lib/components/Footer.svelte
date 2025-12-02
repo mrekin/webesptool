@@ -53,24 +53,6 @@
     }
   ];
 
-  // Legal links
-  const legalLinks = [
-    {
-      name: 'Privacy Policy',
-      href: '#privacy',
-      description: 'How we handle your data'
-    },
-    {
-      name: 'Terms of Service',
-      href: '#terms',
-      description: 'Terms and conditions'
-    },
-    {
-      name: 'Disclaimer',
-      href: '#disclaimer',
-      description: 'Legal disclaimers and warranties'
-    }
-  ];
 
   function formatLink(link: any) {
     return {
@@ -159,66 +141,7 @@
       <div class="border-t border-orange-800 pt-8">
         <!-- Bottom section with legal and info -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <!-- Legal column -->
-          <div>
-            <h4 class="text-orange-200 font-semibold mb-3">Legal</h4>
-            <ul class="space-y-2 text-sm">
-              {#each legalLinks as legal}
-                <li>
-                  <a
-                    href={legal.href}
-                    class="text-orange-400 hover:text-orange-300 transition-colors"
-                  >
-                    {legal.name}
-                  </a>
-                </li>
-              {/each}
-            </ul>
-          </div>
 
-          <!-- Version info column -->
-          <div>
-            <h4 class="text-orange-200 font-semibold mb-3">Version Info</h4>
-            <div class="space-y-2 text-sm text-orange-300">
-              <p>
-                <span class="font-medium">Frontend:</span>
-                SvelteKit v2.22.0
-              </p>
-              <p>
-                <span class="font-medium">Build:</span>
-                {currentYear} Beta
-              </p>
-              <p>
-                <span class="font-medium">API:</span>
-                FastAPI v0.104+
-              </p>
-            </div>
-          </div>
-
-          <!-- Contact/Support column -->
-          <div>
-            <h4 class="text-orange-200 font-semibold mb-3">Support</h4>
-            <div class="space-y-2 text-sm text-orange-300">
-              <p>
-                <span class="font-medium">Issues:</span>
-                <a href="https://github.com/meshtastic/firmware/issues" target="_blank" rel="noopener noreferrer" class="text-orange-400 hover:text-orange-300 underline">
-                  GitHub Issues
-                </a>
-              </p>
-              <p>
-                <span class="font-medium">Discussions:</span>
-                <a href="https://github.com/meshtastic/firmware/discussions" target="_blank" rel="noopener noreferrer" class="text-orange-400 hover:text-orange-300 underline">
-                  GitHub Discussions
-                </a>
-              </p>
-              <p>
-                <span class="font-medium">Discord:</span>
-                <a href="https://discord.gg/meshtastic" target="_blank" rel="noopener noreferrer" class="text-orange-400 hover:text-orange-300 underline">
-                  Community Discord
-                </a>
-              </p>
-            </div>
-          </div>
         </div>
 
         <!-- Copyright and credits -->
@@ -244,20 +167,6 @@
             <p class="text-xs">
               Meshtastic® is a registered trademark. All other trademarks are the property of their respective owners.
             </p>
-            <div class="mt-4 flex justify-center space-x-4">
-              <!-- Badge for SvelteKit -->
-              <a href="https://svelte.dev" target="_blank" rel="noopener noreferrer" class="inline-block">
-                <img src="https://img.shields.io/badge/SvelteKit-FF3E00?style=for-the-badge&logo=Svelte&logoColor=white" alt="Built with SvelteKit" class="h-6">
-              </a>
-              <!-- Badge for TypeScript -->
-              <a href="https://www.typescriptlang.org/" target="_blank" rel="noopener noreferrer" class="inline-block">
-                <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=TypeScript&logoColor=white" alt="Built with TypeScript" class="h-6">
-              </a>
-              <!-- Badge for TailwindCSS -->
-              <a href="https://tailwindcss.com" target="_blank" rel="noopener noreferrer" class="inline-block">
-                <img src="https://img.shields.io/badge/TailwindCSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Styled with TailwindCSS" class="h-6">
-              </a>
-            </div>
           </div>
         </div>
       </div>
@@ -292,34 +201,11 @@
     transition: all 0.2s ease;
   }
 
-  /* Badge animations */
-  img {
-    transition: transform 0.2s ease;
-  }
-
-  img:hover {
-    transform: scale(1.05);
-  }
 
   /* Pulse animation for status indicator */
   @keyframes pulse-slow {
     0%, 100% {
       opacity: 1;
-    }
-    50% {
-      opacity: 0.5;
-    }
-  }
-
-  .animate-pulse-slow {
-    animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  /* Responsive adjustments */
-  @media (max-width: 768px) {
-    .container {
-      padding-left: 1rem;
-      padding-right: 1rem;
     }
   }
 
