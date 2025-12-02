@@ -1,0 +1,270 @@
+<script lang="ts">
+  import BaseLayout from '$lib/components/BaseLayout.svelte';
+  import SelectDevice from '$lib/components/SelectDevice.svelte';
+  import RepositorySelector from '$lib/components/RepositorySelector.svelte';
+  import FirmwareInfo from '$lib/components/FirmwareInfo.svelte';
+  import DownloadButtons from '$lib/components/DownloadButtons.svelte';
+  import Notes from '$lib/components/Notes.svelte';
+  import Footer from '$lib/components/Footer.svelte';
+  import { loadingState, availableFirmwares } from '$lib/stores';
+  import { onMount } from 'svelte';
+
+  // Local state
+  let pageTitle = 'Custom Meshtastic builds web installer';
+
+  // Subscribe to stores
+  $: error = $loadingState.error;
+  $: availableFirmwaresStore = $availableFirmwares;
+
+  // Set page title on mount (browser side only)
+  onMount(() => {
+    if (typeof document !== 'undefined') {
+      document.title = pageTitle;
+    }
+  });
+
+  // Check if we have any available firmwares
+  $: hasAvailableDevices = availableFirmwaresStore.espdevices.length > 0 ||
+                           availableFirmwaresStore.uf2devices.length > 0 ||
+                           availableFirmwaresStore.rp2040devices.length > 0;
+</script>
+
+<svelte:head>
+  <title>{pageTitle}</title>
+  <meta name="description" content="Custom Meshtastic firmware builds web installer" />
+  <meta name="keywords" content="meshtastic, firmware, esp32, lora, mesh network" />
+  <meta property="og:title" content={pageTitle} />
+  <meta property="og:description" content="Install custom Meshtastic firmware builds" />
+  <meta property="og:type" content="website" />
+</svelte:head>
+
+<BaseLayout>
+  <!-- Header Section -->
+  <div slot="head" class="text-center space-y-4">
+    <h1 class="text-3xl md:text-4xl font-bold text-orange-200 mb-4">
+      Custom Meshtastic builds web installer
+    </h1>
+
+    <div class="max-w-2xl mx-auto">
+      <p class="text-orange-300 text-lg">
+        Install custom Meshtastic firmware on your device with browser-based tools or direct downloads.
+      </p>
+
+      <div class="mt-6 p-4 bg-orange-900 bg-opacity-30 border border-orange-600 rounded-lg">
+        <h2 class="text-lg font-semibold text-orange-200 mb-2">⚠️ Important Notice</h2>
+        <p class="text-orange-300 text-sm leading-relaxed">
+          These are <strong>unofficial builds</strong> of Meshtastic firmware, provided for testing and development purposes.
+          They may contain experimental features and are not officially supported by the Meshtastic project.
+        </p>
+        <p class="text-orange-300 text-sm mt-2">
+          Always backup your device configuration before flashing firmware.
+        </p>
+      </div>
+    </div>
+
+    <!-- Error State -->
+    {#if error}
+      <div class="mt-8 p-4 bg-red-900 bg-opacity-30 border border-red-600 rounded-lg">
+        <h2 class="text-lg font-semibold text-red-200 mb-2">❌ Error</h2>
+        <p class="text-red-300">{error}</p>
+        <button
+          on:click={() => window.location.reload()}
+          class="mt-3 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
+        >
+          Reload Page
+        </button>
+      </div>
+    {/if}
+
+    <!-- Repository Selection -->
+    {#if !error}
+      <div class="mt-6">
+        <div class="max-w-4xl mx-auto">
+          <div class="bg-gray-800 bg-opacity-90 border border-orange-600 rounded-lg p-4">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+              <div class="flex items-center space-x-3">
+                <span class="text-orange-200 font-medium">🌐 Repository:</span>
+                <RepositorySelector />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    {/if}
+  </div>
+
+  <!-- Main Content Area -->
+  <div slot="content" class="space-y-8">
+    {#if hasAvailableDevices}
+      <!-- Main Content Column -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Left Column: Device Selection and Actions -->
+        <div class="lg:col-span-2 space-y-8">
+          <div class="p-6 bg-gray-800 border border-orange-600 rounded-lg">
+            <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center">
+              <span class="mr-3">🎯</span>
+              
+              Device Selection
+            </h2>
+            <SelectDevice />
+          </div>
+
+          <!-- Download Actions -->
+          <div class="p-6 bg-gray-800 border border-orange-600 rounded-lg">
+            <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center">
+              <span class="mr-3">⬇️</span>
+              Download Options
+            </h2>
+            <DownloadButtons />
+          </div>
+        </div>
+
+        <!-- Right Column: Information and Notes -->
+        <div class="space-y-8">
+          <!-- Firmware Information -->
+          <div class="p-6 bg-gray-800 border border-orange-600 rounded-lg">
+            <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center">
+              <span class="mr-3">ℹ️</span>
+              Firmware Information
+            </h2>
+            <FirmwareInfo />
+          </div>
+
+          <!-- Important Notes -->
+          <div class="p-6 bg-gray-800 border border-orange-600 rounded-lg">
+            <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center">
+              <span class="mr-3">📝</span>
+              Important Notes
+            </h2>
+            <Notes />
+          </div>
+        </div>
+      </div>
+    {:else if !error && !hasAvailableDevices}
+      <!-- No Devices Available (shown in main content area) -->
+      <div class="max-w-4xl mx-auto">
+        <div class="p-8 bg-gray-800 border border-orange-600 rounded-lg">
+          <h2 class="text-xl font-bold text-orange-200 mb-4 flex items-center">
+            <span class="mr-3">📋</span>
+            No Devices Available
+          </h2>
+          <p class="text-orange-300 text-lg mb-4">
+            No firmware builds are currently available for selected repository.
+          </p>
+          <div class="space-y-3 mb-6">
+            <div class="flex items-start space-x-3">
+              <span class="text-orange-400 mt-1">•</span>
+              <p class="text-orange-300">The firmware repository is being updated</p>
+            </div>
+            <div class="flex items-start space-x-3">
+              <span class="text-orange-400 mt-1">•</span>
+              <p class="text-orange-300">Network connectivity issues</p>
+            </div>
+            <div class="flex items-start space-x-3">
+              <span class="text-orange-400 mt-1">•</span>
+              <p class="text-orange-300">Server maintenance in progress</p>
+            </div>
+            <div class="flex items-start space-x-3">
+              <span class="text-orange-400 mt-1">•</span>
+              <p class="text-orange-300">No builds available for this repository</p>
+            </div>
+          </div>
+          <div class="p-4 bg-orange-900 bg-opacity-30 border border-orange-600 rounded">
+            <p class="text-orange-200">
+              <strong>💡 Tip:</strong> Try selecting a different source repository from the options above to explore other firmware builds.
+            </p>
+          </div>
+          <p class="text-orange-300 mt-6 text-sm">
+            Please try again later or contact support if the issue persists.
+          </p>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Information section -->
+    {#if !error}
+      <div class="max-w-4xl mx-auto mt-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+        </div>
+      </div>
+    {/if}
+  </div>
+
+  <!-- Footer -->
+  <div slot="footer">
+    <Footer />
+  </div>
+</BaseLayout>
+
+<style>
+  /* Custom animations - optimized */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Apply fade-in animation to main content */
+  .grid > div {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+
+  .grid > div:nth-child(1) {
+    animation-delay: 0.1s;
+  }
+
+  .grid > div:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  /* Custom scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #1f2937;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #d8690e;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #b85807;
+  }
+
+  /* Loading state improvements */
+  .animate-spin {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* Focus states for accessibility - only button focus used */
+  button:focus {
+    outline: 2px solid #fb923c;
+    outline-offset: 2px;
+  }
+
+  /* Ensure responsive spacing */
+  @media (max-width: 1024px) {
+    .lg\:col-span-2 {
+      grid-column: span 1;
+    }
+  }
+</style>
