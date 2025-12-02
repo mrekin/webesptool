@@ -49,41 +49,49 @@
       <p class="text-orange-300 text-lg">
         Install custom Meshtastic firmware on your device with browser-based tools or direct downloads.
       </p>
+    </div>
 
-      <div class="mt-6 p-4 bg-orange-900 bg-opacity-30 border border-orange-600 rounded-lg">
-        <h2 class="text-lg font-semibold text-orange-200 mb-2">⚠️ Important Notice</h2>
-        <p class="text-orange-300 text-sm leading-relaxed">
-          These are <strong>unofficial builds</strong> of Meshtastic firmware, provided for testing and development purposes.
-          They may contain experimental features and are not officially supported by the Meshtastic project.
-        </p>
-        <p class="text-orange-300 text-sm mt-2">
-          Always backup your device configuration before flashing firmware.
-        </p>
-      </div>
+    <div class="mt-2 p-4 bg-orange-900 bg-opacity-30 border border-orange-600 rounded-lg max-w-6xl mx-auto">
+      <h2 class="text-lg font-semibold text-orange-200 mb-2">⚠️ Important Notice</h2>
+      <p class="text-orange-300 text-sm leading-relaxed">
+        These are <strong>unofficial builds</strong> of Meshtastic firmware, provided for testing and development purposes.
+        They may contain experimental features and are not officially supported by the Meshtastic project.
+      </p>
+      <p class="text-orange-300 text-sm mt-2">
+        Always backup your device configuration before flashing firmware.
+      </p>
     </div>
 
     <!-- Error State -->
     {#if error}
-      <div class="mt-8 p-4 bg-red-900 bg-opacity-30 border border-red-600 rounded-lg">
-        <h2 class="text-lg font-semibold text-red-200 mb-2">❌ Error</h2>
-        <p class="text-red-300">{error}</p>
-        <button
-          on:click={() => window.location.reload()}
-          class="mt-3 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
-        >
-          Reload Page
-        </button>
+      <div class="mt-6">
+        <div class="max-w-6xl mx-auto">
+          <div class="bg-gray-800 bg-opacity-90 border border-red-600 rounded-lg p-4">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+              <div class="flex items-center space-x-3">
+                <h2 class="text-lg font-semibold text-red-200">❌ Error</h2>
+                <p class="text-red-300">{error}</p>
+              </div>
+              <button
+                on:click={() => window.location.reload()}
+                class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
+              >
+                Reload Page
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     {/if}
 
     <!-- Repository Selection -->
     {#if !error}
       <div class="mt-6">
-        <div class="max-w-4xl mx-auto">
+        <div class="max-w-6xl mx-auto">
           <div class="bg-gray-800 bg-opacity-90 border border-orange-600 rounded-lg p-4">
             <div class="flex items-center justify-between flex-wrap gap-4">
               <div class="flex items-center space-x-3">
-                <span class="text-orange-200 font-medium">🌐 Repository:</span>
+                <span class="text-orange-200 font-medium">🌐 Source repository:</span>
                 <RepositorySelector />
               </div>
             </div>
@@ -95,8 +103,7 @@
 
   <!-- Main Content Area -->
   <div slot="content" class="space-y-8">
-    {#if hasAvailableDevices}
-      <!-- Main Content Column -->
+    <!-- Main Content Column -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <!-- Left Column: Device Selection and Actions -->
         <div class="lg:col-span-2 space-y-8">
@@ -140,47 +147,7 @@
           </div>
         </div>
       </div>
-    {:else if !error && !hasAvailableDevices}
-      <!-- No Devices Available (shown in main content area) -->
-      <div class="max-w-4xl mx-auto">
-        <div class="p-8 bg-gray-800 border border-orange-600 rounded-lg">
-          <h2 class="text-xl font-bold text-orange-200 mb-4 flex items-center">
-            <span class="mr-3">📋</span>
-            No Devices Available
-          </h2>
-          <p class="text-orange-300 text-lg mb-4">
-            No firmware builds are currently available for selected repository.
-          </p>
-          <div class="space-y-3 mb-6">
-            <div class="flex items-start space-x-3">
-              <span class="text-orange-400 mt-1">•</span>
-              <p class="text-orange-300">The firmware repository is being updated</p>
-            </div>
-            <div class="flex items-start space-x-3">
-              <span class="text-orange-400 mt-1">•</span>
-              <p class="text-orange-300">Network connectivity issues</p>
-            </div>
-            <div class="flex items-start space-x-3">
-              <span class="text-orange-400 mt-1">•</span>
-              <p class="text-orange-300">Server maintenance in progress</p>
-            </div>
-            <div class="flex items-start space-x-3">
-              <span class="text-orange-400 mt-1">•</span>
-              <p class="text-orange-300">No builds available for this repository</p>
-            </div>
-          </div>
-          <div class="p-4 bg-orange-900 bg-opacity-30 border border-orange-600 rounded">
-            <p class="text-orange-200">
-              <strong>💡 Tip:</strong> Try selecting a different source repository from the options above to explore other firmware builds.
-            </p>
-          </div>
-          <p class="text-orange-300 mt-6 text-sm">
-            Please try again later or contact support if the issue persists.
-          </p>
-        </div>
-      </div>
-    {/if}
-
+  
     <!-- Information section -->
     {#if !error}
       <div class="max-w-4xl mx-auto mt-8">

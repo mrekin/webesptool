@@ -17,15 +17,15 @@
     {#each availableFirmwaresStore.srcs as source}
       <button
         type="button"
-        on:click={() => handleSourceChange(source)}
+        on:click={() => handleSourceChange(source.src)}
         class="px-3 py-1.5 text-sm rounded-md transition-colors {
-          deviceSelectionStore.source === source
+          deviceSelectionStore.source === source.src
             ? 'bg-orange-600 text-white border-orange-500 shadow-sm'
             : 'bg-gray-700 text-orange-300 border-gray-600 hover:bg-gray-600 hover:text-orange-200'
         } border focus:outline-none focus:ring-1 focus:ring-orange-500 text-xs font-medium"
-        title="Select {source.split('/').pop()} repository"
+        title="{source.desc}"
       >
-        {source.split('/').pop()}
+        {source.src}
       </button>
     {/each}
   </div>
