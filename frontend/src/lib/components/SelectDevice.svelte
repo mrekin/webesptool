@@ -1,10 +1,14 @@
 <script lang="ts">
     import { deviceSelection, availableFirmwares, versionsData, isDeviceSelected, isVersionSelected, allDevicesFlat, allDevicesWithCategories } from '$lib/stores';
   import { deviceActions } from '$lib/stores.ts';
+  import { onMount, onDestroy } from 'svelte';
+  import { browser } from '$app/environment';
 
   // Local state
   let deviceFilter = '';
-  
+  let showDropdown = false;
+  let selectedIndex = -1;
+
   // Subscribe to stores
   $: deviceSelectionStore = $deviceSelection;
   $: availableFirmwaresStore = $availableFirmwares;
@@ -30,22 +34,109 @@
     rp2040: filteredDevices.filter((d: {device: string; category: string}) => d.category === 'rp2040')
   };
 
-  $: if (filteredDevices?.length > 0  && deviceFilter.length > 0) {
-    deviceSelectionStore.deviceType = filteredDevices[0].device;
-  }
-  
-  // Handle device type change (direct selection)
-  function handleDeviceTypeChange(event: Event) {
-    const select = event.target as HTMLSelectElement;
-    const deviceType = select.value;
-    deviceActions.setDeviceDirectly(deviceType === '' ? null : deviceType);
+  // Handle device selection from dropdown
+  function selectDevice(device: {device: string; displayName: string}) {
+    deviceFilter = device.displayName;
+    showDropdown = false;
+    deviceActions.setDeviceDirectly(device.device);
   }
 
-  // Handle filter change
-  function handleFilterChange(event: Event) {
+  // Handle input change
+  function handleInputChange(event: Event) {
     const input = event.target as HTMLInputElement;
     deviceFilter = input.value;
+    showDropdown = true;
+    selectedIndex = -1;
   }
+
+  // Handle keyboard navigation
+  function handleKeydown(event: KeyboardEvent) {
+    const visibleDevices = getVisibleDevices();
+
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        if (selectedIndex < visibleDevices.length - 1) {
+          selectedIndex++;
+        } else {
+          selectedIndex = 0;
+        }
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        if (selectedIndex > 0) {
+          selectedIndex--;
+        } else {
+          selectedIndex = visibleDevices.length - 1;
+        }
+        break;
+      case 'Enter':
+        event.preventDefault();
+        if (selectedIndex >= 0 && visibleDevices[selectedIndex]) {
+          selectDevice(visibleDevices[selectedIndex]);
+        }
+        break;
+      case 'Escape':
+        showDropdown = false;
+        selectedIndex = -1;
+        break;
+    }
+  }
+
+  // Get visible devices for keyboard navigation
+  function getVisibleDevices() {
+    let result: any[] = [];
+    if (filteredDevicesByCategory.esp.length > 0) {
+      result = result.concat(filteredDevicesByCategory.esp);
+    }
+    if (filteredDevicesByCategory.uf2.length > 0) {
+      result = result.concat(filteredDevicesByCategory.uf2);
+    }
+    if (filteredDevicesByCategory.rp2040.length > 0) {
+      result = result.concat(filteredDevicesByCategory.rp2040);
+    }
+    return result;
+  }
+
+  // Clear filter
+  function clearFilter() {
+    deviceFilter = '';
+    selectedIndex = -1;
+  }
+
+  // Toggle dropdown
+  function toggleDropdown(event?: Event) {
+    if (event) {
+      event.stopPropagation();
+    }
+    showDropdown = !showDropdown;
+    if (showDropdown) {
+      selectedIndex = -1;
+    }
+  }
+
+  // Close dropdown when clicking outside
+  function handleClickOutside(event: MouseEvent) {
+    const target = event.target as HTMLElement;
+    if (!target.closest('#device-combobox') && !target.closest('.dropdown-list')) {
+      showDropdown = false;
+      selectedIndex = -1;
+    }
+  }
+
+  // Add click outside listener
+
+  onMount(() => {
+    if (browser) {
+      document.addEventListener('click', handleClickOutside);
+    }
+  });
+
+  onDestroy(() => {
+    if (browser) {
+      document.removeEventListener('click', handleClickOutside);
+    }
+  });
 
   // Handle version change
   function handleVersionChange(event: Event) {
@@ -64,89 +155,124 @@
     let displayText = version;
     return displayText;
   }
-
-  // Clear filter
-  function clearFilter() {
-    deviceFilter = '';
-  }
 </script>
 
 <div class="space-y-6">
-  <!-- Device Selection with Filter -->
+  <!-- Combined Device Selector with Filter -->
   <div class="space-y-2">
-    <label for="device-type" class="block text-sm font-medium text-orange-300">
+    <label for="device-combobox" class="block text-sm font-medium text-orange-300">
         Device Type
     </label>
-      <!-- Device Filter -->
+
+    <!-- Combined Input with Dropdown -->
     <div class="relative">
       <input
+        id="device-combobox"
         type="text"
-        placeholder="Filter devices..."
+        placeholder="Type to filter or click to select..."
         value={deviceFilter}
-        on:input={handleFilterChange}
-        class="w-full px-4 py-2 bg-gray-800 border border-orange-600 rounded-md text-orange-100 placeholder-orange-400 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+        on:input={handleInputChange}
+        on:focus={() => showDropdown = true}
+        on:keydown={handleKeydown}
+        class="w-full px-4 py-2 pr-20 bg-gray-800 border border-orange-600 rounded-md text-orange-100 placeholder-orange-400 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
       />
-      {#if deviceFilter}
+
+      <!-- Dropdown Arrow and Clear Button -->
+      <div class="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
+        {#if deviceFilter}
+          <button
+            type="button"
+            on:click={clearFilter}
+            class="text-orange-400 hover:text-orange-300 transition-colors p-1"
+            title="Clear filter"
+          >
+            ✕
+          </button>
+        {/if}
         <button
           type="button"
-          on:click={clearFilter}
-          class="absolute right-2 top-1/2 transform -translate-y-1/2 text-orange-400 hover:text-orange-300 transition-colors"
-          title="Clear filter"
+          on:click={toggleDropdown}
+          class="text-orange-400 hover:text-orange-300 transition-colors p-1"
+          title="Toggle dropdown"
         >
-          ✕
+          ▼
         </button>
-      {/if}
+      </div>
     </div>
 
-    <!-- Device Selection with Optgroups -->
-    <select
-      id="device-type"
-      bind:value={deviceSelectionStore.deviceType}
-      on:change={handleDeviceTypeChange}
-      class="w-full px-4 py-2 bg-gray-800 border border-orange-600 rounded-md text-orange-100 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
-    >
-      <option value="">Select device type</option>
+    <!-- Dropdown List -->
+    {#if showDropdown && allDevices.length > 0}
+      <div class="dropdown-list absolute z-10 w-full mt-1 bg-gray-800 border border-orange-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+        {#if filteredDevices.length === 0 && deviceFilter}
+          <div class="px-4 py-3 text-sm text-orange-300">
+            No devices match your filter
+          </div>
+        {:else}
+          <!-- ESP32 Devices Section -->
+          {#if filteredDevicesByCategory.esp.length > 0}
+            <div class="px-3 py-2 text-xs font-semibold text-orange-400 bg-gray-700 border-b border-gray-600">
+              ESP32 DEVICES
+            </div>
+            {#each filteredDevicesByCategory.esp as device, i}
+              <button
+                type="button"
+                class="w-full px-4 py-2 text-sm text-left hover:bg-gray-700 {selectedIndex === i ? 'bg-gray-700' : ''} text-orange-100 focus:bg-gray-700 focus:outline-none transition-colors"
+                on:click={() => selectDevice(device)}
+                on:mouseenter={() => selectedIndex = i}
+                on:focus={() => selectedIndex = i}
+              >
+                {device.displayName}
+              </button>
+            {/each}
+          {/if}
 
-      <!-- ESP32 Devices Optgroup -->
-      {#if filteredDevicesByCategory.esp.length > 0}
-        <optgroup label="ESP32 devices">
-          {#each filteredDevicesByCategory.esp as device}
-            <option value={device.device}>{device.displayName}</option>
-          {/each}
-        </optgroup>
-      {/if}
+          <!-- NRF52 Devices Section -->
+          {#if filteredDevicesByCategory.uf2.length > 0}
+            <div class="px-3 py-2 text-xs font-semibold text-orange-400 bg-gray-700 border-b border-gray-600">
+              NRF52 DEVICES
+            </div>
+            {#each filteredDevicesByCategory.uf2 as device, i}
+              <button
+                type="button"
+                class="w-full px-4 py-2 text-sm text-left hover:bg-gray-700 {selectedIndex === (filteredDevicesByCategory.esp.length + i) ? 'bg-gray-700' : ''} text-orange-100 focus:bg-gray-700 focus:outline-none transition-colors"
+                on:click={() => selectDevice(device)}
+                on:mouseenter={() => selectedIndex = filteredDevicesByCategory.esp.length + i}
+                on:focus={() => selectedIndex = filteredDevicesByCategory.esp.length + i}
+              >
+                {device.displayName}
+              </button>
+            {/each}
+          {/if}
 
-      <!-- NRF52 Devices Optgroup -->
-      {#if filteredDevicesByCategory.uf2.length > 0}
-        <optgroup label="NRF52 devices">
-          {#each filteredDevicesByCategory.uf2 as device}
-            <option value={device.device}>{device.displayName}</option>
-          {/each}
-        </optgroup>
-      {/if}
+          <!-- RP2040 Devices Section -->
+          {#if filteredDevicesByCategory.rp2040.length > 0}
+            <div class="px-3 py-2 text-xs font-semibold text-orange-400 bg-gray-700 border-b border-gray-600">
+              RP2040 DEVICES
+            </div>
+            {#each filteredDevicesByCategory.rp2040 as device, i}
+              <button
+                type="button"
+                class="w-full px-4 py-2 text-sm text-left hover:bg-gray-700 {selectedIndex === (filteredDevicesByCategory.esp.length + filteredDevicesByCategory.uf2.length + i) ? 'bg-gray-700' : ''} text-orange-100 focus:bg-gray-700 focus:outline-none transition-colors"
+                on:click={() => selectDevice(device)}
+                on:mouseenter={() => selectedIndex = filteredDevicesByCategory.esp.length + filteredDevicesByCategory.uf2.length + i}
+                on:focus={() => selectedIndex = filteredDevicesByCategory.esp.length + filteredDevicesByCategory.uf2.length + i}
+              >
+                {device.displayName}
+              </button>
+            {/each}
+          {/if}
+        {/if}
+      </div>
+    {/if}
 
-      <!-- RP2040 Devices Optgroup -->
-      {#if filteredDevicesByCategory.rp2040.length > 0}
-        <optgroup label="RP2040 devices">
-          {#each filteredDevicesByCategory.rp2040 as device}
-            <option value={device.device}>{device.displayName}</option>
-          {/each}
-        </optgroup>
-      {/if}
-    </select>
-
-    <!-- No devices available -->
+    <!-- Status Messages -->
     {#if allDevices.length === 0}
       <p class="text-sm text-orange-300">
         No devices available
       </p>
-    {:else if deviceFilter && filteredDevices.length === 0}
-      <p class="text-sm text-orange-300">
-        No devices match your filter
-      </p>
-    {:else if deviceFilter}
+    {:else if deviceFilter && filteredDevices.length > 0}
       <p class="text-xs text-orange-400">
-        Showing {filteredDevices.length} of {allDevices.length} devices
+        Found {filteredDevices.length} device{filteredDevices.length === 1 ? '' : 's'}
       </p>
     {/if}
   </div>
