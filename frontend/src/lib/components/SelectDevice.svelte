@@ -1,6 +1,6 @@
 <script lang="ts">
     import { deviceSelection, availableFirmwares, versionsData, isDeviceSelected, isVersionSelected, allDevicesFlat, allDevicesWithCategories } from '$lib/stores';
-  import { deviceActions } from '$lib/stores.ts';
+  import { deviceActions } from '$lib/stores';
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
 
@@ -47,6 +47,17 @@
     deviceFilter = input.value;
     showDropdown = true;
     selectedIndex = -1;
+  }
+
+  // Handle input focus - show all devices
+  function handleInputFocus() {
+    showDropdown = true;
+    selectedIndex = -1;
+    // Clear filter temporarily when focusing to show all devices
+    if (deviceFilter && allDevices.some(d => d.displayName === deviceFilter)) {
+      // If current filter matches a device exactly, clear it to show all devices
+      deviceFilter = '';
+    }
   }
 
   // Handle keyboard navigation
@@ -172,7 +183,7 @@
         placeholder="Type to filter or click to select..."
         value={deviceFilter}
         on:input={handleInputChange}
-        on:focus={() => showDropdown = true}
+        on:focus={handleInputFocus}
         on:keydown={handleKeydown}
         class="w-full px-4 py-2 pr-20 bg-gray-800 border border-orange-600 rounded-md text-orange-100 placeholder-orange-400 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
       />

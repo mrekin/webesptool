@@ -104,9 +104,9 @@
   <!-- Main Content Area -->
   <div slot="content" class="space-y-8">
     <!-- Main Content Column -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <!-- Left Column: Device Selection and Actions -->
-        <div class="lg:col-span-2 space-y-8">
+        <div class="space-y-8">
           <div class="p-6 bg-gray-800 border border-orange-600 rounded-lg">
             <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center">
               <span class="mr-3">🎯</span>
