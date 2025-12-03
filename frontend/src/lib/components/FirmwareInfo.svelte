@@ -3,6 +3,7 @@
 
   // Local state for HTML rendering
   let firmwareInfoElement: HTMLElement;
+  let showDeviceInfo = false;
 
   // Subscribe to stores
   $: deviceInfo = $deviceDisplayInfo;
@@ -17,6 +18,11 @@
       .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
       .replace(/on\w+="[^"]*"/gi, '')
       .replace(/javascript:/gi, '');
+  }
+
+  // Toggle device info section
+  function toggleDeviceInfo() {
+    showDeviceInfo = !showDeviceInfo;
   }
 </script>
 
@@ -99,23 +105,43 @@
       </div>
 
       <!-- Device Specific Information -->
-      <div class="mt-4 pt-4 border-t border-orange-700">
-        <h3 class="text-lg font-semibold text-orange-200 mb-3">Device Details</h3>
+      <div class="mt-6 mb-6">
+        <button
+          on:click={toggleDeviceInfo}
+          class="w-full flex items-center justify-between p-3 bg-orange-900 bg-opacity-30 border border-orange-600 rounded hover:bg-orange-900 bg-opacity-40 transition-colors text-left"
+          aria-expanded={showDeviceInfo}
+          aria-controls="howto-content"
+        >
+          <h3 class="text-lg font-semibold text-orange-200 flex items-center">
+            <span class="mr-2">📖</span>
+            Device Details
+          </h3>
+          <span class="text-orange-300 transform transition-transform duration-200" style="transform: {showDeviceInfo ? 'rotate(180deg)' : 'rotate(0deg)'}">
+            ▼
+          </span>
+        </button>
 
-        {#if deviceInfo.deviceInfo?.htmlInfo}
-          <div
-            bind:this={firmwareInfoElement}
-            class="text-sm text-orange-100 prose prose-invert max-w-none"
-          >
-            {@html renderHTML(deviceInfo.deviceInfo.htmlInfo)}
-          </div>
-        {:else if deviceInfo}
-          <div class="text-sm text-orange-300 text-center py-8">
-            No device information available
-          </div>
-        {:else}
-          <div class="text-sm text-orange-300 text-center py-8">
-            Select a device to view details
+        {#if showDeviceInfo}
+          <div id="howto-content" class="mt-3 space-y-4 animate-fade-in">
+            <!-- Content will be added later -->
+            <div class="text-orange-300 text-sm">
+              {#if deviceInfo.deviceInfo?.htmlInfo}
+                <div
+                  bind:this={firmwareInfoElement}
+                  class="text-sm text-orange-100 prose prose-invert max-w-none"
+                >
+                  {@html renderHTML(deviceInfo.deviceInfo.htmlInfo)}
+                </div>
+              {:else if deviceInfo}
+                <div class="text-sm text-orange-300 text-center py-8">
+                  No device information available
+                </div>
+              {:else}
+                <div class="text-sm text-orange-300 text-center py-8">
+                  Select a device to view details
+                </div>
+              {/if}
+            </div>
           </div>
         {/if}
       </div>

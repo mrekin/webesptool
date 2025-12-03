@@ -110,22 +110,25 @@
         </div>
       {/if}
     </div>
-    <button
-      on:click={toggleImportantNotes}
-      class="w-full flex items-center justify-between p-3 bg-orange-900 bg-opacity-30 border border-orange-600 rounded hover:bg-orange-900 bg-opacity-40 transition-colors text-left mb-4"
-      aria-expanded={showImportantNotes}
-      aria-controls="important-notes-content"
-    >
-      <h3 class="text-lg font-semibold text-orange-200 flex items-center">
-        <span class="mr-2">📝</span>
-        Important Notes
-      </h3>
-      <span class="text-orange-300 transform transition-transform duration-200" style="transform: {showImportantNotes ? 'rotate(180deg)' : 'rotate(0deg)'}">
-        ▼
-      </span>
-    </button>
 
-    {#if showImportantNotes}
+    <!-- Notes Section -->
+    <div class="mb-6">
+      <button
+        on:click={toggleImportantNotes}
+        class="w-full flex items-center justify-between p-3 bg-orange-900 bg-opacity-30 border border-orange-600 rounded hover:bg-orange-900 bg-opacity-40 transition-colors text-left"
+        aria-expanded={showImportantNotes}
+        aria-controls="important-notes-content"
+      >
+        <h3 class="text-lg font-semibold text-orange-200 flex items-center">
+          <span class="mr-2">📝</span>
+          Notes
+        </h3>
+        <span class="text-orange-300 transform transition-transform duration-200" style="transform: {showImportantNotes ? 'rotate(180deg)' : 'rotate(0deg)'}">
+          ▼
+        </span>
+      </button>
+
+      {#if showImportantNotes}
       <div id="important-notes-content" class="space-y-6 animate-fade-in">
         <!-- Build Information -->
         <div class="mb-6">
@@ -157,6 +160,7 @@
         </div>
       </div>
     {/if}
+    </div>
 
     <!-- More Section (Best Practices + Need Help) -->
     <div class="mb-6">

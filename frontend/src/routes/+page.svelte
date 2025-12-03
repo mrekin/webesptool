@@ -158,7 +158,7 @@
       </div>
   
     <!-- Important Notes - Full Width Section -->
-    <div class="p-6 bg-gray-800 border border-orange-600 rounded-lg max-w-6xl mx-auto mt-8">
+    <div class="p-6 bg-gray-800 border border-orange-600 rounded-lg mt-8">
       <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center">
         <span class="mr-3">📝</span>
         Important Notes
