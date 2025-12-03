@@ -47,7 +47,7 @@
     if (category === 'uf2') {
       options.push({
         id: 'uf2',
-        label: 'Download UF2',
+        label: 'Download Fw UF2',
         mode: '1',
         available: true,
         icon: '💾',
@@ -56,11 +56,21 @@
 
       options.push({
         id: 'ota',
-        label: 'Download OTA',
+        label: 'Download Fw OTA',
         mode: '4',
         available: true,
         icon: '💾',
         description: 'Download OTA firmware file for update over-the-air'
+      });
+
+      options.push({
+        id: 'url',
+        label: 'Download Erase UF2',
+        mode: '4',
+        available: true,
+        icon: '💾',
+        description: 'Download NRF Erase file for memory erasing. Don\'t forget to confirm erasing in serial console!',
+        url: 'https://flasher.meshtastic.org/uf2/nrf_erase2.uf2'
       });
     }
 
@@ -79,7 +89,7 @@
     // Add firmware zip download option for all devices
     options.push({
       id: 'fwzip',
-      label: 'Download Firmware ZIP',
+      label: 'Download Fw ZIP',
       mode: '5',
       available: true,
       icon: '📦',
@@ -111,6 +121,47 @@
     }, 1000);
   }
 
+  // Universal function to download files from URL
+  async function downloadFromUrl(url: string): Promise<void> {
+    try {
+      console.log('Downloading file from URL:', url);
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to download file: ${response.status} ${response.statusText}`);
+      }
+
+      // Get filename from Content-Disposition header or fallback to URL
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = url.split('/').pop() || 'download.bin';
+
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+
+      const blob = await response.blob();
+
+      // Create download link and trigger download
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+
+      console.log('Successfully downloaded file:', filename);
+    } catch (error) {
+      console.error('URL download failed:', error);
+      // Fallback: open URL in new tab if direct download fails
+      window.open(url, '_blank');
+      throw error;
+    }
+  }
+
   // Handle download action
   async function handleDownload(option: DownloadOption) {
     if (!deviceSelectionStore.deviceType || !deviceSelectionStore.version) return;
@@ -129,6 +180,16 @@
 
   // Handle click action based on option
   async function handleDownloadClick(option: DownloadOption) {
+    if (option.id === 'url' && option.url) {
+      // For URL download options (e.g., Erase UF2 files)
+      try {
+        await downloadFromUrl(option.url);
+      } catch (error) {
+        console.error('URL download failed:', error);
+      }
+      return;
+    }
+
     if (option.id === 'esptool') {
       // For Update Device/Full Flash Device - use ESP Web Tools if available, fallback to download
       const espButton = document.querySelector('esp-web-install-button');

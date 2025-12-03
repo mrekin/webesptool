@@ -51,7 +51,7 @@ export const availableFirmwares = writable<AvailableFirmwares>({
   rp2040devices: [],
   versions: [],
   device_names: {},
-  srcs: ['https://github.com/meshtastic/firmware']
+  srcs: ['']
 });
 
 // Versions data store - manages available versions for selected device

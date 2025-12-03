@@ -101,6 +101,7 @@ export interface DownloadOption {
   available: boolean;
   icon?: string;
   description?: string;
+  url?: string;
 }
 
 export interface UIState {
