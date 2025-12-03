@@ -91,7 +91,16 @@
           <div class="bg-gray-800 bg-opacity-90 border border-orange-600 rounded-lg p-4">
             <div class="flex items-center justify-between flex-wrap gap-4">
               <div class="flex items-center space-x-3">
-                <span class="text-orange-200 font-medium">🌐 Source repository:</span>
+                <span class="text-orange-200 font-medium flex items-center">
+                  {#if $loadingState.isLoadingAvailable}
+                    <!-- Spinning globe emoji during loading -->
+                    <span class="inline-block animate-spin">🌐</span>
+                  {:else}
+                    <!-- Static globe emoji when not loading -->
+                    🌐
+                  {/if}
+                  Source repository:
+                </span>
                 <RepositorySelector />
               </div>
             </div>
@@ -109,8 +118,16 @@
         <div class="space-y-8">
           <div class="p-6 bg-gray-800 border border-orange-600 rounded-lg">
             <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center">
-              <span class="mr-3">🎯</span>
-              
+              <span class="mr-3">
+                {#if $loadingState.isLoadingAvailable}
+                  <!-- Spinning target emoji during loading -->
+                  <span class="inline-block animate-spin">🎯</span>
+                {:else}
+                  <!-- Static target emoji when not loading -->
+                  🎯
+                {/if}
+              </span>
+
               Device Selection
             </h2>
             <SelectDevice />
