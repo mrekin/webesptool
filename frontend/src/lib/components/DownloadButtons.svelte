@@ -121,45 +121,19 @@
     }, 1000);
   }
 
-  // Universal function to download files from URL
-  async function downloadFromUrl(url: string): Promise<void> {
-    try {
-      console.log('Downloading file from URL:', url);
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Failed to download file: ${response.status} ${response.statusText}`);
-      }
+  // Simplified function to download files from URL
+  function downloadFromUrl(url: string): void {
+    console.log('Downloading file from URL:', url);
 
-      // Get filename from Content-Disposition header or fallback to URL
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = url.split('/').pop() || 'download.bin';
+    // Create download link and trigger it
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = ''; // Let browser use filename from server or URL
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-        if (filenameMatch && filenameMatch[1]) {
-          filename = filenameMatch[1].replace(/['"]/g, '');
-        }
-      }
-
-      const blob = await response.blob();
-
-      // Create download link and trigger download
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
-
-      console.log('Successfully downloaded file:', filename);
-    } catch (error) {
-      console.error('URL download failed:', error);
-      // Fallback: open URL in new tab if direct download fails
-      window.open(url, '_blank');
-      throw error;
-    }
+    console.log('Download initiated');
   }
 
   // Handle download action
@@ -182,11 +156,7 @@
   async function handleDownloadClick(option: DownloadOption) {
     if (option.id === 'url' && option.url) {
       // For URL download options (e.g., Erase UF2 files)
-      try {
-        await downloadFromUrl(option.url);
-      } catch (error) {
-        console.error('URL download failed:', error);
-      }
+      downloadFromUrl(option.url);
       return;
     }
 

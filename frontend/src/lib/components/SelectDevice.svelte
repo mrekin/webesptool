@@ -219,59 +219,29 @@
             No devices match your filter
           </div>
         {:else}
-          <!-- ESP32 Devices Section -->
-          {#if filteredDevicesByCategory.esp.length > 0}
-            <div class="px-3 py-2 text-xs font-semibold text-orange-400 bg-gray-700 border-b border-gray-600">
-              ESP32 DEVICES
-            </div>
-            {#each filteredDevicesByCategory.esp as device, i}
-              <button
-                type="button"
-                class="w-full px-4 py-2 text-sm text-left hover:bg-gray-700 {selectedIndex === i ? 'bg-gray-700' : ''} text-orange-100 focus:bg-gray-700 focus:outline-none transition-colors"
-                on:click={() => selectDevice(device)}
-                on:mouseenter={() => selectedIndex = i}
-                on:focus={() => selectedIndex = i}
-              >
-                {device.displayName}
-              </button>
-            {/each}
-          {/if}
-
-          <!-- NRF52 Devices Section -->
-          {#if filteredDevicesByCategory.uf2.length > 0}
-            <div class="px-3 py-2 text-xs font-semibold text-orange-400 bg-gray-700 border-b border-gray-600">
-              NRF52 DEVICES
-            </div>
-            {#each filteredDevicesByCategory.uf2 as device, i}
-              <button
-                type="button"
-                class="w-full px-4 py-2 text-sm text-left hover:bg-gray-700 {selectedIndex === (filteredDevicesByCategory.esp.length + i) ? 'bg-gray-700' : ''} text-orange-100 focus:bg-gray-700 focus:outline-none transition-colors"
-                on:click={() => selectDevice(device)}
-                on:mouseenter={() => selectedIndex = filteredDevicesByCategory.esp.length + i}
-                on:focus={() => selectedIndex = filteredDevicesByCategory.esp.length + i}
-              >
-                {device.displayName}
-              </button>
-            {/each}
-          {/if}
-
-          <!-- RP2040 Devices Section -->
-          {#if filteredDevicesByCategory.rp2040.length > 0}
-            <div class="px-3 py-2 text-xs font-semibold text-orange-400 bg-gray-700 border-b border-gray-600">
-              RP2040 DEVICES
-            </div>
-            {#each filteredDevicesByCategory.rp2040 as device, i}
-              <button
-                type="button"
-                class="w-full px-4 py-2 text-sm text-left hover:bg-gray-700 {selectedIndex === (filteredDevicesByCategory.esp.length + filteredDevicesByCategory.uf2.length + i) ? 'bg-gray-700' : ''} text-orange-100 focus:bg-gray-700 focus:outline-none transition-colors"
-                on:click={() => selectDevice(device)}
-                on:mouseenter={() => selectedIndex = filteredDevicesByCategory.esp.length + filteredDevicesByCategory.uf2.length + i}
-                on:focus={() => selectedIndex = filteredDevicesByCategory.esp.length + filteredDevicesByCategory.uf2.length + i}
-              >
-                {device.displayName}
-              </button>
-            {/each}
-          {/if}
+          <!-- Device Categories -->
+          {#each [
+            { key: 'esp', devices: filteredDevicesByCategory.esp, title: 'ESP32 DEVICES' },
+            { key: 'uf2', devices: filteredDevicesByCategory.uf2, title: 'NRF52 DEVICES' },
+            { key: 'rp2040', devices: filteredDevicesByCategory.rp2040, title: 'RP2040 DEVICES' }
+          ] as category, categoryIndex}
+            {#if category.devices.length > 0}
+              <div class="px-2 py-4 text-sm font-bold text-orange-300 bg-gray-700 border-b border-gray-600">
+                {category.title}
+              </div>
+              {#each category.devices as device, i}
+                <button
+                  type="button"
+                  class="w-full px-6 py-3 text-sm text-left hover:bg-gray-700 {selectedIndex === (categoryIndex === 0 ? i : categoryIndex === 1 ? filteredDevicesByCategory.esp.length + i : filteredDevicesByCategory.esp.length + filteredDevicesByCategory.uf2.length + i) ? 'bg-gray-700' : ''} text-orange-100 focus:bg-gray-700 focus:outline-none transition-colors"
+                  on:click={() => selectDevice(device)}
+                  on:mouseenter={() => selectedIndex = categoryIndex === 0 ? i : categoryIndex === 1 ? filteredDevicesByCategory.esp.length + i : filteredDevicesByCategory.esp.length + filteredDevicesByCategory.uf2.length + i}
+                  on:focus={() => selectedIndex = categoryIndex === 0 ? i : categoryIndex === 1 ? filteredDevicesByCategory.esp.length + i : filteredDevicesByCategory.esp.length + filteredDevicesByCategory.uf2.length + i}
+                >
+                  {device.displayName}
+                </button>
+              {/each}
+            {/if}
+          {/each}
         {/if}
       </div>
     {/if}
