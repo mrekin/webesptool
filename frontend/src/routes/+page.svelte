@@ -6,6 +6,7 @@
   import DownloadButtons from '$lib/components/DownloadButtons.svelte';
   import Notes from '$lib/components/Notes.svelte';
   import Footer from '$lib/components/Footer.svelte';
+  import ImportantNotice from '$lib/components/ImportantNotice.svelte';
   import { loadingState, availableFirmwares } from '$lib/stores';
   import { onMount } from 'svelte';
 
@@ -51,15 +52,8 @@
       </p>
     </div>
 
-    <div class="mt-2 p-4 bg-orange-900 bg-opacity-30 border border-orange-600 rounded-lg max-w-6xl mx-auto">
-      <h2 class="text-lg font-semibold text-orange-200 mb-2">⚠️ Important Notice</h2>
-      <p class="text-orange-300 text-sm leading-relaxed">
-        These are <strong>unofficial builds</strong> of Meshtastic firmware, provided for testing and development purposes.
-        They may contain experimental features and are not officially supported by the Meshtastic project.
-      </p>
-      <p class="text-orange-300 text-sm mt-2">
-        Always backup your device configuration before flashing firmware.
-      </p>
+    <div class="mt-2 max-w-6xl mx-auto">
+      <ImportantNotice />
     </div>
 
     <!-- Error State -->
