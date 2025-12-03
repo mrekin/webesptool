@@ -23,6 +23,13 @@
   $: deviceSelected = $isDeviceSelected;
   $: versionSelected = $isVersionSelected;
 
+  // Clear filter when device type is reset to null
+  $: if (deviceSelectionStore.deviceType === null) {
+    deviceFilter = '';
+    showDropdown = false;
+    selectedIndex = -1;
+  }
+
   // Filter devices based on search input
   $: filteredDevices = deviceFilter
     ? allDevices.filter((device: {device: string; category: 'esp' | 'uf2' | 'rp2040'; displayName: string}) =>

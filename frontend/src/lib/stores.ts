@@ -331,26 +331,16 @@ export const deviceActions = {
 
   // Set source
   setSource: (source: string | null) => {
-    // Get current selection before updating
-    let currentDeviceType: string | null = null;
-    let unsubscribe = deviceSelection.subscribe(s => {
-      currentDeviceType = s.deviceType;
-    });
-    unsubscribe();
-
     deviceSelection.update(selection => ({
       ...selection,
       source,
-      version: null // Reset version when source changes
+      deviceType: null,    // Reset device type when source changes
+      category: null,      // Reset category when source changes
+      version: null        // Reset version when source changes
     }));
 
     // Reload available firmwares for the new source
     apiActions.loadAvailableFirmwares(source || '');
-
-    // Reload versions only if a device was already selected
-    if (currentDeviceType) {
-      apiActions.loadVersions(currentDeviceType);
-    }
   },
 
   // Reset all selections
