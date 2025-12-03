@@ -8,6 +8,8 @@
   let deviceFilter = '';
   let showDropdown = false;
   let selectedIndex = -1;
+  let savedFilter = ''; // Save filter value to restore if dropdown is cancelled
+  let isFiltering = false; // Track if user is actively filtering vs just opening dropdown
 
   // Version selector state
   let showVersionDropdown = false;
@@ -51,7 +53,8 @@
   // Handle device selection from dropdown
   function selectDevice(device: {device: string; displayName: string}) {
     deviceFilter = device.displayName;
-    showDropdown = false;
+    isFiltering = false; // Reset filtering flag since we made a selection
+    closeDropdown(false); // Don't restore filter since we made a selection
     deviceActions.setDeviceDirectly(device.device);
     deviceActions.setVersion(null);
   }
@@ -60,19 +63,14 @@
   function handleInputChange(event: Event) {
     const input = event.target as HTMLInputElement;
     deviceFilter = input.value;
+    isFiltering = true; // Mark this as a filtering action
     showDropdown = true;
     selectedIndex = -1;
   }
 
   // Handle input focus - show all devices
   function handleInputFocus() {
-    showDropdown = true;
-    selectedIndex = -1;
-    // Clear filter temporarily when focusing to show all devices
-    if (deviceFilter && allDevices.some(d => d.displayName === deviceFilter)) {
-      // If current filter matches a device exactly, clear it to show all devices
-      deviceFilter = '';
-    }
+    openDropdown(false); // Don't save filter on focus
   }
 
   // Handle keyboard navigation
@@ -103,8 +101,7 @@
         }
         break;
       case 'Escape':
-        showDropdown = false;
-        selectedIndex = -1;
+        closeDropdown();
         break;
     }
   }
@@ -130,14 +127,45 @@
     selectedIndex = -1;
   }
 
+  // Helper functions for filter management
+  function restoreFilterIfNeeded() {
+    if (savedFilter) {
+      deviceFilter = savedFilter;
+    }
+  }
+
+  function openDropdown(saveFilter = false) {
+    showDropdown = true;
+    selectedIndex = -1;
+    isFiltering = false; // This is not a filtering action
+    // Only save filter if explicitly requested
+    if (saveFilter && deviceFilter && deviceSelected) {
+      savedFilter = deviceFilter;
+    } else {
+      savedFilter = '';
+    }
+    deviceFilter = ''; // Show all devices
+  }
+
+  function closeDropdown(restoreFilter = true) {
+    showDropdown = false;
+    selectedIndex = -1;
+    // Only restore filter if this was not a filtering session
+    if (restoreFilter && !isFiltering) {
+      restoreFilterIfNeeded();
+    }
+    isFiltering = false; // Reset filtering flag
+  }
+
   // Toggle dropdown
   function toggleDropdown(event?: Event) {
     if (event) {
       event.stopPropagation();
     }
-    showDropdown = !showDropdown;
     if (showDropdown) {
-      selectedIndex = -1;
+      closeDropdown();
+    } else {
+      openDropdown(true); // Save filter when opening via arrow button
     }
   }
 
@@ -145,8 +173,7 @@
   function handleClickOutside(event: MouseEvent) {
     const target = event.target as HTMLElement;
     if (!target.closest('#device-combobox') && !target.closest('.dropdown-list')) {
-      showDropdown = false;
-      selectedIndex = -1;
+      closeDropdown();
     }
   }
 
