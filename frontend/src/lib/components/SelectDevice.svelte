@@ -9,6 +9,10 @@
   let showDropdown = false;
   let selectedIndex = -1;
 
+  // Version selector state
+  let showVersionDropdown = false;
+  let selectedVersionIndex = -1;
+
   // Subscribe to stores
   $: deviceSelectionStore = $deviceSelection;
   $: availableFirmwaresStore = $availableFirmwares;
@@ -34,11 +38,15 @@
     rp2040: filteredDevices.filter((d: {device: string; category: string}) => d.category === 'rp2040')
   };
 
+  $: if (versionsDataStore?.versions?.length > 0 && !deviceSelectionStore.version) {
+     deviceActions.setVersion(versionsDataStore?.versions[0]);
+  }
   // Handle device selection from dropdown
   function selectDevice(device: {device: string; displayName: string}) {
     deviceFilter = device.displayName;
     showDropdown = false;
     deviceActions.setDeviceDirectly(device.device);
+    deviceActions.setVersion(null);
   }
 
   // Handle input change
@@ -156,6 +164,19 @@
     deviceActions.setVersion(version === '' ? null : version);
   }
 
+  // Handle version input change
+  function handleVersionInputChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const version = input.value;
+    deviceActions.setVersion(version === '' ? null : version);
+  }
+
+  // Handle version selection
+  function selectVersion(version: string) {
+    deviceActions.setVersion(version);
+    showVersionDropdown = false;
+  }
+
   // Get display name for device type
   function getDeviceDisplayName(deviceType: string): string {
     return availableFirmwaresStore.device_names[deviceType] || deviceType;
@@ -265,19 +286,49 @@
       <label for="firmware-version" class="block text-sm font-medium text-orange-300">
         Firmware Version
       </label>
-      <select
-        id="firmware-version"
-        bind:value={deviceSelectionStore.version}
-        on:change={handleVersionChange}
-        class="w-full px-4 py-2 bg-gray-800 border border-orange-600 rounded-md text-orange-100 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
-      >
-        <option value="">Select firmware version</option>
-        {#each versionsDataStore.versions as version}
-          <option value={version}>
-            {getVersionDisplayText(version)}
-          </option>
-        {/each}
-      </select>
+
+      <!-- Custom Version Selector -->
+      <div class="relative">
+        <input
+          id="firmware-version"
+          type="text"
+          placeholder="Select firmware version..."
+          value={deviceSelectionStore.version ? getVersionDisplayText(deviceSelectionStore.version) : ''}
+          on:input={handleVersionInputChange}
+          on:focus={() => showVersionDropdown = true}
+          class="w-full px-4 py-2 pr-10 bg-gray-800 border border-orange-600 rounded-md text-orange-100 placeholder-orange-400 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors cursor-pointer"
+          readonly
+        />
+
+        <!-- Version Dropdown Arrow -->
+        <div class="absolute right-2 top-1/2 transform -translate-y-1/2">
+          <button
+            type="button"
+            on:click={() => showVersionDropdown = !showVersionDropdown}
+            class="text-orange-400 hover:text-orange-300 transition-colors p-1"
+            title="Toggle version dropdown"
+          >
+            ▼
+          </button>
+        </div>
+
+        <!-- Version Dropdown List -->
+        {#if showVersionDropdown}
+          <div class="dropdown-list absolute z-10 w-full mt-1 bg-gray-800 border border-orange-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+            {#each versionsDataStore.versions as version, i}
+              <button
+                type="button"
+                class="w-full px-4 py-2 text-sm text-left hover:bg-gray-700 {selectedVersionIndex === i ? 'bg-gray-700' : ''} text-orange-100 focus:bg-gray-700 focus:outline-none transition-colors"
+                on:click={() => selectVersion(version)}
+                on:mouseenter={() => selectedVersionIndex = i}
+                on:focus={() => selectedVersionIndex = i}
+              >
+                {getVersionDisplayText(version)}
+              </button>
+            {/each}
+          </div>
+        {/if}
+      </div>
 
       <!-- Version Notes -->
       {#if versionSelected && versionsDataStore.notes[deviceSelectionStore.version]}

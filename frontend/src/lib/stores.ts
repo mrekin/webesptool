@@ -331,6 +331,13 @@ export const deviceActions = {
 
   // Set source
   setSource: (source: string | null) => {
+    // Get current selection before updating
+    let currentDeviceType: string | null = null;
+    let unsubscribe = deviceSelection.subscribe(s => {
+      currentDeviceType = s.deviceType;
+    });
+    unsubscribe();
+
     deviceSelection.update(selection => ({
       ...selection,
       source,
@@ -338,20 +345,12 @@ export const deviceActions = {
     }));
 
     // Reload available firmwares for the new source
-    let unsubscribe = deviceSelection.subscribe(currentSelection => {
-      if (currentSelection.source) {
-        apiActions.loadAvailableFirmwares(currentSelection.source);
-      }
-    });
-    unsubscribe();
+    apiActions.loadAvailableFirmwares(source || '');
 
-    // Reload versions if device type is selected
-    unsubscribe = deviceSelection.subscribe(currentSelection => {
-      if (currentSelection.deviceType) {
-        apiActions.loadVersions(currentSelection.deviceType);
-      }
-    });
-    unsubscribe();
+    // Reload versions only if a device was already selected
+    if (currentDeviceType) {
+      apiActions.loadVersions(currentDeviceType);
+    }
   },
 
   // Reset all selections
@@ -473,9 +472,8 @@ export const apiActions = {
       });
       unsubscribe();
 
-      // Get the latest version to fetch device info
-      const versions = await apiService.getVersions(deviceType, source);
-      const latestVersion = versions.versions[0] || 'latest';
+      // Use 'latest' as version to fetch device info instead of requesting versions
+      const latestVersion = 'latest';
 
       // Load device info using latest version
       const infoBlock = await apiService.getInfoBlock(deviceType, latestVersion, source);
@@ -508,16 +506,20 @@ export const apiActions = {
       });
       unsubscribe();
 
-      const [infoBlock, versions] = await Promise.all([
-        apiService.getInfoBlock(deviceType, version, source),
-        apiService.getVersions(deviceType, source)
-      ]);
+      // Get versions data from the store instead of making another API call
+      let versionsDataResponse: VersionsResponse = { versions: [], dates: {}, notes: {}, latestTags: {} };
+      const unsubscribeVersions = versionsData.subscribe(v => {
+        versionsDataResponse = v;
+      });
+      unsubscribeVersions();
+
+      const infoBlock = await apiService.getInfoBlock(deviceType, version, source);
 
       firmwareInfo.set({
         deviceType,
         version,
-        buildDate: versions.dates[version] || 'Unknown',
-        notes: versions.notes[version] || '',
+        buildDate: versionsDataResponse.dates[version] || 'Unknown',
+        notes: versionsDataResponse.notes[version] || '',
         pioTarget: '', // Would need to be extracted from info
         htmlInfo: infoBlock.info
       });
@@ -602,18 +604,26 @@ export const apiActions = {
   }
 };
 
-// Store subscription for reactive behavior
-deviceSelection.subscribe((selection) => {
-  if (selection.deviceType) {
-    apiActions.loadVersions(selection.deviceType);
-    apiActions.loadDeviceInfo(selection.deviceType);
-  }
-});
+// Store subscription for reactive behavior - single subscription to avoid duplicate requests
+let previousDeviceType: string | null = null;
+let previousVersion: string | null = null;
 
 deviceSelection.subscribe((selection) => {
-  if (selection.deviceType && selection.version) {
-    apiActions.loadFirmwareInfo(selection.deviceType, selection.version);
+  const { deviceType, version } = selection;
+
+  // Load versions and device info only when device type changes
+  if (deviceType && deviceType !== previousDeviceType) {
+    apiActions.loadVersions(deviceType);
+    apiActions.loadDeviceInfo(deviceType);
   }
+
+  // Load firmware info only when version is selected (and device is already set)
+  if (deviceType && version && version !== previousVersion) {
+    apiActions.loadFirmwareInfo(deviceType, version);
+  }
+
+  previousDeviceType = deviceType;
+  previousVersion = version;
 });
 
 // Initialize on app start

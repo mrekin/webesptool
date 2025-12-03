@@ -14,20 +14,25 @@
   $: isDownloading = $loadingState.isDownloading;
   $: deviceNamesStore = $deviceNames;
 
-  // Available download options based on device type
-  $: downloadOptions = getDownloadOptions(deviceSelectionStore.deviceType, deviceSelectionStore.category);
+  // Available download options based on device type and version
+  $: downloadOptions = getDownloadOptions(deviceSelectionStore.deviceType, deviceSelectionStore.category, deviceSelectionStore.version);
 
   // Debug: Log device type and options
   $: {
     if (deviceSelectionStore.deviceType) {
+      console.log('=== DownloadButtons Debug ===');
       console.log('Device type:', deviceSelectionStore.deviceType);
+      console.log('Device category:', deviceSelectionStore.category);
+      console.log('Device version:', deviceSelectionStore.version);
       console.log('Download options:', downloadOptions);
+      console.log('Download options length:', downloadOptions.length);
       console.log('Is ESP device:', deviceSelectionStore.category === 'esp');
+      console.log('============================');
     }
   }
 
-  function getDownloadOptions(deviceType: string | null, category: 'esp' | 'uf2' | 'rp2040' | null): DownloadOption[] {
-    if (!deviceType) return [];
+  function getDownloadOptions(deviceType: string | null, category: 'esp' | 'uf2' | 'rp2040' | null, version: string | null): DownloadOption[] {
+    if (!deviceType || !version) return [];
 
     const options: DownloadOption[] = [];
 
@@ -99,26 +104,33 @@
     return options;
   }
 
-  // Initialize ESP Web Tools button
-  $: if (deviceSelectionStore.category === 'esp' && deviceSelectionStore.version) {
-    const manifestUrl = `${window.location.origin}/api/manifest?${new URLSearchParams({
+  // Function to generate manifest URL for ESP Web Tools
+  function generateManifestUrl(): string {
+    return `${window.location.origin}/api/manifest?${new URLSearchParams({
       t: deviceSelectionStore.deviceType,
       v: deviceSelectionStore.version,
       u: firmwareMode === 'full' ? '2' : '1',
       src: deviceSelectionStore.source
     })}`;
+  }
 
-    // Wait for DOM to be ready and ESP Web Tools to load
-    setTimeout(() => {
-      const espButton = document.querySelector('esp-web-install-button');
-      if (espButton) {
-        console.log('ESP Web Tools - Setting manifest on button');
-        espButton.setAttribute('manifest', manifestUrl);
-      } else {
-        console.log('ESP Web Tools - Button not found, using web fallback');
-        window.open(`https://web.esphome.io/#?manifest=${encodeURIComponent(manifestUrl)}`, '_blank');
+  // Function to configure and trigger ESP Web Tools button
+  function configureAndTriggerESPButton(): boolean {
+    const espButton = document.querySelector('esp-web-install-button');
+    if (espButton) {
+      const manifestUrl = generateManifestUrl();
+      console.log('ESP Web Tools - Setting manifest on button:', manifestUrl);
+      espButton.setAttribute('manifest', manifestUrl);
+
+      // Trigger the ESP Web Tools installation
+      const activateButton = espButton.querySelector('button[slot="activate"]');
+      if (activateButton) {
+        console.log('Using ESP Web Tools for firmware installation');
+        activateButton.click();
+        return true;
       }
-    }, 1000);
+    }
+    return false;
   }
 
   // Simplified function to download files from URL
@@ -161,15 +173,9 @@
     }
 
     if (option.id === 'esptool') {
-      // For Update Device/Full Flash Device - use ESP Web Tools if available, fallback to download
-      const espButton = document.querySelector('esp-web-install-button');
-      if (espButton && espButton.hasAttribute('manifest')) {
-        console.log('Using ESP Web Tools for firmware installation');
-        // Programmatically trigger the ESP Web Tools installation
-        const activateButton = espButton.querySelector('button[slot="activate"]');
-        if (activateButton) {
-          activateButton.click();
-        }
+      // For Update Device/Full Flash Device - configure and trigger ESP Web Tools on click
+      if (configureAndTriggerESPButton()) {
+        return; // ESP Web Tools was triggered successfully
       } else {
         console.log('ESP Web Tools not available, falling back to direct download');
         await handleDownload(option);
@@ -233,21 +239,17 @@
   {/if}
 </svelte:head>
 
+<!-- ESP Web Tools Button (hidden, used for firmware installation) -->
+{#if deviceSelectionStore.category === 'esp' && deviceSelectionStore.version}
+  <div style="display: none;">
+    <esp-web-install-button manifest="">
+      <button slot="activate">ESP Web Tools Install</button>
+    </esp-web-install-button>
+  </div>
+{/if}
+
 {#if deviceSelectionStore.deviceType && deviceSelectionStore.version}
   <div class="space-y-4">
-    <!-- ESP Web Tools info section -->
-    {#if deviceSelectionStore.category === 'esp'}
-      <div class="p-4 bg-green-900 bg-opacity-30 border border-green-600 rounded-lg">
-        <h4 class="font-medium text-green-200 mb-2">🔧 ESP Web Tools (Recommended)</h4>
-        <p class="text-green-300">
-          Click "Update Device" or "Full Flash Device" below to install firmware directly in your browser.
-          This is the easiest method for ESP32 devices.
-        </p>
-        <esp-web-install-button manifest="" style="display: none;">
-          <button slot="activate"></button>
-        </esp-web-install-button>
-      </div>
-    {/if}
 
     <!-- Firmware Mode Selector for ESP32 Devices -->
     {#if deviceSelectionStore.category === 'esp'}
