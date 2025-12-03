@@ -1,23 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-
-  // Local state
-  let backgroundImageUrl = '/static/radio.webp';
-
-  onMount(() => {
-
-    // Try to load background image
-    const img = new Image();
-    img.onload = () => {
-      backgroundImageUrl = '/static/radio.webp';
-    };
-    img.onerror = () => {
-      // Fallback to no background image if not found
-      backgroundImageUrl = '';
-      console.warn('Background image not found, using solid background');
-    };
-    img.src = '/static/radio.webp';
-  });
+  // Removed background image loading logic
 
   // Handle keyboard navigation for accessibility
   function handleKeydown(event: KeyboardEvent) {
@@ -43,9 +25,6 @@
 </script>
 
 <svelte:head>
-  <!-- Preload critical resources -->
-  <link rel="preload" href="/static/radio.webp" as="image" type="image/webp" />
-
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="/static/meshicon.png" />
 
@@ -58,16 +37,10 @@
 </svelte:head>
 
 <div
-  class="min-h-screen transition-all duration-300"
-  class:bg-gray-900={!backgroundImageUrl}
-  style:background-image={backgroundImageUrl ? `url('${backgroundImageUrl}')` : 'none'}
+  class="min-h-screen bg-gray-900"
   on:keydown={handleKeydown}
   on:mousedown={handleMouseDown}
 >
-  <!-- Background overlay for better text readability -->
-  {#if backgroundImageUrl}
-    <div class="fixed inset-0 bg-black bg-opacity-40 -z-10"></div>
-  {/if}
 
   <!-- Main container with proper spacing and structure -->
   <div class="relative z-10 min-h-screen flex flex-col">

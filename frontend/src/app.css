@@ -330,18 +330,7 @@ hr {
 
 /* Custom component styles */
 .radio-background {
-  background-image: url('/static/radio.webp');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
   position: relative;
-}
-
-.radio-background::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(97, 83, 83, 0.8) 0%, rgba(97, 83, 83, 0.9) 100%);
 }
 
 /* Accessibility improvements */

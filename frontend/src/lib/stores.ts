@@ -18,7 +18,7 @@ const initialDeviceSelection: DeviceSelection = {
   category: null,
   deviceType: null,
   version: null,
-  source: 'https://github.com/meshtastic/firmware'
+  source: ''
 };
 
 const initialLoadingState: LoadingState = {
