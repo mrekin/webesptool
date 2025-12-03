@@ -3,7 +3,8 @@
   import { deviceActions } from '$lib/stores';
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
-  import { createClickOutside, createDropdownUtils } from '$lib/utils';
+  import { DeviceType } from '$lib/types.js';
+  import { DEVICE_GROUP_LABELS } from '$lib/utils/deviceTypeUtils.js';
   import type { DeviceCategoryType } from '$lib/types.ts';
 
   // Local state
@@ -372,10 +373,10 @@
         {:else}
           <!-- Device Categories -->
           {#each [
-            { key: 'esp', devices: filteredDevicesByCategory.esp, title: 'ESP32 DEVICES' },
-            { key: 'uf2', devices: filteredDevicesByCategory.uf2, title: 'NRF52 DEVICES' },
-            { key: 'rp2040', devices: filteredDevicesByCategory.rp2040, title: 'RP2040 DEVICES' }
-          ] as category, categoryIndex}
+            { key: 'esp', devices: filteredDevicesByCategory.esp, title: DEVICE_GROUP_LABELS[DeviceType.ESP32] },
+            { key: 'uf2', devices: filteredDevicesByCategory.uf2, title: DEVICE_GROUP_LABELS[DeviceType.NRF52] },
+            { key: 'rp2040', devices: filteredDevicesByCategory.rp2040, title: DEVICE_GROUP_LABELS[DeviceType.RP2040] }
+          ] as { key: string; devices: any[]; title: string }[] as category, categoryIndex (categoryIndex)}
             {#if category.devices.length > 0}
               <div class="px-2 py-4 text-sm font-bold text-orange-300 bg-gray-700 border-b border-gray-600">
                 {category.title}

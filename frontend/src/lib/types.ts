@@ -126,6 +126,13 @@ export type DeviceCategoryType = 'esp' | 'uf2' | 'rp2040';
 // Chip families for manifest generation
 export type ChipFamily = 'ESP32' | 'ESP32-S3' | 'ESP32-C3' | 'NRF52' | 'RP2040';
 
+// Унифицированный enum типов устройств
+export enum DeviceType {
+  ESP32 = 'esp32',
+  NRF52 = 'nrf52',
+  RP2040 = 'rp2040'
+}
+
 // Configuration interface
 export interface AppConfig {
   apiBaseUrl: string;
@@ -152,8 +159,8 @@ export interface SelectionChangeEvent {
 export interface DeviceDisplayInfo {
   devicePioTarget: string;  // Previously deviceType - the PIO target from firmware
   deviceName: string;       // Human-readable device name
-  deviceTypeCategory: DeviceCategoryType;  // Device category type
-  devicePlatformType: 'esp32' | 'nrf52' | 'rp2040';  // Platform type based on chip family
+  deviceType: DeviceType;   // Унифицированный тип устройства
+  deviceTypeCategory: DeviceCategoryType;  // Device category type (временно для API)
   availableVersions: string[];  // List of available firmware versions
   deviceInfo: FirmwareInfo | null;  // Device firmware information
 }

@@ -1,5 +1,7 @@
 <script lang="ts">
   import { deviceDisplayInfo, firmwareDisplayInfo, loadingState } from '$lib/stores';
+  import { DeviceType } from '$lib/types.js';
+  import { isESP32Device, isNRF52Device, isRP2040Device, getDeviceTypeLabel } from '$lib/utils/deviceTypeUtils.js';
 
   // Local state for HTML rendering
   let firmwareInfoElement: HTMLElement;
@@ -79,7 +81,7 @@
 
           <div class="flex justify-start items-center gap-4">
             <span class="text-orange-300 font-medium">Platform:</span>
-            <span class="text-orange-100 uppercase">{deviceInfo.devicePlatformType}</span>
+            <span class="text-orange-100 uppercase">{getDeviceTypeLabel(deviceInfo.deviceType)}</span>
           </div>
 
           <div class="flex justify-start items-center gap-4">
@@ -146,7 +148,7 @@
       <h3 class="text-lg font-semibold text-orange-200 mb-3">Installation Instructions</h3>
 
       <div class="space-y-3 text-sm text-orange-100">
-        {#if deviceInfo?.devicePlatformType === 'esp32'}
+        {#if isESP32Device(deviceInfo?.deviceType)}
           <div class="flex items-start space-x-3">
             <span class="text-orange-400 font-bold">1.</span>
             <div>
@@ -162,7 +164,7 @@
               <p class="text-orange-300">Use download buttons to get firmware files for manual flashing.</p>
             </div>
           </div>
-        {:else if deviceInfo?.devicePlatformType === 'nrf52'}
+        {:else if isNRF52Device(deviceInfo?.deviceType)}
           <div class="flex items-start space-x-3">
             <span class="text-orange-400 font-bold">1.</span>
             <div>
@@ -178,7 +180,7 @@
               <p class="text-orange-300">Double-click reset button or use reset pin to enter bootloader mode.</p>
             </div>
           </div>
-        {:else if deviceInfo?.devicePlatformType === 'rp2040'}
+        {:else if isRP2040Device(deviceInfo?.deviceType)}
           <div class="flex items-start space-x-3">
             <span class="text-orange-400 font-bold">1.</span>
             <div>

@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { deviceSelection, loadingState, deviceNames } from '$lib/stores';
+  import { deviceSelection, loadingState, deviceDisplayInfo } from '$lib/stores';
   import { apiActions } from '$lib/stores';
-  import { apiService } from '$lib/api';
-  import type { DownloadOption, DeviceCategoryType } from '$lib/types';
+  import { DeviceType } from '$lib/types.js';
+  import { isESP32Device, isNRF52Device, isRP2040Device, supportsESPWebTools, supportsUF2 } from '$lib/utils/deviceTypeUtils.js';
+  import type { DownloadOption } from '$lib/types';
 
   // Local state
   let espWebToolsDialog: HTMLDialogElement;
@@ -12,32 +13,19 @@
   // Subscribe to stores
   $: deviceSelectionStore = $deviceSelection;
   $: isDownloading = $loadingState.isDownloading;
-  $: deviceNamesStore = $deviceNames;
+  $: deviceDisplayInfoStore = $deviceDisplayInfo;
 
   // Available download options based on device type and version
-  $: downloadOptions = getDownloadOptions(deviceSelectionStore.devicePioTarget, deviceSelectionStore.category, deviceSelectionStore.version);
+  $: downloadOptions = getDownloadOptions(deviceSelectionStore.devicePioTarget, deviceDisplayInfoStore?.deviceType, deviceSelectionStore.version);
 
-  // Debug: Log device type and options
-  $: {
-    if (deviceSelectionStore.devicePioTarget) {
-      console.log('=== DownloadButtons Debug ===');
-      console.log('Device type:', deviceSelectionStore.devicePioTarget);
-      console.log('Device category:', deviceSelectionStore.category);
-      console.log('Device version:', deviceSelectionStore.version);
-      console.log('Download options:', downloadOptions);
-      console.log('Download options length:', downloadOptions.length);
-      console.log('Is ESP device:', deviceSelectionStore.category === 'esp');
-      console.log('============================');
-    }
-  }
-
-  function getDownloadOptions(devicePioTarget: string | null, category: DeviceCategoryType | null, version: string | null): DownloadOption[] {
+  
+  function getDownloadOptions(devicePioTarget: string | null, deviceType: DeviceType | null | undefined, version: string | null): DownloadOption[] {
     if (!devicePioTarget || !version) return [];
 
     const options: DownloadOption[] = [];
 
     // ESP32 devices get ESP Web Tools (primary button) and firmware mode selector
-    if (category === 'esp') {
+    if (isESP32Device(deviceType)) {
       options.push({
         id: 'esptool',
         label: firmwareMode === 'full' ? 'Full Flash Device' : 'Update Device',
@@ -48,8 +36,8 @@
       });
     }
 
-    // UF2 downloads for NRF52 and RP2040 devices
-    if (category === 'uf2') {
+    // UF2 downloads for NRF52 devices
+    if (isNRF52Device(deviceType)) {
       options.push({
         id: 'uf2',
         label: 'Download Fw UF2',
@@ -80,7 +68,7 @@
     }
 
     // UF2 downloads for RP2040 devices
-    if (category === 'rp2040') {
+    if (isRP2040Device(deviceType)) {
       options.push({
         id: 'uf2',
         label: 'Download UF2',
@@ -119,13 +107,11 @@
     const espButton = document.querySelector('esp-web-install-button');
     if (espButton) {
       const manifestUrl = generateManifestUrl();
-      console.log('ESP Web Tools - Setting manifest on button:', manifestUrl);
       espButton.setAttribute('manifest', manifestUrl);
 
       // Trigger the ESP Web Tools installation
       const activateButton = espButton.querySelector('button[slot="activate"]');
       if (activateButton) {
-        console.log('Using ESP Web Tools for firmware installation');
         activateButton.click();
         return true;
       }
@@ -135,8 +121,6 @@
 
   // Simplified function to download files from URL
   function downloadFromUrl(url: string): void {
-    console.log('Downloading file from URL:', url);
-
     // Create download link and trigger it
     const link = document.createElement('a');
     link.href = url;
@@ -144,8 +128,6 @@
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
-    console.log('Download initiated');
   }
 
   // Handle download action
@@ -177,7 +159,6 @@
       if (configureAndTriggerESPButton()) {
         return; // ESP Web Tools was triggered successfully
       } else {
-        console.log('ESP Web Tools not available, falling back to direct download');
         await handleDownload(option);
       }
       return;
@@ -234,13 +215,13 @@
 
 <!-- ESP Web Tools script loading (conditionally) -->
 <svelte:head>
-  {#if deviceSelectionStore.category === 'esp'}
+  {#if supportsESPWebTools(deviceDisplayInfoStore?.deviceType)}
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js"></script>
   {/if}
 </svelte:head>
 
 <!-- ESP Web Tools Button (hidden, used for firmware installation) -->
-{#if deviceSelectionStore.category === 'esp' && deviceSelectionStore.version}
+{#if supportsESPWebTools(deviceDisplayInfoStore?.deviceType) && deviceSelectionStore.version}
   <div style="display: none;">
     <esp-web-install-button manifest="">
       <button slot="activate">ESP Web Tools Install</button>
@@ -252,7 +233,7 @@
   <div class="space-y-4">
 
     <!-- Firmware Mode Selector for ESP32 Devices -->
-    {#if deviceSelectionStore.category === 'esp'}
+    {#if supportsESPWebTools(deviceDisplayInfoStore?.deviceType)}
       <div class="space-y-2">
         <label class="block text-sm font-medium text-orange-200 mb-2">
           Flash Mode

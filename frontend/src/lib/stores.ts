@@ -10,8 +10,10 @@ import type {
   DownloadEvent,
   FirmwareRequest,
   UpdateMode,
-  DeviceCategoryType
+  DeviceCategoryType,
+  DeviceDisplayInfo
 } from './types.ts';
+import { mapCategoryToDeviceType } from './utils/deviceTypeUtils.js';
 import { apiService } from './api.ts';
 
 // Initial state values
@@ -173,27 +175,14 @@ export const deviceDisplayInfo = derived(
     // Determine device type category
     const deviceTypeCategory = $deviceSelection.category || detectCategoryFromDeviceTypeAvailableData($deviceSelection.devicePioTarget, $availableFirmwares);
 
-    // Determine platform type based on category
-    let devicePlatformType: 'esp32' | 'nrf52' | 'rp2040';
-    switch (deviceTypeCategory) {
-      case 'esp':
-        devicePlatformType = 'esp32';
-        break;
-      case 'uf2':
-        devicePlatformType = 'nrf52';
-        break;
-      case 'rp2040':
-        devicePlatformType = 'rp2040';
-        break;
-      default:
-        devicePlatformType = 'esp32'; // fallback
-    }
+    // Determine unified device type using utility function
+    const deviceType = mapCategoryToDeviceType(deviceTypeCategory || 'esp');
 
     return {
       devicePioTarget: $deviceSelection.devicePioTarget,
       deviceName: $deviceNames[$deviceSelection.devicePioTarget] || $deviceSelection.devicePioTarget,
-      deviceTypeCategory: deviceTypeCategory || 'esp',
-      devicePlatformType,
+      deviceType,  // Унифицированный тип устройства
+      deviceTypeCategory: deviceTypeCategory || 'esp',  // Временно для API
       availableVersions: $versionsData.versions || [],
       deviceInfo: $firmwareInfo
     } as DeviceDisplayInfo;
