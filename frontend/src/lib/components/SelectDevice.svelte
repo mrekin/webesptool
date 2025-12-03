@@ -4,6 +4,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
   import { createClickOutside, createDropdownUtils } from '$lib/utils';
+  import type { DeviceCategoryType } from '$lib/types.ts';
 
   // Local state
   let deviceFilter = '';
@@ -27,7 +28,7 @@
   $: versionSelected = $isVersionSelected;
 
   // Clear filter when device type is reset to null
-  $: if (deviceSelectionStore.deviceType === null) {
+  $: if (deviceSelectionStore.devicePioTarget === null) {
     deviceFilter = '';
     showDropdown = false;
     selectedIndex = -1;
@@ -35,7 +36,7 @@
 
   // Filter devices based on search input
   $: filteredDevices = deviceFilter
-    ? allDevices.filter((device: {device: string; category: 'esp' | 'uf2' | 'rp2040'; displayName: string}) =>
+    ? allDevices.filter((device: {device: string; category: DeviceCategoryType; displayName: string}) =>
         device.displayName.toLowerCase().includes(deviceFilter.toLowerCase()) ||
         device.device.toLowerCase().includes(deviceFilter.toLowerCase())
       )
@@ -308,8 +309,8 @@
   }
 
   // Get display name for device type
-  function getDeviceDisplayName(deviceType: string): string {
-    return availableFirmwaresStore.device_names[deviceType] || deviceType;
+  function getDeviceDisplayName(devicePioTarget: string): string {
+    return availableFirmwaresStore.device_names[devicePioTarget] || devicePioTarget;
   }
 
   // Get version display text
@@ -463,10 +464,10 @@
 
       <!-- Version Notes -->
       {#if versionSelected && versionsDataStore.notes[deviceSelectionStore.version]}
-        <div class="mt-2 p-3 bg-gray-800 border border-orange-600 rounded-md">
-          <p class="text-sm text-orange-200">
-            {versionsDataStore.notes[deviceSelectionStore.version]}
-          </p>
+        <div class="mt-2 p-3 bg-gray-800 border border-orange-600 rounded-md version-notes">
+          <div class="text-sm text-orange-200 prose prose-invert prose-sm max-w-none">
+            {@html versionsDataStore.notes[deviceSelectionStore.version]}
+          </div>
         </div>
       {/if}
     </div>
@@ -481,10 +482,6 @@
     </div>
     {/if}
   {/if}
-
-
-
   </div>
-
 <style>
 </style>

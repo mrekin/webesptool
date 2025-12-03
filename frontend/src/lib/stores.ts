@@ -9,14 +9,15 @@ import type {
   UIState,
   DownloadEvent,
   FirmwareRequest,
-  UpdateMode
+  UpdateMode,
+  DeviceCategoryType
 } from './types.ts';
 import { apiService } from './api.ts';
 
 // Initial state values
 const initialDeviceSelection: DeviceSelection = {
   category: null,
-  deviceType: null,
+  devicePioTarget: null,
   version: null,
   source: ''
 };
@@ -108,7 +109,7 @@ export const allDevicesWithCategories = derived(
 export const allDevicesFlat = derived(
   availableFirmwares,
   ($availableFirmwares) => {
-    const devices: Array<{device: string; category: 'esp' | 'uf2' | 'rp2040'; displayName: string}> = [];
+    const devices: Array<{device: string; category: DeviceCategoryType; displayName: string}> = [];
 
     $availableFirmwares.espdevices.forEach((device: string) => {
       devices.push({
@@ -141,7 +142,7 @@ export const allDevicesFlat = derived(
 // Is device selected - derived boolean for UI state
 export const isDeviceSelected = derived(
   deviceSelection,
-  ($deviceSelection) => $deviceSelection.deviceType !== null
+  ($deviceSelection) => $deviceSelection.devicePioTarget !== null
 );
 
 // Is version selected - derived boolean for UI state
@@ -154,26 +155,48 @@ export const isVersionSelected = derived(
 export const currentDeviceName = derived(
   [deviceSelection, deviceNames],
   ([$deviceSelection, $deviceNames]) => {
-    if (!$deviceSelection.deviceType || !$deviceNames[$deviceSelection.deviceType]) {
+    if (!$deviceSelection.devicePioTarget || !$deviceNames[$deviceSelection.devicePioTarget]) {
       return 'Select Device';
     }
-    return $deviceNames[$deviceSelection.deviceType];
+    return $deviceNames[$deviceSelection.devicePioTarget];
   }
 );
 
 // Device display info - shows device info regardless of version selection
 export const deviceDisplayInfo = derived(
-  [deviceSelection, firmwareInfo, deviceNames],
-  ([$deviceSelection, $firmwareInfo, $deviceNames]) => {
-    if (!$deviceSelection.deviceType) {
+  [deviceSelection, firmwareInfo, deviceNames, availableFirmwares, versionsData],
+  ([$deviceSelection, $firmwareInfo, $deviceNames, $availableFirmwares, $versionsData]) => {
+    if (!$deviceSelection.devicePioTarget) {
       return null;
     }
 
+    // Determine device type category
+    const deviceTypeCategory = $deviceSelection.category || detectCategoryFromDeviceTypeAvailableData($deviceSelection.devicePioTarget, $availableFirmwares);
+
+    // Determine platform type based on category
+    let devicePlatformType: 'esp32' | 'nrf52' | 'rp2040';
+    switch (deviceTypeCategory) {
+      case 'esp':
+        devicePlatformType = 'esp32';
+        break;
+      case 'uf2':
+        devicePlatformType = 'nrf52';
+        break;
+      case 'rp2040':
+        devicePlatformType = 'rp2040';
+        break;
+      default:
+        devicePlatformType = 'esp32'; // fallback
+    }
+
     return {
-      deviceType: $deviceSelection.deviceType,
-      deviceName: $deviceNames[$deviceSelection.deviceType] || $deviceSelection.deviceType,
+      devicePioTarget: $deviceSelection.devicePioTarget,
+      deviceName: $deviceNames[$deviceSelection.devicePioTarget] || $deviceSelection.devicePioTarget,
+      deviceTypeCategory: deviceTypeCategory || 'esp',
+      devicePlatformType,
+      availableVersions: $versionsData.versions || [],
       deviceInfo: $firmwareInfo
-    };
+    } as DeviceDisplayInfo;
   }
 );
 
@@ -203,23 +226,23 @@ export const urlSync = readable(
 
     // Initialize from URL parameters on page load
     const urlParams = new URLSearchParams(window.location.search);
-    const deviceType = urlParams.get('t');
+    const devicePioTarget = urlParams.get('t');
 
-    if (deviceType) {
+    if (devicePioTarget) {
       deviceSelection.update(selection => ({
         ...selection,
-        deviceType,
+        devicePioTarget,
         category: null // Will be set when availableFirmwares loads
       }));
     }
 
     // Subscribe to availableFirmwares changes to update category
     const unsubscribeFirmwares = availableFirmwares.subscribe((firmwares) => {
-      if (firmwares && deviceType) {
-        const category = detectCategoryFromDeviceTypeAvailableData(deviceType, firmwares);
+      if (firmwares && devicePioTarget) {
+        const category = detectCategoryFromDeviceTypeAvailableData(devicePioTarget, firmwares);
 
         deviceSelection.update(selection => {
-          if (selection.deviceType && !selection.category) {
+          if (selection.devicePioTarget && !selection.category) {
             // Only set category if it's not already set
             return {
               ...selection,
@@ -233,9 +256,9 @@ export const urlSync = readable(
 
     // Subscribe to deviceSelection changes and update URL
     const unsubscribeDeviceSelection = deviceSelection.subscribe((selection) => {
-      if (selection.deviceType) {
+      if (selection.devicePioTarget) {
         const url = new URL(window.location);
-        url.searchParams.set('t', selection.deviceType);
+        url.searchParams.set('t', selection.devicePioTarget);
 
         // Remove version parameter if no version selected
         if (!selection.version) {
@@ -257,17 +280,17 @@ export const urlSync = readable(
 );
 
 // Helper function to detect category from device type using provided firmwares data
-function detectCategoryFromDeviceTypeAvailableData(deviceType: string, firmwares: AvailableFirmwares): 'esp' | 'uf2' | 'rp2040' | null {
+function detectCategoryFromDeviceTypeAvailableData(devicePioTarget: string, firmwares: AvailableFirmwares): DeviceCategoryType | null {
   // Check if device is in espdevices
-  if (firmwares.espdevices.includes(deviceType)) {
+  if (firmwares.espdevices.includes(devicePioTarget)) {
     return 'esp';
   }
   // Check if device is in uf2devices
-  if (firmwares.uf2devices.includes(deviceType)) {
+  if (firmwares.uf2devices.includes(devicePioTarget)) {
     return 'uf2';
   }
   // Check if device is in rp2040devices
-  if (firmwares.rp2040devices.includes(deviceType)) {
+  if (firmwares.rp2040devices.includes(devicePioTarget)) {
     return 'rp2040';
   }
 
@@ -277,29 +300,29 @@ function detectCategoryFromDeviceTypeAvailableData(deviceType: string, firmwares
 // Actions for device selection
 export const deviceActions = {
   // Set device category
-  setCategory: (category: 'esp' | 'uf2' | 'rp2040' | null) => {
+  setCategory: (category: DeviceCategoryType | null) => {
     deviceSelection.update(selection => ({
       ...selection,
       category,
-      deviceType: null,
+      devicePioTarget: null,
       version: null
     }));
   },
 
   // Set device type (original method)
-  setDeviceType: (deviceType: string | null) => {
+  setDeviceType: (devicePioTarget: string | null) => {
     deviceSelection.update(selection => ({
       ...selection,
-      deviceType,
+      devicePioTarget,
       version: null
     }));
   },
 
   // Set device directly (new method for simplified interface)
-  setDeviceDirectly: (deviceType: string | null) => {
+  setDeviceDirectly: (devicePioTarget: string | null) => {
     deviceSelection.update(selection => {
-      let category: 'esp' | 'uf2' | 'rp2040' | null = null;
-      if (deviceType) {
+      let category: DeviceCategoryType | null = null;
+      if (devicePioTarget) {
         // Get current availableFirmwares data
         let currentFirmwares: AvailableFirmwares | null = null;
         const unsubscribe = availableFirmwares.subscribe(firmwares => {
@@ -308,13 +331,13 @@ export const deviceActions = {
         unsubscribe();
 
         if (currentFirmwares) {
-          category = detectCategoryFromDeviceTypeAvailableData(deviceType, currentFirmwares);
+          category = detectCategoryFromDeviceTypeAvailableData(devicePioTarget, currentFirmwares);
         }
       }
 
       return {
         ...selection,
-        deviceType,
+        devicePioTarget,
         category,
         version: null
       };
@@ -334,7 +357,7 @@ export const deviceActions = {
     deviceSelection.update(selection => ({
       ...selection,
       source,
-      deviceType: null,    // Reset device type when source changes
+      devicePioTarget: null,    // Reset device type when source changes
       category: null,      // Reset category when source changes
       version: null        // Reset version when source changes
     }));
@@ -431,16 +454,16 @@ export const uiActions = {
 // Async actions for API operations
 export const apiActions = {
   // Load available versions for device type
-  async loadVersions(deviceType: string) {
-    if (!deviceType) return;
+  async loadVersions(devicePioTarget: string) {
+    if (!devicePioTarget) return;
 
     loadingActions.setLoadingVersions(true);
     try {
-      let source: string;
+      let source: string = '';
       const unsubscribe = deviceSelection.subscribe(s => {
         source = s.source || '';
       });
-      const versions = await apiService.getVersions(deviceType, source);
+      const versions = await apiService.getVersions(devicePioTarget, source);
       unsubscribe();
       versionsData.set(versions);
     } catch (error) {
@@ -451,8 +474,8 @@ export const apiActions = {
   },
 
   // Load device information (without version)
-  async loadDeviceInfo(deviceType: string) {
-    if (!deviceType) return;
+  async loadDeviceInfo(devicePioTarget: string) {
+    if (!devicePioTarget) return;
 
     loadingActions.setLoadingInfo(true);
     try {
@@ -466,15 +489,14 @@ export const apiActions = {
       const latestVersion = 'latest';
 
       // Load device info using latest version
-      const infoBlock = await apiService.getInfoBlock(deviceType, latestVersion, source);
+      const infoBlock = await apiService.getInfoBlock(devicePioTarget, latestVersion, source);
 
       // Update firmwareInfo with device info (version-agnostic)
       firmwareInfo.set({
-        deviceType,
+        devicePioTarget,
         version: '', // No specific version selected
         buildDate: '',
         notes: '',
-        pioTarget: '',
         htmlInfo: infoBlock.info
       });
     } catch (error) {
@@ -485,8 +507,8 @@ export const apiActions = {
   },
 
   // Load firmware information
-  async loadFirmwareInfo(deviceType: string, version: string) {
-    if (!deviceType || !version) return;
+  async loadFirmwareInfo(devicePioTarget: string, version: string) {
+    if (!devicePioTarget || !version) return;
 
     loadingActions.setLoadingInfo(true);
     try {
@@ -503,14 +525,13 @@ export const apiActions = {
       });
       unsubscribeVersions();
 
-      const infoBlock = await apiService.getInfoBlock(deviceType, version, source);
+      const infoBlock = await apiService.getInfoBlock(devicePioTarget, version, source);
 
       firmwareInfo.set({
-        deviceType,
+        devicePioTarget,
         version,
         buildDate: versionsDataResponse.dates[version] || 'Unknown',
         notes: versionsDataResponse.notes[version] || '',
-        pioTarget: '', // Would need to be extracted from info
         htmlInfo: infoBlock.info
       });
     } catch (error) {
@@ -522,7 +543,7 @@ export const apiActions = {
 
   // Download firmware
   async downloadFirmware(
-    deviceType: string,
+    devicePioTarget: string,
     version: string,
     mode: UpdateMode,
     part?: string
@@ -539,7 +560,7 @@ export const apiActions = {
       });
       unsubscribe();
       const request: FirmwareRequest = {
-        t: deviceType,
+        t: devicePioTarget,
         v: version,
         u: mode,
         ...(part && { p: part as 'fw' | 'littlefs' | 'bleota' | 'bleota-s3' }),
@@ -554,7 +575,7 @@ export const apiActions = {
       downloadHistory.update(history => [
         ...history,
         {
-          deviceType,
+          devicePioTarget,
           version,
           mode,
           timestamp,
@@ -568,7 +589,7 @@ export const apiActions = {
       downloadHistory.update(history => [
         ...history,
         {
-          deviceType,
+          devicePioTarget,
           version,
           mode,
           timestamp,
@@ -595,24 +616,24 @@ export const apiActions = {
 };
 
 // Store subscription for reactive behavior - single subscription to avoid duplicate requests
-let previousDeviceType: string | null = null;
+let previousDevicePioTarget: string | null = null;
 let previousVersion: string | null = null;
 
 deviceSelection.subscribe((selection) => {
-  const { deviceType, version } = selection;
+  const { devicePioTarget, version } = selection;
 
   // Load versions and device info only when device type changes
-  if (deviceType && deviceType !== previousDeviceType) {
-    apiActions.loadVersions(deviceType);
-    apiActions.loadDeviceInfo(deviceType);
+  if (devicePioTarget && devicePioTarget !== previousDevicePioTarget) {
+    apiActions.loadVersions(devicePioTarget);
+    apiActions.loadDeviceInfo(devicePioTarget);
   }
 
   // Load firmware info only when version is selected (and device is already set)
-  if (deviceType && version && version !== previousVersion) {
-    apiActions.loadFirmwareInfo(deviceType, version);
+  if (devicePioTarget && version && version !== previousVersion) {
+    apiActions.loadFirmwareInfo(devicePioTarget, version);
   }
 
-  previousDeviceType = deviceType;
+  previousDevicePioTarget = devicePioTarget;
   previousVersion = version;
 });
 

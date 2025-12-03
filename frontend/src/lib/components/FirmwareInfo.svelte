@@ -56,28 +56,8 @@
             </div>
           {/if}
         </div>
-
-        <!-- Additional Information -->
-        <div class="space-y-2">
-          {#if displayInfo?.deviceInfo?.pioTarget}
-            <div class="flex justify-between items-center">
-              <span class="text-orange-300 font-medium">PIO Target: </span>
-              <span class="text-orange-100">{displayInfo.deviceInfo.pioTarget}</span>
-            </div>
-          {/if}
-
-        </div>
       </div>
 
-      <!-- Release Notes -->
-      {#if displayInfo?.notes}
-        <div class="mt-4 pt-4 border-t border-orange-700">
-          <h3 class="text-lg font-semibold text-orange-200 mb-2">Release Notes</h3>
-          <div class="text-sm text-orange-100 bg-gray-900 p-3 rounded border border-orange-700">
-            <p class="whitespace-pre-wrap">{displayInfo.notes}</p>
-          </div>
-        </div>
-      {/if}
     </div>
     <!-- Device Information Header -->
     <div class="p-4 bg-gray-800 border border-orange-600 rounded-md">
@@ -88,19 +68,25 @@
       <div class="grid grid-cols-1 md:grid-cols-1 gap-4 text-sm">
         <div class="space-y-2">
           <div class="flex justify-start items-center gap-4">
-            <span class="text-orange-300 font-medium">Device:</span>
+            <span class="text-orange-300 font-medium">Device name:</span>
             <span class="text-orange-100">{deviceInfo.deviceName}</span>
           </div>
 
           <div class="flex justify-start items-center gap-4">
-            <span class="text-orange-300 font-medium">Build name: </span>
-            <span class="text-orange-100">{deviceInfo.deviceType}</span>
+            <span class="text-orange-300 font-medium">PIO target:</span>
+            <span class="text-orange-100">{deviceInfo.devicePioTarget}</span>
           </div>
 
           <div class="flex justify-start items-center gap-4">
-            <span class="text-orange-300 font-medium">Status:</span>
-            <span class="text-green-400">Ready to Configure</span>
+            <span class="text-orange-300 font-medium">Platform:</span>
+            <span class="text-orange-100 uppercase">{deviceInfo.devicePlatformType}</span>
           </div>
+
+          <div class="flex justify-start items-center gap-4">
+            <span class="text-orange-300 font-medium">Available versions:</span>
+            <span class="text-orange-100">{deviceInfo.availableVersions?.length || 0} versions</span>
+          </div>
+
         </div>
       </div>
 
@@ -160,7 +146,7 @@
       <h3 class="text-lg font-semibold text-orange-200 mb-3">Installation Instructions</h3>
 
       <div class="space-y-3 text-sm text-orange-100">
-        {#if displayInfo.deviceInfo?.deviceType?.includes('esp')}
+        {#if deviceInfo?.devicePlatformType === 'esp32'}
           <div class="flex items-start space-x-3">
             <span class="text-orange-400 font-bold">1.</span>
             <div>
@@ -176,7 +162,7 @@
               <p class="text-orange-300">Use download buttons to get firmware files for manual flashing.</p>
             </div>
           </div>
-        {:else if displayInfo.deviceInfo?.deviceType?.includes('rak') || displayInfo.deviceInfo?.deviceType?.includes('nrf')}
+        {:else if deviceInfo?.devicePlatformType === 'nrf52'}
           <div class="flex items-start space-x-3">
             <span class="text-orange-400 font-bold">1.</span>
             <div>
@@ -192,7 +178,7 @@
               <p class="text-orange-300">Double-click reset button or use reset pin to enter bootloader mode.</p>
             </div>
           </div>
-        {:else if displayInfo.deviceInfo?.deviceType?.includes('pico')}
+        {:else if deviceInfo?.devicePlatformType === 'rp2040'}
           <div class="flex items-start space-x-3">
             <span class="text-orange-400 font-bold">1.</span>
             <div>

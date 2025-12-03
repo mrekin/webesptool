@@ -137,11 +137,11 @@ class APIService {
 
   // Get available firmware versions for a device type
   async getVersions(
-    deviceType: string,
+    devicePioTarget: string,
     source: string = this.config.defaultSource
   ): Promise<VersionsResponse> {
     const params = new URLSearchParams({
-      t: deviceType,
+      t: devicePioTarget,
       src: source
     });
 
@@ -150,12 +150,12 @@ class APIService {
 
   // Get device information block (HTML content)
   async getInfoBlock(
-    deviceType: string,
+    devicePioTarget: string,
     version: string,
     source: string = this.config.defaultSource
   ): Promise<InfoBlockResponse> {
     const params = new URLSearchParams({
-      t: deviceType,
+      t: devicePioTarget,
       v: version,
       src: source
     });
@@ -165,13 +165,13 @@ class APIService {
 
   // Get firmware manifest for ESP Web Tools
   async getManifest(
-    deviceType: string,
+    devicePioTarget: string,
     version: string,
     updateMode: UpdateMode = '1',
     source: string = this.config.defaultSource
   ): Promise<ManifestResponse> {
     const params = new URLSearchParams({
-      t: deviceType,
+      t: devicePioTarget,
       v: version,
       u: updateMode,
       src: source
@@ -226,12 +226,12 @@ class APIService {
 
   // Utility method to generate appropriate filename
   generateFilename(
-    deviceType: string,
+    devicePioTarget: string,
     version: string,
     mode: UpdateMode,
     part?: string
   ): string {
-    let filename = `${deviceType}-${version}`;
+    let filename = `${devicePioTarget}-${version}`;
 
     if (part) {
       filename += `-${part}`;

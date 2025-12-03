@@ -42,7 +42,7 @@ export interface FirmwareDownloadResponse {
 }
 
 export interface ManifestBuild {
-  chipFamily: 'ESP32' | 'ESP32-S3' | 'ESP32-C3' | 'NRF52' | 'RP2040';
+  chipFamily: ChipFamily;
   parts: ManifestPart[];
 }
 
@@ -71,8 +71,8 @@ export interface AvailableFirmwares {
 }
 
 export interface DeviceSelection {
-  category: 'esp' | 'uf2' | 'rp2040' | null;
-  deviceType: string | null;
+  category: DeviceCategoryType | null;
+  devicePioTarget: string | null;
   version: string | null;
   source: string | null;
 }
@@ -86,11 +86,10 @@ export interface LoadingState {
 }
 
 export interface FirmwareInfo {
-  deviceType: string;
+  devicePioTarget: string;
   version: string;
   buildDate: string;
   notes: string;
-  pioTarget: string;
   htmlInfo: string;
 }
 
@@ -137,7 +136,7 @@ export interface AppConfig {
 
 // Event types for analytics/logging
 export interface DownloadEvent {
-  deviceType: string;
+  devicePioTarget: string;
   version: string;
   mode: UpdateMode;
   timestamp: Date;
@@ -146,6 +145,15 @@ export interface DownloadEvent {
 
 export interface SelectionChangeEvent {
   category: DeviceCategoryType | null;
-  deviceType: string | null;
-  previousDeviceType: string | null;
+  devicePioTarget: string | null;
+  previousDevicePioTarget: string | null;
+}
+
+export interface DeviceDisplayInfo {
+  devicePioTarget: string;  // Previously deviceType - the PIO target from firmware
+  deviceName: string;       // Human-readable device name
+  deviceTypeCategory: DeviceCategoryType;  // Device category type
+  devicePlatformType: 'esp32' | 'nrf52' | 'rp2040';  // Platform type based on chip family
+  availableVersions: string[];  // List of available firmware versions
+  deviceInfo: FirmwareInfo | null;  // Device firmware information
 }

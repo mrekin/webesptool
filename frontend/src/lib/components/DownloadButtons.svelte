@@ -2,7 +2,7 @@
   import { deviceSelection, loadingState, deviceNames } from '$lib/stores';
   import { apiActions } from '$lib/stores';
   import { apiService } from '$lib/api';
-  import type { DownloadOption } from '$lib/types';
+  import type { DownloadOption, DeviceCategoryType } from '$lib/types';
 
   // Local state
   let espWebToolsDialog: HTMLDialogElement;
@@ -15,13 +15,13 @@
   $: deviceNamesStore = $deviceNames;
 
   // Available download options based on device type and version
-  $: downloadOptions = getDownloadOptions(deviceSelectionStore.deviceType, deviceSelectionStore.category, deviceSelectionStore.version);
+  $: downloadOptions = getDownloadOptions(deviceSelectionStore.devicePioTarget, deviceSelectionStore.category, deviceSelectionStore.version);
 
   // Debug: Log device type and options
   $: {
-    if (deviceSelectionStore.deviceType) {
+    if (deviceSelectionStore.devicePioTarget) {
       console.log('=== DownloadButtons Debug ===');
-      console.log('Device type:', deviceSelectionStore.deviceType);
+      console.log('Device type:', deviceSelectionStore.devicePioTarget);
       console.log('Device category:', deviceSelectionStore.category);
       console.log('Device version:', deviceSelectionStore.version);
       console.log('Download options:', downloadOptions);
@@ -31,8 +31,8 @@
     }
   }
 
-  function getDownloadOptions(deviceType: string | null, category: 'esp' | 'uf2' | 'rp2040' | null, version: string | null): DownloadOption[] {
-    if (!deviceType || !version) return [];
+  function getDownloadOptions(devicePioTarget: string | null, category: DeviceCategoryType | null, version: string | null): DownloadOption[] {
+    if (!devicePioTarget || !version) return [];
 
     const options: DownloadOption[] = [];
 
@@ -107,7 +107,7 @@
   // Function to generate manifest URL for ESP Web Tools
   function generateManifestUrl(): string {
     return `${window.location.origin}/api/manifest?${new URLSearchParams({
-      t: deviceSelectionStore.deviceType,
+      t: deviceSelectionStore.devicePioTarget,
       v: deviceSelectionStore.version,
       u: firmwareMode === 'full' ? '2' : '1',
       src: deviceSelectionStore.source
@@ -150,11 +150,11 @@
 
   // Handle download action
   async function handleDownload(option: DownloadOption) {
-    if (!deviceSelectionStore.deviceType || !deviceSelectionStore.version) return;
+    if (!deviceSelectionStore.devicePioTarget || !deviceSelectionStore.version) return;
 
     try {
       await apiActions.downloadFirmware(
-        deviceSelectionStore.deviceType,
+        deviceSelectionStore.devicePioTarget,
         deviceSelectionStore.version,
         option.mode,
         option.id === 'uf2' ? 'uf2' : 'fw'
@@ -187,7 +187,7 @@
     if (option.id === 'fwzip') {
       try {
         await apiActions.downloadFirmware(
-          deviceSelectionStore.deviceType!,
+          deviceSelectionStore.devicePioTarget!,
           deviceSelectionStore.version!,
           '5', // u=5 for zip download (from backend: 5 - zip, 4 - ota, 1 - update, 2 - install)
           'fw' // Download firmware zip archive
@@ -202,7 +202,7 @@
     if (option.id === 'ota') {
       try {
         await apiActions.downloadFirmware(
-          deviceSelectionStore.deviceType!,
+          deviceSelectionStore.devicePioTarget!,
           deviceSelectionStore.version!,
           '4', // u=5 for zip download (from backend: 5 - zip, 4 - ota, 1 - update, 2 - install)
           'ota' // Download firmware zip archive
@@ -217,7 +217,7 @@
     if (option.id === 'uf2') {
       try {
         await apiActions.downloadFirmware(
-          deviceSelectionStore.deviceType!,
+          deviceSelectionStore.devicePioTarget!,
           deviceSelectionStore.version!,
           '1', // u=5 for zip download (from backend: 5 - zip, 4 - ota, 1 - update, 2 - install)
           'uf2' // Download firmware zip archive
@@ -248,7 +248,7 @@
   </div>
 {/if}
 
-{#if deviceSelectionStore.deviceType && deviceSelectionStore.version}
+{#if deviceSelectionStore.devicePioTarget && deviceSelectionStore.version}
   <div class="space-y-4">
 
     <!-- Firmware Mode Selector for ESP32 Devices -->
