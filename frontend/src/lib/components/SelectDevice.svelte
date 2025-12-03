@@ -3,6 +3,7 @@
   import { deviceActions } from '$lib/stores';
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
+  import { createClickOutside, createDropdownUtils } from '$lib/utils';
 
   // Local state
   let deviceFilter = '';
@@ -54,7 +55,7 @@
   function selectDevice(device: {device: string; displayName: string}) {
     deviceFilter = device.displayName;
     isFiltering = false; // Reset filtering flag since we made a selection
-    closeDropdown(false); // Don't restore filter since we made a selection
+    manageDeviceDropdown('close', { restoreFilter: false }); // Don't restore filter since we made a selection
     deviceActions.setDeviceDirectly(device.device);
     deviceActions.setVersion(null);
   }
@@ -73,37 +74,88 @@
     openDropdown(false); // Don't save filter on focus
   }
 
-  // Handle keyboard navigation
-  function handleKeydown(event: KeyboardEvent) {
-    const visibleDevices = getVisibleDevices();
+  // Handle version input click - toggle dropdown
+  function handleVersionInputClick(event: Event) {
+    event.stopPropagation();
+    event.preventDefault();
 
-    switch (event.key) {
-      case 'ArrowDown':
-        event.preventDefault();
-        if (selectedIndex < visibleDevices.length - 1) {
-          selectedIndex++;
-        } else {
-          selectedIndex = 0;
+    // Only toggle if dropdown is not already open
+    if (!showVersionDropdown) {
+      manageVersionDropdown('open');
+    } else {
+      manageVersionDropdown('close');
+    }
+  }
+
+  // Universal keyboard navigation handler
+  function handleDropdownKeydown(event: KeyboardEvent, dropdownType: 'device' | 'version') {
+    switch (dropdownType) {
+      case 'device':
+        const visibleDevices = getVisibleDevices();
+        switch (event.key) {
+          case 'ArrowDown':
+            event.preventDefault();
+            if (selectedIndex < visibleDevices.length - 1) {
+              selectedIndex++;
+            } else {
+              selectedIndex = 0;
+            }
+            break;
+          case 'ArrowUp':
+            event.preventDefault();
+            if (selectedIndex > 0) {
+              selectedIndex--;
+            } else {
+              selectedIndex = visibleDevices.length - 1;
+            }
+            break;
+          case 'Enter':
+            event.preventDefault();
+            if (selectedIndex >= 0 && visibleDevices[selectedIndex]) {
+              selectDevice(visibleDevices[selectedIndex]);
+            }
+            break;
+          case 'Escape':
+            closeDropdown();
+            break;
         }
         break;
-      case 'ArrowUp':
-        event.preventDefault();
-        if (selectedIndex > 0) {
-          selectedIndex--;
-        } else {
-          selectedIndex = visibleDevices.length - 1;
+
+      case 'version':
+        switch (event.key) {
+          case 'ArrowDown':
+            event.preventDefault();
+            if (selectedVersionIndex < versionsDataStore.versions.length - 1) {
+              selectedVersionIndex++;
+            } else {
+              selectedVersionIndex = 0;
+            }
+            break;
+          case 'ArrowUp':
+            event.preventDefault();
+            if (selectedVersionIndex > 0) {
+              selectedVersionIndex--;
+            } else {
+              selectedVersionIndex = versionsDataStore.versions.length - 1;
+            }
+            break;
+          case 'Enter':
+            event.preventDefault();
+            if (selectedVersionIndex >= 0 && versionsDataStore.versions[selectedVersionIndex]) {
+              selectVersion(versionsDataStore.versions[selectedVersionIndex]);
+            }
+            break;
+          case 'Escape':
+            manageVersionDropdown('close');
+            break;
         }
-        break;
-      case 'Enter':
-        event.preventDefault();
-        if (selectedIndex >= 0 && visibleDevices[selectedIndex]) {
-          selectDevice(visibleDevices[selectedIndex]);
-        }
-        break;
-      case 'Escape':
-        closeDropdown();
         break;
     }
+  }
+
+  // Handle keyboard navigation (legacy for device dropdown)
+  function handleKeydown(event: KeyboardEvent) {
+    handleDropdownKeydown(event, 'device');
   }
 
   // Get visible devices for keyboard navigation
@@ -127,6 +179,61 @@
     selectedIndex = -1;
   }
 
+  // Simplified dropdown management using new utilities
+  function manageDeviceDropdown(action: 'open' | 'close' | 'toggle', options?: any) {
+    switch (action) {
+      case 'open':
+        showDropdown = true;
+        selectedIndex = -1;
+        isFiltering = false;
+        if (options?.saveFilter && deviceFilter && deviceSelected) {
+          savedFilter = deviceFilter;
+        } else {
+          savedFilter = '';
+        }
+        deviceFilter = '';
+        break;
+
+      case 'close':
+        showDropdown = false;
+        selectedIndex = -1;
+        if (options?.restoreFilter && !isFiltering) {
+          restoreFilterIfNeeded();
+        }
+        isFiltering = false;
+        break;
+
+      case 'toggle':
+        if (showDropdown) {
+          manageDeviceDropdown('close');
+        } else {
+          manageDeviceDropdown('open', { saveFilter: true });
+        }
+        break;
+    }
+  }
+
+  function manageVersionDropdown(action: 'open' | 'close' | 'toggle') {
+    switch (action) {
+      case 'open':
+        showVersionDropdown = true;
+        selectedVersionIndex = -1;
+        break;
+
+      case 'close':
+        showVersionDropdown = false;
+        selectedVersionIndex = -1;
+        break;
+
+      case 'toggle':
+        showVersionDropdown = !showVersionDropdown;
+        if (showVersionDropdown) {
+          selectedVersionIndex = -1;
+        }
+        break;
+    }
+  }
+
   // Helper functions for filter management
   function restoreFilterIfNeeded() {
     if (savedFilter) {
@@ -135,26 +242,11 @@
   }
 
   function openDropdown(saveFilter = false) {
-    showDropdown = true;
-    selectedIndex = -1;
-    isFiltering = false; // This is not a filtering action
-    // Only save filter if explicitly requested
-    if (saveFilter && deviceFilter && deviceSelected) {
-      savedFilter = deviceFilter;
-    } else {
-      savedFilter = '';
-    }
-    deviceFilter = ''; // Show all devices
+    manageDeviceDropdown('open', { saveFilter });
   }
 
   function closeDropdown(restoreFilter = true) {
-    showDropdown = false;
-    selectedIndex = -1;
-    // Only restore filter if this was not a filtering session
-    if (restoreFilter && !isFiltering) {
-      restoreFilterIfNeeded();
-    }
-    isFiltering = false; // Reset filtering flag
+    manageDeviceDropdown('close', { restoreFilter });
   }
 
   // Toggle dropdown
@@ -162,18 +254,21 @@
     if (event) {
       event.stopPropagation();
     }
-    if (showDropdown) {
-      closeDropdown();
-    } else {
-      openDropdown(true); // Save filter when opening via arrow button
-    }
+    manageDeviceDropdown('toggle');
   }
 
-  // Close dropdown when clicking outside
+  // Universal click outside handler
   function handleClickOutside(event: MouseEvent) {
     const target = event.target as HTMLElement;
+
+    // Close device dropdown when clicking outside
     if (!target.closest('#device-combobox') && !target.closest('.dropdown-list')) {
-      closeDropdown();
+      manageDeviceDropdown('close');
+    }
+
+    // Close version dropdown when clicking outside
+    if (!target.closest('#firmware-version') && !target.closest('.dropdown-list')) {
+      manageVersionDropdown('close');
     }
   }
 
@@ -205,10 +300,11 @@
     deviceActions.setVersion(version === '' ? null : version);
   }
 
+  
   // Handle version selection
   function selectVersion(version: string) {
     deviceActions.setVersion(version);
-    showVersionDropdown = false;
+    manageVersionDropdown('close');
   }
 
   // Get display name for device type
@@ -264,11 +360,10 @@
           ▼
         </button>
       </div>
-    </div>
 
-    <!-- Dropdown List -->
-    {#if showDropdown && allDevices.length > 0}
-      <div class="dropdown-list absolute z-10 w-full mt-1 bg-gray-800 border border-orange-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+      <!-- Dropdown List -->
+      {#if showDropdown && allDevices.length > 0}
+        <div class="dropdown-list absolute z-10 left-0 right-0 mt-1 bg-gray-800 border border-orange-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
         {#if filteredDevices.length === 0 && deviceFilter}
           <div class="px-4 py-3 text-sm text-orange-300">
             No devices match your filter
@@ -300,6 +395,7 @@
         {/if}
       </div>
     {/if}
+    </div>
 
     <!-- Status Messages -->
     {#if allDevices.length === 0}
@@ -329,7 +425,8 @@
           placeholder="Select firmware version..."
           value={deviceSelectionStore.version ? getVersionDisplayText(deviceSelectionStore.version) : ''}
           on:input={handleVersionInputChange}
-          on:focus={() => showVersionDropdown = true}
+          on:click={handleVersionInputClick}
+          on:keydown={(e) => handleDropdownKeydown(e, 'version')}
           class="w-full px-4 py-2 pr-10 bg-gray-800 border border-orange-600 rounded-md text-orange-100 placeholder-orange-400 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors cursor-pointer"
           readonly
         />
@@ -338,7 +435,7 @@
         <div class="absolute right-2 top-1/2 transform -translate-y-1/2">
           <button
             type="button"
-            on:click={() => showVersionDropdown = !showVersionDropdown}
+            on:click={() => manageVersionDropdown('toggle')}
             class="text-orange-400 hover:text-orange-300 transition-colors p-1"
             title="Toggle version dropdown"
           >
@@ -390,23 +487,4 @@
   </div>
 
 <style>
-
-  details summary::-webkit-details-marker {
-    color: #fb923c;
-  }
-
-  details summary {
-    list-style: none;
-  }
-
-  details summary::before {
-    content: '▶';
-    display: inline-block;
-    margin-right: 0.5rem;
-    transition: transform 0.2s;
-  }
-
-  details[open] summary::before {
-    transform: rotate(90deg);
-  }
 </style>
