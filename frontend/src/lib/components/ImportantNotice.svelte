@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { setCookie, hasCookie } from '$lib/utils/cookies.js';
+  import { _ as locales } from 'svelte-i18n';
 
-  export let title = "⚠️ Important Notice";
+  export let title = $locales('important_notice.title');
   export let cookieName = "meshtastic-important-notice-hidden";
 
   let isExpanded = true;
@@ -40,8 +41,8 @@
             type="button"
             class="close-button"
             on:click={closeNotice}
-            title="Close notice"
-            aria-label="Close notice"
+            title={$locales('important_notice.close_notice')}
+            aria-label={$locales('important_notice.close_notice')}
           >
             ✕
           </button>
@@ -49,11 +50,10 @@
         <div class="notice-body">
           <div class="notice-text">
             <p class="text-orange-300 text-sm leading-relaxed">
-              These are <strong>unofficial builds</strong> of Meshtastic firmware, provided for testing and development purposes.
-              They may contain experimental features and are not officially supported by the Meshtastic project.
+              {@html $locales('important_notice.unofficial_builds')}
             </p>
             <p class="text-orange-300 text-sm mt-2">
-              Always backup your device configuration before flashing firmware.
+              {$locales('important_notice.backup_before_flashing')}
             </p>
           </div>
         </div>
@@ -66,8 +66,8 @@
           type="button"
           class="expand-button"
           on:click={expandNotice}
-          title="Expand notice"
-          aria-label="Expand notice"
+          title={$locales('important_notice.expand_notice')}
+          aria-label={$locales('important_notice.expand_notice')}
         >
           ▼
         </button>

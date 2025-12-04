@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { _ as locales } from 'svelte-i18n';
+
   // Local state
   let showMoreSection = false;
   let showImportantNotes = false;
@@ -20,63 +22,62 @@
   }
 
   
-  // Build information
-  const buildInfo = [
+  // Reactive build information and best practices using localization
+  $: buildInfo = [
     {
       icon: '🏗️',
-      title: 'Build Variants',
-      description: 'Not all board-version combinations are built. Open an issue on GitHub to request specific variants.'
+      title: $locales('notes_static.build_variants_title'),
+      description: $locales('notes_static.build_variants_desc')
     },
     {
       icon: '🌍',
-      title: 'Language Builds',
-      description: 'Builds with "-ru" include Russian language support. Similar patterns exist for other languages.'
+      title: $locales('notes_static.language_builds_title'),
+      description: $locales('notes_static.language_builds_desc')
     },
     {
       icon: '🌙',
-      title: 'Daily Builds',
-      description: 'Builds ending in ".daily" are created from master branch, built 4 times daily at 5:00, 11:00, 17:00, 23:00 GMT.'
+      title: $locales('notes_static.daily_builds_title'),
+      description: $locales('notes_static.daily_builds_desc')
     },
     {
       icon: '⚙️',
-      title: 'Custom Boards',
-      description: 'Custom board configurations are available. Submit issues or PRs via GitHub.',
+      title: $locales('notes_static.custom_boards_title'),
+      description: $locales('notes_static.custom_boards_desc'),
       link: 'https://github.com/mrekin/MeshtasticCustomBoards'
     },
     {
       icon: '📦',
-      title: 'Source Code',
-      description: 'Firmware is built from official Meshtastic source with only build/variant modifications applied.',
+      title: $locales('notes_static.source_code_title'),
+      description: $locales('notes_static.source_code_desc'),
       link: 'https://github.com/meshtastic/firmware'
     }
   ];
 
-  // Best practices
-  const bestPractices = [
+  $: bestPractices = [
     {
       icon: '💾',
-      title: 'Backup Configuration',
-      description: 'Always backup your device configuration before flashing new firmware.'
+      title: $locales('notes_static.backup_config_title'),
+      description: $locales('notes_static.backup_config_desc')
     },
     {
       icon: '🔋',
-      title: 'Battery Level',
-      description: 'Ensure your device has sufficient battery charge or is connected to power during installation.'
+      title: $locales('notes_static.battery_level_title'),
+      description: $locales('notes_static.battery_level_desc')
     },
     {
       icon: '📡',
-      title: 'Stable Connection',
-      description: 'Maintain a stable USB connection throughout the firmware installation process.'
+      title: $locales('notes_static.stable_connection_title'),
+      description: $locales('notes_static.stable_connection_desc')
     },
     {
       icon: '🔄',
-      title: 'Recovery Mode',
-      description: 'Know how to enter recovery/bootloader mode for your specific device model.'
+      title: $locales('notes_static.recovery_mode_title'),
+      description: $locales('notes_static.recovery_mode_desc')
     },
     {
       icon: '📖',
-      title: 'Read Documentation',
-      description: 'Consult your device documentation for specific installation instructions and requirements.'
+      title: $locales('notes_static.read_documentation_title'),
+      description: $locales('notes_static.read_documentation_desc')
     }
   ];
 </script>
@@ -94,7 +95,7 @@
       >
         <h3 class="text-lg font-semibold text-orange-200 flex items-center">
           <span class="mr-2">📖</span>
-          HowTo
+          {$locales('notes.howto')}
         </h3>
         <span class="text-orange-300 transform transition-transform duration-200" style="transform: {showHowTo ? 'rotate(180deg)' : 'rotate(0deg)'}">
           ▼
@@ -105,7 +106,7 @@
         <div id="howto-content" class="mt-3 space-y-4 animate-fade-in">
           <!-- Content will be added later -->
           <div class="text-orange-300 text-sm">
-            <p>HowTo content coming soon...</p>
+            <p>{$locales('notes_static.howto_coming_soon')}</p>
           </div>
         </div>
       {/if}
@@ -121,7 +122,7 @@
       >
         <h3 class="text-lg font-semibold text-orange-200 flex items-center">
           <span class="mr-2">📝</span>
-          Notes
+          {$locales('notes.notes')}
         </h3>
         <span class="text-orange-300 transform transition-transform duration-200" style="transform: {showImportantNotes ? 'rotate(180deg)' : 'rotate(0deg)'}">
           ▼
@@ -134,7 +135,7 @@
         <div class="mb-6">
           <h4 class="font-medium text-orange-200 mb-3 flex items-center">
             <span class="mr-2">🏗️</span>
-            Build Information
+            {$locales('notes.build_info')}
           </h4>
           <div class="space-y-3 text-sm text-orange-100">
             {#each buildInfo as info}
@@ -172,7 +173,7 @@
       >
         <h4 class="font-medium text-orange-200 flex items-center">
           <span class="mr-2">📋</span>
-          More..
+          {$locales('notes.more')}
         </h4>
         <span class="text-orange-300 transform transition-transform duration-200" style="transform: {showMoreSection ? 'rotate(180deg)' : 'rotate(0deg)'}">
           ▼
@@ -185,7 +186,7 @@
           <div>
             <h5 class="font-medium text-orange-200 mb-3 flex items-center">
               <span class="mr-2">✅</span>
-              Best Practices
+              {$locales('notes.best_practices')}
             </h5>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-orange-100">
               {#each bestPractices as practice}
@@ -204,17 +205,17 @@
           <div class="p-3 bg-orange-900 bg-opacity-30 border border-orange-600 rounded">
             <h5 class="font-medium text-orange-200 mb-2 flex items-center">
               <span class="mr-2">💬</span>
-              Need Help?
+              {$locales('notes.need_help')}
             </h5>
             <div class="space-y-2 text-sm text-orange-100">
               <p>
-                If you encounter issues with these firmware builds, please:
+                {$locales('notes_static.if_encounter_issues')}
               </p>
               <ul class="list-disc list-inside space-y-1 ml-4">
-                <li>Check the device compatibility list</li>
-                <li>Verify you're using the correct firmware variant</li>
-                <li>Consult the official Meshtastic documentation</li>
-                <li>Report issues on the relevant GitHub repository</li>
+                <li>{$locales('notes_static.check_compatibility')}</li>
+                <li>{$locales('notes_static.verify_firmware_variant')}</li>
+                <li>{$locales('notes_static.consult_documentation')}</li>
+                <li>{$locales('notes_static.report_issues')}</li>
               </ul>
               <div class="mt-3 space-x-4">
                 <a
@@ -224,7 +225,7 @@
                   class="inline-flex items-center px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors text-sm"
                 >
                   <span class="mr-2">🐛</span>
-                  Report Issue
+                  {$locales('notes.report_issue')}
                 </a>
                 <a
                   href="https://meshtastic.org/docs/"
@@ -233,7 +234,7 @@
                   class="inline-flex items-center px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors text-sm ml-2"
                 >
                   <span class="mr-2">📚</span>
-                  Documentation
+                  {$locales('notes.documentation')}
                 </a>
               </div>
             </div>
@@ -245,15 +246,15 @@
     <!-- Version Information -->
     <div class="mt-4 text-xs text-orange-400 border-t border-orange-700 pt-3">
       <div class="flex justify-between items-center">
-        <span>Firmware build service</span>
-        <span>Beta version - Use at your own risk</span>
+        <span>{$locales('notes.firmware_build_service')}</span>
+        <span>{$locales('notes.beta_version')}</span>
       </div>
       <div class="mt-2">
         <p>
-          <strong>Disclaimer:</strong> This service is provided as-is without any warranty. The developers are not responsible for any damage to devices or data loss.
+          <strong>{$locales('notes.disclaimer')}:</strong> {$locales('notes.disclaimer_text')}
         </p>
         <p class="mt-1">
-          By using this service, you agree to these terms and acknowledge the risks involved.
+          {$locales('notes.terms_agreement')}
         </p>
       </div>
     </div>

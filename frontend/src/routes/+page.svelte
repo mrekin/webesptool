@@ -9,9 +9,10 @@
   import ImportantNotice from '$lib/components/ImportantNotice.svelte';
   import { loadingState, availableFirmwares } from '$lib/stores';
   import { onMount } from 'svelte';
+  import { _ as locales, locale } from 'svelte-i18n';
 
-  // Local state
-  let pageTitle = 'Custom Meshtastic builds web installer';
+  // Local state with i18n
+  $: pageTitle = $locales('page.main_title');
 
   // Subscribe to stores
   $: error = $loadingState.error;
@@ -31,11 +32,11 @@
 </script>
 
 <svelte:head>
-  <title>{pageTitle}</title>
-  <meta name="description" content="Custom Meshtastic firmware builds web installer" />
+  <title>{$locales('page.main_title')}</title>
+  <meta name="description" content={$locales('page.meta_description')} />
   <meta name="keywords" content="meshtastic, firmware, esp32, lora, mesh network" />
-  <meta property="og:title" content={pageTitle} />
-  <meta property="og:description" content="Install custom Meshtastic firmware builds" />
+  <meta property="og:title" content={$locales('page.main_title')} />
+  <meta property="og:description" content={$locales('page.main_description')} />
   <meta property="og:type" content="website" />
 </svelte:head>
 
@@ -43,12 +44,12 @@
   <!-- Header Section -->
   <div slot="head" class="text-center space-y-4">
     <h1 class="text-3xl md:text-4xl font-bold text-orange-200 mb-4">
-      Custom Meshtastic builds web installer
+      {$locales('page.main_title')}
     </h1>
 
     <div class="max-w-2xl mx-auto">
       <p class="text-orange-300 text-lg">
-        Install custom Meshtastic firmware on your device with browser-based tools or direct downloads.
+        {$locales('page.main_description')}
       </p>
     </div>
 
@@ -63,14 +64,14 @@
           <div class="bg-gray-800 bg-opacity-90 border border-red-600 rounded-lg p-4">
             <div class="flex items-center justify-between flex-wrap gap-4">
               <div class="flex items-center space-x-3">
-                <h2 class="text-lg font-semibold text-red-200">❌ Error</h2>
+                <h2 class="text-lg font-semibold text-red-200">❌ {$locales('page.error')}</h2>
                 <p class="text-red-300">{error}</p>
               </div>
               <button
                 on:click={() => window.location.reload()}
                 class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
               >
-                Reload Page
+                {$locales('page.reload_page')}
               </button>
             </div>
           </div>
@@ -93,7 +94,7 @@
                     <!-- Static globe emoji when not loading -->
                     🌐
                   {/if}
-                  Source repository:
+                  {$locales('page.source_repository')}
                 </span>
                 <RepositorySelector />
               </div>
@@ -122,7 +123,7 @@
                 {/if}
               </span>
 
-              Device Selection
+              {$locales('page.device_selection')}
             </h2>
             <SelectDevice />
           </div>
@@ -131,7 +132,7 @@
           <div class="p-1 bg-gray-800 border border-orange-600 rounded-lg">
             <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center">
               <span class="mr-3">⬇️</span>
-              Download Options
+              {$locales('page.download_options')}
             </h2>
             <DownloadButtons />
           </div>
@@ -143,7 +144,7 @@
           <div class="p-6 bg-gray-800 border border-orange-600 rounded-lg">
             <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center">
               <span class="mr-3">ℹ️</span>
-              Firmware Information
+              {$locales('page.firmware_information')}
             </h2>
             <FirmwareInfo />
           </div>
@@ -155,7 +156,7 @@
     <div class="p-6 bg-gray-800 border border-orange-600 rounded-lg mt-8">
       <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center">
         <span class="mr-3">📝</span>
-        Important Notes
+        {$locales('page.important_notes')}
       </h2>
       <Notes />
     </div>

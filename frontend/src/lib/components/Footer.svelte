@@ -1,58 +1,58 @@
 <script lang="ts">
+  import { _ as locales } from 'svelte-i18n';
 
   // Local state
   let currentYear = new Date().getFullYear();
 
-  // Footer links data
-  const mainLinks = [
+  // Reactive footer links data using localization
+  $: mainLinks = [
     {
-      name: 'Meshtastic',
+      name: $locales('footer_static.meshtastic_name'),
       href: 'https://meshtastic.org/',
-      description: 'Official Meshtastic project website'
+      description: $locales('footer_static.meshtastic_desc')
     },
     {
-      name: 'Documentation',
+      name: $locales('footer_static.documentation_name'),
       href: 'https://meshtastic.org/docs/',
-      description: 'Official documentation and guides'
+      description: $locales('footer_static.documentation_desc')
     },
     {
-      name: 'Community',
+      name: $locales('footer_static.community_name'),
       href: 'https://meshtastic.discourse.group/',
-      description: 'Community forums and discussions'
+      description: $locales('footer_static.community_desc')
     },
     {
-      name: 'GitHub',
+      name: $locales('footer_static.github_name'),
       href: 'https://github.com/meshtastic/firmware',
-      description: 'Source code and development'
+      description: $locales('footer_static.github_desc')
     }
   ];
 
-  const toolLinks = [
+  $: toolLinks = [
     {
-      name: 'Meshtastic Flasher',
+      name: $locales('footer_static.meshtastic_flasher_name'),
       href: 'https://flasher.meshtastic.org/',
-      description: 'Web-based firmware flashing tool'
+      description: $locales('footer_static.meshtastic_flasher_desc')
     },
     {
-      name: 'ESP Web Tools',
+      name: $locales('footer_static.esp_web_tools_name'),
       href: 'https://esphome.github.io/esp-web-tools/',
-      description: 'Browser-based ESP32 development tools'
+      description: $locales('footer_static.esp_web_tools_desc')
     }
   ];
 
-  const mirrorLinks = [
+  $: mirrorLinks = [
     {
-      name: 'Primary Mirror',
+      name: $locales('footer_static.primary_mirror_name'),
       href: 'https://mrekin.duckdns.org/flasher/',
-      description: 'Main service mirror'
+      description: $locales('footer_static.primary_mirror_desc')
     },
     {
-      name: 'European Mirror',
+      name: $locales('footer_static.european_mirror_name'),
       href: 'https://de2-vardas.duckdns.org',
-      description: 'European server mirror'
+      description: $locales('footer_static.european_mirror_desc')
     }
   ];
-
 
   function formatLink(link: any) {
     return {
@@ -87,10 +87,10 @@
       <div class="mb-8">
         <h3 class="text-orange-200 font-semibold mb-4 flex items-center">
           <span class="mr-2">🛠️</span>
-          Development Tools
+          {$locales('footer.development_tools')}
         </h3>
         <p class="text-orange-300 mb-4 text-sm">
-          Installer powered by advanced web-based tools for firmware development and installation:
+          {$locales('footer.installer_description')}
         </p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {#each toolLinks as tool}
@@ -114,10 +114,10 @@
       <div class="mb-8">
         <h3 class="text-orange-200 font-semibold mb-4 flex items-center">
           <span class="mr-2">🌐</span>
-          Service Mirrors
+          {$locales('footer.service_mirrors')}
         </h3>
         <p class="text-orange-300 mb-4 text-sm">
-          Alternative service endpoints for improved accessibility and performance:
+          {$locales('footer.alternative_endpoints')}
         </p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {#each mirrorLinks as mirror}
@@ -148,10 +148,10 @@
         <div class="border-t border-orange-800 pt-6 mt-8">
           <div class="text-center space-y-2 text-sm text-orange-400">
             <p>
-              © {currentYear} Meshtastic Firmware Build Service. All rights reserved.
+              {$locales('footer_static.copyright', { year: currentYear })}
             </p>
             <p>
-              Built with ❤️ using
+              {$locales('footer_static.built_with')}
               <a href="https://svelte.dev" target="_blank" rel="noopener noreferrer" class="text-orange-300 hover:text-orange-200 underline">
                 SvelteKit
               </a>
@@ -165,7 +165,7 @@
               </a>
             </p>
             <p class="text-xs">
-              Meshtastic® is a registered trademark. All other trademarks are the property of their respective owners.
+              {$locales('footer_static.trademark_notice')}
             </p>
           </div>
         </div>
@@ -177,12 +177,12 @@
       <div class="container mx-auto px-4 py-3">
         <div class="flex flex-col sm:flex-row justify-between items-center text-xs text-orange-400">
           <div class="flex items-center space-x-4">
-            <span>Status:</span>
-            <span class="text-orange-300">Beta Service</span>
+            <span>{$locales('footer.status')}:</span>
+            <span class="text-orange-300">{$locales('footer.beta_service')}</span>
             <span class="inline-block w-2 h-2 bg-yellow-500 rounded-full ml-2"></span>
           </div>
           <div class="flex items-center space-x-4">
-            <span>Last Updated:</span>
+            <span>{$locales('footer.last_updated')}:</span>
             <span class="text-orange-300">{currentYear}-{String(new Date().getMonth() + 1).padStart(2, '0')}</span>
           </div>
         </div>

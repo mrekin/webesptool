@@ -4,6 +4,7 @@
   import { DeviceType } from '$lib/types.js';
   import { isESP32Device, isNRF52Device, isRP2040Device, supportsESPWebTools, supportsUF2 } from '$lib/utils/deviceTypeUtils.js';
   import type { DownloadOption } from '$lib/types';
+  import { _ as locales } from 'svelte-i18n';
 
   // Local state
   let espWebToolsDialog: HTMLDialogElement;
@@ -155,7 +156,7 @@
     }
 
     if (option.id === 'esptool') {
-      // For Update Device/Full Flash Device - configure and trigger ESP Web Tools on click
+      // For {$locales('download_buttons.update_device')}/{$locales('download_buttons.full_flash_device')} - configure and trigger ESP Web Tools on click
       if (configureAndTriggerESPButton()) {
         return; // ESP Web Tools was triggered successfully
       } else {
@@ -224,7 +225,7 @@
 {#if supportsESPWebTools(deviceDisplayInfoStore?.deviceType) && deviceSelectionStore.version}
   <div style="display: none;">
     <esp-web-install-button manifest="">
-      <button slot="activate">ESP Web Tools Install</button>
+      <button slot="activate">{$locales('download_buttons.esp_web_tools_install')}</button>
     </esp-web-install-button>
   </div>
 {/if}
@@ -236,7 +237,7 @@
     {#if supportsESPWebTools(deviceDisplayInfoStore?.deviceType)}
       <div class="space-y-2">
         <label class="block text-sm font-medium text-orange-200 mb-2">
-          Flash Mode
+          {$locales('download_buttons.flash_mode')}
         </label>
         <div class="flex space-x-4">
           <label class="flex items-center space-x-2 cursor-pointer">
@@ -246,8 +247,8 @@
               value="update"
               class="text-orange-500 focus:ring-orange-500 focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900"
             />
-            <span class="text-orange-100">Update Device</span>
-            <span class="text-xs text-orange-400">(preserves settings)</span>
+            <span class="text-orange-100">{$locales('download_buttons.update_device')}</span>
+            <span class="text-xs text-orange-400">{$locales('download_buttons.preserves_settings')}</span>
           </label>
           <label class="flex items-center space-x-2 cursor-pointer">
             <input
@@ -256,8 +257,8 @@
               value="full"
               class="text-orange-500 focus:ring-orange-500 focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900"
             />
-            <span class="text-orange-100">Full Flash</span>
-            <span class="text-xs text-orange-400">(wipe & reinstall)</span>
+            <span class="text-orange-100">{$locales('download_buttons.full_flash')}</span>
+            <span class="text-xs text-orange-400">{$locales('download_buttons.wipe_reinstall')}</span>
           </label>
         </div>
       </div>
@@ -292,7 +293,7 @@
 
       {#if showMoreOptions}
         <div class="space-y-3 pt-4 border-t border-orange-700 rounded-lg">
-          <h3 class="text-lg font-semibold text-orange-200">Additional Download Options</h3>
+          <h3 class="text-lg font-semibold text-orange-200">{$locales('download_buttons.additional_download_options')}</h3>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             {#each downloadOptions.slice(2) as option}
@@ -316,19 +317,19 @@
 
 <!-- ESP Web Tools Dialog (for advanced use) -->
 <dialog bind:this={espWebToolsDialog} class="p-6 bg-gray-800 border border-orange-600 rounded-lg backdrop:bg-black backdrop:bg-opacity-50">
-  <h3 class="text-lg font-semibold text-orange-200 mb-4">ESP Web Tools Installation</h3>
+  <h3 class="text-lg font-semibold text-orange-200 mb-4">{$locales('download_buttons.esp_web_tools_install')}ation</h3>
   <div class="space-y-4">
     <p class="text-orange-300">
       ESP Web Tools allows you to install Meshtastic firmware directly in your browser without any additional software.
     </p>
     <div class="space-y-3">
-      <h4 class="font-medium text-orange-200 mb-2">Instructions:</h4>
+      <h4 class="font-medium text-orange-200 mb-2">{$locales('download_buttons.instructions')}</h4>
       <ol class="list-decimal list-inside space-y-2 text-sm text-orange-300">
-        <li>Connect your ESP32 device to your computer via USB</li>
-        <li>Click "Connect" in the ESP Web Tools interface</li>
-        <li>Select the correct COM port</li>
-        <li>Click "Install" to begin flashing</li>
-        <li>Wait for the installation to complete</li>
+        <li>{$locales('download_buttons.connect_device')}</li>
+        <li>{$locales('download_buttons.click_connect')}</li>
+        <li>{$locales('download_buttons.select_com_port')}</li>
+        <li>{$locales('download_buttons.click_install')}</li>
+        <li>{$locales('download_buttons.wait_complete')}</li>
       </ol>
     </div>
     <div class="flex justify-end space-x-4 pt-4">
@@ -336,7 +337,7 @@
         class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded transition-colors duration-200"
         on:click={() => espWebToolsDialog.close()}
       >
-        Close
+        {$locales('common.close')}
       </button>
     </div>
   </div>

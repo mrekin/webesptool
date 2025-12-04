@@ -2,6 +2,7 @@
   import { deviceDisplayInfo, firmwareDisplayInfo, loadingState } from '$lib/stores';
   import { DeviceType } from '$lib/types.js';
   import { isESP32Device, isNRF52Device, isRP2040Device, getDeviceTypeLabel } from '$lib/utils/deviceTypeUtils.js';
+  import { _ as locales } from 'svelte-i18n';
 
   // Local state for HTML rendering
   let firmwareInfoElement: HTMLElement;
@@ -33,27 +34,27 @@
         <!-- Firmware Version Header -->
     <div class="p-4 bg-gray-800 border border-orange-600 rounded-md">
       <h2 class="text-xl font-bold text-orange-200 mb-3">
-        Firmware Information
+        {$locales('firmware_info.title')}
       </h2>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-        <!-- Device Information -->
+        <!-- {$locales('firmware_info.device_info')} -->
         <div class="space-y-2">
           <div class="flex justify-between items-center">
-            <span class="text-orange-300 font-medium">Version: </span>
+            <span class="text-orange-300 font-medium">{$locales('common.version')} </span>
             <span class="text-orange-100 font-mono">{displayInfo?.version}</span>
           </div>
 
           {#if displayInfo?.buildDate && displayInfo.buildDate !== 'Unknown'}
             <div class="flex justify-between items-center">
-              <span class="text-orange-300 font-medium">Build Date: </span>
+              <span class="text-orange-300 font-medium">{$locales('common.build_date')} </span>
               <span class="text-orange-100">{displayInfo.buildDate}</span>
             </div>
           {/if}
 
           {#if displayInfo?.latestTag}
             <div class="flex justify-between items-center">
-              <span class="text-orange-300 font-medium">Latest Tag: </span>
+              <span class="text-orange-300 font-medium">{$locales('firmware_info.latest_tag')} </span>
               <span class="text-orange-100">{displayInfo.latestTag}</span>
             </div>
           {/if}
@@ -61,31 +62,31 @@
       </div>
 
     </div>
-    <!-- Device Information Header -->
+    <!-- {$locales('firmware_info.device_info')} Header -->
     <div class="p-4 bg-gray-800 border border-orange-600 rounded-md">
       <h2 class="text-xl font-bold text-orange-200 mb-3">
-        Device Information
+        {$locales('firmware_info.device_info')}
       </h2>
 
       <div class="grid grid-cols-1 md:grid-cols-1 gap-4 text-sm">
         <div class="space-y-2">
           <div class="flex justify-start items-center gap-4">
-            <span class="text-orange-300 font-medium">Device name:</span>
+            <span class="text-orange-300 font-medium">{$locales('common.device_name')}</span>
             <span class="text-orange-100">{deviceInfo.deviceName}</span>
           </div>
 
           <div class="flex justify-start items-center gap-4">
-            <span class="text-orange-300 font-medium">PIO target:</span>
+            <span class="text-orange-300 font-medium">{$locales('select_device.pio_target')}</span>
             <span class="text-orange-100">{deviceInfo.devicePioTarget}</span>
           </div>
 
           <div class="flex justify-start items-center gap-4">
-            <span class="text-orange-300 font-medium">Platform:</span>
+            <span class="text-orange-300 font-medium">{$locales('common.platform')}</span>
             <span class="text-orange-100 uppercase">{getDeviceTypeLabel(deviceInfo.deviceType)}</span>
           </div>
 
           <div class="flex justify-start items-center gap-4">
-            <span class="text-orange-300 font-medium">Available versions:</span>
+            <span class="text-orange-300 font-medium">{$locales('common.available_versions')}</span>
             <span class="text-orange-100">{deviceInfo.availableVersions?.length || 0} versions</span>
           </div>
 
@@ -102,7 +103,7 @@
         >
           <h3 class="text-lg font-semibold text-orange-200 flex items-center">
             <span class="mr-2">📖</span>
-            Device Details
+            {$locales('firmware_info.device_details')}
           </h3>
           <span class="text-orange-300 transform transition-transform duration-200" style="transform: {showDeviceInfo ? 'rotate(180deg)' : 'rotate(0deg)'}">
             ▼
@@ -122,11 +123,11 @@
                 </div>
               {:else if deviceInfo}
                 <div class="text-sm text-orange-300 text-center py-8">
-                  No device information available
+                  {$locales('firmware_info.no_device_info')}
                 </div>
               {:else}
                 <div class="text-sm text-orange-300 text-center py-8">
-                  Select a device to view details
+                  {$locales('firmware_info.select_device_view')}
                 </div>
               {/if}
             </div>
@@ -137,30 +138,30 @@
   </div>
 {/if}
 
-<!-- Firmware Information (only when version is selected) -->
+<!-- {$locales('firmware_info.title')} (only when version is selected) -->
 {#if displayInfo}
   <div class="space-y-4">
 
 
 
-    <!-- Installation Instructions Preview -->
+    <!-- {$locales('firmware_info.installation_instructions')} Preview -->
     <div class="p-4 bg-gray-800 border border-orange-600 rounded-md">
-      <h3 class="text-lg font-semibold text-orange-200 mb-3">Installation Instructions</h3>
+      <h3 class="text-lg font-semibold text-orange-200 mb-3">{$locales('firmware_info.installation_instructions')}</h3>
 
       <div class="space-y-3 text-sm text-orange-100">
         {#if isESP32Device(deviceInfo?.deviceType)}
           <div class="flex items-start space-x-3">
             <span class="text-orange-400 font-bold">1.</span>
             <div>
-              <p class="font-medium text-orange-200">ESP Web Tools Installation</p>
-              <p class="text-orange-300">Click "ESP Web Tools Install" to use browser-based installation.</p>
+              <p class="font-medium text-orange-200">{$locales('firmware_info.esp_web_tools')}</p>
+              <p class="text-orange-300">{$locales('firmware_info.esp_web_tools_desc')}</p>
             </div>
           </div>
 
           <div class="flex items-start space-x-3">
             <span class="text-orange-400 font-bold">2.</span>
             <div>
-              <p class="font-medium text-orange-200">Alternative: Manual Download</p>
+              <p class="font-medium text-orange-200">{$locales('firmware_info.alternative_download')}</p>
               <p class="text-orange-300">Use download buttons to get firmware files for manual flashing.</p>
             </div>
           </div>
@@ -216,10 +217,10 @@
 
         <div class="mt-4 p-3 bg-orange-900 bg-opacity-30 border border-orange-600 rounded">
           <p class="text-orange-200 font-medium">
-            ⚠️ <strong>Important:</strong> This will replace your current firmware.
+            {$locales('firmware_info.important_warning')}
           </p>
           <p class="text-orange-300 text-xs mt-1">
-            Make sure to backup any important data before proceeding with installation.
+            {$locales('firmware_info.backup_warning')}
           </p>
         </div>
       </div>
@@ -227,12 +228,12 @@
   </div>
 {:else if error}
   <div class="p-4 bg-red-900 bg-opacity-30 border border-red-600 rounded-md">
-    <h3 class="text-lg font-semibold text-red-200 mb-2">Error Loading Firmware Information</h3>
+    <h3 class="text-lg font-semibold text-red-200 mb-2">Error Loading {$locales('firmware_info.title')}</h3>
     <p class="text-sm text-red-300">{error}</p>
   </div>
 {:else}
   <div class="p-4 bg-gray-800 border border-orange-600 rounded-md">
-    <h3 class="text-lg font-semibold text-orange-200 mb-2">Firmware Information</h3>
+    <h3 class="text-lg font-semibold text-orange-200 mb-2">{$locales('firmware_info.title')}</h3>
     <p class="text-sm text-orange-300">
       Select a device and firmware version to view detailed information and installation instructions.
     </p>

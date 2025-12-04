@@ -6,6 +6,7 @@
   import { DeviceType } from '$lib/types.js';
   import { DEVICE_GROUP_LABELS } from '$lib/utils/deviceTypeUtils.js';
   import type { DeviceCategoryType } from '$lib/types.ts';
+  import { _ as locales } from 'svelte-i18n';
 
   // Local state
   let deviceFilter = '';
@@ -325,7 +326,7 @@
   <!-- Combined Device Selector with Filter -->
   <div class="space-y-2">
     <label for="device-combobox" class="block text-sm font-medium text-orange-300">
-        Device Type
+        {$locales('select_device.device_type')}
     </label>
 
     <!-- Combined Input with Dropdown -->
@@ -333,7 +334,7 @@
       <input
         id="device-combobox"
         type="text"
-        placeholder="Type to filter or click to select..."
+        placeholder={$locales('select_device.filter_placeholder')}
         value={deviceFilter}
         on:input={handleInputChange}
         on:focus={handleInputFocus}
@@ -348,7 +349,7 @@
             type="button"
             on:click={clearFilter}
             class="text-orange-400 hover:text-orange-300 transition-colors p-1"
-            title="Clear filter"
+            title={$locales('select_device.clear_filter')}
           >
             ✕
           </button>
@@ -357,7 +358,7 @@
           type="button"
           on:click={toggleDropdown}
           class="text-orange-400 hover:text-orange-300 transition-colors p-1"
-          title="Toggle dropdown"
+          title={$locales('select_device.toggle_dropdown')}
         >
           ▼
         </button>
@@ -368,7 +369,7 @@
         <div class="dropdown-list absolute z-10 left-0 right-0 mt-1 bg-gray-800 border border-orange-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
         {#if filteredDevices.length === 0 && deviceFilter}
           <div class="px-4 py-3 text-sm text-orange-300">
-            No devices match your filter
+            {$locales('select_device.no_devices_match')}
           </div>
         {:else}
           <!-- Device Categories -->
@@ -402,21 +403,21 @@
     <!-- Status Messages -->
     {#if allDevices.length === 0}
       <p class="text-sm text-orange-300">
-        No devices available
+        {$locales('select_device.no_devices_available')}
       </p>
     {:else if deviceFilter && filteredDevices.length > 0}
       <p class="text-xs text-orange-400">
-        Found {filteredDevices.length} device{filteredDevices.length === 1 ? '' : 's'}
+        {$locales('select_device.found_devices', {values: { count: filteredDevices.length }})}
       </p>
     {/if}
   </div>
 
-  <!-- Firmware Version Selection -->
+  <!-- {$locales('select_device.firmware_version')} Selection -->
   {#if deviceSelected}
     {#if versionsDataStore.versions.length > 0}
     <div class="space-y-2">
       <label for="firmware-version" class="block text-sm font-medium text-orange-300">
-        Firmware Version
+        {$locales('select_device.firmware_version')}
       </label>
 
       <!-- Custom Version Selector -->
@@ -424,7 +425,7 @@
         <input
           id="firmware-version"
           type="text"
-          placeholder="Select firmware version..."
+          placeholder={$locales('select_device.version_placeholder')}
           value={deviceSelectionStore.version ? getVersionDisplayText(deviceSelectionStore.version) : ''}
           on:input={handleVersionInputChange}
           on:click={handleVersionInputClick}
@@ -439,7 +440,7 @@
             type="button"
             on:click={() => manageVersionDropdown('toggle')}
             class="text-orange-400 hover:text-orange-300 transition-colors p-1"
-            title="Toggle version dropdown"
+            title={$locales('select_device.toggle_dropdown')}
           >
             ▼
           </button>
@@ -475,10 +476,10 @@
     {:else}
     <div class="space-y-2">
       <label for="firmware-version" class="block text-sm font-medium text-orange-300">
-        Firmware Version
+        {$locales('select_device.firmware_version')}
       </label>
       <p class="text-sm text-orange-300">
-        No versions available for this device
+        {$locales('select_device.no_versions_available')}
       </p>
     </div>
     {/if}
