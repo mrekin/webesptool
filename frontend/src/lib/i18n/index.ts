@@ -32,6 +32,16 @@ export async function setupI18n() {
   });
 }
 
+export function initI18nSync() {
+  // Handle both SSR and client-side
+  const initialLocale = typeof window !== 'undefined' ? getInitialLocale() : defaultLocale;
+
+  init({
+    fallbackLocale: defaultLocale,
+    initialLocale
+  });
+}
+
 export function changeLocale(locale: string) {
   if (browser) {
     setCookie('locale', locale, 365);

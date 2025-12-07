@@ -3,7 +3,6 @@
   import { setCookie, hasCookie } from '$lib/utils/cookies.js';
   import { _ as locales } from 'svelte-i18n';
 
-  export let title = $locales('important_notice.title');
   export let cookieName = "meshtastic-important-notice-hidden";
 
   let isExpanded = true;
@@ -36,7 +35,7 @@
       <!-- Expanded state -->
       <div class="notice-content">
         <div class="notice-header">
-          <h3 class="notice-title">{title}</h3>
+          <h3 class="notice-title">{$locales('important_notice.title')}</h3>
           <button
             type="button"
             class="close-button"
@@ -61,7 +60,7 @@
     {:else}
       <!-- Collapsed state -->
       <div class="collapsed-notice">
-        <span class="collapsed-title">{title}</span>
+        <span class="collapsed-title">{$locales('important_notice.title')}</span>
         <button
           type="button"
           class="expand-button"

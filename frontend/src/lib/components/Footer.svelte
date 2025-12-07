@@ -148,7 +148,7 @@
         <div class="border-t border-orange-800 pt-6 mt-8">
           <div class="text-center space-y-2 text-sm text-orange-400">
             <p>
-              {$locales('footer_static.copyright', { year: currentYear })}
+              {$locales('footer_static.copyright', { values: { year: currentYear }})}
             </p>
             <p>
               {$locales('footer_static.built_with')}
@@ -177,12 +177,12 @@
       <div class="container mx-auto px-4 py-3">
         <div class="flex flex-col sm:flex-row justify-between items-center text-xs text-orange-400">
           <div class="flex items-center space-x-4">
-            <span>{$locales('footer.status')}:</span>
-            <span class="text-orange-300">{$locales('footer.beta_service')}</span>
+            <span>{$locales('common.status')}:</span>
+            <span class="text-orange-300">{$locales('common.beta_service')}</span>
             <span class="inline-block w-2 h-2 bg-yellow-500 rounded-full ml-2"></span>
           </div>
           <div class="flex items-center space-x-4">
-            <span>{$locales('footer.last_updated')}:</span>
+            <span>{$locales('common.last_updated')}:</span>
             <span class="text-orange-300">{currentYear}-{String(new Date().getMonth() + 1).padStart(2, '0')}</span>
           </div>
         </div>

@@ -4,7 +4,7 @@
   import { DeviceType } from '$lib/types.js';
   import { isESP32Device, isNRF52Device, isRP2040Device, supportsESPWebTools, supportsUF2 } from '$lib/utils/deviceTypeUtils.js';
   import type { DownloadOption } from '$lib/types';
-  import { _ as locales } from 'svelte-i18n';
+  import { _ as locales, locale } from 'svelte-i18n';
 
   // Local state
   let espWebToolsDialog: HTMLDialogElement;
@@ -17,10 +17,10 @@
   $: deviceDisplayInfoStore = $deviceDisplayInfo;
 
   // Available download options based on device type and version
-  $: downloadOptions = getDownloadOptions(deviceSelectionStore.devicePioTarget, deviceDisplayInfoStore?.deviceType, deviceSelectionStore.version);
+  $: downloadOptions = getDownloadOptions(deviceSelectionStore.devicePioTarget, deviceDisplayInfoStore?.deviceType, deviceSelectionStore.version, $locale);
 
   
-  function getDownloadOptions(devicePioTarget: string | null, deviceType: DeviceType | null | undefined, version: string | null): DownloadOption[] {
+  function getDownloadOptions(devicePioTarget: string | null, deviceType: DeviceType | null | undefined, version: string | null, locale: any): DownloadOption[] {
     if (!devicePioTarget || !version) return [];
 
     const options: DownloadOption[] = [];
@@ -29,11 +29,11 @@
     if (isESP32Device(deviceType)) {
       options.push({
         id: 'esptool',
-        label: firmwareMode === 'full' ? 'Full Flash Device' : 'Update Device',
+        label: firmwareMode === 'full' ? $locales('download_buttons.full_flash_device') : $locales('download_buttons.update_device'),
         mode: firmwareMode === 'full' ? '2' : '1', // 2=full, 1=update
         available: true,
         icon: '🔧',
-        description: firmwareMode === 'full' ? 'Complete firmware wipe and reinstall' : 'Update existing firmware'
+        description: firmwareMode === 'full' ? $locales('download_buttons.complete_firmware_wipe') : $locales('download_buttons.update_existing_firmware')
       });
     }
 
@@ -41,29 +41,29 @@
     if (isNRF52Device(deviceType)) {
       options.push({
         id: 'uf2',
-        label: 'Download Fw UF2',
+        label: $locales('download_buttons.download_fw_uf2'),
         mode: '1',
         available: true,
         icon: '💾',
-        description: 'Download UF2 firmware file for manual installation'
+        description: $locales('download_buttons.download_uf2_firmware')
       });
 
       options.push({
         id: 'ota',
-        label: 'Download Fw OTA',
+        label: $locales('download_buttons.download_ota_firmware'),
         mode: '4',
         available: true,
         icon: '💾',
-        description: 'Download OTA firmware file for update over-the-air'
+        description: $locales('download_buttons.download_ota_firmware')
       });
 
       options.push({
         id: 'url',
-        label: 'Download Erase UF2',
+        label: $locales('download_buttons.download_erase_uf2'),
         mode: '4',
         available: true,
         icon: '💾',
-        description: 'Download NRF Erase file for memory erasing. Don\'t forget to confirm erasing in serial console!',
+        description: $locales('download_buttons.download_nrf_erase'),
         url: 'https://flasher.meshtastic.org/uf2/nrf_erase2.uf2'
       });
     }
@@ -72,22 +72,22 @@
     if (isRP2040Device(deviceType)) {
       options.push({
         id: 'uf2',
-        label: 'Download UF2',
+        label: $locales('download_buttons.download_uf2'),
         mode: '1',
         available: true,
         icon: '💾',
-        description: 'Download UF2 firmware file for manual installation'
+        description: $locales('download_buttons.download_uf2_firmware')
       });
     }
 
     // Add firmware zip download option for all devices
     options.push({
       id: 'fwzip',
-      label: 'Download Fw ZIP',
+      label: $locales('download_buttons.download_fw_zip'),
       mode: '5',
       available: true,
       icon: '📦',
-      description: 'Download complete firmware archive for manual installation'
+      description: $locales('download_buttons.download_complete_archive')
     });    
 
     return options;
@@ -287,7 +287,7 @@
           on:click={() => showMoreOptions = !showMoreOptions}
           class="px-4 py-2 text-sm text-orange-300 hover:text-orange-200 transition-colors"
         >
-          {showMoreOptions ? 'Show Less ▲' : 'More Options ▼'}
+          {showMoreOptions ? $locales('common.show_less') : $locales('common.more_options')}
         </button>
       </div>
 
@@ -317,10 +317,10 @@
 
 <!-- ESP Web Tools Dialog (for advanced use) -->
 <dialog bind:this={espWebToolsDialog} class="p-6 bg-gray-800 border border-orange-600 rounded-lg backdrop:bg-black backdrop:bg-opacity-50">
-  <h3 class="text-lg font-semibold text-orange-200 mb-4">{$locales('download_buttons.esp_web_tools_install')}ation</h3>
+  <h3 class="text-lg font-semibold text-orange-200 mb-4">{$locales('download_buttons.esp_web_tools_title')}</h3>
   <div class="space-y-4">
     <p class="text-orange-300">
-      ESP Web Tools allows you to install Meshtastic firmware directly in your browser without any additional software.
+      {$locales('download_buttons.esp_web_tools_desc')}
     </p>
     <div class="space-y-3">
       <h4 class="font-medium text-orange-200 mb-2">{$locales('download_buttons.instructions')}</h4>

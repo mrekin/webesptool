@@ -162,55 +162,55 @@
             <span class="text-orange-400 font-bold">2.</span>
             <div>
               <p class="font-medium text-orange-200">{$locales('firmware_info.alternative_download')}</p>
-              <p class="text-orange-300">Use download buttons to get firmware files for manual flashing.</p>
+              <p class="text-orange-300">{$locales('firmware_info.alternative_download_desc')}</p>
             </div>
           </div>
         {:else if isNRF52Device(deviceInfo?.deviceType)}
           <div class="flex items-start space-x-3">
             <span class="text-orange-400 font-bold">1.</span>
             <div>
-              <p class="font-medium text-orange-200">UF2 File Download</p>
-              <p class="text-orange-300">Download UF2 file and copy to your device when in bootloader mode.</p>
+              <p class="font-medium text-orange-200">{$locales('firmware_info.uf2_download')}</p>
+              <p class="text-orange-300">{$locales('firmware_info.uf2_download_desc')}</p>
             </div>
           </div>
 
           <div class="flex items-start space-x-3">
             <span class="text-orange-400 font-bold">2.</span>
             <div>
-              <p class="font-medium text-orange-200">Device Bootloader</p>
-              <p class="text-orange-300">Double-click reset button or use reset pin to enter bootloader mode.</p>
+              <p class="font-medium text-orange-200">{$locales('firmware_info.device_bootloader')}</p>
+              <p class="text-orange-300">{$locales('firmware_info.device_bootloader_desc')}</p>
             </div>
           </div>
         {:else if isRP2040Device(deviceInfo?.deviceType)}
           <div class="flex items-start space-x-3">
             <span class="text-orange-400 font-bold">1.</span>
             <div>
-              <p class="font-medium text-orange-200">UF2 File for RP2040</p>
-              <p class="text-orange-300">Download UF2 file and drag-and-drop to the RP2040 when in bootloader mode.</p>
+              <p class="font-medium text-orange-200">{$locales('firmware_info.uf2_rp2040')}</p>
+              <p class="text-orange-300">{$locales('firmware_info.uf2_rp2040_desc')}</p>
             </div>
           </div>
 
           <div class="flex items-start space-x-3">
             <span class="text-orange-400 font-bold">2.</span>
             <div>
-              <p class="font-medium text-orange-200">Enter Bootloader</p>
-              <p class="text-orange-300">Hold BOOTSEL button while connecting USB to enter bootloader mode.</p>
+              <p class="font-medium text-orange-200">{$locales('firmware_info.enter_bootloader')}</p>
+              <p class="text-orange-300">{$locales('firmware_info.enter_bootloader_desc')}</p>
             </div>
           </div>
         {:else}
           <div class="flex items-start space-x-3">
             <span class="text-orange-400 font-bold">1.</span>
             <div>
-              <p class="font-medium text-orange-200">Download Firmware</p>
-              <p class="text-orange-300">Use appropriate download button for your device type.</p>
+              <p class="font-medium text-orange-200">{$locales('firmware_info.download_firmware')}</p>
+              <p class="text-orange-300">{$locales('firmware_info.download_firmware_desc')}</p>
             </div>
           </div>
 
           <div class="flex items-start space-x-3">
             <span class="text-orange-400 font-bold">2.</span>
             <div>
-              <p class="font-medium text-orange-200">Follow Device Instructions</p>
-              <p class="text-orange-300">Refer to your device's manual for specific installation steps.</p>
+              <p class="font-medium text-orange-200">{$locales('firmware_info.follow_instructions')}</p>
+              <p class="text-orange-300">{$locales('firmware_info.follow_instructions_desc')}</p>
             </div>
           </div>
         {/if}
