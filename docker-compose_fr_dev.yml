@@ -1,9 +1,8 @@
 services:
   # Frontend Service - SvelteKit Application
+    # Frontend Service - SvelteKit Application
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    build: frontend/
     container_name: webesptool-frontend
     restart: unless-stopped
     environment:
@@ -11,48 +10,6 @@ services:
       - VITE_API_URL=http://192.168.1.115:5546
       - VITE_PORT=3000
     ports:
-      - "3000:3000"
+      - 5550:3000
     volumes:
       - ./frontend/static:/app/static  # Mount static files
-   # depends_on:
-   #   - webesptool
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # Development Frontend Service (optional)
-  frontend-dev:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
-    container_name: webesptool-frontend-dev
-    restart: "no"
-    environment:
-      - NODE_ENV=development
-      - VITE_API_URL=http://192.168.1.115:5546 #http://192.168.1.115:5546/api/availableFirmwares?src=m1nl
-      - VITE_PORT=5173
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./frontend:/app               # Mount source code for hot reload
-      - /app/node_modules            # Prevent node_modules from being overwritten
-    depends_on:
-      - webesptool
-    profiles:
-      - dev  # Only start with --profile dev
-
-# Network Configuration
-networks:
-  default:
-    name: webesptool-network
-    driver: bridge
-
-# Volume Configuration
-volumes:
-  meshfw_data:
-    driver: local
-  webesptool_logs:
-    driver: local

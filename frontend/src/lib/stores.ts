@@ -139,7 +139,6 @@ export const allDevicesFlat = derived(
         displayName: $availableFirmwares.device_names[device] || device
       });
     });
-    console.log("Test devices: ", devices);
     return devices.sort((a, b) => a.displayName.localeCompare(b.displayName));
   }
 );

@@ -22,14 +22,19 @@ const getInitialLocale = () => {
   return defaultLocale;
 };
 
-export async function setupI18n() {
+export async function setupI18n(locale?: string) {
   // Handle both SSR and client-side
-  const initialLocale = typeof window !== 'undefined' ? getInitialLocale() : defaultLocale;
+  const initialLocale = locale || (typeof window !== 'undefined' ? getInitialLocale() : defaultLocale);
 
-  await init({
-    fallbackLocale: defaultLocale,
-    initialLocale
-  });
+  try {
+    await init({
+      fallbackLocale: defaultLocale,
+      initialLocale
+    });
+  } catch (error) {
+    console.error('[I18N] Error during init:', error);
+    throw error;
+  }
 }
 
 export function initI18nSync() {

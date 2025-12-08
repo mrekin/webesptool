@@ -1,9 +1,85 @@
-import { setupI18n } from '$lib/i18n';
+import { init, locale, register } from 'svelte-i18n';
 
-// Initialize i18n on server side
+// Register locales on server
+register('en', () => import('$lib/i18n/locales/en.json'));
+register('ru', () => import('$lib/i18n/locales/ru.json'));
+
+let initialized = false;
+let initializedLocale: string | null = null;
+
+async function initializeSimpleI18n(initialLocale = 'en') {
+  // Always reinitialize if the locale is different
+  if (initialized && initializedLocale === initialLocale) {
+    locale.set(initialLocale);
+    return;
+  }
+
+  await init({
+    fallbackLocale: 'en',
+    initialLocale: initialLocale
+  });
+
+  initialized = true;
+  initializedLocale = initialLocale;
+}
+
 export async function handle({ event, resolve }) {
-	await setupI18n();
+  // Get locale from cookies or headers BEFORE checking if initialized
+  const cookieLocale = event.cookies.get('locale');
+  const acceptLanguage = event.request.headers.get('accept-language');
+  const browserLocale = acceptLanguage?.split(',')[0]?.split('-')[0];
 
-	const response = await resolve(event);
-	return response;
+  const currentLocale = cookieLocale || browserLocale || 'en';
+
+  // Initialize i18n with the detected locale
+  await initializeSimpleI18n(currentLocale);
+  
+  // Прокси для API
+  const backendUrl = process.env.VITE_API_URL || 'http://192.168.1.115:5546';
+  const url = new URL(event.request.url);
+  
+  if (url.pathname.startsWith('/api/')) {
+    const apiUrl = `${backendUrl}${url.pathname}${url.search}`;
+    
+    let body;
+    if (event.request.method !== 'GET' && event.request.method !== 'HEAD') {
+      body = await event.request.text();
+    }
+
+    try {
+      const response = await fetch(apiUrl, {
+        headers: Object.fromEntries(event.request.headers.entries()),
+        method: event.request.method,
+        body: body
+      });
+
+      const responseText = await response.text();
+      
+      return new Response(responseText, {
+        status: response.status,
+        headers: {
+          'Content-Type': response.headers.get('content-type') || 'application/json',
+        }
+      });
+    } catch (error) {
+      console.error('API proxy error:', error);
+      return new Response(JSON.stringify({ error: 'Backend unavailable' }), {
+        status: 502,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  // Передаем локаль в data для клиента
+  const response = await resolve(event, {
+    transformPageChunk: ({ html }) => {
+      // Добавляем локаль в HTML для клиента
+      return html.replace(
+        '<body',
+        `<body data-server-locale="${currentLocale}"`
+      );
+    }
+  });
+  
+  return response;
 }
