@@ -3,6 +3,11 @@ enviroment: "dev"
 base:
   fwDirs:
     - "data/"
+    - path: "data_m1nl/"
+      desc: "Meshtastic fork with ESP32 optimizations"
+      #src: "https://github.com/m1nl/meshtastic-firmware"
+      src: "m1nl"
+
 
 enviroments:
   dev:

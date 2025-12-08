@@ -295,6 +295,19 @@ export const deviceActions = {
     apiActions.loadAvailableFirmwares(source || '');
   },
 
+  // Update source only (used when backend returns the actual source where firmware was found)
+  updateSourceOnly: (source: string) => {
+    console.log('updateSourceOnly called with:', source);
+    deviceSelection.update(selection => ({
+      ...selection,
+      source
+    }));
+
+    // Reload available firmwares for the new source
+    console.log('Calling loadAvailableFirmwares with:', source);
+    apiActions.loadAvailableFirmwares(source);
+  },
+
   // Reset all selections
   resetSelection: () => {
     deviceSelection.set(initialDeviceSelection);
@@ -394,6 +407,12 @@ export const apiActions = {
       });
       const versions = await apiService.getVersions(devicePioTarget, source);
       unsubscribe();
+
+      // Если бэкенд вернул поле src, обновляем выбор репозитория без сброса устройства
+      if (versions.src) {
+        deviceActions.updateSourceOnly(versions.src);
+      }
+
       versionsData.set(versions);
     } catch (error) {
       loadingActions.setError(error instanceof Error ? error.message : 'Failed to load versions');

@@ -21,6 +21,7 @@ export interface VersionsResponse {
   notes: {
     [version: string]: string;
   };
+  src?: string; // Repository where firmware was found
 }
 
 export interface InfoBlockResponse {
