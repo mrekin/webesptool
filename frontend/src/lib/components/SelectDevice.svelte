@@ -54,6 +54,11 @@
   $: if (versionsDataStore?.versions?.length > 0 && !deviceSelectionStore.version) {
      deviceActions.setVersion(versionsDataStore?.versions[0]);
   }
+
+  $: if (deviceSelectionStore.devicePioTarget && !isFiltering) {
+   deviceFilter = getDeviceDisplayName(deviceSelectionStore.devicePioTarget);
+  }
+  
   // Handle device selection from dropdown
   function selectDevice(device: {device: string; displayName: string}) {
     deviceFilter = device.displayName;
@@ -180,6 +185,7 @@
   function clearFilter() {
     deviceFilter = '';
     selectedIndex = -1;
+    deviceActions.setDeviceDirectly(null);
   }
 
   // Simplified dropdown management using new utilities
@@ -421,7 +427,7 @@
       </label>
 
       <!-- Custom Version Selector -->
-      <div class="relative">
+      <div class="relative z-0">
         <input
           id="firmware-version"
           type="text"
@@ -435,11 +441,11 @@
         />
 
         <!-- Version Dropdown Arrow -->
-        <div class="absolute right-2 top-1/2 transform -translate-y-1/2">
+        <div class="absolute right-2 top-1/2 transform -translate-y-1/2 z-20">
           <button
             type="button"
-            on:click={() => manageVersionDropdown('toggle')}
-            class="text-orange-400 hover:text-orange-300 transition-colors p-1"
+            on:click|stopPropagation={() => manageVersionDropdown('toggle')}
+            class="text-orange-400 hover:text-orange-300 transition-colors p-1 pointer-events-auto"
             title={$locales('select_device.toggle_dropdown')}
           >
             ▼

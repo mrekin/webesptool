@@ -171,7 +171,7 @@ async def getAvailableFirmwares(src = None, rootFolder = None, t:str = None):
     versions = set()
     device_names = {}
 
-    rootFolder = await getRootFolder(src=src)
+    rootFolder, src = await getRootFolder(src=src)
 
     paths = [rf if isinstance(rf, str) else rf.get('path', None) for rf in config['fwDirs']]
     srcs =  [{'src': rf.get('src', None), 'desc': rf.get('desc', '')} for rf in config['fwDirs'] if isinstance(rf,dict) and rf.get('src', None)]
@@ -260,7 +260,7 @@ async def buildInfoblock(t:str = None, v:str = None, src:str = None):
     infoblock={'info':""}
     rmfile = "readme.md"
     
-    rootFolder = await getRootFolder(t,v,src)
+    rootFolder, src = await getRootFolder(t,v,src)
     if rootFolder:
         rmfile = os.path.join(rootFolder,t,rmfile)
     
@@ -281,7 +281,7 @@ async def buildVersions(t:str = None, src:str = None):
     notes_map = {}
     latestTags = {}
 
-    rootFolder = await getRootFolder(t=t, src=src)
+    rootFolder, src = await getRootFolder(t=t, src=src)
 
     if rootFolder:
         address_pattern = re.compile("^"+rootFolder+"[^/]+$")
@@ -338,6 +338,7 @@ async def buildVersions(t:str = None, src:str = None):
     data["dates"] = dates_map
     data["latestTags"] = latestTags
     data["notes"] = notes_map
+    data["src"] = src
 
     #data["versions"] = list(set(data["versions"]))
     #data["versions"].sort(reverse=True, key=CustomLooseVersion)
@@ -398,7 +399,7 @@ async def getRootFolder(t = None, v = None, src:str = None):
         for rf in config['fwDirs']:
             if isinstance(rf,dict) and src == rf.get('src', None) and rf.get('path', None):
                 rootFolder = rf.get('path')
-                return rootFolder
+                return rootFolder, src
     
     # Get devices and versions at first path if not provided
     if not rootFolder and paths:
@@ -411,11 +412,15 @@ async def getRootFolder(t = None, v = None, src:str = None):
                 else:
                     path = os.path.join(rf)
                 if(await aiofiles.os.path.isdir(path)):
-                    return rf
+                    for s in config['fwDirs']:
+                        if isinstance(s,dict) and s.get('path', None) == rf:
+                            src = s.get('src', None)
+                            break
+                    return rf, src
                     
         except Exception:
             rootFolder = None
-    return rootFolder
+    return rootFolder, src
 
 async def buildManifest(t:str = None, v:str = None, u:str = "1", src:str = None):
     log.debug("Build manifest: %s, %s for %s",t,v, src)
@@ -433,8 +438,8 @@ async def buildManifest(t:str = None, v:str = None, u:str = "1", src:str = None)
             }
         ]
     }
-
-    devinfo = await loadInfo(t,v, await getRootFolder(t,v,src))
+    rootFolder, src = await getRootFolder(t,v,src)
+    devinfo = await loadInfo(t,v, rootFolder)
 
     update_offset = 65536
     install_fw_offset = 0
@@ -533,7 +538,7 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
     #u: 5 - zip, 4 - ota, 1 - update, 2 - install
     #check which source folder used
     logInd = True
-    rootFolder = await getRootFolder(t,v,src)
+    rootFolder, src = await getRootFolder(t,v,src)
 
     if not rootFolder:
         return {'error': 'No such firmware found'}

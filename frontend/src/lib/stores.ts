@@ -1,4 +1,4 @@
-import { writable, derived, readable } from 'svelte/store';
+import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
 import type {
   DeviceSelection,
@@ -207,66 +207,6 @@ export const firmwareDisplayInfo = derived(
   }
 );
 
-// URL parameter synchronization
-export const urlSync = readable(
-  null,
-  (set) => {
-    if (!browser) return;
-
-    // Initialize from URL parameters on page load
-    const urlParams = new URLSearchParams(window.location.search);
-    const devicePioTarget = urlParams.get('t');
-
-    if (devicePioTarget) {
-      deviceSelection.update(selection => ({
-        ...selection,
-        devicePioTarget,
-        category: null // Will be set when availableFirmwares loads
-      }));
-    }
-
-    // Subscribe to availableFirmwares changes to update category
-    const unsubscribeFirmwares = availableFirmwares.subscribe((firmwares) => {
-      if (firmwares && devicePioTarget) {
-        const category = detectCategoryFromDeviceTypeAvailableData(devicePioTarget, firmwares);
-
-        deviceSelection.update(selection => {
-          if (selection.devicePioTarget && !selection.category) {
-            // Only set category if it's not already set
-            return {
-              ...selection,
-              category
-            };
-          }
-          return selection;
-        });
-      }
-    });
-
-    // Subscribe to deviceSelection changes and update URL
-    const unsubscribeDeviceSelection = deviceSelection.subscribe((selection) => {
-      if (selection.devicePioTarget) {
-        const url = new URL(window.location);
-        url.searchParams.set('t', selection.devicePioTarget);
-
-        // Remove version parameter if no version selected
-        if (!selection.version) {
-          url.searchParams.delete('v');
-        } else {
-          url.searchParams.set('v', selection.version);
-        }
-
-        // Update URL without triggering page reload
-        window.history.replaceState({}, '', url.toString());
-      }
-    });
-
-    return () => {
-      unsubscribeFirmwares();
-      unsubscribeDeviceSelection();
-    };
-  }
-);
 
 // Helper function to detect category from device type using provided firmwares data
 function detectCategoryFromDeviceTypeAvailableData(devicePioTarget: string, firmwares: AvailableFirmwares): DeviceCategoryType | null {
@@ -629,4 +569,7 @@ deviceSelection.subscribe((selection) => {
 // Initialize on app start
 if (browser) {
   apiActions.loadAvailableFirmwares();
+  import('$lib/utils/urlSync.js').then(({ initializeUrlSync }) => {
+    initializeUrlSync();
+  });
 }
