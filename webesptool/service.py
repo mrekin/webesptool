@@ -390,6 +390,10 @@ async def generate_zip(folder_path, json_data:str = None):
     zip_buffer.seek(0)
     return zip_buffer
 
+async def getSrcs():
+    srcs =  [rf.get('src', None) if isinstance(rf, dict) else rf  for rf in config['fwDirs']]
+    return srcs
+
 async def getRootFolder(t = None, v = None, src:str = None):
     rootFolder = None
 
@@ -513,24 +517,29 @@ async def homepage(request: Request, src:str = None, t:str = None):
     log.debug("Main page builder: %s, %s, %s", str(request.url), str(request.client), str(request.headers))
     return templates.TemplateResponse("general/homepage.html",{"request":request, "data" : await getAvailableFirmwares(src = src, t =t), "defaultDevice" : t})
 
+# availableSRCs
+@app.get("/api/srcs", status_code=200)
+async def getSources(request: Request):
+    return JSONResponse(content= await getSrcs())
+
 # availableFirmwares.json
 @app.get("/api/availableFirmwares", status_code=200)
-async def getSources(request: Request, src:str = None):
+async def getAvailableFirmwares(request: Request, src:str = None):
     return JSONResponse(content= await getAvailableFirmwares(src = src))
 
 # Manifest.json
 @app.get("/api/manifest", status_code=200)
-async def getSources(request: Request, t:str = None, v:str = None, u:str = "1", src:str = None):
+async def getManifest(request: Request, t:str = None, v:str = None, u:str = "1", src:str = None):
     return JSONResponse(content= await buildManifest(t, v, u, src))
 
 # Infoblock (HTML)
 @app.get("/api/infoblock", status_code=200)
-async def getSources(request: Request, t:str = None, v:str = None, src:str = None):
+async def getInfoblock(request: Request, t:str = None, v:str = None, src:str = None):
     return JSONResponse(content= await buildInfoblock(t,v, src))
 
 # Versions for device
 @app.get("/api/versions", status_code=200)
-async def getSources(request: Request, t:str = None, src:str = None):
+async def getVersions(request: Request, t:str = None, src:str = None):
     return JSONResponse(content= await buildVersions(t=t, src=src))
 
 @app.get("/api/firmware" )
