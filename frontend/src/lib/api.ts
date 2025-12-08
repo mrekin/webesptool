@@ -212,6 +212,11 @@ class APIService {
     return this.request<AvailableFirmwares>(`/availableFirmwares${params}`);
   }
 
+  // Get available repositories
+  async getSrcs(): Promise<string[]> {
+    return this.request<string[]>('/srcs');
+  }
+
   // Utility method to trigger file download in browser
   triggerDownload(blob: Blob, filename: string): void {
     const url = URL.createObjectURL(blob);

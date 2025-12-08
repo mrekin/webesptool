@@ -47,6 +47,9 @@ export const loadingState = writable<LoadingState>(initialLoadingState);
 // UI state store - manages UI-specific state
 export const uiState = writable<UIState>(initialUIState);
 
+// Available repositories store - manages repository list
+export const availableSources = writable<string[]>([]);
+
 // Available firmwares store - manages device categories and names
 export const availableFirmwares = writable<AvailableFirmwares>({
   espdevices: [],
@@ -136,7 +139,7 @@ export const allDevicesFlat = derived(
         displayName: $availableFirmwares.device_names[device] || device
       });
     });
-
+    console.log("Test devices: ", devices);
     return devices.sort((a, b) => a.displayName.localeCompare(b.displayName));
   }
 );
@@ -395,6 +398,21 @@ export const uiActions = {
 
 // Async actions for API operations
 export const apiActions = {
+  // Load available repositories
+  async loadSrcs() {
+    try {
+      const sources = await apiService.getSrcs();
+      availableSources.set(sources);
+
+      if (sources.length > 0) {
+        // Set first source as default and load devices
+        deviceActions.setSource(sources[0]);
+      }
+    } catch (error) {
+      loadingActions.setError(error instanceof Error ? error.message : 'Failed to load repositories');
+    }
+  },
+
   // Load available versions for device type
   async loadVersions(devicePioTarget: string) {
     if (!devicePioTarget) return;
@@ -587,8 +605,50 @@ deviceSelection.subscribe((selection) => {
 
 // Initialize on app start
 if (browser) {
-  apiActions.loadAvailableFirmwares();
+  // Check if URL has device parameter first
+  const url = new URL(window.location.href);
+  const deviceFromUrl = url.searchParams.get('t');
+
+  if (deviceFromUrl) {
+    // Load versions for specific device from URL to discover src
+    await initializeFromDeviceParam(deviceFromUrl);
+  } else {
+    // No device in URL - load repositories and select first one
+    apiActions.loadSrcs();
+  }
+
   import('$lib/utils/urlSync.js').then(({ initializeUrlSync }) => {
-    initializeUrlSync();
+    initializeUrlSync(deviceFromUrl);
   });
+}
+
+// Initialize app when device parameter is provided in URL
+async function initializeFromDeviceParam(devicePioTarget: string) {
+  try {
+    // First, call versions API without source to discover the repository
+    const versions = await apiService.getVersions(devicePioTarget, '');
+
+    // If backend returned src, device was found
+    if (versions.src) {
+      // Load available firmwares for the discovered source
+      await apiActions.loadAvailableFirmwares(versions.src);
+
+      // Update the source in device selection
+      deviceActions.updateSourceOnly(versions.src);
+
+      // Update versions data with the response we already have
+      versionsData.set(versions);
+
+      // Set device selection after data is loaded
+      deviceActions.setDeviceDirectly(devicePioTarget);
+    } else {
+      // No src returned - device not found, load default repositories
+      apiActions.loadSrcs();
+    }
+
+  } catch (error) {
+    console.error('Failed to initialize from device parameter:', error);
+    // Fallback to loading repositories
+    apiActions.loadSrcs();
+  }
 }
