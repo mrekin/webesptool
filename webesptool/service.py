@@ -524,7 +524,7 @@ async def getSources(request: Request):
 
 # availableFirmwares.json
 @app.get("/api/availableFirmwares", status_code=200)
-async def getAvailableFirmwares(request: Request, src:str = None):
+async def getAvailableFw(request: Request, src:str = None):
     return JSONResponse(content= await getAvailableFirmwares(src = src))
 
 # Manifest.json

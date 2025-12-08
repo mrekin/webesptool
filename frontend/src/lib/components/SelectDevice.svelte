@@ -23,8 +23,7 @@
   $: deviceSelectionStore = $deviceSelection;
   $: availableFirmwaresStore = $availableFirmwares;
   $: versionsDataStore = $versionsData;
-  // Get devices with categories from store
-  const devicesWithCategories = $allDevicesWithCategories;
+
   $: allDevices = $allDevicesFlat;
   $: deviceSelected = $isDeviceSelected;
   $: versionSelected = $isVersionSelected;
