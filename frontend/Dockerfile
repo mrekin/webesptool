@@ -21,6 +21,7 @@ RUN rm -f .env
 
 # Build the Svelte application for production
 # Ensure your svelte.config.js uses an appropriate adapter like @sveltejs/adapter-node
+# BASE_PATH будет установлен только в runtime
 RUN pnpm run build
 
 # Stage 2: Create the final production image

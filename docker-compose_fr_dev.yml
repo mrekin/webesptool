@@ -7,8 +7,10 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=production
-      - VITE_API_URL=http://192.168.1.115:5546
+      - VITE_API_URL=http://192.168.1.115:5546  # Внутренний URL бекенда
       - VITE_PORT=3000
+      - VITE_BASE_PATH=/frontend
+      #- BASE_PATH=/frontend  # Базовый путь для прокси (только runtime!)
     ports:
       - 5550:3000
     volumes:

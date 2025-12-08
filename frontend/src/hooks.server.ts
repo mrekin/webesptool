@@ -36,11 +36,20 @@ export async function handle({ event, resolve }) {
   
   // Прокси для API
   const backendUrl = process.env.VITE_API_URL || 'http://192.168.1.115:5546';
+  const baseUrl = process.env.BASE_PATH || process.env.VITE_BASE_PATH || '/frontend';
   const url = new URL(event.request.url);
-  
+
+  // Проверяем оба пути: /api/ и {baseUrl}/api/
+  let apiPath = null;
   if (url.pathname.startsWith('/api/')) {
-    const apiUrl = `${backendUrl}${url.pathname}${url.search}`;
-    
+    apiPath = url.pathname;
+  } else if (url.pathname.startsWith(`${baseUrl}/api/`)) {
+    apiPath = url.pathname.replace(new RegExp(`^${baseUrl}`), '');
+  }
+
+  if (apiPath) {
+    const apiUrl = `${backendUrl}${apiPath}${url.search}`;
+
     let body;
     if (event.request.method !== 'GET' && event.request.method !== 'HEAD') {
       body = await event.request.text();
@@ -54,7 +63,7 @@ export async function handle({ event, resolve }) {
       });
 
       const responseText = await response.text();
-      
+
       return new Response(responseText, {
         status: response.status,
         headers: {

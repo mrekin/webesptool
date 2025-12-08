@@ -18,7 +18,7 @@ class APIService {
 
   constructor(config: Partial<AppConfig> = {}) {
     this.config = {
-      apiBaseUrl: config.apiBaseUrl || import.meta.env.VITE_API_URL || '/api',
+      apiBaseUrl: config.apiBaseUrl || import.meta.env.VITE_API_URL || 'api',
       defaultSource: config.defaultSource || '',
       timeout: config.timeout || 30000,
       retryAttempts: config.retryAttempts || 3

@@ -7,7 +7,11 @@ const config = {
 	// for more information about preprocessors
 	preprocess: vitePreprocess(),
 	kit: {
-		adapter: adapter()
+		adapter: adapter(),
+		paths: {
+            base: process.env.BASE_URL || '/frontend', // Replace with your desired base path
+			relative: false
+        }
 	}
 };
 
