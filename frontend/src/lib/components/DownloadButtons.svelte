@@ -270,10 +270,10 @@
         <button
           on:click={() => handleDownloadClick(option)}
           disabled={!option.available}
-          class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-3 px-6 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed w-full transition-colors duration-200"
+          class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed w-full transition-colors duration-200"
         >
           <span class="flex items-center justify-center">
-            <span class="text-xl mr-2">{option.icon}</span>
+            <span class="text-base mr-2">{option.icon}</span>
               <span>{option.label}</span>
           </span>
         </button>
@@ -300,10 +300,10 @@
               <button
                 on:click={() => handleDownloadClick(option)}
                 disabled={!option.available}
-                class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-3 px-6 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed w-full transition-colors duration-200"
+                class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed w-full transition-colors duration-200"
               >
                 <span class="flex items-center justify-center">
-                  <span class="text-lg mr-2">{option.icon}</span>
+                  <span class="text-base mr-2">{option.icon}</span>
                   <span>{option.label}</span>
                 </span>
               </button>

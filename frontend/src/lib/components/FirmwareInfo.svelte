@@ -29,16 +29,15 @@
   }
 </script>
 
-{#if deviceInfo}
-  <div class="space-y-4">
-        <!-- Firmware Version Header -->
-    <div class="p-4 bg-gray-800 border border-orange-600 rounded-md">
-      <h2 class="text-xl font-bold text-orange-200 mb-3">
+{#if deviceInfo || displayInfo}
+  <div class="space-y-6">
+    <!-- Firmware Version Information -->
+    <div class="p-6 bg-gray-800 border border-orange-600 rounded-lg">
+      <h2 class="text-xl font-bold text-orange-200 mb-4">
         {$locales('firmware_info.title')}
       </h2>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-        <!-- {$locales('firmware_info.device_info')} -->
+      <div class="grid grid-cols-1 md:grid-cols-1 gap-4 text-sm">
         <div class="space-y-2">
           <div class="flex justify-between items-center">
             <span class="text-orange-300 font-medium">{$locales('common.version')} </span>
@@ -60,180 +59,174 @@
           {/if}
         </div>
       </div>
-
     </div>
-    <!-- {$locales('firmware_info.device_info')} Header -->
-    <div class="p-4 bg-gray-800 border border-orange-600 rounded-md">
-      <h2 class="text-xl font-bold text-orange-200 mb-3">
-        {$locales('firmware_info.device_info')}
-      </h2>
 
-      <div class="grid grid-cols-1 md:grid-cols-1 gap-4 text-sm">
-        <div class="space-y-2">
-          <div class="flex justify-start items-center gap-4">
-            <span class="text-orange-300 font-medium">{$locales('common.device_name')}</span>
-            <span class="text-orange-100">{deviceInfo.deviceName}</span>
+    <!-- Device Information -->
+    {#if deviceInfo}
+      <div class="p-6 bg-gray-800 border border-orange-600 rounded-lg">
+        <h2 class="text-xl font-bold text-orange-200 mb-4">
+          {$locales('firmware_info.device_info')}
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-1 gap-4 text-sm">
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="text-orange-300 font-medium">{$locales('common.device_name')}</span>
+              <span class="text-orange-100">{deviceInfo.deviceName}</span>
+            </div>
+
+            <div class="flex justify-between items-center">
+              <span class="text-orange-300 font-medium">{$locales('select_device.pio_target')}</span>
+              <span class="text-orange-100">{deviceInfo.devicePioTarget}</span>
+            </div>
+
+            <div class="flex justify-between items-center">
+              <span class="text-orange-300 font-medium">{$locales('common.platform')}</span>
+              <span class="text-orange-100 uppercase">{getDeviceTypeLabel(deviceInfo.deviceType)}</span>
+            </div>
+
+            <div class="flex justify-between items-center">
+              <span class="text-orange-300 font-medium">{$locales('common.available_versions')}</span>
+              <span class="text-orange-100">{deviceInfo.availableVersions?.length || 0} versions</span>
+            </div>
           </div>
+        </div>
 
-          <div class="flex justify-start items-center gap-4">
-            <span class="text-orange-300 font-medium">{$locales('select_device.pio_target')}</span>
-            <span class="text-orange-100">{deviceInfo.devicePioTarget}</span>
-          </div>
+        <!-- Device Specific Information -->
+        <div class="mt-6 mb-6">
+          <button
+            on:click={toggleDeviceInfo}
+            class="w-full flex items-center justify-between p-3 bg-orange-900 bg-opacity-30 border border-orange-600 rounded hover:bg-orange-900 bg-opacity-40 transition-colors text-left"
+            aria-expanded={showDeviceInfo}
+            aria-controls="howto-content"
+          >
+            <h3 class="text-lg font-semibold text-orange-200 flex items-center">
+              <span class="mr-2">📖</span>
+              {$locales('firmware_info.device_details')}
+            </h3>
+            <span class="text-orange-300 transform transition-transform duration-200" style="transform: {showDeviceInfo ? 'rotate(180deg)' : 'rotate(0deg)'}">
+              ▼
+            </span>
+          </button>
 
-          <div class="flex justify-start items-center gap-4">
-            <span class="text-orange-300 font-medium">{$locales('common.platform')}</span>
-            <span class="text-orange-100 uppercase">{getDeviceTypeLabel(deviceInfo.deviceType)}</span>
-          </div>
-
-          <div class="flex justify-start items-center gap-4">
-            <span class="text-orange-300 font-medium">{$locales('common.available_versions')}</span>
-            <span class="text-orange-100">{deviceInfo.availableVersions?.length || 0} versions</span>
-          </div>
-
+          {#if showDeviceInfo}
+            <div id="howto-content" class="mt-3 space-y-4 animate-fade-in">
+              <div class="text-orange-300 text-sm">
+                {#if deviceInfo.deviceInfo?.htmlInfo}
+                  <div
+                    bind:this={firmwareInfoElement}
+                    class="text-sm text-orange-100 prose prose-invert max-w-none"
+                  >
+                    {@html renderHTML(deviceInfo.deviceInfo.htmlInfo)}
+                  </div>
+                {:else if deviceInfo}
+                  <div class="text-sm text-orange-300 text-center py-8">
+                    {$locales('firmware_info.no_device_info')}
+                  </div>
+                {:else}
+                  <div class="text-sm text-orange-300 text-center py-8">
+                    {$locales('firmware_info.select_device_view')}
+                  </div>
+                {/if}
+              </div>
+            </div>
+          {/if}
         </div>
       </div>
+    {/if}
 
-      <!-- Device Specific Information -->
-      <div class="mt-6 mb-6">
-        <button
-          on:click={toggleDeviceInfo}
-          class="w-full flex items-center justify-between p-3 bg-orange-900 bg-opacity-30 border border-orange-600 rounded hover:bg-orange-900 bg-opacity-40 transition-colors text-left"
-          aria-expanded={showDeviceInfo}
-          aria-controls="howto-content"
-        >
-          <h3 class="text-lg font-semibold text-orange-200 flex items-center">
-            <span class="mr-2">📖</span>
-            {$locales('firmware_info.device_details')}
-          </h3>
-          <span class="text-orange-300 transform transition-transform duration-200" style="transform: {showDeviceInfo ? 'rotate(180deg)' : 'rotate(0deg)'}">
-            ▼
-          </span>
-        </button>
+    <!-- Installation Instructions -->
+    {#if displayInfo}
+      <div class="p-6 bg-gray-800 border border-orange-600 rounded-lg">
+        <h2 class="text-xl font-bold text-orange-200 mb-4">{$locales('firmware_info.installation_instructions')}</h2>
 
-        {#if showDeviceInfo}
-          <div id="howto-content" class="mt-3 space-y-4 animate-fade-in">
-            <!-- Content will be added later -->
-            <div class="text-orange-300 text-sm">
-              {#if deviceInfo.deviceInfo?.htmlInfo}
-                <div
-                  bind:this={firmwareInfoElement}
-                  class="text-sm text-orange-100 prose prose-invert max-w-none"
-                >
-                  {@html renderHTML(deviceInfo.deviceInfo.htmlInfo)}
-                </div>
-              {:else if deviceInfo}
-                <div class="text-sm text-orange-300 text-center py-8">
-                  {$locales('firmware_info.no_device_info')}
-                </div>
-              {:else}
-                <div class="text-sm text-orange-300 text-center py-8">
-                  {$locales('firmware_info.select_device_view')}
-                </div>
-              {/if}
+        <div class="space-y-3 text-sm text-orange-100">
+          {#if isESP32Device(deviceInfo?.deviceType)}
+            <div class="flex items-start space-x-3">
+              <span class="text-orange-400 font-bold">1.</span>
+              <div>
+                <p class="font-medium text-orange-200">{$locales('firmware_info.esp_web_tools')}</p>
+                <p class="text-orange-300">{$locales('firmware_info.esp_web_tools_desc')}</p>
+              </div>
             </div>
-          </div>
-        {/if}
-      </div>
-    </div>
-  </div>
-{/if}
 
-<!-- {$locales('firmware_info.title')} (only when version is selected) -->
-{#if displayInfo}
-  <div class="space-y-4">
-
-
-
-    <!-- {$locales('firmware_info.installation_instructions')} Preview -->
-    <div class="p-4 bg-gray-800 border border-orange-600 rounded-md">
-      <h3 class="text-lg font-semibold text-orange-200 mb-3">{$locales('firmware_info.installation_instructions')}</h3>
-
-      <div class="space-y-3 text-sm text-orange-100">
-        {#if isESP32Device(deviceInfo?.deviceType)}
-          <div class="flex items-start space-x-3">
-            <span class="text-orange-400 font-bold">1.</span>
-            <div>
-              <p class="font-medium text-orange-200">{$locales('firmware_info.esp_web_tools')}</p>
-              <p class="text-orange-300">{$locales('firmware_info.esp_web_tools_desc')}</p>
+            <div class="flex items-start space-x-3">
+              <span class="text-orange-400 font-bold">2.</span>
+              <div>
+                <p class="font-medium text-orange-200">{$locales('firmware_info.alternative_download')}</p>
+                <p class="text-orange-300">{$locales('firmware_info.alternative_download_desc')}</p>
+              </div>
             </div>
-          </div>
+          {:else if isNRF52Device(deviceInfo?.deviceType)}
+            <div class="flex items-start space-x-3">
+              <span class="text-orange-400 font-bold">1.</span>
+              <div>
+                <p class="font-medium text-orange-200">{$locales('firmware_info.uf2_download')}</p>
+                <p class="text-orange-300">{$locales('firmware_info.uf2_download_desc')}</p>
+              </div>
+            </div>
 
-          <div class="flex items-start space-x-3">
-            <span class="text-orange-400 font-bold">2.</span>
-            <div>
-              <p class="font-medium text-orange-200">{$locales('firmware_info.alternative_download')}</p>
-              <p class="text-orange-300">{$locales('firmware_info.alternative_download_desc')}</p>
+            <div class="flex items-start space-x-3">
+              <span class="text-orange-400 font-bold">2.</span>
+              <div>
+                <p class="font-medium text-orange-200">{$locales('firmware_info.device_bootloader')}</p>
+                <p class="text-orange-300">{$locales('firmware_info.device_bootloader_desc')}</p>
+              </div>
             </div>
-          </div>
-        {:else if isNRF52Device(deviceInfo?.deviceType)}
-          <div class="flex items-start space-x-3">
-            <span class="text-orange-400 font-bold">1.</span>
-            <div>
-              <p class="font-medium text-orange-200">{$locales('firmware_info.uf2_download')}</p>
-              <p class="text-orange-300">{$locales('firmware_info.uf2_download_desc')}</p>
+          {:else if isRP2040Device(deviceInfo?.deviceType)}
+            <div class="flex items-start space-x-3">
+              <span class="text-orange-400 font-bold">1.</span>
+              <div>
+                <p class="font-medium text-orange-200">{$locales('firmware_info.uf2_rp2040')}</p>
+                <p class="text-orange-300">{$locales('firmware_info.uf2_rp2040_desc')}</p>
+              </div>
             </div>
-          </div>
 
-          <div class="flex items-start space-x-3">
-            <span class="text-orange-400 font-bold">2.</span>
-            <div>
-              <p class="font-medium text-orange-200">{$locales('firmware_info.device_bootloader')}</p>
-              <p class="text-orange-300">{$locales('firmware_info.device_bootloader_desc')}</p>
+            <div class="flex items-start space-x-3">
+              <span class="text-orange-400 font-bold">2.</span>
+              <div>
+                <p class="font-medium text-orange-200">{$locales('firmware_info.enter_bootloader')}</p>
+                <p class="text-orange-300">{$locales('firmware_info.enter_bootloader_desc')}</p>
+              </div>
             </div>
-          </div>
-        {:else if isRP2040Device(deviceInfo?.deviceType)}
-          <div class="flex items-start space-x-3">
-            <span class="text-orange-400 font-bold">1.</span>
-            <div>
-              <p class="font-medium text-orange-200">{$locales('firmware_info.uf2_rp2040')}</p>
-              <p class="text-orange-300">{$locales('firmware_info.uf2_rp2040_desc')}</p>
+          {:else}
+            <div class="flex items-start space-x-3">
+              <span class="text-orange-400 font-bold">1.</span>
+              <div>
+                <p class="font-medium text-orange-200">{$locales('firmware_info.download_firmware')}</p>
+                <p class="text-orange-300">{$locales('firmware_info.download_firmware_desc')}</p>
+              </div>
             </div>
-          </div>
 
-          <div class="flex items-start space-x-3">
-            <span class="text-orange-400 font-bold">2.</span>
-            <div>
-              <p class="font-medium text-orange-200">{$locales('firmware_info.enter_bootloader')}</p>
-              <p class="text-orange-300">{$locales('firmware_info.enter_bootloader_desc')}</p>
+            <div class="flex items-start space-x-3">
+              <span class="text-orange-400 font-bold">2.</span>
+              <div>
+                <p class="font-medium text-orange-200">{$locales('firmware_info.follow_instructions')}</p>
+                <p class="text-orange-300">{$locales('firmware_info.follow_instructions_desc')}</p>
+              </div>
             </div>
-          </div>
-        {:else}
-          <div class="flex items-start space-x-3">
-            <span class="text-orange-400 font-bold">1.</span>
-            <div>
-              <p class="font-medium text-orange-200">{$locales('firmware_info.download_firmware')}</p>
-              <p class="text-orange-300">{$locales('firmware_info.download_firmware_desc')}</p>
-            </div>
-          </div>
+          {/if}
 
-          <div class="flex items-start space-x-3">
-            <span class="text-orange-400 font-bold">2.</span>
-            <div>
-              <p class="font-medium text-orange-200">{$locales('firmware_info.follow_instructions')}</p>
-              <p class="text-orange-300">{$locales('firmware_info.follow_instructions_desc')}</p>
-            </div>
+          <div class="mt-4 p-3 bg-orange-900 bg-opacity-30 border border-orange-600 rounded">
+            <p class="text-orange-200 font-medium">
+              {$locales('firmware_info.important_warning')}
+            </p>
+            <p class="text-orange-300 text-xs mt-1">
+              {$locales('firmware_info.backup_warning')}
+            </p>
           </div>
-        {/if}
-
-        <div class="mt-4 p-3 bg-orange-900 bg-opacity-30 border border-orange-600 rounded">
-          <p class="text-orange-200 font-medium">
-            {$locales('firmware_info.important_warning')}
-          </p>
-          <p class="text-orange-300 text-xs mt-1">
-            {$locales('firmware_info.backup_warning')}
-          </p>
         </div>
       </div>
-    </div>
+    {/if}
   </div>
 {:else if error}
-  <div class="p-4 bg-red-900 bg-opacity-30 border border-red-600 rounded-md">
-    <h3 class="text-lg font-semibold text-red-200 mb-2">Error Loading {$locales('firmware_info.title')}</h3>
+  <div class="p-6 bg-red-900 bg-opacity-30 border border-red-600 rounded-lg">
+    <h2 class="text-xl font-bold text-red-200 mb-4">Error Loading {$locales('firmware_info.title')}</h2>
     <p class="text-sm text-red-300">{error}</p>
   </div>
 {:else}
-  <div class="p-4 bg-gray-800 border border-orange-600 rounded-md">
-    <h3 class="text-lg font-semibold text-orange-200 mb-2">{$locales('firmware_info.title')}</h3>
+  <div class="p-6 bg-gray-800 border border-orange-600 rounded-lg">
+    <h2 class="text-xl font-bold text-orange-200 mb-4">{$locales('firmware_info.title')}</h2>
     <p class="text-sm text-orange-300">
       {$locales('firmware_info.select_device_instructions')}
     </p>

@@ -131,7 +131,7 @@
           </div>
 
           <!-- Download Actions -->
-          <div class="p-1 bg-gray-800 border border-orange-600 rounded-lg">
+          <div class="p-6 bg-gray-800 border border-orange-600 rounded-lg">
             <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center">
               <span class="mr-3">⬇️</span>
               {$locales('page.download_options')}
@@ -150,8 +150,7 @@
             </h2>
             <FirmwareInfo />
           </div>
-
-          </div>
+        </div>
       </div>
   
     <!-- Important Notes - Full Width Section -->

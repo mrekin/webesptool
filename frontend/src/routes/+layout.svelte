@@ -3,7 +3,7 @@
 	import LanguageSelector from '$lib/components/LanguageSelector.svelte';
 	import { setupI18n } from '$lib/i18n/index.js';
 	import { onMount } from 'svelte';
-	import { locale, isLoading } from 'svelte-i18n';
+	import { locale, isLoading, _ as locales } from 'svelte-i18n';
 
 	let { children } = $props();
 	let i18nReady = $state(false);
@@ -24,7 +24,7 @@
 
 {#if !i18nReady}
 	<div class="min-h-screen bg-gray-900 flex items-center justify-center">
-		<div class="text-white text-xl">Loading...</div>
+		<div class="text-white text-xl">{$locales('common.loading')}</div>
 	</div>
 {:else}
 	<div class="min-h-screen bg-gray-900 relative">
