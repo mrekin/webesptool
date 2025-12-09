@@ -2,7 +2,6 @@
   "common": {
     "close": "Close",
     "status": "Status",
-    "loading": "Loading...",
     "beta_service": "Beta Service",
     "last_updated": "Last Updated:",
     "more_options": "More Options ▼",
