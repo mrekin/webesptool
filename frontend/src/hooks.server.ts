@@ -36,7 +36,7 @@ export async function handle({ event, resolve }) {
   
   // Прокси для API
   const backendUrl = process.env.VITE_API_URL || 'http://192.168.1.115:5546';
-  const baseUrl = process.env.BASE_PATH || process.env.VITE_BASE_PATH || '/frontend';
+  const baseUrl = process.env.VITE_BASE_PATH || '/frontend';
   const url = new URL(event.request.url);
 
   // Проверяем оба пути: /api/ и {baseUrl}/api/
