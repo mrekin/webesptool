@@ -280,17 +280,35 @@
     }
   }
 
-  // Add click outside listener
+  // Global keyboard handler for ESC key
+  function handleGlobalKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      // Close device dropdown if open
+      if (showDropdown) {
+        event.preventDefault();
+        manageDeviceDropdown('close');
+      }
+      // Close version dropdown if open
+      if (showVersionDropdown) {
+        event.preventDefault();
+        manageVersionDropdown('close');
+      }
+    }
+  }
+
+  // Add event listeners
 
   onMount(() => {
     if (browser) {
       document.addEventListener('click', handleClickOutside);
+      document.addEventListener('keydown', handleGlobalKeydown);
     }
   });
 
   onDestroy(() => {
     if (browser) {
       document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('keydown', handleGlobalKeydown);
     }
   });
 

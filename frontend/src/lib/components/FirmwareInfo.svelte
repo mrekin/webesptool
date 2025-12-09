@@ -235,7 +235,7 @@
   <div class="p-4 bg-gray-800 border border-orange-600 rounded-md">
     <h3 class="text-lg font-semibold text-orange-200 mb-2">{$locales('firmware_info.title')}</h3>
     <p class="text-sm text-orange-300">
-      Select a device and firmware version to view detailed information and installation instructions.
+      {$locales('firmware_info.select_device_instructions')}
     </p>
   </div>
 {/if}

@@ -87,13 +87,15 @@
             <div class="flex items-center justify-between flex-wrap gap-4">
               <div class="flex items-center space-x-3">
                 <span class="text-orange-200 font-medium flex items-center">
-                  {#if $loadingState.isLoadingAvailable}
-                    <!-- Spinning globe emoji during loading -->
-                    <span class="inline-block animate-spin">🌐</span>
-                  {:else}
-                    <!-- Static globe emoji when not loading -->
-                    🌐
-                  {/if}
+                  <span class="inline-block w-5 text-center mr-2">
+                    {#if $loadingState.isLoadingAvailable}
+                      <!-- Spinning globe emoji during loading -->
+                      <span class="inline-block animate-spin">🌐</span>
+                    {:else}
+                      <!-- Static globe emoji when not loading -->
+                      🌐
+                    {/if}
+                  </span>
                   {$locales('page.source_repository')}
                 </span>
                 <RepositorySelector />
