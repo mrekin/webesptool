@@ -112,7 +112,7 @@
     "disclaimer": "Disclaimer:",
     "disclaimer_text": "This service is provided as-is without any warranty. The developers are not responsible for any damage to devices or data loss.",
     "terms_agreement": "By using this service, you agree to these terms and acknowledge the risks involved.",
-    "howto_coming_soon": "Content coming soon...",
+    "howto_coming_soon": "Content coming soon... (depend on selected device)",
     "build_variants_title": "Build Variants",
     "build_variants_desc": "Not all board-version combinations are built. Open an issue on GitHub to request specific variants.",
     "language_builds_title": "Language Builds",

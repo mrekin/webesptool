@@ -1,7 +1,7 @@
 <script lang="ts">
   import { _ as locales } from 'svelte-i18n';
   import { deviceDisplayInfo } from '$lib/stores';
-  import { isNRF52Device } from '$lib/utils/deviceTypeUtils.js';
+  import { isNRF52Device, isESP32Device } from '$lib/utils/deviceTypeUtils.js';
   import MarkdownRenderer from '$lib/components/MarkdownRenderer.svelte';
 
   // Local state
@@ -116,6 +116,11 @@
               <!-- Show nRF52 flashing documentation for nRF52 devices -->
               <div class="prose prose-invert max-w-none">
                 <MarkdownRenderer filename="nrf52_flashing.md" hide={true} />
+              </div>
+            {:else if currentDeviceInfo && isESP32Device(currentDeviceInfo.deviceType)}
+              <!-- Show ESP32 flashing documentation for ESP32 devices -->
+              <div class="prose prose-invert max-w-none">
+                <MarkdownRenderer filename="esp32_flashing.md" hide={true} />
               </div>
             {:else}
               <!-- Show coming soon message for all other devices -->

@@ -89,42 +89,53 @@
     });
   });
 
+  // Add link click handler when content is available
+  $effect(() => {
+    if (content) {
+      // Wait for DOM to update
+      setTimeout(() => {
+        const container = document.querySelector('.markdown-container');
+        if (container) {
+          // Remove existing listener to avoid duplicates
+          container.removeEventListener('click', handleLinkClick);
+          // Add new listener
+          container.addEventListener('click', handleLinkClick);
+        }
+      }, 50);
+    }
+  });
+
+  function handleLinkClick(e: Event) {
+    const target = e.target as HTMLElement;
+    const link = target.closest('a');
+    if (link && link.href) {
+      e.preventDefault();
+      window.open(link.href, '_blank', 'noopener,noreferrer');
+    }
+  }
+
   // Cleanup subscription when component is destroyed
   $effect(() => {
     return () => {
       if (unsubscribe) {
         unsubscribe();
       }
+      const container = document.querySelector('.markdown-container');
+      if (container) {
+        container.removeEventListener('click', handleLinkClick);
+      }
     };
   });
 
-  // Custom renderer for links to open in new tab
-  const renderers = {
-    link: ({ href, children }: { href: string; children: any[] }) => {
-      return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="text-orange-400 hover:text-orange-300 underline">${children.join('')}</a>`;
+  // Custom components to override link behavior
+  const components = {
+    a: (props: any) => {
+      return `<a href="${props.href}" target="_blank" rel="noopener noreferrer" class="text-orange-400 hover:text-orange-300 underline">${props.children || ''}</a>`;
     },
-    code: (props: { inline: boolean; children: string }) => {
-      if (props.inline) {
-        return `<code class="px-1 py-0.5 bg-gray-700 text-gray-200 rounded text-sm">${props.children}</code>`;
-      }
-      return `<pre class="bg-gray-800 p-4 rounded-lg overflow-x-auto"><code class="text-gray-200">${props.children}</code></pre>`;
-    },
-    blockquote: (props: { children: any[] }) => {
-      return `<blockquote class="border-l-4 border-gray-500 pl-4 italic text-gray-300">${props.children}</blockquote>`;
-    },
-    table: (props: { children: any[] }) => {
-      return `<div class="overflow-x-auto my-4"><table class="min-w-full border-collapse border border-gray-600">${props.children}</table></div>`;
-    },
-    th: (props: { children: any[] }) => {
-      return `<th class="border border-gray-600 px-4 py-2 bg-gray-700 text-left font-semibold">${props.children}</th>`;
-    },
-    td: (props: { children: any[] }) => {
-      return `<td class="border border-gray-600 px-4 py-2">${props.children}</td>`;
-    }
   };
 </script>
 
-<div class="{wrapperClass} {className}">
+<div class="{wrapperClass} {className} markdown-container">
   {#if loading}
     <div class="flex items-center justify-center py-8">
       <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
@@ -138,7 +149,7 @@
   {:else if content}
     {#if hide}
       <!-- Spoiler mode -->
-      <div class="border border-orange-600 rounded-lg overflow-hidden">
+      <div class="border border-orange-600 rounded-lg overflow-hidden ml-4">
         <button
           on:click={() => isSpoilerOpen = !isSpoilerOpen}
           class="w-full flex items-center justify-between p-3 bg-orange-900 bg-opacity-30 hover:bg-orange-900 bg-opacity-40 transition-colors text-left"
@@ -160,6 +171,7 @@
                 sanitize: false,
                 openLinksInNewTab: true
               }}
+              {components}
             />
           </div>
         {/if}
@@ -175,6 +187,7 @@
           sanitize: false,
           openLinksInNewTab: true
         }}
+        {components}
       />
     {/if}
   {:else}
@@ -254,6 +267,17 @@
     border-top: 1px solid #374151;
     margin-top: 2rem;
     margin-bottom: 2rem;
+  }
+
+  /* Link styling to match the design */
+  :global(.prose a) {
+    color: #fb923c; /* text-orange-400 */
+    text-decoration: underline;
+    transition: color 0.2s ease;
+  }
+
+  :global(.prose a:hover) {
+    color: #fdba74; /* text-orange-300 */
   }
 
   /* Loading animation */
