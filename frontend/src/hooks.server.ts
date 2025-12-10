@@ -64,11 +64,27 @@ export async function handle({ event, resolve }) {
 
       const responseText = await response.text();
 
+      // Copy all important headers from backend response
+      const headers: Record<string, string> = {};
+      const importantHeaders = [
+        'content-type',
+        'content-disposition',
+        'content-length',
+        'cache-control',
+        'etag',
+        'last-modified'
+      ];
+
+      for (const headerName of importantHeaders) {
+        const value = response.headers.get(headerName);
+        if (value) {
+          headers[headerName] = value;
+        }
+      }
+
       return new Response(responseText, {
         status: response.status,
-        headers: {
-          'Content-Type': response.headers.get('content-type') || 'application/json',
-        }
+        headers: headers
       });
     } catch (error) {
       console.error('API proxy error:', error);

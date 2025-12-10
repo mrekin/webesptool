@@ -26,6 +26,7 @@ import zipfile
 from pathlib import Path
 from looseversion import LooseVersion
 import io
+import mimetypes
 
 
 
@@ -515,6 +516,15 @@ async def buildManifest(t:str = None, v:str = None, u:str = "1", src:str = None)
 
     return manifest
 
+# Инициализация базы MIME-types
+mimetypes.init()
+
+async def getMimeType(filename):
+    mime_type, _ = mimetypes.guess_type(filename)
+    if mime_type:
+        return mime_type
+    # Fallback для неизвестных типов
+    return 'application/octet-stream'
 
 
 app = FastAPI()
@@ -619,7 +629,7 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
                     filename = "bleota.bin"
     if logInd:
         log.info(f"DownloadFile: type: {t}, version: {v}, path: {path}, filename: {filename}, url: {str(request.url)}, client: {str(request.client)}, headers: {str(request.headers)}")
-    return FileResponse(path=path, filename=filename, media_type='multipart/form-data')
+    return FileResponse(path=path, filename=filename, media_type=await getMimeType(path))
 
 
 def unirun():
