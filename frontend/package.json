@@ -59,6 +59,7 @@
 	},
 	"dependencies": {
 		"esp-web-tools": "^10.1.1",
-		"svelte-i18n": "^4.0.1"
+		"svelte-i18n": "^4.0.1",
+		"svelte-markdown": "^0.4.1"
 	}
 }

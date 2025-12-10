@@ -14,6 +14,9 @@ importers:
       svelte-i18n:
         specifier: ^4.0.1
         version: 4.0.1(svelte@5.38.6)
+      svelte-markdown:
+        specifier: ^0.4.1
+        version: 0.4.1(svelte@5.38.6)
     devDependencies:
       '@sveltejs/adapter-node':
         specifier: ^5.2.12
@@ -766,6 +769,9 @@ packages:
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
 
+  '@types/marked@5.0.2':
+    resolution: {integrity: sha512-OucS4KMHhFzhz27KxmWg7J+kIYqyqoW5kdIEI319hqARQQUTqhao3M/F+uFnDXD0Rg72iDDZxZNxq5gvctmLlg==}
+
   '@types/resolve@1.20.2':
     resolution: {integrity: sha512-60BCwRFOZCQhDncwQdxxeOEEkbc5dIMccYLwbxsS4TUNeVECQ/pBJ0j09mrHOl/JJvpRPGwO9SvE4nR2Nb/a4Q==}
 
@@ -1152,6 +1158,11 @@ packages:
   magic-string@0.30.18:
     resolution: {integrity: sha512-yi8swmWbO17qHhwIBNeeZxTceJMeBvWJaId6dyvTSOwTipqeHhMhOrz6513r1sOKnpvQ7zkhlG8tPrpilwTxHQ==}
 
+  marked@5.1.2:
+    resolution: {integrity: sha512-ahRPGXJpjMjwSOlBoTMZAK7ATXkli5qCPxZ21TG44rx1KEo44bii4ekgTDQPNRQ4Kh7JMb9Ub1PVk1NxRSsorg==}
+    engines: {node: '>= 16'}
+    hasBin: true
+
   memoizee@0.4.17:
     resolution: {integrity: sha512-DGqD7Hjpi/1or4F/aYAspXKNm5Yili0QDAFAY4QYvpqpgiY6+1jOfqpmByzjxbWd/T9mChbCArXAbDAsTm5oXA==}
     engines: {node: '>=0.12'}
@@ -1437,6 +1448,11 @@ packages:
     hasBin: true
     peerDependencies:
       svelte: ^3 || ^4 || ^5
+
+  svelte-markdown@0.4.1:
+    resolution: {integrity: sha512-pOlLY6EruKJaWI9my/2bKX8PdTeP5CM0s4VMmwmC2prlOkjAf+AOmTM4wW/l19Y6WZ87YmP8+ZCJCCwBChWjYw==}
+    peerDependencies:
+      svelte: ^4.0.0
 
   svelte2tsx@0.7.42:
     resolution: {integrity: sha512-PSNrKS16aVdAajoFjpF5M0t6TA7ha7GcKbBajD9RG3M+vooAuvLnWAGUSC6eJL4zEOVbOWKtcS2BuY4rxPljoA==}
@@ -2350,6 +2366,8 @@ snapshots:
 
   '@types/estree@1.0.8': {}
 
+  '@types/marked@5.0.2': {}
+
   '@types/resolve@1.20.2': {}
 
   '@types/trusted-types@2.0.7': {}
@@ -2774,6 +2792,8 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
 
+  marked@5.1.2: {}
+
   memoizee@0.4.17:
     dependencies:
       d: 1.0.2
@@ -3002,6 +3022,12 @@ snapshots:
       sade: 1.8.1
       svelte: 5.38.6
       tiny-glob: 0.2.9
+
+  svelte-markdown@0.4.1(svelte@5.38.6):
+    dependencies:
+      '@types/marked': 5.0.2
+      marked: 5.1.2
+      svelte: 5.38.6
 
   svelte2tsx@0.7.42(svelte@5.38.6)(typescript@5.9.2):
     dependencies:

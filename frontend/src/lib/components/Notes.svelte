@@ -1,10 +1,16 @@
 <script lang="ts">
   import { _ as locales } from 'svelte-i18n';
+  import { deviceDisplayInfo } from '$lib/stores';
+  import { isNRF52Device } from '$lib/utils/deviceTypeUtils.js';
+  import MarkdownRenderer from '$lib/components/MarkdownRenderer.svelte';
 
   // Local state
   let showMoreSection = false;
   let showImportantNotes = false;
   let showHowTo = false;
+
+  // Subscribe to device display info
+  $: currentDeviceInfo = $deviceDisplayInfo;
 
   // Toggle more section
   function toggleMore() {
@@ -104,9 +110,17 @@
 
       {#if showHowTo}
         <div id="howto-content" class="mt-3 space-y-4 animate-fade-in">
-          <!-- Content will be added later -->
+          <!-- Content based on device type -->
           <div class="text-orange-300 text-sm">
-            <p>{$locales('notes_static.howto_coming_soon')}</p>
+            {#if currentDeviceInfo && isNRF52Device(currentDeviceInfo.deviceType)}
+              <!-- Show nRF52 flashing documentation for nRF52 devices -->
+              <div class="prose prose-invert max-w-none">
+                <MarkdownRenderer filename="nrf52_flashing.md" hide={true} />
+              </div>
+            {:else}
+              <!-- Show coming soon message for all other devices -->
+              <p>{$locales('notes_static.howto_coming_soon')}</p>
+            {/if}
           </div>
         </div>
       {/if}
