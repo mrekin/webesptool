@@ -143,7 +143,8 @@
         option.id === 'uf2' ? 'uf2' : 'fw'
       );
     } catch (error) {
-      console.error('Download failed:', error);
+      // Error is already handled by apiActions.downloadFirmware via loadingActions.setError
+      // No need for additional console.error here
     }
   }
 
@@ -167,46 +168,34 @@
 
     // For fwzip - use zip download with u=5 parameter for all devices
     if (option.id === 'fwzip') {
-      try {
-        await apiActions.downloadFirmware(
-          deviceSelectionStore.devicePioTarget!,
-          deviceSelectionStore.version!,
-          '5', // u=5 for zip download (from backend: 5 - zip, 4 - ota, 1 - update, 2 - install)
-          'fw' // Download firmware zip archive
-        );
-      } catch (error) {
-        console.error('Firmware zip download failed:', error);
-      }
+      await apiActions.downloadFirmware(
+        deviceSelectionStore.devicePioTarget!,
+        deviceSelectionStore.version!,
+        '5', // u=5 for zip download (from backend: 5 - zip, 4 - ota, 1 - update, 2 - install)
+        'fw' // Download firmware zip archive
+      );
       return;
     }
 
     // For ota - use ota download with u=5 parameter for all devices
     if (option.id === 'ota') {
-      try {
-        await apiActions.downloadFirmware(
-          deviceSelectionStore.devicePioTarget!,
-          deviceSelectionStore.version!,
-          '4', // u=5 for zip download (from backend: 5 - zip, 4 - ota, 1 - update, 2 - install)
-          'ota' // Download firmware zip archive
-        );
-      } catch (error) {
-        console.error('Firmware ota download failed:', error);
-      }
+      await apiActions.downloadFirmware(
+        deviceSelectionStore.devicePioTarget!,
+        deviceSelectionStore.version!,
+        '4', // u=4 for ota download (from backend: 5 - zip, 4 - ota, 1 - update, 2 - install)
+        'ota' // Download firmware ota file
+      );
       return;
     }
 
-    // For uf2 - use zip download with u=5 parameter for all devices
+    // For uf2 - use uf2 download with u=1 parameter for all devices
     if (option.id === 'uf2') {
-      try {
-        await apiActions.downloadFirmware(
-          deviceSelectionStore.devicePioTarget!,
-          deviceSelectionStore.version!,
-          '1', // u=5 for zip download (from backend: 5 - zip, 4 - ota, 1 - update, 2 - install)
-          'uf2' // Download firmware zip archive
-        );
-      } catch (error) {
-        console.error('Firmware uf2 download failed:', error);
-      }
+      await apiActions.downloadFirmware(
+        deviceSelectionStore.devicePioTarget!,
+        deviceSelectionStore.version!,
+        '1', // u=1 for uf2 download (from backend: 5 - zip, 4 - ota, 1 - update, 2 - install)
+        'uf2' // Download firmware uf2 file
+      );
       return;
     }
     // For uf2 and other options - use direct download

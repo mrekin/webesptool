@@ -87,7 +87,39 @@ class APIService {
       });
 
       if (!response.ok) {
-        throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+        // Log detailed error information
+        console.error(`API Error (${response.status}): Failed to download firmware from ${url}`);
+        console.error('Request params:', params);
+
+        // Try to get error details from response body
+        let errorDetails = '';
+        try {
+          const errorText = await response.text();
+          if (errorText) {
+            console.error('Error response:', errorText);
+            errorDetails = errorText.substring(0, 200); // Limit error details length
+          }
+        } catch (e) {
+          // Ignore errors when trying to read error response
+        }
+
+        // Provide user-friendly error messages based on status code
+        let userMessage = '';
+        switch (response.status) {
+          case 500:
+            userMessage = 'Server error occurred while preparing firmware file. This firmware version may not be available for download.';
+            break;
+          case 404:
+            userMessage = 'Firmware file not found. This version may not be available for this device.';
+            break;
+          case 429:
+            userMessage = 'Too many download requests. Please try again later.';
+            break;
+          default:
+            userMessage = `Download failed: ${response.status} ${response.statusText}`;
+        }
+
+        throw new Error(userMessage);
       }
 
       // Extract filename from Content-Disposition header
@@ -105,6 +137,8 @@ class APIService {
       return { blob, filename };
     } catch (error) {
       if (error instanceof Error) {
+        // Log the error for debugging
+        console.error('Download error:', error.message, { url, params });
         throw new Error(`Download failed: ${error.message}`);
       }
       throw new Error('Unknown download error occurred');

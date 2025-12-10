@@ -3,3 +3,6 @@
 log/
 webesptool/data*
 *.pyc
+claude_code_zai_env.sh
+frontend/static/radio.webp
+webesptool/static/radio2.webp

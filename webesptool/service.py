@@ -394,6 +394,22 @@ async def getSrcs():
     srcs =  [rf.get('src', None) if isinstance(rf, dict) else rf  for rf in config['fwDirs']]
     return srcs
 
+# Search single file in path by regexp mask
+# 09.12.2025 firmware files hget new naming so need to implement this search
+async def getFileByMask(path, mask):
+    fullFileName = None
+    fileName = None
+    regexp = re.compile(mask) 
+    #Assume that no need to recurcieve search
+    for address, dirs, files in await aiofiles.os.walk(path, topdown=True, onerror=None, followlinks=False):
+        for file in files:
+            if bool(regexp.match(file)):
+                fullFileName = os.path.join(path, file)
+                fileName = file
+                break
+
+    return fullFileName, fileName
+
 async def getRootFolder(t = None, v = None, src:str = None):
     rootFolder = None
 
@@ -466,7 +482,7 @@ async def buildManifest(t:str = None, v:str = None, u:str = "1", src:str = None)
         bleotav = 'bleota-s3'
     elif ("c3" in t or devinfo.get("chip", None) == 'esp32c3'):
         chip_family = "ESP32-C3"
-    else:  # Need to check nrf52/rp2040 somehow
+    else:  # Need to check nrf52/rp2040 somehow, but this method in most cases no need to invoke for nrf/rp2040
         data = await getAvailableFirmwares()
         if t in data.get('uf2devices'):
             chip_family = "NRF52"
@@ -568,26 +584,31 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
     #need additional logic for -s3 and install
     if not e: #not esp32
         if u=="4": #ota
-            path = os.path.join(rootFolder,t,v,"firmware-ota.zip")
-            if(not await aiofiles.os.path.isfile(path)):
-                path = os.path.join(rootFolder,t,v,"firmware.zip")
-            filename = t+"-"+v+"-ota.zip"
+            #path = os.path.join(rootFolder,t,v,"firmware-ota.zip")
+            path, filename = await getFileByMask(os.path.join(rootFolder,t,v),r".*\.zip")
+            #if(not await aiofiles.os.path.isfile(path)):
+            #    path = os.path.join(rootFolder,t,v,"firmware.zip")
+            #filename = t+"-"+v+"-ota.zip"
         else: #uf2
-            path = os.path.join(rootFolder,t,v,"firmware.uf2")
-            filename = t+"-"+v+".uf2"
+            #path = os.path.join(rootFolder,t,v,"firmware.uf2")
+            #filename = t+"-"+v+".uf2"
+            path, filename = await getFileByMask(os.path.join(rootFolder,t,v),r".*\.uf2")
             
     else :
         if u=="1": #update
-            path = os.path.join(rootFolder,t,v,"firmware.bin")
-            filename = t+"-"+v+".bin"
+            #path = os.path.join(rootFolder,t,v,"firmware.bin")
+            #filename = t+"-"+v+".bin"
+            path, filename = await getFileByMask(os.path.join(rootFolder,t,v),r".*firmware(?!.*factory).*\.bin")
         elif u=="2":  #install
             if p == 'fw':
-                path = os.path.join(rootFolder,t,v,"firmware.factory.bin")
-                filename = t+"-"+v+".factory.bin"
+                #path = os.path.join(rootFolder,t,v,"firmware.factory.bin")
+                #filename = t+"-"+v+".factory.bin"
+                path, filename = await getFileByMask(os.path.join(rootFolder,t,v),r".*firmware.*factory\.bin")
             if p == 'littlefs':
                 logInd = False # Do not log additional files downloads
-                path = os.path.join(rootFolder,t,v,"littlefs.bin")
-                filename = "littlefs.bin"
+                #path = os.path.join(rootFolder,t,v,"littlefs.bin")
+                #filename = "littlefs.bin"
+                path, filename = await getFileByMask(os.path.join(rootFolder,t,v),r".*littlefs.*\.bin")
             if 'bleota' in p:
                 logInd = False # Do not log additional files downloads
                 if '-s3' in p: # possible need different ota for c3
