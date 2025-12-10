@@ -29,11 +29,11 @@
     if (isESP32Device(deviceType)) {
       options.push({
         id: 'esptool',
-        label: firmwareMode === 'full' ? $locales('download_buttons.full_flash_device') : $locales('download_buttons.update_device'),
+        label: firmwareMode === 'full' ? $locales('downloadbuttons.full_flash_device') : $locales('downloadbuttons.update_device'),
         mode: firmwareMode === 'full' ? '2' : '1', // 2=full, 1=update
         available: true,
         icon: '🔧',
-        description: firmwareMode === 'full' ? $locales('download_buttons.complete_firmware_wipe') : $locales('download_buttons.update_existing_firmware')
+        description: firmwareMode === 'full' ? $locales('downloadbuttons.complete_firmware_wipe') : $locales('downloadbuttons.update_existing_firmware')
       });
     }
 
@@ -41,29 +41,29 @@
     if (isNRF52Device(deviceType)) {
       options.push({
         id: 'uf2',
-        label: $locales('download_buttons.download_fw_uf2'),
+        label: $locales('downloadbuttons.download_fw_uf2'),
         mode: '1',
         available: true,
         icon: '💾',
-        description: $locales('download_buttons.download_uf2_firmware')
+        description: $locales('downloadbuttons.download_uf2_firmware')
       });
 
       options.push({
         id: 'ota',
-        label: $locales('download_buttons.download_ota_firmware'),
+        label: $locales('downloadbuttons.download_ota_firmware'),
         mode: '4',
         available: true,
         icon: '💾',
-        description: $locales('download_buttons.download_ota_firmware')
+        description: $locales('downloadbuttons.download_ota_firmware')
       });
 
       options.push({
         id: 'url',
-        label: $locales('download_buttons.download_erase_uf2'),
+        label: $locales('downloadbuttons.download_erase_uf2'),
         mode: '4',
         available: true,
         icon: '💾',
-        description: $locales('download_buttons.download_nrf_erase'),
+        description: $locales('downloadbuttons.download_nrf_erase'),
         url: 'https://flasher.meshtastic.org/uf2/nrf_erase2.uf2'
       });
     }
@@ -72,22 +72,22 @@
     if (isRP2040Device(deviceType)) {
       options.push({
         id: 'uf2',
-        label: $locales('download_buttons.download_uf2'),
+        label: $locales('downloadbuttons.download_uf2'),
         mode: '1',
         available: true,
         icon: '💾',
-        description: $locales('download_buttons.download_uf2_firmware')
+        description: $locales('downloadbuttons.download_uf2_firmware')
       });
     }
 
     // Add firmware zip download option for all devices
     options.push({
       id: 'fwzip',
-      label: $locales('download_buttons.download_fw_zip'),
+      label: $locales('downloadbuttons.download_fw_zip'),
       mode: '5',
       available: true,
       icon: '📦',
-      description: $locales('download_buttons.download_complete_archive')
+      description: $locales('downloadbuttons.download_complete_archive')
     });    
 
     return options;
@@ -156,7 +156,7 @@
     }
 
     if (option.id === 'esptool') {
-      // For {$locales('download_buttons.update_device')}/{$locales('download_buttons.full_flash_device')} - configure and trigger ESP Web Tools on click
+      // For {$locales('downloadbuttons.update_device')}/{$locales('downloadbuttons.full_flash_device')} - configure and trigger ESP Web Tools on click
       if (configureAndTriggerESPButton()) {
         return; // ESP Web Tools was triggered successfully
       } else {
@@ -225,7 +225,7 @@
 {#if supportsESPWebTools(deviceDisplayInfoStore?.deviceType) && deviceSelectionStore.version}
   <div style="display: none;">
     <esp-web-install-button manifest="">
-      <button slot="activate">{$locales('download_buttons.esp_web_tools_install')}</button>
+      <button slot="activate">{$locales('downloadbuttons.esp_web_tools_install')}</button>
     </esp-web-install-button>
   </div>
 {/if}
@@ -237,7 +237,7 @@
     {#if supportsESPWebTools(deviceDisplayInfoStore?.deviceType)}
       <div class="space-y-2">
         <label class="block text-sm font-medium text-orange-200 mb-2">
-          {$locales('download_buttons.flash_mode')}
+          {$locales('downloadbuttons.flash_mode')}
         </label>
         <div class="flex space-x-4">
           <label class="flex items-center space-x-2 cursor-pointer">
@@ -247,8 +247,8 @@
               value="update"
               class="text-orange-500 focus:ring-orange-500 focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900"
             />
-            <span class="text-orange-100">{$locales('download_buttons.update_device')}</span>
-            <span class="text-xs text-orange-400">{$locales('download_buttons.preserves_settings')}</span>
+            <span class="text-orange-100">{$locales('downloadbuttons.update_device')}</span>
+            <span class="text-xs text-orange-400">{$locales('downloadbuttons.preserves_settings')}</span>
           </label>
           <label class="flex items-center space-x-2 cursor-pointer">
             <input
@@ -257,8 +257,8 @@
               value="full"
               class="text-orange-500 focus:ring-orange-500 focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900"
             />
-            <span class="text-orange-100">{$locales('download_buttons.full_flash')}</span>
-            <span class="text-xs text-orange-400">{$locales('download_buttons.wipe_reinstall')}</span>
+            <span class="text-orange-100">{$locales('downloadbuttons.full_flash')}</span>
+            <span class="text-xs text-orange-400">{$locales('downloadbuttons.wipe_reinstall')}</span>
           </label>
         </div>
       </div>
@@ -293,7 +293,7 @@
 
       {#if showMoreOptions}
         <div class="space-y-3 pt-4 border-t border-orange-700 rounded-lg">
-          <h3 class="text-lg font-semibold text-orange-200">{$locales('download_buttons.additional_download_options')}</h3>
+          <h3 class="text-lg font-semibold text-orange-200">{$locales('downloadbuttons.additional_download_options')}</h3>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             {#each downloadOptions.slice(2) as option}
@@ -317,19 +317,19 @@
 
 <!-- ESP Web Tools Dialog (for advanced use) -->
 <dialog bind:this={espWebToolsDialog} class="p-6 bg-gray-800 border border-orange-600 rounded-lg backdrop:bg-black backdrop:bg-opacity-50">
-  <h3 class="text-lg font-semibold text-orange-200 mb-4">{$locales('download_buttons.esp_web_tools_title')}</h3>
+  <h3 class="text-lg font-semibold text-orange-200 mb-4">{$locales('downloadbuttons.esp_web_tools_title')}</h3>
   <div class="space-y-4">
     <p class="text-orange-300">
-      {$locales('download_buttons.esp_web_tools_desc')}
+      {$locales('downloadbuttons.esp_web_tools_desc')}
     </p>
     <div class="space-y-3">
-      <h4 class="font-medium text-orange-200 mb-2">{$locales('download_buttons.instructions')}</h4>
+      <h4 class="font-medium text-orange-200 mb-2">{$locales('downloadbuttons.instructions')}</h4>
       <ol class="list-decimal list-inside space-y-2 text-sm text-orange-300">
-        <li>{$locales('download_buttons.connect_device')}</li>
-        <li>{$locales('download_buttons.click_connect')}</li>
-        <li>{$locales('download_buttons.select_com_port')}</li>
-        <li>{$locales('download_buttons.click_install')}</li>
-        <li>{$locales('download_buttons.wait_complete')}</li>
+        <li>{$locales('downloadbuttons.connect_device')}</li>
+        <li>{$locales('downloadbuttons.click_connect')}</li>
+        <li>{$locales('downloadbuttons.select_com_port')}</li>
+        <li>{$locales('downloadbuttons.click_install')}</li>
+        <li>{$locales('downloadbuttons.wait_complete')}</li>
       </ol>
     </div>
     <div class="flex justify-end space-x-4 pt-4">

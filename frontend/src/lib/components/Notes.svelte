@@ -32,29 +32,29 @@
   $: buildInfo = [
     {
       icon: '🏗️',
-      title: $locales('notes_static.build_variants_title'),
-      description: $locales('notes_static.build_variants_desc')
+      title: $locales('notes.build_variants_title'),
+      description: $locales('notes.build_variants_desc')
     },
     {
       icon: '🌍',
-      title: $locales('notes_static.language_builds_title'),
-      description: $locales('notes_static.language_builds_desc')
+      title: $locales('notes.language_builds_title'),
+      description: $locales('notes.language_builds_desc')
     },
     {
       icon: '🌙',
-      title: $locales('notes_static.daily_builds_title'),
-      description: $locales('notes_static.daily_builds_desc')
+      title: $locales('notes.daily_builds_title'),
+      description: $locales('notes.daily_builds_desc')
     },
     {
       icon: '⚙️',
-      title: $locales('notes_static.custom_boards_title'),
-      description: $locales('notes_static.custom_boards_desc'),
+      title: $locales('notes.custom_boards_title'),
+      description: $locales('notes.custom_boards_desc'),
       link: 'https://github.com/mrekin/MeshtasticCustomBoards'
     },
     {
       icon: '📦',
-      title: $locales('notes_static.source_code_title'),
-      description: $locales('notes_static.source_code_desc'),
+      title: $locales('notes.source_code_title'),
+      description: $locales('notes.source_code_desc'),
       link: 'https://github.com/meshtastic/firmware'
     }
   ];
@@ -62,28 +62,28 @@
   $: bestPractices = [
     {
       icon: '💾',
-      title: $locales('notes_static.backup_config_title'),
-      description: $locales('notes_static.backup_config_desc')
+      title: $locales('notes.backup_config_title'),
+      description: $locales('notes.backup_config_desc')
     },
     {
       icon: '🔋',
-      title: $locales('notes_static.battery_level_title'),
-      description: $locales('notes_static.battery_level_desc')
+      title: $locales('notes.battery_level_title'),
+      description: $locales('notes.battery_level_desc')
     },
     {
       icon: '📡',
-      title: $locales('notes_static.stable_connection_title'),
-      description: $locales('notes_static.stable_connection_desc')
+      title: $locales('notes.stable_connection_title'),
+      description: $locales('notes.stable_connection_desc')
     },
     {
       icon: '🔄',
-      title: $locales('notes_static.recovery_mode_title'),
-      description: $locales('notes_static.recovery_mode_desc')
+      title: $locales('notes.recovery_mode_title'),
+      description: $locales('notes.recovery_mode_desc')
     },
     {
       icon: '📖',
-      title: $locales('notes_static.read_documentation_title'),
-      description: $locales('notes_static.read_documentation_desc')
+      title: $locales('notes.read_documentation_title'),
+      description: $locales('notes.read_documentation_desc')
     }
   ];
 </script>
@@ -119,7 +119,7 @@
               </div>
             {:else}
               <!-- Show coming soon message for all other devices -->
-              <p>{$locales('notes_static.howto_coming_soon')}</p>
+              <p>{$locales('notes.howto_coming_soon')}</p>
             {/if}
           </div>
         </div>
@@ -223,13 +223,13 @@
             </h5>
             <div class="space-y-2 text-sm text-orange-100">
               <p>
-                {$locales('notes_static.if_encounter_issues')}
+                {$locales('notes.if_encounter_issues')}
               </p>
               <ul class="list-disc list-inside space-y-1 ml-4">
-                <li>{$locales('notes_static.check_compatibility')}</li>
-                <li>{$locales('notes_static.verify_firmware_variant')}</li>
-                <li>{$locales('notes_static.consult_documentation')}</li>
-                <li>{$locales('notes_static.report_issues')}</li>
+                <li>{$locales('notes.check_compatibility')}</li>
+                <li>{$locales('notes.verify_firmware_variant')}</li>
+                <li>{$locales('notes.consult_documentation')}</li>
+                <li>{$locales('notes.report_issues')}</li>
               </ul>
               <div class="mt-3 space-x-4">
                 <a

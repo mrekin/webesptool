@@ -349,7 +349,7 @@
   <!-- Combined Device Selector with Filter -->
   <div class="space-y-2">
     <label for="device-combobox" class="block text-sm font-medium text-orange-300">
-        {$locales('select_device.device_type')}
+        {$locales('selectdevice.device_type')}
     </label>
 
     <!-- Combined Input with Dropdown -->
@@ -357,7 +357,7 @@
       <input
         id="device-combobox"
         type="text"
-        placeholder={$locales('select_device.filter_placeholder')}
+        placeholder={$locales('selectdevice.filter_placeholder')}
         value={deviceFilter}
         on:input={handleInputChange}
         on:focus={handleInputFocus}
@@ -372,7 +372,7 @@
             type="button"
             on:click={clearFilter}
             class="text-orange-400 hover:text-orange-300 transition-colors p-1"
-            title={$locales('select_device.clear_filter')}
+            title={$locales('selectdevice.clear_filter')}
           >
             ✕
           </button>
@@ -381,7 +381,7 @@
           type="button"
           on:click={toggleDropdown}
           class="text-orange-400 hover:text-orange-300 transition-colors p-1"
-          title={$locales('select_device.toggle_dropdown')}
+          title={$locales('selectdevice.toggle_dropdown')}
         >
           ▼
         </button>
@@ -392,7 +392,7 @@
         <div class="dropdown-list absolute z-10 left-0 right-0 mt-1 bg-gray-800 border border-orange-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
         {#if filteredDevices.length === 0 && deviceFilter}
           <div class="px-4 py-3 text-sm text-orange-300">
-            {$locales('select_device.no_devices_match')}
+            {$locales('selectdevice.no_devices_match')}
           </div>
         {:else}
           <!-- Device Categories -->
@@ -426,21 +426,21 @@
     <!-- Status Messages -->
     {#if allDevices.length === 0}
       <p class="text-sm text-orange-300">
-        {$locales('select_device.no_devices_available')}
+        {$locales('selectdevice.no_devices_available')}
       </p>
     {:else if deviceFilter && filteredDevices.length > 0}
       <p class="text-xs text-orange-400">
-        {$locales('select_device.found_devices', {values: { count: filteredDevices.length }})}
+        {$locales('selectdevice.found_devices', {values: { count: filteredDevices.length }})}
       </p>
     {/if}
   </div>
 
-  <!-- {$locales('select_device.firmware_version')} Selection -->
+  <!-- {$locales('selectdevice.firmware_version')} Selection -->
   {#if deviceSelected}
     {#if versionsDataStore.versions.length > 0}
     <div class="space-y-2">
       <label for="firmware-version" class="block text-sm font-medium text-orange-300">
-        {$locales('select_device.firmware_version')}
+        {$locales('selectdevice.firmware_version')}
       </label>
 
       <!-- Custom Version Selector -->
@@ -448,7 +448,7 @@
         <input
           id="firmware-version"
           type="text"
-          placeholder={$locales('select_device.version_placeholder')}
+          placeholder={$locales('selectdevice.version_placeholder')}
           value={deviceSelectionStore.version ? getVersionDisplayText(deviceSelectionStore.version) : ''}
           on:input={handleVersionInputChange}
           on:click={handleVersionInputClick}
@@ -463,7 +463,7 @@
             type="button"
             on:click|stopPropagation={() => manageVersionDropdown('toggle')}
             class="text-orange-400 hover:text-orange-300 transition-colors p-1 pointer-events-auto"
-            title={$locales('select_device.toggle_dropdown')}
+            title={$locales('selectdevice.toggle_dropdown')}
           >
             ▼
           </button>
@@ -499,10 +499,10 @@
     {:else}
     <div class="space-y-2">
       <label for="firmware-version" class="block text-sm font-medium text-orange-300">
-        {$locales('select_device.firmware_version')}
+        {$locales('selectdevice.firmware_version')}
       </label>
       <p class="text-sm text-orange-300">
-        {$locales('select_device.no_versions_available')}
+        {$locales('selectdevice.no_versions_available')}
       </p>
     </div>
     {/if}

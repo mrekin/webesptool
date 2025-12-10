@@ -15,8 +15,8 @@
   },
   "page": {
     "main_title": "Custom Meshtastic builds web installer",
-    "main_description": "Install custom Meshtastic firmware on your device with browser-based tools or direct downloads.",
     "meta_description": "Custom Meshtastic firmware builds web installer",
+    "main_description": "Install custom Meshtastic firmware on your device with browser-based tools or direct downloads.",
     "error": "Error",
     "reload_page": "Reload Page",
     "source_repository": "Source repository:",
@@ -25,7 +25,10 @@
     "firmware_information": "Firmware Information",
     "important_notes": "Important Notes"
   },
-  "select_device": {
+  "languageselector": {
+    "language": "Language"
+  },
+  "selectdevice": {
     "device_type": "Device Type",
     "filter_placeholder": "Type to filter or click to select...",
     "firmware_version": "Firmware Version",
@@ -38,7 +41,7 @@
     "toggle_dropdown": "Toggle dropdown",
     "pio_target": "PIO target:"
   },
-  "firmware_info": {
+  "firmwareinfo": {
     "title": "Firmware Information",
     "device_info": "Device Information",
     "device_details": "Device Details",
@@ -67,7 +70,7 @@
     "important_warning": "⚠️ Important: This will replace your current firmware.",
     "backup_warning": "Make sure to backup any important data before proceeding with installation."
   },
-  "download_buttons": {
+  "downloadbuttons": {
     "flash_mode": "Flash Mode",
     "update_device": "Update Device",
     "preserves_settings": "(preserves settings)",
@@ -102,74 +105,14 @@
     "more": "More..",
     "best_practices": "Best Practices",
     "need_help": "Need Help?",
-    "build_variants": "Build Variants",
-    "language_builds": "Language Builds",
-    "daily_builds": "Daily Builds",
-    "custom_boards": "Custom Boards",
-    "source_code": "Source Code",
-    "backup_config": "Backup Configuration",
-    "battery_level": "Battery Level",
-    "stable_connection": "Stable Connection",
-    "recovery_mode": "Recovery Mode",
-    "read_documentation": "Read Documentation",
-    "build_variants_desc": "Not all board-version combinations are built. Open an issue on GitHub to request specific variants.",
-    "language_builds_desc": "Builds with \"-ru\" include Russian language support. Similar patterns exist for other languages.",
-    "daily_builds_desc": "Builds ending in \".daily\" are created from master branch, built 4 times daily at 5:00, 11:00, 17:00, 23:00 GMT.",
-    "custom_boards_desc": "Custom board configurations are available. Submit issues or PRs via GitHub.",
-    "source_code_desc": "Firmware is built from official Meshtastic source with only build/variant modifications applied.",
-    "backup_config_desc": "Always backup your device configuration before flashing new firmware.",
-    "battery_level_desc": "Ensure your device has sufficient battery charge or is connected to power during installation.",
-    "stable_connection_desc": "Maintain a stable USB connection throughout the firmware installation process.",
-    "recovery_mode_desc": "Know how to enter recovery/bootloader mode for your specific device model.",
-    "read_documentation_desc": "Consult your device documentation for specific installation instructions and requirements.",
-    "howto_coming_soon": "HowTo content coming soon...",
-    "view_on_github": "🔗 View on GitHub",
-    "if_encounter_issues": "If you encounter issues with these firmware builds, please:",
-    "check_compatibility": "Check the device compatibility list",
-    "verify_firmware_variant": "Verify you're using the correct firmware variant",
-    "consult_documentation": "Consult the official Meshtastic documentation",
-    "report_issues": "Report issues on the relevant GitHub repository",
     "report_issue": "🐛 Report Issue",
     "documentation": "📚 Documentation",
     "firmware_build_service": "Firmware build service",
     "beta_version": "Beta version - Use at your own risk",
     "disclaimer": "Disclaimer:",
     "disclaimer_text": "This service is provided as-is without any warranty. The developers are not responsible for any damage to devices or data loss.",
-    "terms_agreement": "By using this service, you agree to these terms and acknowledge the risks involved."
-  },
-  "footer": {
-    "meshtastic": "Meshtastic",
-    "documentation": "Documentation",
-    "community": "Community",
-    "github": "GitHub",
-    "meshtastic_flasher": "Meshtastic Flasher",
-    "esp_web_tools": "ESP Web Tools",
-    "primary_mirror": "Primary Mirror",
-    "european_mirror": "European Mirror",
-    "development_tools": "Development Tools",
-    "service_mirrors": "Service Mirrors",
-    "official_website": "Official Meshtastic project website",
-    "official_documentation": "Official documentation and guides",
-    "community_forums": "Community forums and discussions",
-    "source_code_dev": "Source code and development",
-    "web_flashing_tool": "Web-based firmware flashing tool",
-    "browser_esp_tools": "Browser-based ESP32 development tools",
-    "main_service_mirror": "Main service mirror",
-    "european_server_mirror": "European server mirror",
-    "installer_description": "Installer powered by advanced web-based tools for firmware development and installation:",
-    "alternative_endpoints": "Alternative service endpoints for improved accessibility and performance:",
-    "copyright": "© {year} Meshtastic Firmware Build Service. All rights reserved.",
-    "built_with": "Built with ❤️ using",
-    "trademark_notice": "Meshtastic® is a registered trademark. All other trademarks are the property of their respective owners."
-  },
-  "important_notice": {
-    "title": "⚠️ Important Notice",
-    "close_notice": "Close notice",
-    "expand_notice": "Expand notice",
-    "unofficial_builds": "These are unofficial builds of Meshtastic firmware, provided for testing and development purposes. They may contain experimental features and are not officially supported by the Meshtastic project.",
-    "backup_before_flashing": "Always backup your device configuration before flashing firmware."
-  },
-  "notes_static": {
+    "terms_agreement": "By using this service, you agree to these terms and acknowledge the risks involved.",
+    "howto_coming_soon": "Content coming soon...",
     "build_variants_title": "Build Variants",
     "build_variants_desc": "Not all board-version combinations are built. Open an issue on GitHub to request specific variants.",
     "language_builds_title": "Language Builds",
@@ -190,14 +133,24 @@
     "recovery_mode_desc": "Know how to enter recovery/bootloader mode for your specific device model.",
     "read_documentation_title": "Read Documentation",
     "read_documentation_desc": "Consult your device documentation for specific installation instructions and requirements.",
-    "howto_coming_soon": "HowTo content coming soon...",
     "if_encounter_issues": "If you encounter issues with these firmware builds, please:",
     "check_compatibility": "Check the device compatibility list",
     "verify_firmware_variant": "Verify you're using the correct firmware variant",
     "consult_documentation": "Consult the official Meshtastic documentation",
     "report_issues": "Report issues on the relevant GitHub repository"
   },
-  "footer_static": {
+  "importantnotice": {
+    "title": "⚠️ Important Notice",
+    "close_notice": "Close notice",
+    "expand_notice": "Expand notice",
+    "unofficial_builds": "These are unofficial builds of Meshtastic firmware, provided for testing and development purposes. They may contain experimental features and are not officially supported by the Meshtastic project.",
+    "backup_before_flashing": "Always backup your device configuration before flashing firmware."
+  },
+  "footer": {
+    "development_tools": "Development Tools",
+    "installer_description": "Installer powered by advanced web-based tools for firmware development and installation:",
+    "service_mirrors": "Service Mirrors",
+    "alternative_endpoints": "Alternative service endpoints for improved accessibility and performance:",
     "meshtastic_name": "Meshtastic",
     "meshtastic_desc": "Official Meshtastic project website",
     "documentation_name": "Documentation",
@@ -216,6 +169,9 @@
     "european_mirror_desc": "European server mirror",
     "copyright": "© {year} Meshtastic Firmware Build Service. All rights reserved.",
     "built_with": "Built with ❤️ using",
-    "trademark_notice": "Meshtastic® is a registered trademark. All other trademarks are the property of their respective owners."
+    "trademark_notice": "Meshtastic® is a registered trademark. All other trademarks are the property of their respective owners.",
+    "status": "Status",
+    "beta_service": "Beta Service",
+    "last_updated": "Last Updated:"
   }
 }

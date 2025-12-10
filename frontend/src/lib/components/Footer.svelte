@@ -7,50 +7,50 @@
   // Reactive footer links data using localization
   $: mainLinks = [
     {
-      name: $locales('footer_static.meshtastic_name'),
+      name: $locales('footer.meshtastic_name'),
       href: 'https://meshtastic.org/',
-      description: $locales('footer_static.meshtastic_desc')
+      description: $locales('footer.meshtastic_desc')
     },
     {
-      name: $locales('footer_static.documentation_name'),
+      name: $locales('footer.documentation_name'),
       href: 'https://meshtastic.org/docs/',
-      description: $locales('footer_static.documentation_desc')
+      description: $locales('footer.documentation_desc')
     },
     {
-      name: $locales('footer_static.community_name'),
+      name: $locales('footer.community_name'),
       href: 'https://meshtastic.discourse.group/',
-      description: $locales('footer_static.community_desc')
+      description: $locales('footer.community_desc')
     },
     {
-      name: $locales('footer_static.github_name'),
+      name: $locales('footer.github_name'),
       href: 'https://github.com/meshtastic/firmware',
-      description: $locales('footer_static.github_desc')
+      description: $locales('footer.github_desc')
     }
   ];
 
   $: toolLinks = [
     {
-      name: $locales('footer_static.meshtastic_flasher_name'),
+      name: $locales('footer.meshtastic_flasher_name'),
       href: 'https://flasher.meshtastic.org/',
-      description: $locales('footer_static.meshtastic_flasher_desc')
+      description: $locales('footer.meshtastic_flasher_desc')
     },
     {
-      name: $locales('footer_static.esp_web_tools_name'),
+      name: $locales('footer.esp_web_tools_name'),
       href: 'https://esphome.github.io/esp-web-tools/',
-      description: $locales('footer_static.esp_web_tools_desc')
+      description: $locales('footer.esp_web_tools_desc')
     }
   ];
 
   $: mirrorLinks = [
     {
-      name: $locales('footer_static.primary_mirror_name'),
+      name: $locales('footer.primary_mirror_name'),
       href: 'https://mrekin.duckdns.org/flasher/',
-      description: $locales('footer_static.primary_mirror_desc')
+      description: $locales('footer.primary_mirror_desc')
     },
     {
-      name: $locales('footer_static.european_mirror_name'),
+      name: $locales('footer.european_mirror_name'),
       href: 'https://de2-vardas.duckdns.org',
-      description: $locales('footer_static.european_mirror_desc')
+      description: $locales('footer.european_mirror_desc')
     }
   ];
 
@@ -148,10 +148,10 @@
         <div class="border-t border-orange-800 pt-6 mt-8">
           <div class="text-center space-y-2 text-sm text-orange-400">
             <p>
-              {$locales('footer_static.copyright', { values: { year: currentYear }})}
+              {$locales('footer.copyright', { values: { year: currentYear }})}
             </p>
             <p>
-              {$locales('footer_static.built_with')}
+              {$locales('footer.built_with')}
               <a href="https://svelte.dev" target="_blank" rel="noopener noreferrer" class="text-orange-300 hover:text-orange-200 underline">
                 SvelteKit
               </a>
@@ -165,7 +165,7 @@
               </a>
             </p>
             <p class="text-xs">
-              {$locales('footer_static.trademark_notice')}
+              {$locales('footer.trademark_notice')}
             </p>
           </div>
         </div>
@@ -177,12 +177,12 @@
       <div class="container mx-auto px-4 py-3">
         <div class="flex flex-col sm:flex-row justify-between items-center text-xs text-orange-400">
           <div class="flex items-center space-x-4">
-            <span>{$locales('common.status')}:</span>
-            <span class="text-orange-300">{$locales('common.beta_service')}</span>
+            <span>{$locales('footer.status')}:</span>
+            <span class="text-orange-300">{$locales('footer.beta_service')}</span>
             <span class="inline-block w-2 h-2 bg-yellow-500 rounded-full ml-2"></span>
           </div>
           <div class="flex items-center space-x-4">
-            <span>{$locales('common.last_updated')}:</span>
+            <span>{$locales('footer.last_updated')}:</span>
             <span class="text-orange-300">{currentYear}-{String(new Date().getMonth() + 1).padStart(2, '0')}</span>
           </div>
         </div>

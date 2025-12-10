@@ -35,13 +35,13 @@
       <!-- Expanded state -->
       <div class="notice-content">
         <div class="notice-header">
-          <h3 class="notice-title">{$locales('important_notice.title')}</h3>
+          <h3 class="notice-title">{$locales('importantnotice.title')}</h3>
           <button
             type="button"
             class="close-button"
             on:click={closeNotice}
-            title={$locales('important_notice.close_notice')}
-            aria-label={$locales('important_notice.close_notice')}
+            title={$locales('importantnotice.close_notice')}
+            aria-label={$locales('importantnotice.close_notice')}
           >
             ✕
           </button>
@@ -49,10 +49,10 @@
         <div class="notice-body">
           <div class="notice-text">
             <p class="text-orange-300 text-sm leading-relaxed">
-              {@html $locales('important_notice.unofficial_builds')}
+              {@html $locales('importantnotice.unofficial_builds')}
             </p>
             <p class="text-orange-300 text-sm mt-2">
-              {$locales('important_notice.backup_before_flashing')}
+              {$locales('importantnotice.backup_before_flashing')}
             </p>
           </div>
         </div>
@@ -60,13 +60,13 @@
     {:else}
       <!-- Collapsed state -->
       <div class="collapsed-notice">
-        <span class="collapsed-title">{$locales('important_notice.title')}</span>
+        <span class="collapsed-title">{$locales('importantnotice.title')}</span>
         <button
           type="button"
           class="expand-button"
           on:click={expandNotice}
-          title={$locales('important_notice.expand_notice')}
-          aria-label={$locales('important_notice.expand_notice')}
+          title={$locales('importantnotice.expand_notice')}
+          aria-label={$locales('importantnotice.expand_notice')}
         >
           ▼
         </button>

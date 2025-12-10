@@ -21,7 +21,7 @@
     bind:value={currentLanguage}
     on:change={handleLanguageChange}
     class="appearance-none bg-transparent border border-gray-300 rounded-md px-3 py-1 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent hover:border-gray-400 transition-colors cursor-pointer text-orange-200"
-    title={$locales('common.language')}
+    title={$locales('languageselector.language')}
   >
     {#each languages as lang}
       <option value={lang.code}>
