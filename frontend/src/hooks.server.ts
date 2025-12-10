@@ -87,15 +87,18 @@ export async function handle({ event, resolve }) {
       if (contentType.includes('application/json')) {
         // For JSON responses
         responseBody = await response.text();
-      } else {
-        // For binary files (ZIP, BIN, UF2) - preserve binary data
-        responseBody = await response.arrayBuffer();
-      }
 
-      return new Response(responseBody, {
-        status: response.status,
-        headers: headers
-      });
+        return new Response(responseBody, {
+          status: response.status,
+          headers: headers
+        });
+      } else {
+        // For binary files (ZIP, BIN, UF2) - use stream directly to preserve size info
+        return new Response(response.body, {
+          status: response.status,
+          headers: headers
+        });
+      }
     } catch (error) {
       console.error('API proxy error:', error);
       return new Response(JSON.stringify({ error: 'Backend unavailable' }), {
