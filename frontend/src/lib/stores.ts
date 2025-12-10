@@ -533,8 +533,18 @@ export const apiActions = {
         e: category == 'esp' ? true : false
       };
 
-      const response = await apiService.downloadFirmware(request);
-      apiService.triggerDownload(response.blob, response.filename);
+      // Используем скрытую ссылку для скачивания с правильным размером
+      const params = new URLSearchParams(request as any).toString();
+      const baseUrl = import.meta.env.VITE_BASE_PATH || '/frontend';
+      const downloadUrl = `${baseUrl}/api/firmware?${params}`;
+
+      // Создаем скрытую ссылку и запускаем скачивание
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
       // Record successful download
       downloadHistory.update(history => [
