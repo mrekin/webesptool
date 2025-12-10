@@ -602,6 +602,8 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
         if u=="4": #ota
             #path = os.path.join(rootFolder,t,v,"firmware-ota.zip")
             path, filename = await getFileByMask(os.path.join(rootFolder,t,v),r".*\.zip")
+            if filename == "firmware-ota.zip":
+                filename = t+"-"+v+"-ota.zip"
             #if(not await aiofiles.os.path.isfile(path)):
             #    path = os.path.join(rootFolder,t,v,"firmware.zip")
             #filename = t+"-"+v+"-ota.zip"
@@ -609,17 +611,23 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
             #path = os.path.join(rootFolder,t,v,"firmware.uf2")
             #filename = t+"-"+v+".uf2"
             path, filename = await getFileByMask(os.path.join(rootFolder,t,v),r".*\.uf2")
+            if filename == "firmware.uf2":
+                filename = t+"-"+v+".uf2"
             
     else :
         if u=="1": #update
             #path = os.path.join(rootFolder,t,v,"firmware.bin")
             #filename = t+"-"+v+".bin"
             path, filename = await getFileByMask(os.path.join(rootFolder,t,v),r".*firmware(?!.*factory).*\.bin")
+            if filename == "firmware.bin":
+                filename = t+"-"+v+".bin"
         elif u=="2":  #install
             if p == 'fw':
                 #path = os.path.join(rootFolder,t,v,"firmware.factory.bin")
                 #filename = t+"-"+v+".factory.bin"
                 path, filename = await getFileByMask(os.path.join(rootFolder,t,v),r".*firmware.*factory\.bin")
+                if filename == "firmware.factory.bin":
+                    filename = t+"-"+v+".factory.bin"
             if p == 'littlefs':
                 logInd = False # Do not log additional files downloads
                 #path = os.path.join(rootFolder,t,v,"littlefs.bin")
