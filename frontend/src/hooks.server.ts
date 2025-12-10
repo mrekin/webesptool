@@ -62,8 +62,6 @@ export async function handle({ event, resolve }) {
         body: body
       });
 
-      const responseText = await response.text();
-
       // Copy all important headers from backend response
       const headers: Record<string, string> = {};
       const importantHeaders = [
@@ -82,7 +80,19 @@ export async function handle({ event, resolve }) {
         }
       }
 
-      return new Response(responseText, {
+      // Determine response type based on content-type
+      const contentType = response.headers.get('content-type') || '';
+      let responseBody;
+
+      if (contentType.includes('application/json')) {
+        // For JSON responses
+        responseBody = await response.text();
+      } else {
+        // For binary files (ZIP, BIN, UF2) - preserve binary data
+        responseBody = await response.arrayBuffer();
+      }
+
+      return new Response(responseBody, {
         status: response.status,
         headers: headers
       });

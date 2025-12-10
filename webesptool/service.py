@@ -585,10 +585,16 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
         #    return JSONResponse(content={'error': 'No such firmware found'}, status_code=404)
         dir = os.path.join(rootFolder,t,v)
         zip_buffer = await generate_zip(dir, await buildManifest(t = t, v = v, u = u, src = src))
+        zip_buffer.seek(0, 2)  # Переходим в конец
+        zip_size = zip_buffer.tell()  # Получаем размер
+        zip_buffer.seek(0)  # Возвращаемся в начало
         return StreamingResponse(
             zip_buffer,
-            media_type="multipart/form-data",
-            headers={"Content-Disposition": f"attachment; filename={t}-{v}.zip"}
+            media_type="application/octet-stream",
+                headers={
+                    "Content-Disposition": f"attachment; filename={t}-{v}.zip",
+                    "Content-Length": str(zip_size)
+                }
         )
 
     #need additional logic for -s3 and install
