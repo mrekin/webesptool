@@ -590,7 +590,7 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
         zip_buffer.seek(0)  # Возвращаемся в начало
         return StreamingResponse(
             zip_buffer,
-            media_type="application/octet-stream",
+            media_type="application/zip",
                 headers={
                     "Content-Disposition": f"attachment; filename={t}-{v}.zip",
                     "Content-Length": str(zip_size)
