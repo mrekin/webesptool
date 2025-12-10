@@ -93,7 +93,12 @@ export async function handle({ event, resolve }) {
           headers: headers
         });
       } else {
+<<<<<<< HEAD
         // For binary files (ZIP, BIN, UF2) - use stream directly to preserve size info
+=======
+        // For binary files (ZIP, BIN, UF2) - use stream directly
+        // Create a new Response with the stream from the original response
+>>>>>>> ea962a81f72b0939808619df6eb356793821b9e8
         return new Response(response.body, {
           status: response.status,
           headers: headers
