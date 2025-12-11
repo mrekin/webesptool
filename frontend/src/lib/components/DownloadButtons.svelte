@@ -224,11 +224,11 @@
 
     <!-- Firmware Mode Selector for ESP32 Devices -->
     {#if supportsESPWebTools(deviceDisplayInfoStore?.deviceType)}
-      <div class="space-y-2">
+      <div class="space-y-2 sm:space-y-3">
         <label class="block text-sm font-medium text-orange-200 mb-2">
           {$locales('downloadbuttons.flash_mode')}
         </label>
-        <div class="flex space-x-4">
+        <div class="flex flex-col sm:flex-row sm:space-x-4 space-y-2 sm:space-y-0">
           <label class="flex items-center space-x-2 cursor-pointer">
             <input
               type="radio"
@@ -237,7 +237,7 @@
               class="text-orange-500 focus:ring-orange-500 focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900"
             />
             <span class="text-orange-100">{$locales('downloadbuttons.update_device')}</span>
-            <span class="text-xs text-orange-400">{$locales('downloadbuttons.preserves_settings')}</span>
+            <span class="text-xs text-orange-400 max-w-[100px] sm:max-w-none break-words sm:break-normal">{$locales('downloadbuttons.preserves_settings')}</span>
           </label>
           <label class="flex items-center space-x-2 cursor-pointer">
             <input
@@ -247,19 +247,19 @@
               class="text-orange-500 focus:ring-orange-500 focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900"
             />
             <span class="text-orange-100">{$locales('downloadbuttons.full_flash')}</span>
-            <span class="text-xs text-orange-400">{$locales('downloadbuttons.wipe_reinstall')}</span>
+            <span class="text-xs text-orange-400 max-w-[100px] sm:max-w-none break-words sm:break-normal">{$locales('downloadbuttons.wipe_reinstall')}</span>
           </label>
         </div>
       </div>
     {/if}
 
     <!-- Primary Download Actions -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
       {#each downloadOptions.slice(0, 2) as option}
         <button
           on:click={() => handleDownloadClick(option)}
           disabled={!option.available}
-          class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed w-full transition-colors duration-200"
+          class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-3 sm:px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed w-full transition-colors duration-200 text-sm sm:text-base"
         >
           <span class="flex items-center justify-center">
             <span class="text-base mr-2">{option.icon}</span>
@@ -284,12 +284,12 @@
         <div class="space-y-3 pt-4 border-t border-orange-700 rounded-lg">
           <h3 class="text-lg font-semibold text-orange-200">{$locales('downloadbuttons.additional_download_options')}</h3>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {#each downloadOptions.slice(2) as option}
               <button
                 on:click={() => handleDownloadClick(option)}
                 disabled={!option.available}
-                class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed w-full transition-colors duration-200"
+                class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-3 sm:px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed w-full transition-colors duration-200 text-sm sm:text-base"
               >
                 <span class="flex items-center justify-center">
                   <span class="text-base mr-2">{option.icon}</span>
