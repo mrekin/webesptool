@@ -229,7 +229,7 @@
           {$locales('downloadbuttons.flash_mode')}
         </label>
         <div class="flex flex-col sm:flex-row sm:space-x-4 space-y-2 sm:space-y-0">
-          <label class="flex items-center space-x-2 cursor-pointer">
+          <label class="flex items-center space-x-2 cursor-pointer" title="{$locales('downloadbuttons.update_existing_firmware')}">
             <input
               type="radio"
               bind:group={firmwareMode}
@@ -239,7 +239,7 @@
             <span class="text-orange-100">{$locales('downloadbuttons.update_device')}</span>
             <span class="text-xs text-orange-400 max-w-[100px] sm:max-w-none break-words sm:break-normal">{$locales('downloadbuttons.preserves_settings')}</span>
           </label>
-          <label class="flex items-center space-x-2 cursor-pointer">
+          <label class="flex items-center space-x-2 cursor-pointer" title="{$locales('downloadbuttons.complete_firmware_wipe')}">
             <input
               type="radio"
               bind:group={firmwareMode}
@@ -260,6 +260,8 @@
           on:click={() => handleDownloadClick(option)}
           disabled={!option.available}
           class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-3 sm:px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed w-full transition-colors duration-200 text-sm sm:text-base"
+          title={option.description}
+          aria-label={option.description}
         >
           <span class="flex items-center justify-center">
             <span class="text-base mr-2">{option.icon}</span>
@@ -290,6 +292,8 @@
                 on:click={() => handleDownloadClick(option)}
                 disabled={!option.available}
                 class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-3 sm:px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed w-full transition-colors duration-200 text-sm sm:text-base"
+                title={option.description}
+                aria-label={option.description}
               >
                 <span class="flex items-center justify-center">
                   <span class="text-base mr-2">{option.icon}</span>
