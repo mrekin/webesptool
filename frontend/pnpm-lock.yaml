@@ -9,8 +9,11 @@ importers:
   .:
     dependencies:
       esp-web-tools:
-        specifier: ^10.1.1
+        specifier: '10'
         version: 10.1.1
+      esptool-js:
+        specifier: ^0.5.7
+        version: 0.5.7
       svelte-i18n:
         specifier: ^4.0.1
         version: 4.0.1(svelte@5.38.6)

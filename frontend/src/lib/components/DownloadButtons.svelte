@@ -5,6 +5,7 @@
   import { isESP32Device, isNRF52Device, isRP2040Device, supportsESPWebTools, supportsUF2 } from '$lib/utils/deviceTypeUtils.js';
   import type { DownloadOption } from '$lib/types';
   import { _ as locales, locale } from 'svelte-i18n';
+  import { onMount } from 'svelte';
 
   // Local state
   let espWebToolsDialog: HTMLDialogElement;
@@ -15,6 +16,17 @@
   $: deviceSelectionStore = $deviceSelection;
   $: isDownloading = $loadingState.isDownloading;
   $: deviceDisplayInfoStore = $deviceDisplayInfo;
+
+  // Import esp-web-tools only on client side
+  onMount(async () => {
+    if (typeof window !== 'undefined') {
+      try {
+        await import('esp-web-tools/dist/web/install-button.js');
+      } catch (error) {
+        console.error('Failed to load ESP Web Tools:', error);
+      }
+    }
+  });
 
   // Available download options based on device type and version
   $: downloadOptions = getDownloadOptions(deviceSelectionStore.devicePioTarget, deviceDisplayInfoStore?.deviceType, deviceSelectionStore.version, $locale);
@@ -107,12 +119,14 @@
   // Function to configure and trigger ESP Web Tools button
   function configureAndTriggerESPButton(): boolean {
     const espButton = document.querySelector('esp-web-install-button');
+
     if (espButton) {
       const manifestUrl = generateManifestUrl();
       espButton.setAttribute('manifest', manifestUrl);
 
       // Trigger the ESP Web Tools installation
       const activateButton = espButton.querySelector('button[slot="activate"]');
+
       if (activateButton) {
         activateButton.click();
         return true;
@@ -204,12 +218,7 @@
   }
 </script>
 
-<!-- ESP Web Tools script loading (conditionally) -->
-<svelte:head>
-  {#if supportsESPWebTools(deviceDisplayInfoStore?.deviceType)}
-    <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js"></script>
-  {/if}
-</svelte:head>
+<!-- ESP Web Tools is now loaded as npm module in script section -->
 
 <!-- ESP Web Tools Button (hidden, used for firmware installation) -->
 {#if supportsESPWebTools(deviceDisplayInfoStore?.deviceType) && deviceSelectionStore.version}
