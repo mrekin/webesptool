@@ -22,6 +22,11 @@
       description: $locales('footer.community_desc')
     },
     {
+      name: $locales('footer.mrekin_github_name'),
+      href: 'https://github.com/mrekin/MeshtasticCustomBoards',
+      description: $locales('footer.mrekin_github_desc')
+    },
+    {
       name: $locales('footer.github_name'),
       href: 'https://github.com/meshtastic/firmware',
       description: $locales('footer.github_desc')
