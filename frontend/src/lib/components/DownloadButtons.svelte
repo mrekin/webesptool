@@ -95,7 +95,9 @@
 
   // Function to generate manifest URL for ESP Web Tools
   function generateManifestUrl(): string {
-    return `${window.location.origin}/api/manifest?${new URLSearchParams({
+    // Use relative path to respect the base URL configuration
+    const baseUrl = import.meta.env.VITE_BASE_PATH || '';
+    return `${baseUrl}/api/manifest?${new URLSearchParams({
       t: deviceSelectionStore.devicePioTarget,
       v: deviceSelectionStore.version,
       u: firmwareMode === 'full' ? '2' : '1',
