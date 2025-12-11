@@ -3,14 +3,33 @@
   import { deviceDisplayInfo } from '$lib/stores';
   import { isNRF52Device, isESP32Device } from '$lib/utils/deviceTypeUtils.js';
   import MarkdownRenderer from '$lib/components/MarkdownRenderer.svelte';
+  import { getAvailableDocuments } from '$lib/utils/markdown';
 
   // Local state
-  let showMoreSection = false;
-  let showImportantNotes = false;
-  let showHowTo = false;
+  let showMoreSection = $state(false);
+  let showImportantNotes = $state(false);
+  let showHowTo = $state(false);
+  let availableDocuments = $state([]);
 
   // Subscribe to device display info
-  $: currentDeviceInfo = $deviceDisplayInfo;
+  let currentDeviceInfo = $derived($deviceDisplayInfo);
+
+  // Reactive document loading from howto directory
+  $effect(() => {
+    // Always load documents, even when no device is selected
+    loadDocuments();
+  });
+
+  async function loadDocuments() {
+    try {
+      // Load documents from howto directory with device type filtering
+      const docs = await getAvailableDocuments('howto', currentDeviceInfo?.deviceType);
+      availableDocuments = docs;
+    } catch (error) {
+      console.error('Failed to load documents:', error);
+      availableDocuments = [];
+    }
+  }
 
   // Toggle more section
   function toggleMore() {
@@ -29,7 +48,7 @@
 
   
   // Reactive build information and best practices using localization
-  $: buildInfo = [
+  let buildInfo = $derived([
     {
       icon: '🏗️',
       title: $locales('notes.build_variants_title'),
@@ -57,9 +76,9 @@
       description: $locales('notes.source_code_desc'),
       link: 'https://github.com/meshtastic/firmware'
     }
-  ];
+  ]);
 
-  $: bestPractices = [
+  let bestPractices = $derived([
     {
       icon: '💾',
       title: $locales('notes.backup_config_title'),
@@ -85,7 +104,7 @@
       title: $locales('notes.read_documentation_title'),
       description: $locales('notes.read_documentation_desc')
     }
-  ];
+  ]);
 </script>
 
 
@@ -110,23 +129,17 @@
 
       {#if showHowTo}
         <div id="howto-content" class="mt-3 space-y-4 animate-fade-in">
-          <!-- Content based on device type -->
-          <div class="text-orange-300 text-sm">
-            {#if currentDeviceInfo && isNRF52Device(currentDeviceInfo.deviceType)}
-              <!-- Show nRF52 flashing documentation for nRF52 devices -->
-              <div class="prose prose-invert max-w-none">
-                <MarkdownRenderer filename="nrf52_flashing.md" hide={true} />
+          {#if availableDocuments.length > 0}
+            {#each availableDocuments as doc (doc)}
+              <div class="text-orange-300 text-sm">
+                <div class="prose prose-invert max-w-none">
+                  <MarkdownRenderer filename={doc} hide={true} />
+                </div>
               </div>
-            {:else if currentDeviceInfo && isESP32Device(currentDeviceInfo.deviceType)}
-              <!-- Show ESP32 flashing documentation for ESP32 devices -->
-              <div class="prose prose-invert max-w-none">
-                <MarkdownRenderer filename="esp32_flashing.md" hide={true} />
-              </div>
-            {:else}
-              <!-- Show coming soon message for all other devices -->
-              <p>{$locales('notes.howto_coming_soon')}</p>
-            {/if}
-          </div>
+            {/each}
+          {:else}
+            <p>{$locales('notes.howto_coming_soon')}</p>
+          {/if}
         </div>
       {/if}
     </div>
@@ -238,7 +251,7 @@
               </ul>
               <div class="mt-3 space-x-4">
                 <a
-                  href="https://github.com/meshtastic/firmware/issues"
+                  href="https://github.com/mrekin/MeshtasticCustomBoards"
                   target="_blank"
                   rel="noopener noreferrer"
                   class="inline-flex items-center px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors text-sm"
