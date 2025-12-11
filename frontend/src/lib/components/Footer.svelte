@@ -71,72 +71,69 @@
     <!-- Main footer content -->
     <div class="container mx-auto px-4 py-8">
       <!-- Top section with main links -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
-        {#each mainLinks as link}
-          <div class="space-y-2">
-            <h3 class="text-orange-200 font-semibold mb-3">{link.name}</h3>
+      <div class="mb-8">
+        <div class="flex flex-wrap justify-center gap-4 sm:gap-6 lg:gap-8">
+          {#each mainLinks as link}
             <a
               href={link.href}
               target="_blank"
               rel="noopener noreferrer"
-              class="text-orange-300 hover:text-orange-200 transition-colors text-sm block group"
+              class="flex flex-col items-center text-center group min-w-[120px] sm:min-w-[140px] hover:bg-gray-800 hover:bg-opacity-50 p-3 rounded-lg transition-all duration-200"
+              title={link.description}
             >
-              <span class="group-hover:underline">{link.name}</span>
-              <span class="block text-orange-400 text-xs mt-1">{link.description}</span>
+              <span class="text-orange-200 font-medium text-sm sm:text-base group-hover:text-orange-100 transition-colors">
+                {link.name}
+              </span>
+              <span class="text-orange-400 text-xs mt-1 max-w-[120px] sm:max-w-[140px] line-clamp-2 group-hover:text-orange-300 transition-colors">
+                {link.description}
+              </span>
             </a>
-          </div>
-        {/each}
-      </div>
-
-      <!-- Tools section -->
-      <div class="mb-8">
-        <h3 class="text-orange-200 font-semibold mb-4 flex items-center">
-          <span class="mr-2">🛠️</span>
-          {$locales('footer.development_tools')}
-        </h3>
-        <p class="text-orange-300 mb-4 text-sm">
-          {$locales('footer.installer_description')}
-        </p>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {#each toolLinks as tool}
-            <div class="p-4 bg-gray-800 border border-orange-700 rounded-lg hover:bg-gray-700 transition-colors">
-              <h4 class="font-medium text-orange-200 mb-2">{tool.name}</h4>
-              <a
-                href={tool.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="text-orange-400 hover:text-orange-300 text-sm underline block"
-              >
-                {tool.href}
-              </a>
-              <p class="text-orange-400 text-xs mt-2">{tool.description}</p>
-            </div>
           {/each}
         </div>
       </div>
 
-      <!-- Mirrors section -->
+      <!-- Tools and Mirrors section -->
       <div class="mb-8">
-        <h3 class="text-orange-200 font-semibold mb-4 flex items-center">
-          <span class="mr-2">🌐</span>
-          {$locales('footer.service_mirrors')}
-        </h3>
-        <p class="text-orange-300 mb-4 text-sm">
-          {$locales('footer.alternative_endpoints')}
-        </p>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {#each mirrorLinks as mirror}
-            <div class="p-3 bg-gray-800 border border-orange-700 rounded hover:bg-gray-700 transition-colors">
-              <h4 class="font-medium text-orange-200 mb-1">{mirror.name}</h4>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-4">
+          <!-- Tools column -->
+          <div>
+            <h3 class="text-orange-200 font-semibold mb-2 flex items-center text-sm">
+              <span class="mr-2">🛠️</span>
+              {$locales('footer.development_tools')}
+            </h3>
+            <p class="text-orange-300 mb-3 text-xs">
+              {$locales('footer.installer_description')}
+            </p>
+          </div>
+          <!-- Mirrors column -->
+          <div>
+            <h3 class="text-orange-200 font-semibold mb-2 flex items-center text-sm">
+              <span class="mr-2">🌐</span>
+              {$locales('footer.service_mirrors')}
+            </h3>
+            <p class="text-orange-300 mb-3 text-xs">
+              {$locales('footer.alternative_endpoints')}
+            </p>
+          </div>
+        </div>
+
+        <!-- Combined cards row -->
+        <div class="flex flex-wrap justify-center gap-2 sm:gap-3">
+          {#each [...toolLinks, ...mirrorLinks] as link}
+            <div class="flex-1 min-w-[180px] sm:min-w-[200px] p-2 bg-gray-800 border border-orange-700 rounded hover:bg-gray-700 transition-all duration-200">
+              <h4 class="font-medium text-orange-200 mb-1 text-xs truncate">
+                {link.name}
+              </h4>
               <a
-                href={mirror.href}
+                href={link.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                class="text-orange-400 hover:text-orange-300 text-sm underline block"
+                class="text-orange-400 hover:text-orange-300 text-xs underline break-all block hover:text-orange-200 truncate"
+                title={link.description}
               >
-                {mirror.href}
+                {link.href}
               </a>
-              <p class="text-orange-400 text-xs mt-1">{mirror.description}</p>
+              <p class="text-orange-400 text-xs mt-1 line-clamp-1">{link.description}</p>
             </div>
           {/each}
         </div>
@@ -204,6 +201,21 @@
   /* Link hover effects */
   a {
     transition: all 0.2s ease;
+  }
+
+  /* Line clamp utility for text truncation */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
 
