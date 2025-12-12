@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../app.css';
-	import LanguageSelector from '$lib/components/LanguageSelector.svelte';
+	import Settings from '$lib/components/Settings.svelte';
 	import { setupI18n } from '$lib/i18n/index.js';
 	import { onMount } from 'svelte';
 	import { locale, isLoading } from 'svelte-i18n';
@@ -28,9 +28,9 @@
 	</div>
 {:else}
 	<div class="min-h-screen bg-gray-900 relative">
-		<!-- Language Selector - positioned in top right -->
-		<div class="absolute top-4 right-4 z-50">
-			<LanguageSelector />
+		<!-- Settings - sticky floating button -->
+		<div class="fixed top-4 right-4 z-50">
+			<Settings />
 		</div>
 
 		<!-- Main content -->

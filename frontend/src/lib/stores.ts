@@ -1,5 +1,6 @@
 import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
+import { getCookie, setCookie } from '$lib/utils/cookies.js';
 import type {
   DeviceSelection,
   LoadingState,
@@ -32,10 +33,20 @@ const initialLoadingState: LoadingState = {
   error: null
 };
 
+// Get interface mode from cookie or default to 'full'
+const getInitialInterfaceMode = (): 'full' | 'minimal' => {
+  if (browser) {
+    const savedMode = getCookie('meshtastic-interface-mode');
+    return savedMode === 'minimal' ? 'minimal' : 'full';
+  }
+  return 'full';
+};
+
 const initialUIState: UIState = {
   showAdvancedOptions: false,
   selectedDownloadMode: null,
-  showSecurityWarning: true
+  showSecurityWarning: true,
+  interfaceMode: getInitialInterfaceMode()
 };
 
 // Device selection store - manages the current device/selection state
@@ -392,6 +403,18 @@ export const uiActions = {
       ...state,
       showSecurityWarning: false
     }));
+  },
+
+  // Set interface mode
+  setInterfaceMode: (mode: 'full' | 'minimal') => {
+    uiState.update(state => ({
+      ...state,
+      interfaceMode: mode
+    }));
+    // Save to cookie for persistence
+    if (browser) {
+      setCookie('meshtastic-interface-mode', mode, 365);
+    }
   }
 };
 

@@ -108,6 +108,7 @@ export interface UIState {
   showAdvancedOptions: boolean;
   selectedDownloadMode: string | null;
   showSecurityWarning: boolean;
+  interfaceMode: 'full' | 'minimal';
 }
 
 // API Error types

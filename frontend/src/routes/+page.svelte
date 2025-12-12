@@ -1,15 +1,41 @@
 <script lang="ts">
   import BaseLayout from '$lib/components/BaseLayout.svelte';
   import SelectDevice from '$lib/components/SelectDevice.svelte';
-  import RepositorySelector from '$lib/components/RepositorySelector.svelte';
-  import FirmwareInfo from '$lib/components/FirmwareInfo.svelte';
   import DownloadButtons from '$lib/components/DownloadButtons.svelte';
-  import Notes from '$lib/components/Notes.svelte';
-  import Footer from '$lib/components/Footer.svelte';
   import ImportantNotice from '$lib/components/ImportantNotice.svelte';
-  import { loadingState, availableFirmwares } from '$lib/stores';
+  import { loadingState, availableFirmwares, uiState } from '$lib/stores';
   import { onMount } from 'svelte';
   import { _ as locales, locale } from 'svelte-i18n';
+
+  // Dynamic imports for components used only in full mode
+  let RepositorySelector: any = null;
+  let FirmwareInfo: any = null;
+  let Notes: any = null;
+  let Footer: any = null;
+
+  // Subscribe to stores
+  $: currentInterfaceMode = $uiState.interfaceMode;
+
+  // Load additional components only when needed
+  $: if (currentInterfaceMode === 'full' && !RepositorySelector) {
+    loadFullModeComponents();
+  }
+
+  async function loadFullModeComponents() {
+    if (!RepositorySelector) {
+      const [RepoSelector, FWInfo, NotesComp, FooterComp] = await Promise.all([
+        import('$lib/components/RepositorySelector.svelte'),
+        import('$lib/components/FirmwareInfo.svelte'),
+        import('$lib/components/Notes.svelte'),
+        import('$lib/components/Footer.svelte')
+      ]);
+
+      RepositorySelector = RepoSelector.default;
+      FirmwareInfo = FWInfo.default;
+      Notes = NotesComp.default;
+      Footer = FooterComp.default;
+    }
+  }
 
   // Local state with i18n
   $: pageTitle = $locales('page.main_title');
@@ -40,9 +66,43 @@
   <meta property="og:type" content="website" />
 </svelte:head>
 
-<BaseLayout>
-  <!-- Header Section -->
-  <div slot="head" class="text-center space-y-4">
+{#if currentInterfaceMode === 'minimal'}
+  <!-- Minimal Interface Mode -->
+  <div class="min-h-screen bg-gray-900 py-8">
+    <div class="max-w-2xl mx-auto px-4 space-y-6">
+      <!-- Important Notice -->
+      <ImportantNotice />
+
+      <!-- Device Selection -->
+      <div class="bg-gray-800 border border-orange-600 rounded-lg p-6">
+        <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center">
+          <span class="mr-3">
+            {#if $loadingState.isLoadingAvailable}
+              <span class="inline-block animate-spin">🎯</span>
+            {:else}
+              🎯
+            {/if}
+          </span>
+          {$locales('page.device_selection')}
+        </h2>
+        <SelectDevice />
+      </div>
+
+      <!-- Download Options -->
+      <div class="bg-gray-800 border border-orange-600 rounded-lg p-6">
+        <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center">
+          <span class="mr-3">⬇️</span>
+          {$locales('page.download_options')}
+        </h2>
+        <DownloadButtons />
+      </div>
+    </div>
+  </div>
+{:else}
+  <!-- Full Interface Mode -->
+  <BaseLayout>
+    <!-- Header Section -->
+    <div slot="head" class="text-center space-y-4">
     <h1 class="text-3xl md:text-4xl font-bold text-orange-200 mb-4">
       {$locales('page.main_title')}
     </h1>
@@ -98,7 +158,12 @@
                   </span>
                   {$locales('page.source_repository')}
                 </span>
-                <RepositorySelector />
+                {#if RepositorySelector}
+              <svelte:component this={RepositorySelector} />
+            {:else}
+              <!-- Loading placeholder -->
+              <div class="w-48 h-10 bg-gray-700 rounded animate-pulse"></div>
+            {/if}
               </div>
             </div>
           </div>
@@ -148,7 +213,12 @@
               <span class="mr-3">ℹ️</span>
               {$locales('page.firmware_information')}
             </h2>
-            <FirmwareInfo />
+            {#if FirmwareInfo}
+            <svelte:component this={FirmwareInfo} />
+          {:else}
+            <!-- Loading placeholder -->
+            <div class="h-64 bg-gray-700 rounded animate-pulse"></div>
+          {/if}
           </div>
         </div>
       </div>
@@ -159,7 +229,12 @@
         <span class="mr-3">📝</span>
         {$locales('page.important_notes')}
       </h2>
-      <Notes />
+      {#if Notes}
+      <svelte:component this={Notes} />
+    {:else}
+      <!-- Loading placeholder -->
+      <div class="h-48 bg-gray-700 rounded animate-pulse"></div>
+    {/if}
     </div>
     <!-- Information section -->
     {#if !error}
@@ -173,9 +248,15 @@
 
   <!-- Footer -->
   <div slot="footer">
-    <Footer />
+    {#if Footer}
+    <svelte:component this={Footer} />
+  {:else}
+    <!-- Loading placeholder -->
+    <div class="h-32 bg-gray-700 rounded animate-pulse"></div>
+  {/if}
   </div>
 </BaseLayout>
+{/if}
 
 <style>
   /* Custom animations - optimized */
