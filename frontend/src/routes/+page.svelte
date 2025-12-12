@@ -3,6 +3,8 @@
   import SelectDevice from '$lib/components/SelectDevice.svelte';
   import DownloadButtons from '$lib/components/DownloadButtons.svelte';
   import ImportantNotice from '$lib/components/ImportantNotice.svelte';
+  // MinimalFooter is needed in both modes, so import statically
+  import MinimalFooter from '$lib/components/MinimalFooter.svelte';
   import { loadingState, availableFirmwares, uiState } from '$lib/stores';
   import { onMount } from 'svelte';
   import { _ as locales, locale } from 'svelte-i18n';
@@ -69,7 +71,14 @@
 {#if currentInterfaceMode === 'minimal'}
   <!-- Minimal Interface Mode -->
   <div class="min-h-screen bg-gray-900 py-8">
-    <div class="max-w-2xl mx-auto px-4 space-y-6">
+    <div class="max-w-2xl mx-auto px-4 space-y-8">
+      <!-- Title -->
+      <div class="text-center">
+        <h1 class="text-2xl font-bold text-orange-200">
+          {$locales('page.main_title')}
+        </h1>
+      </div>
+
       <!-- Important Notice -->
       <ImportantNotice />
 
@@ -96,6 +105,9 @@
         </h2>
         <DownloadButtons />
       </div>
+
+      <!-- Minimal Footer -->
+      <MinimalFooter />
     </div>
   </div>
 {:else}

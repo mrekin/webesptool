@@ -171,7 +171,7 @@
     "european_mirror_desc": "European server mirror",
     "copyright": "© {year} Meshtastic Firmware Build Service. All rights reserved.",
     "built_with": "Built with ❤️ using",
-    "trademark_notice": "Meshtastic® is a registered trademark. All other trademarks are the property of their respective owners.",
+    "trademark_notice": "<a href=\"https://meshtastic.org/\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-orange-400 hover:text-orange-300 underline\">Meshtastic®</a> is a registered trademark. All other trademarks are the property of their respective owners.",
     "status": "Status",
     "beta_service": "Beta Service",
     "last_updated": "Last Updated:"

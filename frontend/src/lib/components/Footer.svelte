@@ -167,7 +167,7 @@
               </a>
             </p>
             <p class="text-xs">
-              {$locales('footer.trademark_notice')}
+              {@html $locales('footer.trademark_notice')}
             </p>
           </div>
         </div>

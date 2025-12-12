@@ -171,7 +171,7 @@
     "european_mirror_desc": "Резервный зеркальный сервер",
     "copyright": "© {year} Meshtastic Firmware Build Service. Все права защищены.",
     "built_with": "Сделано с ❤️ используя",
-    "trademark_notice": "Meshtastic® является зарегистрированным товарным знаком. Все остальные товарные знаки являются собственностью их соответствующих владельцев.",
+    "trademark_notice": "<a href=\"https://meshtastic.org/\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-orange-400 hover:text-orange-300 underline\">Meshtastic®</a> является зарегистрированным товарным знаком. Все остальные товарные знаки являются собственностью их соответствующих владельцев.",
     "status": "Статус",
     "beta_service": "Сервис в постоянной разработке",
     "last_updated": "Последнее обновление:"
