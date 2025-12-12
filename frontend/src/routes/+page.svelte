@@ -3,14 +3,14 @@
   import SelectDevice from '$lib/components/SelectDevice.svelte';
   import DownloadButtons from '$lib/components/DownloadButtons.svelte';
   import ImportantNotice from '$lib/components/ImportantNotice.svelte';
-  // MinimalFooter is needed in both modes, so import statically
+  // Components needed in both modes, so import statically
+  import RepositorySelector from '$lib/components/RepositorySelector.svelte';
   import MinimalFooter from '$lib/components/MinimalFooter.svelte';
   import { loadingState, availableFirmwares, uiState } from '$lib/stores';
   import { onMount } from 'svelte';
   import { _ as locales, locale } from 'svelte-i18n';
 
   // Dynamic imports for components used only in full mode
-  let RepositorySelector: any = null;
   let FirmwareInfo: any = null;
   let Notes: any = null;
   let Footer: any = null;
@@ -19,20 +19,18 @@
   $: currentInterfaceMode = $uiState.interfaceMode;
 
   // Load additional components only when needed
-  $: if (currentInterfaceMode === 'full' && !RepositorySelector) {
+  $: if (currentInterfaceMode === 'full' && !FirmwareInfo) {
     loadFullModeComponents();
   }
 
   async function loadFullModeComponents() {
-    if (!RepositorySelector) {
-      const [RepoSelector, FWInfo, NotesComp, FooterComp] = await Promise.all([
-        import('$lib/components/RepositorySelector.svelte'),
+    if (!FirmwareInfo) {
+      const [FWInfo, NotesComp, FooterComp] = await Promise.all([
         import('$lib/components/FirmwareInfo.svelte'),
         import('$lib/components/Notes.svelte'),
         import('$lib/components/Footer.svelte')
       ]);
 
-      RepositorySelector = RepoSelector.default;
       FirmwareInfo = FWInfo.default;
       Notes = NotesComp.default;
       Footer = FooterComp.default;
@@ -81,6 +79,21 @@
 
       <!-- Important Notice -->
       <ImportantNotice />
+
+      <!-- Source Repository -->
+      <div class="bg-gray-800 border border-orange-600 rounded-lg p-6">
+        <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center">
+          <span class="mr-3">
+            {#if $loadingState.isLoadingAvailable}
+              <span class="inline-block animate-spin">🌐</span>
+            {:else}
+              🌐
+            {/if}
+          </span>
+          {$locales('page.source_repository')}
+        </h2>
+        <RepositorySelector />
+      </div>
 
       <!-- Device Selection -->
       <div class="bg-gray-800 border border-orange-600 rounded-lg p-6">
@@ -170,12 +183,7 @@
                   </span>
                   {$locales('page.source_repository')}
                 </span>
-                {#if RepositorySelector}
-              <svelte:component this={RepositorySelector} />
-            {:else}
-              <!-- Loading placeholder -->
-              <div class="w-48 h-10 bg-gray-700 rounded animate-pulse"></div>
-            {/if}
+                <RepositorySelector />
               </div>
             </div>
           </div>
