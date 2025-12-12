@@ -2,15 +2,17 @@ services:
   # Frontend Service - SvelteKit Application
     # Frontend Service - SvelteKit Application
   frontend:
-    build: frontend/
+    build:
+      context: frontend/
+      args:
+        - VITE_BASE_PATH=/frontend2
     container_name: webesptool-frontend
     restart: unless-stopped
     environment:
       - NODE_ENV=production
       - VITE_API_URL=http://192.168.1.115:5546  # Внутренний URL бекенда
       - VITE_PORT=3000
-      - VITE_BASE_PATH=/frontend
-      #- BASE_PATH=/frontend  # Базовый путь для прокси (только runtime!)
+      - VITE_BASE_PATH=/frontend2
     ports:
       - 5550:3000
     volumes:

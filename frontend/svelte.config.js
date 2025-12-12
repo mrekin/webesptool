@@ -9,7 +9,7 @@ const config = {
 	kit: {
 		adapter: adapter(),
 		paths: {
-            base: process.env.BASE_URL || '/frontend', // Replace with your desired base path
+            base: process.env.VITE_BASE_PATH || '', // Empty base path by default, can be overridden via VITE_BASE_PATH
 			relative: false
         }
 	}

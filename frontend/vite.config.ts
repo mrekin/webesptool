@@ -1,7 +1,7 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
-const baseUrl = process.env.VITE_BASE_PATH || '/frontend';
+const baseUrl = process.env.VITE_BASE_PATH || '';
 
 export default defineConfig({
 	plugins: [sveltekit()],
