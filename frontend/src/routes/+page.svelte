@@ -318,13 +318,13 @@
     <div class="h-32 bg-gray-700 rounded animate-pulse"></div>
   {/if}
   </div>
-
-  <!-- Custom Firmware Modal -->
-  <CustomFirmwareModal
-    isOpen={showCustomFirmwareModal}
-    onClose={closeCustomFirmwareModal}
-  />
 </BaseLayout>
+
+<!-- Custom Firmware Modal - Outside BaseLayout -->
+<CustomFirmwareModal
+  isOpen={showCustomFirmwareModal}
+  onClose={closeCustomFirmwareModal}
+/>
 {/if}
 
 <style>

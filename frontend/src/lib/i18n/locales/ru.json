@@ -209,7 +209,8 @@
     "important_device_bootloader": "Важно: Устройство должно быть в режиме загрузчика/bootloader для прошивки",
     "instructions_title": "Инструкции",
     "show_instructions": "Показать инструкции",
-    "hide_instructions": "Скрыть инструкции"
+    "hide_instructions": "Скрыть инструкции",
+    "flash_another_file": "Прошить другой файл"
   },
   "settings": {
     "title": "Настройки",

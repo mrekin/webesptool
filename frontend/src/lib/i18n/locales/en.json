@@ -209,7 +209,8 @@
     "important_device_bootloader": "Important: Device must be in bootloader/download mode for flashing",
     "instructions_title": "Instructions",
     "show_instructions": "Show Instructions",
-    "hide_instructions": "Hide Instructions"
+    "hide_instructions": "Hide Instructions",
+    "flash_another_file": "Flash Another File"
   },
   "settings": {
     "title": "Settings",
