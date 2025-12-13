@@ -53,7 +53,7 @@
     "select_device_view": "Выберите устройство для просмотра деталей",
     "select_device_instructions": "Выберите устройство и версию прошивки для просмотра подробной информации и инструкций по установке.",
     "esp_web_tools": "Установка через ESP Web Tools",
-    "esp_web_tools_desc": "Нажмите \"{download_buttons.update_device}\" для прошивки из браузера.",
+    "esp_web_tools_desc": "Нажмите \"{downloadbuttons.update_device}\" для прошивки из браузера.",
     "alternative_download": "Альтернатива: загрузка и прошивка самостоятельно",
     "alternative_download_desc": "Используйте кнопки загрузки для получения файлов для ручной прошивки.",
     "uf2_download": "Загрузка UF2 файла",

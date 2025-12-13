@@ -53,7 +53,7 @@
     "select_device_view": "Select a device to view details",
     "select_device_instructions": "Select a device and firmware version to view detailed information and installation instructions.",
     "esp_web_tools": "ESP Web Tools Installation",
-    "esp_web_tools_desc": "Click \"{download_buttons.update_device}\" to use browser-based installation.",
+    "esp_web_tools_desc": "Click \"{downloadbuttons.update_device}\" to use browser-based installation.",
     "alternative_download": "Alternative: Manual Download",
     "alternative_download_desc": "Use download buttons to get firmware files for manual flashing.",
     "uf2_download": "UF2 File Download",
