@@ -6,13 +6,11 @@
   import type { DownloadOption } from '$lib/types';
   import { _ as locales, locale } from 'svelte-i18n';
   import { onMount } from 'svelte';
-  import CustomFirmwareModal from './CustomFirmwareModal.svelte';
 
   // Local state
   let espWebToolsDialog: HTMLDialogElement;
   let showMoreOptions = false;
   let firmwareMode: 'update' | 'full' = 'update'; // update = режим 1, full = режим 2
-  let showCustomFirmwareModal = false;
 
   // Subscribe to stores
   $: deviceSelectionStore = $deviceSelection;
@@ -219,15 +217,7 @@
     await handleDownload(option);
   }
 
-  // Handle custom firmware flash
-  function openCustomFirmwareModal() {
-    showCustomFirmwareModal = true;
-  }
-
-  function closeCustomFirmwareModal() {
-    showCustomFirmwareModal = false;
-  }
-</script>
+  </script>
 
 <!-- ESP Web Tools is now loaded as npm module in script section -->
 
@@ -240,28 +230,6 @@
   </div>
 {/if}
 
-<!-- Custom Firmware Button - Show only when no device is selected -->
-{#if !deviceSelectionStore.devicePioTarget}
-  <div class="space-y-4">
-    <div class="text-center space-y-4">
-      <div class="text-sm text-orange-300">
-        {$locales('downloadbuttons.no_device_selected')}
-      </div>
-
-      <button
-        on:click={openCustomFirmwareModal}
-        class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-3 px-6 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 transition-colors duration-200 text-base"
-        title="{$locales('downloadbuttons.custom_firmware_description')}"
-        aria-label="{$locales('downloadbuttons.custom_firmware_description')}"
-      >
-        <span class="flex items-center justify-center">
-          <span class="text-base mr-2">🔧</span>
-          <span>{$locales('downloadbuttons.flash_custom_firmware')}</span>
-        </span>
-      </button>
-    </div>
-  </div>
-{/if}
 
 {#if deviceSelectionStore.devicePioTarget && deviceSelectionStore.version}
   <div class="space-y-4">
@@ -380,8 +348,3 @@
   </div>
 </dialog>
 
-<!-- Custom Firmware Modal -->
-<CustomFirmwareModal
-  isOpen={showCustomFirmwareModal}
-  onClose={closeCustomFirmwareModal}
-/>

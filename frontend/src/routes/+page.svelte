@@ -6,7 +6,8 @@
   // Components needed in both modes, so import statically
   import RepositorySelector from '$lib/components/RepositorySelector.svelte';
   import MinimalFooter from '$lib/components/MinimalFooter.svelte';
-  import { loadingState, availableFirmwares, uiState } from '$lib/stores';
+  import CustomFirmwareModal from '$lib/components/CustomFirmwareModal.svelte';
+  import { loadingState, availableFirmwares, uiState, deviceSelection } from '$lib/stores';
   import { onMount } from 'svelte';
   import { _ as locales, locale } from 'svelte-i18n';
 
@@ -17,6 +18,18 @@
 
   // Subscribe to stores
   $: currentInterfaceMode = $uiState.interfaceMode;
+  $: deviceSelectionStore = $deviceSelection;
+
+  // Custom firmware modal state
+  let showCustomFirmwareModal = false;
+
+  function openCustomFirmwareModal() {
+    showCustomFirmwareModal = true;
+  }
+
+  function closeCustomFirmwareModal() {
+    showCustomFirmwareModal = false;
+  }
 
   // Load additional components only when needed
   $: if (currentInterfaceMode === 'full' && !FirmwareInfo) {
@@ -112,9 +125,21 @@
 
       <!-- Download Options -->
       <div class="bg-gray-800 border border-orange-600 rounded-lg p-6">
-        <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center">
-          <span class="mr-3">⬇️</span>
-          {$locales('page.download_options')}
+        <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center justify-between">
+          <div class="flex items-center">
+            <span class="mr-3">⬇️</span>
+            {$locales('page.download_options')}
+          </div>
+          {#if !deviceSelectionStore.devicePioTarget}
+            <button
+              on:click={openCustomFirmwareModal}
+              class="text-orange-200 hover:text-orange-100 transition-colors p-1 rounded"
+              title="{$locales('downloadbuttons.custom_firmware_description')}"
+              aria-label="{$locales('downloadbuttons.custom_firmware_description')}"
+            >
+              <span class="text-xl">🔧</span>
+            </button>
+          {/if}
         </h2>
         <DownloadButtons />
       </div>
@@ -122,6 +147,12 @@
       <!-- Minimal Footer -->
       <MinimalFooter />
     </div>
+
+    <!-- Custom Firmware Modal -->
+    <CustomFirmwareModal
+      isOpen={showCustomFirmwareModal}
+      onClose={closeCustomFirmwareModal}
+    />
   </div>
 {:else}
   <!-- Full Interface Mode -->
@@ -217,9 +248,21 @@
 
           <!-- Download Actions -->
           <div class="p-6 bg-gray-800 border border-orange-600 rounded-lg">
-            <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center">
-              <span class="mr-3">⬇️</span>
-              {$locales('page.download_options')}
+            <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center justify-between">
+              <div class="flex items-center">
+                <span class="mr-3">⬇️</span>
+                {$locales('page.download_options')}
+              </div>
+              {#if !deviceSelectionStore.devicePioTarget}
+                <button
+                  on:click={openCustomFirmwareModal}
+                  class="text-orange-200 hover:text-orange-100 transition-colors p-1 rounded"
+                  title="{$locales('downloadbuttons.custom_firmware_description')}"
+                  aria-label="{$locales('downloadbuttons.custom_firmware_description')}"
+                >
+                  <span class="text-xl">🔧</span>
+                </button>
+              {/if}
             </h2>
             <DownloadButtons />
           </div>
@@ -275,6 +318,12 @@
     <div class="h-32 bg-gray-700 rounded animate-pulse"></div>
   {/if}
   </div>
+
+  <!-- Custom Firmware Modal -->
+  <CustomFirmwareModal
+    isOpen={showCustomFirmwareModal}
+    onClose={closeCustomFirmwareModal}
+  />
 </BaseLayout>
 {/if}
 
