@@ -1,16 +1,23 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { _ as locales } from 'svelte-i18n';
+	import { createESPManager } from '$lib/utils/esp';
+	import { createFirmwareFileHandler } from '$lib/utils/fileHandler';
+	import type { FirmwareFile } from '$lib/types';
 
 	export let isOpen = false;
 	export let onClose = () => {};
 
-	let selectedFile: File | null = null;
+	// Create utility instances
+	const espManager = createESPManager();
+	const fileHandler = createFirmwareFileHandler();
+
+	// Component state
+	let selectedFirmwareFile: FirmwareFile | null = null;
 	let isFlashing = false;
 	let flashProgress = 0;
 	let flashStatus = '';
 	let flashError = '';
-	let port: SerialPort | null = null;
 	let eraseBeforeFlash = false; // Новый параметр для чекбокса
 	let selectedBaudrate = 115200; // Выбранная скорость по умолчанию
 	let flashAddress = '0x0'; // Адрес для прошивки по умолчанию
@@ -21,51 +28,41 @@
 	let isConnecting = false;
 	let showInstructions = false; // Управление спойлером инструкций
 
-	// Опции скорости прошивки
-	const baudrateOptions = [
-		{ value: 115200, label: `115200 (${$locales('customfirmware.baudrate_standard')})` },
-		{ value: 230400, label: '230400' },
-		{ value: 460800, label: '460800' },
-		{ value: 512000, label: '512000' },
-		{ value: 921600, label: `921600 (${$locales('customfirmware.baudrate_fast')})` },
-		{ value: 1500000, label: `1500000 (${$locales('customfirmware.baudrate_very_fast')})` }
-	];
+	// Get baudrate options from utility
+	const baudrateOptions = espManager.getBaudrateOptions().map(opt => ({
+		...opt,
+		label: opt.value === 115200
+			? `115200 (${$locales('customfirmware.baudrate_standard')})`
+			: opt.value === 921600
+				? `921600 (${$locales('customfirmware.baudrate_fast')})`
+				: opt.value === 1500000
+					? `1500000 (${$locales('customfirmware.baudrate_very_fast')})`
+					: opt.label
+	}));
 
 	// Clean up on unmount
-	onDestroy(() => {
-		if (port) {
-			try {
-				if (port.readable) {
-					port.close();
-				}
-			} catch (error) {
-				// Port might already be closed or managed by ESPLoader
-				console.log('Port cleanup:', error);
-			}
-		}
+	onDestroy(async () => {
+		await espManager.resetPort();
 	});
 
 	// Handle file selection
 	function handleFileSelect(event: Event) {
-		const input = event.target as HTMLInputElement;
-		if (input.files && input.files.length > 0) {
-			selectedFile = input.files[0];
+		const file = fileHandler.handleFileSelect(event);
+		if (file) {
+			selectedFirmwareFile = file;
 			flashError = '';
 		}
 	}
 
 	// Handle drag and drop
 	function handleDragOver(event: DragEvent) {
-		event.preventDefault();
-		event.stopPropagation();
+		fileHandler.handleDragOver(event);
 	}
 
 	function handleDrop(event: DragEvent) {
-		event.preventDefault();
-		event.stopPropagation();
-
-		if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
-			selectedFile = event.dataTransfer.files[0];
+		const file = fileHandler.handleDrop(event);
+		if (file) {
+			selectedFirmwareFile = file;
 			flashError = '';
 		}
 	}
@@ -73,14 +70,7 @@
 	// Connect to serial port
 	async function connectToPort(): Promise<boolean> {
 		try {
-			if ('serial' in navigator) {
-				// Just request port, don't open it here - ESPLoader will open it
-				port = await (navigator as any).serial.requestPort();
-				return true;
-			} else {
-				flashError = 'Web Serial API not supported in this browser';
-				return false;
-			}
+			return await espManager.connectToPort();
 		} catch (error) {
 			flashError = `Failed to connect: ${error}`;
 			return false;
@@ -94,28 +84,24 @@
 		flashError = '';
 
 		try {
-			if ('serial' in navigator) {
-				// Request port
-				port = await (navigator as any).serial.requestPort();
+			const connected = await espManager.connectToPort();
 
-				if (port) {
-					flashStatus = 'Connecting to device...';
+			if (connected) {
+				flashStatus = 'Connecting to device...';
 
-					// Get device info
-					const deviceDetected = await getDeviceInfo();
+				// Get device info
+				const detectedDeviceInfo = await espManager.getDeviceInfo();
 
-					if (deviceDetected) {
-						isPortSelected = true;
-						flashStatus = 'Device connected successfully';
-					} else {
-						// Device detection failed
-						isPortSelected = false;
-						port = null; // Reset port
-						// flashError is already set in getDeviceInfo
-					}
+				if (detectedDeviceInfo) {
+					isPortSelected = true;
+					deviceInfo = detectedDeviceInfo;
+					flashStatus = 'Device connected successfully';
+				} else {
+					// Device detection failed
+					isPortSelected = false;
+					deviceInfo = null;
+					// flashError is already set in getDeviceInfo
 				}
-			} else {
-				flashError = 'Web Serial API not supported in this browser';
 			}
 		} catch (error) {
 			flashError = `Failed to connect: ${error}`;
@@ -124,120 +110,10 @@
 		}
 	}
 
-	// Get device information - returns true if successful
-	async function getDeviceInfo(): Promise<boolean> {
-		if (!port) return false;
-
-		try {
-			// Import ESPLoader
-			const { ESPLoader, Transport, LoaderOptions } = await import('esptool-js');
-
-			// Create transport and store for reuse
-			transport = new Transport(port, true);
-
-			// Create terminal and collect all output
-			const terminalOutput: string[] = [];
-			const espLoaderTerminal = {
-				clean() {
-					// console.clear();
-				},
-				writeLine(data: string) {
-					terminalOutput.push(data);
-				},
-				write(data: string) {
-					terminalOutput.push(data);
-				}
-			};
-
-			// Create ESPLoader with minimal options
-			const loaderOptions = {
-				transport,
-				baudrate: 115200, // Используем стандартную скорость для определения
-				terminal: espLoaderTerminal,
-				debugLogging: false,
-			} as LoaderOptions;
-
-			esploader = new ESPLoader(loaderOptions);
-
-			// Initialize to detect chip - main() returns chip name as string
-			const chipName = await esploader.main();
-			console.log("Chip detected:", chipName);
-			console.log("Terminal output:", terminalOutput);
-
-			// Parse detailed information from terminal output
-			let flashSize = 'Unknown';
-			let mac = 'Unknown';
-			let features = 'Unknown';
-			let crystal = 'Unknown';
-			let revision = 'Unknown';
-			let flashId = 'Unknown';
-
-			// Parse terminal output for detailed info
-			const outputText = terminalOutput.join('\n');
-
-			// Extract MAC address
-			const macMatch = outputText.match(/MAC:\s*([0-9A-Fa-f:]+)/);
-			if (macMatch) mac = macMatch[1];
-
-			// Extract chip info with revision
-			const chipMatch = outputText.match(/Chip is (.+) \(revision (.+)\)/);
-			if (chipMatch) {
-				revision = chipMatch[2];
-			}
-
-			// Extract features
-			const featuresMatch = outputText.match(/Features:\s*(.+)/);
-			if (featuresMatch) features = featuresMatch[1];
-
-			// Extract crystal frequency
-			const crystalMatch = outputText.match(/Crystal is (\d+)MHz/);
-			if (crystalMatch) crystal = `${crystalMatch[1]}MHz`;
-
-			// Extract flash size
-			const flashSizeMatch = outputText.match(/Auto-detected Flash size:\s*(.+)/);
-			if (flashSizeMatch) {
-				flashSize = flashSizeMatch[1];
-			}
-
-			// Extract flash ID
-			const flashIdMatch = outputText.match(/Flash ID:\s*(.+)/);
-			if (flashIdMatch) {
-				flashId = flashIdMatch[1];
-			}
-
-			deviceInfo = {
-				chip: chipName,
-				flashSize: flashSize,
-				mac: mac,
-				features: features,
-				crystal: crystal,
-				revision: revision,
-				flashId: flashId,
-				baudrate: selectedBaudrate
-			};
-
-			// Clean up
-			await esploader.after();
-			// Don't close the port - keep it open for flashing
-			console.log('Device detection completed, port kept open for flashing');
-
-			return true; // Success
-
-		} catch (error: any) {
-			console.error('Failed to get device info:', error);
-			deviceInfo = null; // Reset device info on error
-			flashError = `Failed to detect device: ${error.message || error.toString()}`;
-			return false; // Failure
-		}
-	}
-
-	// Store esploader instance for reuse
-	let esploader: any = null;
-	let transport: any = null;
-
+	
 	// Reset file selection for flashing another file
 	function resetForAnotherFlash() {
-		selectedFile = null;
+		selectedFirmwareFile = null;
 		flashProgress = 0;
 		flashStatus = '';
 		flashError = '';
@@ -255,47 +131,12 @@
 		deviceInfo = null;
 		eraseBeforeFlash = false;
 
-		// Cleanup order: esploader first, then transport, then port
-		try {
-			if (esploader) {
-				await esploader.after();
-				console.log('ESPLoader cleaned up');
-			}
-		} catch (e) {
-			// Ignore errors if port is already closed
-			console.log('ESPLoader cleanup note:', e.message || e);
-		}
-
-		try {
-			if (transport && typeof transport.disconnect === 'function') {
-				await transport.disconnect();
-				console.log('Transport disconnected');
-			}
-		} catch (e) {
-			// Ignore errors if transport is already disconnected
-			console.log('Transport disconnect note:', e.message || e);
-		}
-
-		// Try to close port directly if still open
-		try {
-			if (port && port.readable) {
-				await port.close();
-				console.log('Port closed directly');
-			}
-		} catch (e) {
-			// Port might already be closed, that's ok
-			console.log('Port close note:', e.message || e);
-		}
-
-		// Reset all references
-		port = null;
-		esploader = null;
-		transport = null;
+		await espManager.resetPort();
 	}
 
 	// Reset everything when modal closes
 	async function resetState() {
-		selectedFile = null;
+		selectedFirmwareFile = null;
 		flashAddress = '0x0';
 
 		// Reset port using the dedicated function
@@ -304,12 +145,12 @@
 
 	// Flash firmware
 	async function flashFirmware() {
-		if (!selectedFile) {
+		if (!selectedFirmwareFile) {
 			flashError = 'Please select a firmware file';
 			return;
 		}
 
-		if (!isPortSelected || !port) {
+		if (!isPortSelected || !espManager.getCurrentPort()) {
 			flashError = 'Please select a port first';
 			return;
 		}
@@ -320,156 +161,34 @@
 		flashError = '';
 
 		try {
-			// Port is already selected and device info retrieved
-
 			flashStatus = 'Reading firmware file...';
 
-			// Read file content как в примере
-			const firmware = await new Promise<string>((resolve, reject) => {
-				const reader = new FileReader();
-				reader.onload = (event) => {
-					const result = event.target?.result as string;
-					resolve(result);
-				};
-				reader.onerror = () => {
-					reject(new Error('Failed to read file'));
-				};
-				reader.readAsBinaryString(selectedFile);
-			});
+			// Read file content using utility
+			const content = await fileHandler.readFileContent(selectedFirmwareFile);
+			const firmwareFile: FirmwareFile = {
+				...selectedFirmwareFile,
+				content: content
+			};
 
-			flashStatus = 'Starting flash process...';
-			flashProgress = 10;
-
-			console.log('Firmware size:', firmware.length);
-
-			// Check if we have esploader from device detection
-			if (!esploader || !transport) {
-				flashError = 'Device not properly detected. Please disconnect and reconnect.';
-				isFlashing = false;
-				return;
-			}
-
-			console.log('Using existing esploader and transport for flashing');
-
-			flashStatus = 'Preparing to flash...';
-			flashProgress = 20;
-
-			try {
-				const chipName = deviceInfo?.chip || 'ESP32';
-				flashStatus = `Ready to flash ${chipName}...`;
-				flashProgress = 40;
-
-				// Only erase flash if checkbox is checked
-				if (eraseBeforeFlash) {
-					flashStatus = `Erasing flash...`;
-					await esploader.eraseFlash();
-					console.log('Full device erase performed (checkbox checked)');
-				} else {
-					console.log('Skipping flash erase (checkbox unchecked)');
-				}
-			} catch (stepError) {
-				console.error('Error during erase step:', stepError);
-				throw stepError;
-			}
-
-			flashStatus = 'Writing firmware...';
-			flashProgress = 60;
-
-			// Parse flash address
-			let address = 0x0;
-			try {
-				// Handle both decimal and hex input
-				if (typeof flashAddress === 'string') {
-					if (flashAddress.startsWith('0x') || flashAddress.startsWith('0X')) {
-						address = parseInt(flashAddress, 16);
-					} else {
-						address = parseInt(flashAddress, 10);
+			const flashOptions = {
+				baudrate: selectedBaudrate,
+				address: flashAddress,
+				eraseBeforeFlash: eraseBeforeFlash,
+				onProgress: (progress: any) => {
+					flashProgress = progress.progress;
+					flashStatus = progress.status;
+					if (progress.error) {
+						flashError = progress.error;
 					}
-				} else {
-					address = flashAddress;
 				}
+			};
 
-				// Validate address range
-				if (isNaN(address) || address < 0) {
-					throw new Error('Invalid address');
-				}
+			// Use ESP manager to flash firmware
+			await espManager.flashFirmware(firmwareFile, flashOptions);
 
-				console.log(`Using flash address: 0x${address.toString(16).toUpperCase()} (${address})`);
-			} catch (error) {
-				flashError = `Invalid flash address: ${flashAddress}. Please enter a valid address (e.g., 0x0, 0x1000, 4096)`;
-				isFlashing = false;
-				return;
-			}
-
-			// Write firmware using proper FlashOptions
-			const flashOptions: FlashOptions = {
-				fileArray: [
-					{
-						data: firmware,
-						address: address
-					}
-				],
-				flashMode: 'keep', // Оставить текущий режим
-				flashFreq: 'keep', // Оставить текущую частоту
-				flashSize: 'keep', // Оставить текущий размер флеш-памяти
-				eraseAll: eraseBeforeFlash, // Использовать значение из чекбокса
-				compress: true,
-				reportProgress: (fileIndex, written, total) => {
-					const progress = Math.round((written / total) * 100);
-					flashProgress = 60 + Math.round(progress * 0.4); // 60-100%
-					flashStatus = `Writing firmware... ${progress}%`;
-					console.log(`Progress: ${written}/${total} bytes`);
-				}
-			} as FlashOptions;
-
-
-			console.log('Flash options:', flashOptions);
-			console.log('Starting write flash...');
-
-			// Простая запись как в примере
-			console.log('Starting writeFlash...');
-			await esploader.writeFlash(flashOptions);
-			console.log('writeFlash completed successfully');
-
-			flashStatus = 'Finalizing...';
-			flashProgress = 90;
-
-			console.log('Starting after() call...');
-			// Call after to reset the chip
-			await esploader.after();
-			console.log('after() completed successfully');
-
-			flashStatus = 'Firmware flashed successfully!';
-			flashProgress = 100;
-
-			// ESPLoader manages port automatically, no need to manually close
-			// Modal remains open for user to see results
 		} catch (error) {
 			console.error('Flash error:', error);
-			console.error(
-				'Error stack:',
-				error instanceof Error ? error.stack : 'No stack trace available'
-			);
-			console.error('Error details:', {
-				message: error instanceof Error ? error.message : String(error),
-				name: error instanceof Error ? error.name : 'Unknown',
-				toString: error ? error.toString() : 'No toString method'
-			});
-
-			// Check for common bootloader mode errors
-			const errorMessage = error && error.toString ? error.toString() : String(error);
-			if (
-				errorMessage.includes('Invalid head of packet') ||
-				errorMessage.includes('serial noise') ||
-				errorMessage.includes('corruption')
-			) {
-				flashError = `Device not in bootloader mode. Please put your device in download mode:\n• ESP32/ESP8266: Hold BOOT/FLASH button, press RESET, release RESET, then release BOOT\n• ESP32-S2/S3: Double-tap RESET button\n• Alternative: Hold BOOT button while connecting USB\n\nThen try flashing again.`;
-			} else {
-				flashError = `Flash failed: ${errorMessage}`;
-			}
-
-			// ESPLoader handles port cleanup automatically
-			port = null; // Reset port reference
+			flashError = error instanceof Error ? error.message : String(error);
 		} finally {
 			isFlashing = false;
 		}
@@ -484,15 +203,7 @@
 		}
 	}
 
-	// Format file size
-	function formatFileSize(bytes: number): string {
-		if (bytes === 0) return '0 Bytes';
-		const k = 1024;
-		const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-		const i = Math.floor(Math.log(bytes) / Math.log(k));
-		return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-	}
-</script>
+	</script>
 
 {#if isOpen}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
@@ -590,16 +301,16 @@
 
 						<!-- Drag & Drop Area - always enabled -->
 							<div
-								class="w-full h-full rounded-lg p-4 text-center transition-colors hover:border-orange-500 cursor-pointer flex flex-col justify-center {selectedFile ? 'border border-gray-600 bg-gray-800' : 'border-2 border-dashed border-gray-600'}"
+								class="w-full h-full rounded-lg p-4 text-center transition-colors hover:border-orange-500 cursor-pointer flex flex-col justify-center {selectedFirmwareFile ? 'border border-gray-600 bg-gray-800' : 'border-2 border-dashed border-gray-600'}"
 								on:dragover={handleDragOver}
 								on:drop={handleDrop}
 								on:click={() => document.getElementById('file-input')?.click()}
 							>
-								{#if selectedFile}
+								{#if selectedFirmwareFile}
 									<div class="space-y-2">
 										<div class="text-2xl">📄</div>
-										<div class="text-sm font-medium text-orange-200 truncate">{selectedFile.name}</div>
-										<div class="text-xs text-gray-400">{formatFileSize(selectedFile.size)}</div>
+										<div class="text-sm font-medium text-orange-200 truncate">{selectedFirmwareFile.name}</div>
+										<div class="text-xs text-gray-400">{fileHandler.formatFileSize(selectedFirmwareFile.size)}</div>
 									</div>
 								{:else}
 									<div class="space-y-2">
@@ -652,7 +363,7 @@
 					{/if}
 
 					<!-- Right: Flash Address Input (show when file is selected) -->
-					{#if selectedFile}
+					{#if selectedFirmwareFile}
 						<div>
 							<label for="flash-address" class="block text-sm font-medium text-gray-300 mb-1">
 								Flash Address
@@ -769,7 +480,7 @@
 				{:else}
 					<button
 						on:click={flashFirmware}
-						disabled={!selectedFile || !isPortSelected || isFlashing}
+						disabled={!selectedFirmwareFile || !isPortSelected || isFlashing}
 						class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{#if isFlashing}

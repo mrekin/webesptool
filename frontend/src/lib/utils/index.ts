@@ -20,3 +20,16 @@ export {
   createDropdownUtils,
   createSimpleDropdown
 } from './dropdownUtils';
+
+// Export ESP and file handling utilities
+export * from './esp';
+export * from './fileHandler';
+
+// Re-export ESP and file handler factory functions
+export {
+  createESPManager
+} from './esp';
+
+export {
+  createFirmwareFileHandler
+} from './fileHandler';

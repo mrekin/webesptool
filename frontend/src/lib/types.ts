@@ -166,3 +166,35 @@ export interface DeviceDisplayInfo {
   availableVersions: string[];  // List of available firmware versions
   deviceInfo: FirmwareInfo | null;  // Device firmware information
 }
+
+// ESP Flasher types
+export interface ESPDeviceInfo {
+  chip: string;
+  flashSize: string;
+  mac: string;
+  features: string;
+  crystal: string;
+  revision: string;
+  flashId: string;
+  baudrate: number;
+}
+
+export interface FlashProgress {
+  progress: number;
+  status: string;
+  error: string;
+}
+
+export interface FirmwareFile {
+  file: File;
+  content: string;
+  size: number;
+  name: string;
+}
+
+export interface FlashOptions {
+  baudrate: number;
+  address: string;
+  eraseBeforeFlash: boolean;
+  onProgress?: (progress: FlashProgress) => void;
+}
