@@ -4,7 +4,6 @@
     "cancel": "Cancel",
     "status": "Status",
     "beta_service": "Beta Service",
-    "last_updated": "Last Updated:",
     "more_options": "More Options ▼",
     "show_less": "Show Less ▲",
     "version": "Version",
@@ -173,12 +172,13 @@
     "primary_mirror_desc": "Main service mirror",
     "european_mirror_name": "European Mirror",
     "european_mirror_desc": "European server mirror",
-    "copyright": "© {year} Meshtastic Firmware Build Service. All rights reserved.",
-    "built_with": "Built with ❤️ using",
+      "built_with": "Built with ❤️ using",
     "trademark_notice": "<a href=\"https://meshtastic.org/\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-orange-400 hover:text-orange-300 underline\">Meshtastic®</a> is a registered trademark. All other trademarks are the property of their respective owners.",
     "status": "Status",
     "beta_service": "Beta Service",
-    "last_updated": "Last Updated:"
+    "last_updated": "Last Updated",
+    "license_info": "Licensed under Creative Commons Attribution-NonCommercial 4.0",
+    "license_desc": "Non-commercial use with attribution required"
   },
   "customfirmware": {
     "flash_custom_firmware": "Flash Custom Firmware",

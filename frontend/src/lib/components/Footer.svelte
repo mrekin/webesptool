@@ -149,9 +149,12 @@
         <!-- Copyright and credits -->
         <div class="border-t border-orange-800 pt-6 mt-8">
           <div class="text-center space-y-2 text-sm text-orange-400">
-            <p>
-              {$locales('footer.copyright', { values: { year: currentYear }})}
+            <p class="flex flex-col sm:flex-row items-center justify-center gap-1 text-xs">
+              <span>{$locales('footer.license_info')}</span>
+              <span class="text-orange-300">|</span>
+              <span class="text-orange-300">{$locales('footer.license_desc')}</span>
             </p>
+
             <p>
               {$locales('footer.built_with')}
               <a href="https://svelte.dev" target="_blank" rel="noopener noreferrer" class="text-orange-300 hover:text-orange-200 underline">

@@ -4,7 +4,6 @@
     "cancel": "Отмена",
     "status": "Статус",
     "beta_service": "Бета версия",
-    "last_updated": "Последнее обновление:",
     "more_options": "Больше опций ▼",
     "show_less": "Меньше опций ▲",
     "version": "Версия",
@@ -173,12 +172,13 @@
     "primary_mirror_desc": "Основное зеркало сервиса",
     "european_mirror_name": "Резервное зеркало",
     "european_mirror_desc": "Резервный зеркальный сервер",
-    "copyright": "© {year} Meshtastic Firmware Build Service. Все права защищены.",
-    "built_with": "Сделано с ❤️ используя",
+      "built_with": "Сделано с ❤️ используя",
     "trademark_notice": "<a href=\"https://meshtastic.org/\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-orange-400 hover:text-orange-300 underline\">Meshtastic®</a> является зарегистрированным товарным знаком. Все остальные товарные знаки являются собственностью их соответствующих владельцев.",
     "status": "Статус",
     "beta_service": "Сервис в постоянной разработке",
-    "last_updated": "Последнее обновление:"
+    "last_updated": "Последнее обновление",
+    "license_info": "Лицензия Creative Commons Attribution-NonCommercial 4.0",
+    "license_desc": "Некоммерческое использование с обязательным указанием авторства"
   },
   "customfirmware": {
     "flash_custom_firmware": "Прошить свою прошивку",
