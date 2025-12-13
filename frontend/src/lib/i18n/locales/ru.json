@@ -1,6 +1,7 @@
 {
   "common": {
     "close": "Закрыть",
+    "cancel": "Отмена",
     "status": "Статус",
     "beta_service": "Бета версия",
     "last_updated": "Последнее обновление:",
@@ -96,7 +97,10 @@
     "click_connect": "Нажмите \"Connect\" в интерфейсе ESP Web Tools",
     "select_com_port": "Выберите правильный COM порт",
     "click_install": "Нажмите \"Install\" для начала прошивки",
-    "wait_complete": "Дождитесь завершения установки"
+    "wait_complete": "Дождитесь завершения установки",
+    "no_device_selected": "Устройство не выбрано",
+    "flash_custom_firmware": "Прошить свою прошивку",
+    "custom_firmware_description": "Прошить свой файл прошивки на ESP устройства"
   },
   "notes": {
     "howto": "Инструкции",
@@ -175,6 +179,37 @@
     "status": "Статус",
     "beta_service": "Сервис в постоянной разработке",
     "last_updated": "Последнее обновление:"
+  },
+  "customfirmware": {
+    "flash_custom_firmware": "Прошить свою прошивку",
+    "select_firmware_file": "Выберите файл прошивки",
+    "drag_drop_file": "Перетащите файл прошивки сюда",
+    "or_click_to_select": "или нажмите для выбора файла",
+    "supported_formats": "Поддерживаемые форматы",
+    "status": "Статус",
+    "instructions": "Инструкции",
+    "step1_connect": "Подключите ваше ESP устройство к компьютеру через USB",
+    "step2_select": "Выберите ваш файл прошивки (.bin, .hex или .elf)",
+    "step3_flash": "Нажмите \"Прошить\" для начала процесса прошивки",
+    "flashing": "Прошивка",
+    "flash_firmware": "Прошить",
+    "erase_before_flash": "Стереть устройство перед прошивкой",
+    "baudrate_label": "Скорость прошивки",
+    "baudrate_standard": "стандарт",
+    "baudrate_fast": "быстро",
+    "baudrate_very_fast": "очень быстро",
+    "select_port": "Выберите порт",
+    "click_to_select_port": "Нажмите для выбора порта",
+    "connecting": "Подключение...",
+    "port_connected": "Порт подключен",
+    "device": "Устройство",
+    "disconnect": "Отключить",
+    "select_port_first": "Сначала выберите порт",
+    "put_device_download": "Переведите устройство в режим загрузки (удерживайте кнопку BOOT0/FLASH при нажатии reset или дважды нажмите reset на ESP32-S2/S3)",
+    "important_device_bootloader": "Важно: Устройство должно быть в режиме загрузчика/bootloader для прошивки",
+    "instructions_title": "Инструкции",
+    "show_instructions": "Показать инструкции",
+    "hide_instructions": "Скрыть инструкции"
   },
   "settings": {
     "title": "Настройки",

@@ -1,6 +1,7 @@
 {
   "common": {
     "close": "Close",
+    "cancel": "Cancel",
     "status": "Status",
     "beta_service": "Beta Service",
     "last_updated": "Last Updated:",
@@ -96,7 +97,10 @@
     "click_connect": "Click \"Connect\" in the ESP Web Tools interface",
     "select_com_port": "Select the correct COM port",
     "click_install": "Click \"Install\" to begin flashing",
-    "wait_complete": "Wait for the installation to complete"
+    "wait_complete": "Wait for the installation to complete",
+    "no_device_selected": "No device selected",
+    "flash_custom_firmware": "Flash Custom Firmware",
+    "custom_firmware_description": "Flash your own firmware file to ESP devices"
   },
   "notes": {
     "howto": "HowTo",
@@ -175,6 +179,37 @@
     "status": "Status",
     "beta_service": "Beta Service",
     "last_updated": "Last Updated:"
+  },
+  "customfirmware": {
+    "flash_custom_firmware": "Flash Custom Firmware",
+    "select_firmware_file": "Select Firmware File",
+    "drag_drop_file": "Drag & drop your firmware file here",
+    "or_click_to_select": "or click to select file",
+    "supported_formats": "Supported formats",
+    "status": "Status",
+    "instructions": "Instructions",
+    "step1_connect": "Connect your ESP device to your computer via USB",
+    "step2_select": "Select your firmware file (.bin, .hex, or .elf)",
+    "step3_flash": "Click \"Flash Firmware\" to start the flashing process",
+    "flashing": "Flashing",
+    "flash_firmware": "Flash Firmware",
+    "erase_before_flash": "Erase device before flashing",
+    "baudrate_label": "Flash Speed",
+    "baudrate_standard": "standard",
+    "baudrate_fast": "fast",
+    "baudrate_very_fast": "very fast",
+    "select_port": "Select Port",
+    "click_to_select_port": "Click to select port",
+    "connecting": "Connecting...",
+    "port_connected": "Port Connected",
+    "device": "Device",
+    "disconnect": "Disconnect",
+    "select_port_first": "Select port first",
+    "put_device_download": "Put device in download mode (hold BOOT0/FLASH button while pressing reset, or double-tap reset on ESP32-S2/S3)",
+    "important_device_bootloader": "Important: Device must be in bootloader/download mode for flashing",
+    "instructions_title": "Instructions",
+    "show_instructions": "Show Instructions",
+    "hide_instructions": "Hide Instructions"
   },
   "settings": {
     "title": "Settings",
