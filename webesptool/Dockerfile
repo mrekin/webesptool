@@ -29,4 +29,4 @@ ADD static ${dir}/static
 
 WORKDIR ${dir}
 #CMD ["python3","service.py"]
-CMD ["uvicorn", "service:app", "--host", "0.0.0.0", "--port", "8000", "--root-path", "/flasher"]
+CMD ["sh", "-c", "uvicorn service:app --host 0.0.0.0 --port 8000 --root-path ${ROOT_PATH:-/flasher}"]

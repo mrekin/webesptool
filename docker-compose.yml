@@ -2,6 +2,8 @@ services:
   webesptool:
     build: webesptool/
     restart: unless-stopped
+    environment:
+      - ROOT_PATH=/flasher
     volumes:
       - ./webesptool/log:/home/webesptool/log
       - /home/user/meshfw:/home/webesptool/data
