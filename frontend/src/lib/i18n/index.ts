@@ -72,11 +72,14 @@ export function initI18nSync() {
   });
 }
 
-export function changeLocale(locale: string) {
+export async function changeLocale(locale: string) {
   if (browser) {
     setCookie('locale', locale, 365);
   }
-  return import('svelte-i18n').then(({ locale: i18nLocale }) => {
+  try {
+    const { locale: i18nLocale } = await import('svelte-i18n');
     i18nLocale.set(locale);
-  });
+  } catch (error) {
+    console.error('Failed to change locale:', error);
+  }
 }

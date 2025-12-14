@@ -1,26 +1,38 @@
 <script lang="ts">
   // Removed background image loading logic
 
+  // State for keyboard navigation
+  let isKeyboardNavigation = false;
+
   // Handle keyboard navigation for accessibility
   function handleKeydown(event: KeyboardEvent) {
     // ESC key closes any modals/dialogs
     if (event.key === 'Escape') {
-      const openDialog = document.querySelector('dialog[open]');
+      const openDialog = document.querySelector('dialog[open]') as HTMLDialogElement;
       if (openDialog) {
-        (openDialog as HTMLDialogElement).close();
+        openDialog.close();
       }
     }
 
     // Tab navigation enhancement
     if (event.key === 'Tab') {
       // Add custom tab behavior if needed
-      document.body.classList.add('keyboard-navigation');
+      isKeyboardNavigation = true;
     }
   }
 
   // Remove keyboard navigation class when using mouse
   function handleMouseDown() {
-    document.body.classList.remove('keyboard-navigation');
+    isKeyboardNavigation = false;
+  }
+
+  // Reactive statement to update body class
+  $: if (typeof document !== 'undefined') {
+    if (isKeyboardNavigation) {
+      document.body.classList.add('keyboard-navigation');
+    } else {
+      document.body.classList.remove('keyboard-navigation');
+    }
   }
 </script>
 
@@ -38,6 +50,7 @@
 
 <div
   class="min-h-screen bg-gray-900"
+  role="application"
   on:keydown={handleKeydown}
   on:mousedown={handleMouseDown}
 >

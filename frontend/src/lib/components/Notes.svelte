@@ -113,7 +113,7 @@
     <!-- HowTo Section -->
     <div class="mb-6">
       <button
-        on:click={toggleHowTo}
+        onclick={toggleHowTo}
         class="w-full flex items-center justify-between p-3 bg-orange-900 bg-opacity-30 border border-orange-600 rounded hover:bg-orange-900 bg-opacity-40 transition-colors text-left"
         aria-expanded={showHowTo}
         aria-controls="howto-content"
@@ -147,7 +147,7 @@
     <!-- Notes Section -->
     <div class="mb-6">
       <button
-        on:click={toggleImportantNotes}
+        onclick={toggleImportantNotes}
         class="w-full flex items-center justify-between p-3 bg-orange-900 bg-opacity-30 border border-orange-600 rounded hover:bg-orange-900 bg-opacity-40 transition-colors text-left"
         aria-expanded={showImportantNotes}
         aria-controls="important-notes-content"
@@ -198,7 +198,7 @@
     <!-- More Section (Best Practices + Need Help) -->
     <div class="mb-6">
       <button
-        on:click={toggleMore}
+        onclick={toggleMore}
         class="w-full flex items-center justify-between p-3 bg-orange-900 bg-opacity-30 border border-orange-600 rounded hover:bg-orange-900 bg-opacity-40 transition-colors text-left"
         aria-expanded={showMoreSection}
         aria-controls="more-content"

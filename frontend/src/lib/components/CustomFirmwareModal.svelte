@@ -29,6 +29,9 @@
 	let isConnecting = false;
 	let showInstructions = false; // Управление спойлером инструкций
 
+	// Ссылка на file input для замены document.getElementById
+	let fileInput: HTMLInputElement;
+
 	// Get baudrate options from utility
 	const baudrateOptions = espManager.getBaudrateOptions().map(opt => ({
 		...opt,
@@ -435,7 +438,7 @@
 									class="w-full h-full rounded-lg p-4 text-center transition-colors hover:border-orange-500 cursor-pointer flex flex-col justify-center {(selectedFirmwareFile || selectedFirmwareFiles.length > 0) ? 'border border-gray-600 bg-gray-800' : 'border-2 border-dashed border-gray-600'}"
 									on:dragover={handleDragOver}
 									on:drop={handleDrop}
-									on:click={() => document.getElementById('file-input')?.click()}
+									on:click={() => fileInput?.click()}
 								>
 									{#if selectedFirmwareFile}
 										<!-- Single file selected (backward compatibility) -->
@@ -469,7 +472,7 @@
 
 								<!-- Hidden file input with multiple attribute -->
 								<input
-									id="file-input"
+									bind:this={fileInput}
 									type="file"
 									multiple
 									accept=".bin,.hex,.elf"

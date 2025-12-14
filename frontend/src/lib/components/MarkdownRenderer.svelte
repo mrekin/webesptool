@@ -28,6 +28,9 @@
   let spoilerTitle = $state('');
   let isSpoilerOpen = $state(false);
 
+  // Container reference for DOM manipulation
+  let markdownContainer: HTMLElement;
+
   // Extract first heading (H1, H2, or H3) from content for spoiler title
   function extractFirstHeading(markdown: string): string {
     // Try to find H1 (#), then H2 (##), then H3 (###)
@@ -91,17 +94,11 @@
 
   // Add link click handler when content is available
   $effect(() => {
-    if (content) {
-      // Wait for DOM to update
-      setTimeout(() => {
-        const container = document.querySelector('.markdown-container');
-        if (container) {
-          // Remove existing listener to avoid duplicates
-          container.removeEventListener('click', handleLinkClick);
-          // Add new listener
-          container.addEventListener('click', handleLinkClick);
-        }
-      }, 50);
+    if (content && markdownContainer) {
+      // Remove existing listener to avoid duplicates
+      markdownContainer.removeEventListener('click', handleLinkClick);
+      // Add new listener
+      markdownContainer.addEventListener('click', handleLinkClick);
     }
   });
 
@@ -120,9 +117,8 @@
       if (unsubscribe) {
         unsubscribe();
       }
-      const container = document.querySelector('.markdown-container');
-      if (container) {
-        container.removeEventListener('click', handleLinkClick);
+      if (markdownContainer) {
+        markdownContainer.removeEventListener('click', handleLinkClick);
       }
     };
   });
@@ -135,7 +131,7 @@
   };
 </script>
 
-<div class="{wrapperClass} {className} markdown-container">
+<div bind:this={markdownContainer} class="{wrapperClass} {className} markdown-container">
   {#if loading}
     <div class="flex items-center justify-center py-8">
       <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
@@ -151,7 +147,7 @@
       <!-- Spoiler mode -->
       <div class="border border-orange-600 rounded-lg overflow-hidden ml-4">
         <button
-          on:click={() => isSpoilerOpen = !isSpoilerOpen}
+          onclick={() => isSpoilerOpen = !isSpoilerOpen}
           class="w-full flex items-center justify-between p-3 bg-orange-900 bg-opacity-30 hover:bg-orange-900 bg-opacity-40 transition-colors text-left"
           aria-expanded={isSpoilerOpen}
         >

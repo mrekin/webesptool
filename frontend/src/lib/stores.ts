@@ -639,9 +639,15 @@ if (browser) {
     apiActions.loadSrcs();
   }
 
-  import('$lib/utils/urlSync.js').then(({ initializeUrlSync }) => {
-    initializeUrlSync(deviceFromUrl);
-  });
+  // Initialize URL synchronization
+  (async () => {
+    try {
+      const { initializeUrlSync } = await import('$lib/utils/urlSync.js');
+      initializeUrlSync(deviceFromUrl);
+    } catch (error) {
+      console.error('Failed to initialize URL sync:', error);
+    }
+  })();
 }
 
 // Initialize app when device parameter is provided in URL

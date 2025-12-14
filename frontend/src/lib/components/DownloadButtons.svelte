@@ -9,6 +9,7 @@
 
   // Local state
   let espWebToolsDialog: HTMLDialogElement;
+  let espWebToolsButton: HTMLElement;
   let showMoreOptions = false;
   let firmwareMode: 'update' | 'full' = 'update'; // update = режим 1, full = режим 2
 
@@ -118,14 +119,12 @@
 
   // Function to configure and trigger ESP Web Tools button
   function configureAndTriggerESPButton(): boolean {
-    const espButton = document.querySelector('esp-web-install-button');
-
-    if (espButton) {
+    if (espWebToolsButton) {
       const manifestUrl = generateManifestUrl();
-      espButton.setAttribute('manifest', manifestUrl);
+      espWebToolsButton.setAttribute('manifest', manifestUrl);
 
       // Trigger the ESP Web Tools installation
-      const activateButton = espButton.querySelector('button[slot="activate"]');
+      const activateButton = espWebToolsButton.querySelector('button[slot="activate"]');
 
       if (activateButton) {
         activateButton.click();
@@ -224,7 +223,7 @@
 <!-- ESP Web Tools Button (hidden, used for firmware installation) -->
 {#if supportsESPWebTools(deviceDisplayInfoStore?.deviceType) && deviceSelectionStore.version}
   <div style="display: none;">
-    <esp-web-install-button manifest="">
+    <esp-web-install-button bind:this={espWebToolsButton} manifest="">
       <button slot="activate">{$locales('downloadbuttons.esp_web_tools_install')}</button>
     </esp-web-install-button>
   </div>

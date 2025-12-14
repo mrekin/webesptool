@@ -9,6 +9,7 @@
   // Local state
   let showDropdown = false;
   let settingsButton: HTMLButtonElement;
+  let settingsDropdown: HTMLDivElement;
   let isMinimalMode = false;
 
   // Language options
@@ -55,8 +56,7 @@
   // Close dropdown when clicking outside
   function handleClickOutside(event: MouseEvent) {
     if (showDropdown && settingsButton && !settingsButton.contains(event.target as Node)) {
-      const dropdown = document.getElementById('settings-dropdown');
-      if (dropdown && !dropdown.contains(event.target as Node)) {
+      if (settingsDropdown && !settingsDropdown.contains(event.target as Node)) {
         showDropdown = false;
       }
     }
@@ -106,7 +106,7 @@
   <!-- Dropdown Panel -->
   {#if showDropdown}
     <div
-      id="settings-dropdown"
+      bind:this={settingsDropdown}
       class="absolute right-0 mt-2 w-72 bg-gray-800 border border-orange-600 rounded-lg shadow-2xl z-50 backdrop-blur-sm"
       role="menu"
     >
