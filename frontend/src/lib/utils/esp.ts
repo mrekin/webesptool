@@ -1,4 +1,238 @@
-import type { ESPDeviceInfo, FlashProgress, FlashOptions, FirmwareFile } from '$lib/types';
+import type { ESPDeviceInfo, FlashProgress, FlashOptions, FirmwareFile, FirmwareMetadata, FlashAddressResult } from '$lib/types';
+
+// Constants for flash addresses
+const FIRMWARE_OFFSET = '0x00';
+const UPDATE_OFFSET = '0x10000';
+const DEFAULT_OTA_OFFSET = '0x260000';
+const DEFAULT_SPIFFS_OFFSET = '0x300000';
+
+/**
+ * Parse firmware metadata from JSON string
+ */
+export function parseFirmwareMetadata(metadataJson: string): FirmwareMetadata | null {
+	try {
+		return JSON.parse(metadataJson) as FirmwareMetadata;
+	} catch (error) {
+		console.error('Failed to parse firmware metadata:', error);
+		return null;
+	}
+}
+
+/**
+ * Determine flash address for firmware file based on filename, metadata, and chip name
+ * Works even without metadata by using filename patterns and chip detection
+ */
+export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMetadata | null, chipName?: string): FlashAddressResult | null {
+	if (!filename) return null;
+
+	const basename = filename.toLowerCase();
+
+	// Rule 1: Factory firmware files - address 0x00
+	if (basename.includes('factory.bin')) {
+		return {
+			address: FIRMWARE_OFFSET,
+			type: 'firmware',
+			description: 'Factory firmware - full installation'
+		};
+	}
+
+	// Rule 2: Update files (non-factory .bin) - address 0x10000
+	if (basename.endsWith('.bin') && !basename.includes('factory.bin') &&
+		!basename.includes('bleota') && !basename.includes('littlefs') && !basename.includes('spiffs')) {
+		return {
+			address: UPDATE_OFFSET,
+			type: 'firmware',
+			description: 'Update firmware - partial installation'
+		};
+	}
+
+	// Rule 3: OTA files - enhanced logic with chip detection
+	if (basename.includes('bleota')) {
+		let otaOffset = DEFAULT_OTA_OFFSET;
+		let description = 'OTA firmware';
+
+		// Priority order: metadata > chipName > filename > default
+
+		// 1. Use metadata if available (highest priority)
+		if (metadata) {
+			description = `OTA firmware for ${metadata.mcu}`;
+			otaOffset = getOtaOffsetFromMetadata(metadata);
+		}
+		// 2. Use detected chip name if no metadata
+		else if (chipName) {
+			const detectedChip = chipName.toLowerCase();
+			if (detectedChip.includes('esp32-s3') || detectedChip === 'esp32s3') {
+				description = 'OTA firmware for ESP32-S3';
+			} else if (detectedChip.includes('esp32-c3') || detectedChip === 'esp32c3') {
+				description = 'OTA firmware for ESP32-C3';
+			} else if (detectedChip.includes('esp32-c2') || detectedChip === 'esp32c2') {
+				description = 'OTA firmware for ESP32-C2';
+			} else if (detectedChip.includes('esp32-c5') || detectedChip === 'esp32c5') {
+				description = 'OTA firmware for ESP32-C5';
+			} else if (detectedChip.includes('esp32-c6') || detectedChip === 'esp32c6') {
+				description = 'OTA firmware for ESP32-C6';
+			} else if (detectedChip.includes('esp32-s2') || detectedChip === 'esp32s2') {
+				description = 'OTA firmware for ESP32-S2';
+			} else if (detectedChip.includes('esp32-h2') || detectedChip === 'esp32h2') {
+				description = 'OTA firmware for ESP32-H2';
+			} else if (detectedChip.includes('esp32-p4') || detectedChip === 'esp32p4') {
+				description = 'OTA firmware for ESP32-P4';
+			} else if (detectedChip.includes('esp8266')) {
+				description = 'OTA firmware for ESP8266';
+			} else if (detectedChip.includes('esp32') && !detectedChip.includes('c') && !detectedChip.includes('s') && !detectedChip.includes('h') && !detectedChip.includes('p')) {
+				description = 'OTA firmware for ESP32';
+			} else {
+				description = `OTA firmware for ${chipName}`;
+			}
+		}
+		// 3. Try to determine MCU type from filename (lower priority)
+		else if (basename.includes('s3') || basename.includes('esp32s3')) {
+			description = 'OTA firmware for ESP32-S3';
+		} else if (basename.includes('c3') || basename.includes('esp32c3')) {
+			description = 'OTA firmware for ESP32-C3';
+		} else if (basename.includes('c2') || basename.includes('esp32c2')) {
+			description = 'OTA firmware for ESP32-C2';
+		} else if (basename.includes('c5') || basename.includes('esp32c5')) {
+			description = 'OTA firmware for ESP32-C5';
+		} else if (basename.includes('c6') || basename.includes('esp32c6')) {
+			description = 'OTA firmware for ESP32-C6';
+		} else if (basename.includes('s2') || basename.includes('esp32s2')) {
+			description = 'OTA firmware for ESP32-S2';
+		} else if (basename.includes('h2') || basename.includes('esp32h2')) {
+			description = 'OTA firmware for ESP32-H2';
+		} else if (basename.includes('p4') || basename.includes('esp32p4')) {
+			description = 'OTA firmware for ESP32-P4';
+		} else if (basename.includes('8266')) {
+			description = 'OTA firmware for ESP8266';
+		} else {
+			description = 'OTA firmware for ESP32';
+		}
+
+		return {
+			address: otaOffset,
+			type: 'ota',
+			description: description
+		};
+	}
+
+	// Rule 4: LittleFS/SPIFFS files - enhanced logic
+	if (basename.includes('littlefs') || basename.includes('spiffs')) {
+		let spiffsOffset = DEFAULT_SPIFFS_OFFSET;
+		let description = 'File system (LittleFS/SPIFFS)';
+
+		// Use metadata if available for precise info
+		if (metadata) {
+			spiffsOffset = getSpiffsOffsetFromMetadata(metadata);
+			description = 'File system (LittleFS/SPIFFS)';
+		} else {
+			description = 'File system (LittleFS/SPIFFS) - default offset';
+		}
+
+		return {
+			address: spiffsOffset,
+			type: 'filesystem',
+			description: description
+		};
+	}
+
+	return null;
+}
+
+/**
+ * Get OTA offset from metadata partitions
+ */
+function getOtaOffsetFromMetadata(metadata: FirmwareMetadata): string {
+	const otaPartition = metadata.part.find((p: any) => p.subtype === 'ota_1');
+	return otaPartition ? otaPartition.offset : DEFAULT_OTA_OFFSET;
+}
+
+/**
+ * Get SPIFFS offset from metadata partitions
+ */
+function getSpiffsOffsetFromMetadata(metadata: FirmwareMetadata): string {
+	const spiffsPartition = metadata.part.find((p: any) => p.subtype === 'spiffs');
+	return spiffsPartition ? spiffsPartition.offset : DEFAULT_SPIFFS_OFFSET;
+}
+
+/**
+ * Get all flash addresses for a complete installation based on metadata
+ */
+export function getCompleteFlashAddresses(metadata: FirmwareMetadata): {
+	firmware: FlashAddressResult;
+	ota: FlashAddressResult;
+	filesystem: FlashAddressResult;
+} | null {
+	if (!metadata) return null;
+
+	// Find factory firmware filename
+	const factoryFirmwareFile = metadata.files.find((file: any) =>
+		file.name.includes('.factory.bin')
+	);
+	const firmwareFilename = factoryFirmwareFile ? factoryFirmwareFile.name : '';
+
+	const firmwareAddress: FlashAddressResult = {
+		address: FIRMWARE_OFFSET,
+		type: 'firmware',
+		description: 'Factory firmware',
+		filename: firmwareFilename
+	};
+
+	const otaOffset = getOtaOffsetFromMetadata(metadata);
+	const otaFilename = getOtaFilename(metadata.mcu);
+	const otaAddress: FlashAddressResult = {
+		address: otaOffset,
+		type: 'ota',
+		description: `OTA firmware for ${metadata.mcu}`,
+		filename: otaFilename
+	};
+
+	const spiffsOffset = getSpiffsOffsetFromMetadata(metadata);
+	// Find filesystem filename or generate it
+	const filesystemFile = metadata.files.find((file: any) =>
+		file.name.includes('littlefs-') || file.name.includes('spiffs')
+	);
+	const filesystemFilename = filesystemFile ? filesystemFile.name : getFilesystemFilename(firmwareFilename);
+
+	const filesystemAddress: FlashAddressResult = {
+		address: spiffsOffset,
+		type: 'filesystem',
+		description: 'File system (LittleFS/SPIFFS)',
+		filename: filesystemFilename
+	};
+
+	return {
+		firmware: firmwareAddress,
+		ota: otaAddress,
+		filesystem: filesystemAddress
+	};
+}
+
+/**
+ * Determine OTA filename based on MCU type
+ */
+export function getOtaFilename(mcu: string): string {
+	switch (mcu) {
+		case 'esp32s3':
+			return 'bleota-s3.bin';
+		case 'esp32c3':
+			return 'bleota-c3.bin';
+		default:
+			return 'bleota.bin';
+	}
+}
+
+/**
+ * Determine filesystem filename based on firmware filename
+ */
+export function getFilesystemFilename(firmwareFilename: string): string {
+	// Extract board info from firmware filename
+	const match = firmwareFilename.match(/firmware-(.+)-\d/);
+	if (match) {
+		const boardInfo = match[1];
+		return `littlefs-${boardInfo}.bin`;
+	}
+	return 'littlefs.bin';
+}
 
 export function createESPManager() {
 	let port: SerialPort | null = null;

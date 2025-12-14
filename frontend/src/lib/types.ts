@@ -198,3 +198,39 @@ export interface FlashOptions {
   eraseBeforeFlash: boolean;
   onProgress?: (progress: FlashProgress) => void;
 }
+
+// Firmware metadata types
+export interface FirmwareMetadataFile {
+  name: string;
+  md5: string;
+  bytes: number;
+}
+
+export interface FirmwareMetadataPartition {
+  name: string;
+  type: string;
+  subtype: string;
+  offset: string;
+  size: string;
+  flags: string;
+}
+
+export interface FirmwareMetadata {
+  version: string;
+  build_epoch: number;
+  board: string;
+  mcu: string;
+  repo: string;
+  files: FirmwareMetadataFile[];
+  part: FirmwareMetadataPartition[];
+  has_mui: boolean;
+  has_inkhud: boolean;
+}
+
+// Flash address result
+export interface FlashAddressResult {
+  address: string;
+  type: 'firmware' | 'ota' | 'filesystem';
+  description: string;
+  filename?: string; // Optional filename for the flash operation
+}

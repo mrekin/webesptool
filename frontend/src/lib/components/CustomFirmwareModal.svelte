@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { _ as locales } from 'svelte-i18n';
-	import { createESPManager } from '$lib/utils/esp';
+	import { createESPManager, getMeshtasticFlashAddress } from '$lib/utils/esp';
 	import { createFirmwareFileHandler } from '$lib/utils/fileHandler';
 	import type { FirmwareFile } from '$lib/types';
 
@@ -122,6 +122,7 @@
 		}
 	}
 
+	
 	// Select and analyze port
 	async function selectPort() {
 		isConnecting = true;
@@ -308,6 +309,25 @@
 		if (!isFlashing) {
 			onClose();
 			await resetState();
+		}
+	}
+
+	// Reactive: Update flash addresses when files or device info changes
+	$: if (selectedFirmwareFiles.length > 0 && deviceInfo?.chip) {
+		selectedFirmwareFiles = selectedFirmwareFiles.map(fileItem => {
+			const addressResult = getMeshtasticFlashAddress(fileItem.filename, null, deviceInfo.chip);
+			if (addressResult) {
+				return {
+					...fileItem,
+					address: addressResult.address
+				};
+			}
+			return fileItem;
+		});
+
+		// Update single file for backward compatibility
+		if (selectedFirmwareFiles.length === 1) {
+			flashAddress = selectedFirmwareFiles[0].address;
 		}
 	}
 
