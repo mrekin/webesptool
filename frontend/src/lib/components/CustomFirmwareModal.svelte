@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { _ as locales } from 'svelte-i18n';
-	import { createESPManager, getMeshtasticFlashAddress } from '$lib/utils/esp';
+	import { createESPManager, getMeshtasticFlashAddress, validateFirmwareSelection } from '$lib/utils/esp';
 	import { createFirmwareFileHandler } from '$lib/utils/fileHandler';
 	import type { FirmwareFile } from '$lib/types';
+import { ValidationErrors } from '$lib/types';
 
 	export let isOpen = false;
 	export let onClose = () => {};
@@ -49,10 +50,19 @@
 		await espManager.resetPort();
 	});
 
-	// Handle file selection
-	function handleFileSelect(event: Event) {
-		const target = event.target as HTMLInputElement;
-		const files = target.files;
+	// Helper function to get localized error message
+	function getErrorMessage(errorCode?: number): string {
+		switch (errorCode) {
+			case ValidationErrors.FILES_CONFLICT:
+				return $locales('customfirmware.file_conflict_error');
+			case ValidationErrors.UNKNOWN_ERROR:
+			default:
+				return $locales('customfirmware.unknown_validation_error');
+		}
+	}
+
+	// Handle file selection (unified function for both file selection and drag & drop)
+	function handleFileSelect(files: FileList | null) {
 		if (!files || files.length === 0) return;
 
 		selectedFirmwareFiles = [];
@@ -63,10 +73,14 @@
 				selectedFirmwareFiles.push({
 					filename: file.name,
 					address: '0x0', // Default address in hex format
-					file: fileHandler.createFirmwareFile(file)
+					file: fileHandler.createFirmwareFile(file),
+					hasError: false,
+					errorMessage: ''
 				});
 			}
 		}
+
+		// Validation is handled reactively - no need to validate here
 
 		// For backward compatibility with single file
 		if (selectedFirmwareFiles.length === 1) {
@@ -88,25 +102,28 @@
 		const files = fileHandler.handleDropMultiple(event);
 		if (!files || files.length === 0) return;
 
-		selectedFirmwareFiles = [];
+		// Convert File array to FileList-like object for unified processing
+		const fileList = files as unknown as FileList;
+		handleFileSelect(fileList);
+	}
 
-		for (let i = 0; i < files.length; i++) {
-			const file = files[i];
-			if (fileHandler.isValidFile(file)) {
-				selectedFirmwareFiles.push({
-					filename: file.name,
-					address: '0x0', // Default address in hex format
-					file: fileHandler.createFirmwareFile(file)
-				});
-			}
-		}
+	// Wrapper for file input change event
+	function handleFileInputChange(event: Event) {
+		const target = event.target as HTMLInputElement;
+		handleFileSelect(target.files);
+	}
 
-		// For backward compatibility with single file
+	// Remove file from flashing list
+	function removeFile(index: number) {
+		selectedFirmwareFiles = selectedFirmwareFiles.filter((_, i) => i !== index);
+
+		// Update backward compatibility
 		if (selectedFirmwareFiles.length === 1) {
 			selectedFirmwareFile = selectedFirmwareFiles[0].file;
 			flashAddress = selectedFirmwareFiles[0].address;
-		} else {
+		} else if (selectedFirmwareFiles.length === 0) {
 			selectedFirmwareFile = null;
+			flashAddress = '0x0';
 		}
 
 		flashError = '';
@@ -250,15 +267,23 @@
 			}
 			// Handle multiple files case
 			else if (selectedFirmwareFiles.length > 0) {
-				const totalFiles = selectedFirmwareFiles.length;
+				// Rule 3: Sort files by flash address before flashing
+				const sortedFiles = [...selectedFirmwareFiles].sort((a, b) => {
+					const addressA = parseInt(a.address.replace('0x', ''), 16);
+					const addressB = parseInt(b.address.replace('0x', ''), 16);
+					return addressA - addressB;
+				});
+
+				const totalFiles = sortedFiles.length;
 
 				for (let i = 0; i < totalFiles; i++) {
-					const fileItem = selectedFirmwareFiles[i];
+					const fileItem = sortedFiles[i];
 					// Reserve space for file completion (5% per file)
 					const progressRange = (100 - (totalFiles * 5)) / totalFiles;
 					const progressBase = (i / totalFiles) * (100 - (totalFiles * 5));
 
-					flashStatus = `Flashing file ${i + 1}/${totalFiles}: ${fileItem.filename}...`;
+					// Rule 4: Include flash address in progress status
+					flashStatus = `Flashing file ${i + 1}/${totalFiles}: ${fileItem.filename} @ ${fileItem.address}...`;
 					flashProgress = Math.round(progressBase);
 
 					// Read file content using utility
@@ -276,7 +301,8 @@
 							// Calculate overall progress combining file progress with current file position
 							const overallProgress = progressBase + (progress.progress / 100) * progressRange;
 							flashProgress = Math.round(overallProgress);
-							flashStatus = `Flashing file ${i + 1}/${totalFiles}: ${fileItem.filename} - ${progress.status}`;
+							// Rule 4: Include flash address in progress status
+							flashStatus = `Flashing file ${i + 1}/${totalFiles}: ${fileItem.filename} @ ${fileItem.address} - ${progress.status}`;
 							if (progress.error) {
 								flashError = progress.error;
 							}
@@ -288,7 +314,7 @@
 
 					// Mark file as completed
 					flashProgress = Math.round(progressBase + progressRange);
-					flashStatus = `Completed file ${i + 1}/${totalFiles}: ${fileItem.filename}`;
+					flashStatus = `Completed file ${i + 1}/${totalFiles}: ${fileItem.filename} @ ${fileItem.address}`;
 				}
 
 				flashStatus = 'All files flashed successfully!';
@@ -312,10 +338,11 @@
 		}
 	}
 
-	// Reactive: Update flash addresses when files or device info changes
-	$: if (selectedFirmwareFiles.length > 0 && deviceInfo?.chip) {
+	// Reactive: Update flash addresses and validate when files or device info changes
+	$: if (selectedFirmwareFiles.length > 0) {
+		// Update addresses for all files (with or without device info)
 		selectedFirmwareFiles = selectedFirmwareFiles.map(fileItem => {
-			const addressResult = getMeshtasticFlashAddress(fileItem.filename, null, deviceInfo.chip);
+			const addressResult = getMeshtasticFlashAddress(fileItem.filename, null, deviceInfo?.chip);
 			if (addressResult) {
 				return {
 					...fileItem,
@@ -324,6 +351,16 @@
 			}
 			return fileItem;
 		});
+
+		// Validate files for conflicts
+		const validation = validateFirmwareSelection(selectedFirmwareFiles);
+		selectedFirmwareFiles = selectedFirmwareFiles.map(file => ({
+			...file,
+			hasError: !validation.isValid && validation.conflictingFiles?.includes(file.filename),
+			errorMessage: !validation.isValid && validation.conflictingFiles?.includes(file.filename)
+				? getErrorMessage(validation.errorCode)
+				: ''
+		}));
 
 		// Update single file for backward compatibility
 		if (selectedFirmwareFiles.length === 1) {
@@ -496,7 +533,7 @@
 									type="file"
 									multiple
 									accept=".bin,.hex,.elf"
-									on:change={handleFileSelect}
+									on:change={handleFileInputChange}
 									class="hidden"
 							/>
 						</div>
@@ -512,9 +549,16 @@
 								</div>
 								<div class="space-y-2">
 									{#each selectedFirmwareFiles as fileItem, index}
-										<div class="flex items-center space-x-2 p-2 border border-gray-600 rounded-md bg-gray-800">
+										<div class="flex items-center space-x-2 p-2 border {fileItem.hasError ? 'border-red-600 bg-red-900/20' : 'border-gray-600 bg-gray-800'} rounded-md relative group">
 											<div class="flex-1 min-w-0">
-												<div class="text-xs text-gray-300 font-medium truncate">{fileItem.filename}</div>
+												<div class="flex items-center space-x-2">
+													<div class="text-xs text-gray-300 font-medium truncate">{fileItem.filename}</div>
+													{#if fileItem.hasError}
+														<div class="text-red-400 cursor-help" title={fileItem.errorMessage}>
+															⚠️
+														</div>
+													{/if}
+												</div>
 												<div class="text-xs text-gray-500">{fileHandler.formatFileSize(fileItem.file.size)}</div>
 											</div>
 											<div class="flex items-center space-x-2 flex-shrink-0">
@@ -535,6 +579,14 @@
 													}}
 													title="Enter address in hex (0x...) or decimal format"
 												/>
+												<button
+													on:click={() => removeFile(index)}
+													disabled={isFlashing}
+													class="text-red-400 hover:text-red-300 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+													title="Remove file"
+												>
+													✕
+												</button>
 											</div>
 										</div>
 									{/each}
@@ -644,7 +696,7 @@
 				{:else}
 					<button
 						on:click={flashFirmware}
-						disabled={(!selectedFirmwareFile && selectedFirmwareFiles.length === 0) || !isPortSelected || isFlashing}
+						disabled={(!selectedFirmwareFile && selectedFirmwareFiles.length === 0) || !isPortSelected || isFlashing || selectedFirmwareFiles.some(file => file.hasError)}
 						class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{#if isFlashing}

@@ -212,7 +212,9 @@
     "hide_instructions": "Hide Instructions",
     "flash_another_file": "Flash Another File",
     "flash_addresses": "Flash Address",
-    "address": "Address"
+    "address": "Address",
+    "file_conflict_error": "Cannot flash both firmware and factory firmware files simultaneously. Please use only one type.",
+    "unknown_validation_error": "An unknown file validation error occurred."
   },
   "settings": {
     "title": "Settings",

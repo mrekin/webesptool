@@ -1,4 +1,5 @@
-import type { ESPDeviceInfo, FlashProgress, FlashOptions, FirmwareFile, FirmwareMetadata, FlashAddressResult } from '$lib/types';
+import type { ESPDeviceInfo, FlashProgress, FlashOptions, FirmwareFile, FirmwareMetadata, FlashAddressResult, ValidationError } from '$lib/types';
+import { ValidationErrors } from '$lib/types';
 
 // Constants for flash addresses
 const FIRMWARE_OFFSET = '0x00';
@@ -232,6 +233,34 @@ export function getFilesystemFilename(firmwareFilename: string): string {
 		return `littlefs-${boardInfo}.bin`;
 	}
 	return 'littlefs.bin';
+}
+
+// Validate firmware file selection for conflicts
+export function validateFirmwareSelection(files: { filename: string }[]): { isValid: boolean; errorCode?: ValidationError; conflictingFiles?: string[] } {
+	const hasRegularFirmware = files.some(file =>
+		/^firmware[^.]*\.bin$/i.test(file.filename) && !file.filename.includes('.factory.bin')
+	);
+	const hasFactoryFirmware = files.some(file =>
+		/^firmware[^.]*\.factory\.bin$/i.test(file.filename)
+	);
+
+	if (hasRegularFirmware && hasFactoryFirmware) {
+		// Get all conflicting files
+		const conflictingFiles = files
+			.filter(file =>
+				(/^firmware[^.]*\.bin$/i.test(file.filename) && !file.filename.includes('.factory.bin')) ||
+				(/^firmware[^.]*\.factory\.bin$/i.test(file.filename))
+			)
+			.map(file => file.filename);
+
+		return {
+			isValid: false,
+			errorCode: ValidationErrors.FILES_CONFLICT,
+			conflictingFiles
+		};
+	}
+
+	return { isValid: true };
 }
 
 export function createESPManager() {

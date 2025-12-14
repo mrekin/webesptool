@@ -234,3 +234,11 @@ export interface FlashAddressResult {
   description: string;
   filename?: string; // Optional filename for the flash operation
 }
+
+// Validation error codes
+export const ValidationErrors = {
+  UNKNOWN_ERROR: -1,
+  FILES_CONFLICT: -2
+} as const;
+
+export type ValidationError = typeof ValidationErrors[keyof typeof ValidationErrors];

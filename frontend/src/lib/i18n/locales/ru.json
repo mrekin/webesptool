@@ -212,7 +212,9 @@
     "hide_instructions": "Скрыть инструкции",
     "flash_another_file": "Прошить другой файл",
     "flash_addresses": "Адрес прошивки",
-    "address": "Адрес"
+    "address": "Адрес",
+    "file_conflict_error": "Невозможно прошить firmware и factory firmware одновременно. Используйте только один тип файлов.",
+    "unknown_validation_error": "Произошла неизвестная ошибка валидации файлов."
   },
   "settings": {
     "title": "Настройки",
