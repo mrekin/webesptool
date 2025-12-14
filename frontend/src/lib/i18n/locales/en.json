@@ -210,7 +210,9 @@
     "instructions_title": "Instructions",
     "show_instructions": "Show Instructions",
     "hide_instructions": "Hide Instructions",
-    "flash_another_file": "Flash Another File"
+    "flash_another_file": "Flash Another File",
+    "flash_addresses": "Flash Address",
+    "address": "Address"
   },
   "settings": {
     "title": "Settings",

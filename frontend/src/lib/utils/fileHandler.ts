@@ -81,12 +81,48 @@ export function createFirmwareFileHandler() {
 		return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 	}
 
+	// Check if file is valid (alias for validateFile)
+	function isValidFile(file: File): boolean {
+		return validateFile(file);
+	}
+
+	// Create firmware file from File object
+	function createFirmwareFile(file: File): FirmwareFile {
+		return {
+			file: file,
+			content: '', // Will be filled by readFileContent
+			size: file.size,
+			name: file.name
+		};
+	}
+
+	// Handle multiple file drop
+	function handleDropMultiple(event: DragEvent): File[] | null {
+		event.preventDefault();
+		event.stopPropagation();
+
+		if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
+			const files: File[] = [];
+			for (let i = 0; i < event.dataTransfer.files.length; i++) {
+				const file = event.dataTransfer.files[i];
+				if (validateFile(file)) {
+					files.push(file);
+				}
+			}
+			return files.length > 0 ? files : null;
+		}
+		return null;
+	}
+
 	return {
 		handleFileSelect,
 		handleDragOver,
 		handleDrop,
+		handleDropMultiple,
 		readFileContent,
 		validateFile,
+		isValidFile,
+		createFirmwareFile,
 		formatFileSize
 	};
 }

@@ -210,7 +210,9 @@
     "instructions_title": "Инструкции",
     "show_instructions": "Показать инструкции",
     "hide_instructions": "Скрыть инструкции",
-    "flash_another_file": "Прошить другой файл"
+    "flash_another_file": "Прошить другой файл",
+    "flash_addresses": "Адрес прошивки",
+    "address": "Адрес"
   },
   "settings": {
     "title": "Настройки",

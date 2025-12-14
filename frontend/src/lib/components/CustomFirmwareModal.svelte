@@ -14,6 +14,7 @@
 
 	// Component state
 	let selectedFirmwareFile: FirmwareFile | null = null;
+	let selectedFirmwareFiles: { filename: string; address: string; file: FirmwareFile }[] = []; // Multiple files with addresses
 	let isFlashing = false;
 	let flashProgress = 0;
 	let flashStatus = '';
@@ -47,11 +48,32 @@
 
 	// Handle file selection
 	function handleFileSelect(event: Event) {
-		const file = fileHandler.handleFileSelect(event);
-		if (file) {
-			selectedFirmwareFile = file;
-			flashError = '';
+		const target = event.target as HTMLInputElement;
+		const files = target.files;
+		if (!files || files.length === 0) return;
+
+		selectedFirmwareFiles = [];
+
+		for (let i = 0; i < files.length; i++) {
+			const file = files[i];
+			if (fileHandler.isValidFile(file)) {
+				selectedFirmwareFiles.push({
+					filename: file.name,
+					address: '0x0', // Default address in hex format
+					file: fileHandler.createFirmwareFile(file)
+				});
+			}
 		}
+
+		// For backward compatibility with single file
+		if (selectedFirmwareFiles.length === 1) {
+			selectedFirmwareFile = selectedFirmwareFiles[0].file;
+			flashAddress = selectedFirmwareFiles[0].address;
+		} else {
+			selectedFirmwareFile = null;
+		}
+
+		flashError = '';
 	}
 
 	// Handle drag and drop
@@ -60,11 +82,31 @@
 	}
 
 	function handleDrop(event: DragEvent) {
-		const file = fileHandler.handleDrop(event);
-		if (file) {
-			selectedFirmwareFile = file;
-			flashError = '';
+		const files = fileHandler.handleDropMultiple(event);
+		if (!files || files.length === 0) return;
+
+		selectedFirmwareFiles = [];
+
+		for (let i = 0; i < files.length; i++) {
+			const file = files[i];
+			if (fileHandler.isValidFile(file)) {
+				selectedFirmwareFiles.push({
+					filename: file.name,
+					address: '0x0', // Default address in hex format
+					file: fileHandler.createFirmwareFile(file)
+				});
+			}
 		}
+
+		// For backward compatibility with single file
+		if (selectedFirmwareFiles.length === 1) {
+			selectedFirmwareFile = selectedFirmwareFiles[0].file;
+			flashAddress = selectedFirmwareFiles[0].address;
+		} else {
+			selectedFirmwareFile = null;
+		}
+
+		flashError = '';
 	}
 
 	// Connect to serial port
@@ -114,6 +156,7 @@
 	// Reset file selection for flashing another file
 	function resetForAnotherFlash() {
 		selectedFirmwareFile = null;
+		selectedFirmwareFiles = [];
 		flashProgress = 0;
 		flashStatus = '';
 		flashError = '';
@@ -137,6 +180,7 @@
 	// Reset everything when modal closes
 	async function resetState() {
 		selectedFirmwareFile = null;
+		selectedFirmwareFiles = [];
 		flashAddress = '0x0';
 
 		// Reset port using the dedicated function
@@ -145,7 +189,8 @@
 
 	// Flash firmware
 	async function flashFirmware() {
-		if (!selectedFirmwareFile) {
+		// Check if we have files selected (single or multiple)
+		if (!selectedFirmwareFile && selectedFirmwareFiles.length === 0) {
 			flashError = 'Please select a firmware file';
 			return;
 		}
@@ -155,36 +200,96 @@
 			return;
 		}
 
+		// Validate all addresses for multiple files
+		if (selectedFirmwareFiles.length > 0) {
+			for (let i = 0; i < selectedFirmwareFiles.length; i++) {
+				const fileItem = selectedFirmwareFiles[i];
+				if (!espManager.isValidFlashAddress(fileItem.address)) {
+					flashError = `Invalid address format for file "${fileItem.filename}": ${fileItem.address}. Please enter a valid address (e.g., 0x0, 0x1000, 4096)`;
+					return;
+				}
+			}
+		}
+
 		isFlashing = true;
 		flashProgress = 0;
 		flashStatus = 'Starting flash process...';
 		flashError = '';
 
 		try {
-			flashStatus = 'Reading firmware file...';
+			// Handle single file case (backward compatibility)
+			if (selectedFirmwareFile) {
+				flashStatus = `Reading firmware file: ${selectedFirmwareFile.name}...`;
 
-			// Read file content using utility
-			const content = await fileHandler.readFileContent(selectedFirmwareFile);
-			const firmwareFile: FirmwareFile = {
-				...selectedFirmwareFile,
-				content: content
-			};
+				// Read file content using utility
+				const content = await fileHandler.readFileContent(selectedFirmwareFile);
+				const firmwareFile: FirmwareFile = {
+					...selectedFirmwareFile,
+					content: content
+				};
 
-			const flashOptions = {
-				baudrate: selectedBaudrate,
-				address: flashAddress,
-				eraseBeforeFlash: eraseBeforeFlash,
-				onProgress: (progress: any) => {
-					flashProgress = progress.progress;
-					flashStatus = progress.status;
-					if (progress.error) {
-						flashError = progress.error;
+				const flashOptions = {
+					baudrate: selectedBaudrate,
+					address: flashAddress,
+					eraseBeforeFlash: eraseBeforeFlash,
+					onProgress: (progress: any) => {
+						flashProgress = progress.progress;
+						flashStatus = `${selectedFirmwareFile.name} - ${progress.status}`;
+						if (progress.error) {
+							flashError = progress.error;
+						}
 					}
-				}
-			};
+				};
 
-			// Use ESP manager to flash firmware
-			await espManager.flashFirmware(firmwareFile, flashOptions);
+				// Use ESP manager to flash firmware
+				await espManager.flashFirmware(firmwareFile, flashOptions);
+			}
+			// Handle multiple files case
+			else if (selectedFirmwareFiles.length > 0) {
+				const totalFiles = selectedFirmwareFiles.length;
+
+				for (let i = 0; i < totalFiles; i++) {
+					const fileItem = selectedFirmwareFiles[i];
+					// Reserve space for file completion (5% per file)
+					const progressRange = (100 - (totalFiles * 5)) / totalFiles;
+					const progressBase = (i / totalFiles) * (100 - (totalFiles * 5));
+
+					flashStatus = `Flashing file ${i + 1}/${totalFiles}: ${fileItem.filename}...`;
+					flashProgress = Math.round(progressBase);
+
+					// Read file content using utility
+					const content = await fileHandler.readFileContent(fileItem.file);
+					const firmwareFile: FirmwareFile = {
+						...fileItem.file,
+						content: content
+					};
+
+					const flashOptions = {
+						baudrate: selectedBaudrate,
+						address: fileItem.address, // Already in hex format
+						eraseBeforeFlash: eraseBeforeFlash && i === 0, // Only erase before first file
+						onProgress: (progress: any) => {
+							// Calculate overall progress combining file progress with current file position
+							const overallProgress = progressBase + (progress.progress / 100) * progressRange;
+							flashProgress = Math.round(overallProgress);
+							flashStatus = `Flashing file ${i + 1}/${totalFiles}: ${fileItem.filename} - ${progress.status}`;
+							if (progress.error) {
+								flashError = progress.error;
+							}
+						}
+					};
+
+					// Use ESP manager to flash firmware
+					await espManager.flashFirmware(firmwareFile, flashOptions);
+
+					// Mark file as completed
+					flashProgress = Math.round(progressBase + progressRange);
+					flashStatus = `Completed file ${i + 1}/${totalFiles}: ${fileItem.filename}`;
+				}
+
+				flashStatus = 'All files flashed successfully!';
+				flashProgress = 100;
+			}
 
 		} catch (error) {
 			console.error('Flash error:', error);
@@ -240,147 +345,183 @@
 					</div>
 				</div>
 
-				<!-- Selection Fields Row -->
+				<!-- Two-column layout with independent left and right sides -->
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-					<!-- Port Selection Field -->
-					<div class="h-[100px]">
-						{#if !isPortSelected}
-							<button
-								on:click={selectPort}
-								disabled={isConnecting || isFlashing}
-								class="w-full h-full rounded-lg border-2 border-dashed border-gray-600 p-4 text-center transition-colors hover:border-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
-							>
-								{#if isConnecting}
-									<div class="space-y-2">
-										<div class="text-2xl animate-spin">⏳</div>
-										<div class="text-sm text-orange-200">{$locales('customfirmware.connecting')}</div>
-									</div>
-								{:else}
-									<div class="space-y-2">
-										<div class="text-2xl">🔌</div>
-										<div class="text-sm text-orange-200">
-											{$locales('customfirmware.click_to_select_port')}
+					<!-- Left column: Port selection and options -->
+					<div class="space-y-3">
+						<!-- Port Selection Field -->
+						<div class="h-[100px]">
+							{#if !isPortSelected}
+								<button
+									on:click={selectPort}
+									disabled={isConnecting || isFlashing}
+									class="w-full h-full rounded-lg border-2 border-dashed border-gray-600 p-4 text-center transition-colors hover:border-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
+								>
+									{#if isConnecting}
+										<div class="space-y-2">
+											<div class="text-2xl animate-spin">⏳</div>
+											<div class="text-sm text-orange-200">{$locales('customfirmware.connecting')}</div>
 										</div>
-									</div>
-								{/if}
-							</button>
-						{:else}
-							<!-- Port selected -->
-							<div class="h-full rounded-lg border border-gray-600 bg-gray-800 p-4 relative">
-								<div class="flex flex-col h-full">
-									<div class="flex items-center justify-between mb-2">
-										<div class="flex items-center space-x-2">
-											<div class="text-lg">✅</div>
-											<div class="text-sm font-medium text-green-400">
-												{$locales('customfirmware.port_connected')}
+									{:else}
+										<div class="space-y-2">
+											<div class="text-2xl">🔌</div>
+											<div class="text-sm text-orange-200">
+												{$locales('customfirmware.click_to_select_port')}
 											</div>
 										</div>
-									</div>
-									{#if deviceInfo}
-										<div class="text-xs text-gray-400">
-											<div><strong>Device:</strong> {deviceInfo.chip}</div>
-											{#if deviceInfo.flashSize !== 'Unknown'}
-												<div><strong>Flash:</strong> {deviceInfo.flashSize}</div>
-											{/if}
-										</div>
 									{/if}
-								</div>
-								<button
-									on:click={async () => await resetPort()}
-									disabled={isFlashing}
-									class="absolute top-2 right-2 text-xs text-gray-400 transition-colors hover:text-red-400 disabled:cursor-not-allowed"
-								>
-									{$locales('customfirmware.disconnect')}
 								</button>
+							{:else}
+								<!-- Port selected -->
+								<div class="h-full rounded-lg border border-gray-600 bg-gray-800 p-4 relative">
+									<div class="flex flex-col h-full">
+										<div class="flex items-center justify-between mb-2">
+											<div class="flex items-center space-x-2">
+												<div class="text-lg">✅</div>
+												<div class="text-sm font-medium text-green-400">
+													{$locales('customfirmware.port_connected')}
+												</div>
+											</div>
+										</div>
+										{#if deviceInfo}
+											<div class="text-xs text-gray-400">
+												<div><strong>Device:</strong> {deviceInfo.chip}</div>
+												{#if deviceInfo.flashSize !== 'Unknown'}
+													<div><strong>Flash:</strong> {deviceInfo.flashSize}</div>
+												{/if}
+											</div>
+										{/if}
+									</div>
+									<button
+										on:click={async () => await resetPort()}
+										disabled={isFlashing}
+										class="absolute top-2 right-2 text-xs text-gray-400 transition-colors hover:text-red-400 disabled:cursor-not-allowed"
+									>
+										{$locales('customfirmware.disconnect')}
+									</button>
+								</div>
+							{/if}
+						</div>
+
+						<!-- Baudrate selector (show when port is selected) -->
+						{#if isPortSelected}
+							<div class="pt-3">
+								<label for="baudrate-select" class="block text-sm font-medium text-gray-300 mb-1">
+									{$locales('customfirmware.baudrate_label')}
+								</label>
+								<select
+									id="baudrate-select"
+									bind:value={selectedBaudrate}
+									disabled={isFlashing}
+									class="w-full rounded-md border border-gray-600 bg-gray-800 px-3 py-2 text-sm text-gray-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
+								>
+									{#each baudrateOptions as option}
+										<option value={option.value}>{option.label}</option>
+									{/each}
+								</select>
 							</div>
+						{:else}
+							<!-- Empty space when no port selected -->
+							<div></div>
 						{/if}
 					</div>
 
-					<!-- File Selection Field -->
-					<div class="h-[100px]">
-
-						<!-- Drag & Drop Area - always enabled -->
-							<div
-								class="w-full h-full rounded-lg p-4 text-center transition-colors hover:border-orange-500 cursor-pointer flex flex-col justify-center {selectedFirmwareFile ? 'border border-gray-600 bg-gray-800' : 'border-2 border-dashed border-gray-600'}"
-								on:dragover={handleDragOver}
-								on:drop={handleDrop}
-								on:click={() => document.getElementById('file-input')?.click()}
-							>
-								{#if selectedFirmwareFile}
-									<div class="space-y-2">
-										<div class="text-2xl">📄</div>
-										<div class="text-sm font-medium text-orange-200 truncate">{selectedFirmwareFile.name}</div>
-										<div class="text-xs text-gray-400">{fileHandler.formatFileSize(selectedFirmwareFile.size)}</div>
-									</div>
-								{:else}
-									<div class="space-y-2">
-										<div class="text-2xl">📁</div>
-										<div class="text-sm text-orange-200">
-											{$locales('customfirmware.drag_drop_file')}
+					<!-- Right column: File selection and addresses -->
+					<div class="space-y-3">
+						<!-- File Selection Field -->
+						<div class="h-[100px]">
+							<!-- Drag & Drop Area - always enabled -->
+								<div
+									class="w-full h-full rounded-lg p-4 text-center transition-colors hover:border-orange-500 cursor-pointer flex flex-col justify-center {(selectedFirmwareFile || selectedFirmwareFiles.length > 0) ? 'border border-gray-600 bg-gray-800' : 'border-2 border-dashed border-gray-600'}"
+									on:dragover={handleDragOver}
+									on:drop={handleDrop}
+									on:click={() => document.getElementById('file-input')?.click()}
+								>
+									{#if selectedFirmwareFile}
+										<!-- Single file selected (backward compatibility) -->
+										<div class="space-y-2">
+											<div class="text-2xl">📄</div>
+											<div class="text-sm font-medium text-orange-200 truncate">{selectedFirmwareFile.name}</div>
+											<div class="text-xs text-gray-400">{fileHandler.formatFileSize(selectedFirmwareFile.size)}</div>
 										</div>
-										<div class="text-xs text-gray-400">
-											{$locales('customfirmware.or_click_to_select')}
+									{:else if selectedFirmwareFiles.length > 0}
+										<!-- Multiple files selected -->
+										<div class="space-y-2">
+											<div class="text-2xl">📄</div>
+											<div class="text-sm font-medium text-orange-200">{selectedFirmwareFiles.length} files selected</div>
+											<div class="text-xs text-gray-400">
+												{selectedFirmwareFiles.map(f => f.filename).join(', ')}
+											</div>
 										</div>
-									</div>
-								{/if}
-							</div>
+									{:else}
+										<!-- No files selected -->
+										<div class="space-y-2">
+											<div class="text-2xl">📁</div>
+											<div class="text-sm text-orange-200">
+												{$locales('customfirmware.drag_drop_file')}
+											</div>
+											<div class="text-xs text-gray-400">
+												{$locales('customfirmware.or_click_to_select')}
+											</div>
+										</div>
+									{/if}
+								</div>
 
-							<!-- Hidden file input -->
-							<input
-								id="file-input"
-								type="file"
-								accept=".bin,.hex,.elf"
-								on:change={handleFileSelect}
-								class="hidden"
-						/>
-					</div>
-				</div>
-
-				<!-- Device Info Card (show when port is selected) -->
-
-				<!-- Flash Options Row - always show this row, but individual fields depend on conditions -->
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-					<!-- Left: Baudrate selector (show when port is selected) -->
-					{#if isPortSelected}
-						<div>
-							<label for="baudrate-select" class="block text-sm font-medium text-gray-300 mb-1">
-								{$locales('customfirmware.baudrate_label')}
-							</label>
-							<select
-								id="baudrate-select"
-								bind:value={selectedBaudrate}
-								disabled={isFlashing}
-								class="w-full rounded-md border border-gray-600 bg-gray-800 px-3 py-2 text-sm text-gray-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
-							>
-								{#each baudrateOptions as option}
-									<option value={option.value}>{option.label}</option>
-								{/each}
-							</select>
-						</div>
-					{:else}
-						<!-- Empty space when no port selected -->
-						<div></div>
-					{/if}
-
-					<!-- Right: Flash Address Input (show when file is selected) -->
-					{#if selectedFirmwareFile}
-						<div>
-							<label for="flash-address" class="block text-sm font-medium text-gray-300 mb-1">
-								Flash Address
-							</label>
-							<input
-								id="flash-address"
-								type="text"
-								bind:value={flashAddress}
-								placeholder="0x0"
-								disabled={isFlashing}
-								class="w-full rounded-md border border-gray-600 bg-gray-800 px-3 py-2 text-sm text-gray-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
+								<!-- Hidden file input with multiple attribute -->
+								<input
+									id="file-input"
+									type="file"
+									multiple
+									accept=".bin,.hex,.elf"
+									on:change={handleFileSelect}
+									class="hidden"
 							/>
 						</div>
-					{:else}
-						<!-- Empty space when no file selected -->
-						<div></div>
-					{/if}
+
+						<!-- Flash Address Fields -->
+						{#if selectedFirmwareFiles.length > 0}
+							<div class="pt-3 max-h-60 overflow-y-auto">
+								<div class="flex items-center justify-between mb-1">
+									<label class="text-sm font-medium text-gray-300">
+										{$locales('customfirmware.flash_addresses')}
+									</label>
+									<span class="text-xs text-gray-500">Format: 0x1000 or 4096</span>
+								</div>
+								<div class="space-y-2">
+									{#each selectedFirmwareFiles as fileItem, index}
+										<div class="flex items-center space-x-2 p-2 border border-gray-600 rounded-md bg-gray-800">
+											<div class="flex-1 min-w-0">
+												<div class="text-xs text-gray-300 font-medium truncate">{fileItem.filename}</div>
+												<div class="text-xs text-gray-500">{fileHandler.formatFileSize(fileItem.file.size)}</div>
+											</div>
+											<div class="flex items-center space-x-2 flex-shrink-0">
+												<label class="text-xs text-gray-400">{$locales('customfirmware.address')}:</label>
+												<input
+													type="text"
+													bind:value={fileItem.address}
+													placeholder="0x0"
+													disabled={isFlashing}
+		class="w-24 rounded-md {espManager.isValidFlashAddress(fileItem.address) ? 'border-gray-600' : 'border-red-500'} bg-gray-700 px-2 py-1 text-xs text-gray-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
+													on:input={(e) => {
+														const input = e.target as HTMLInputElement;
+														const sanitized = espManager.sanitizeAddress(input.value);
+														if (sanitized !== input.value) {
+															input.value = sanitized;
+															fileItem.address = sanitized;
+														}
+													}}
+													title="Enter address in hex (0x...) or decimal format"
+												/>
+											</div>
+										</div>
+									{/each}
+								</div>
+							</div>
+						{:else}
+							<!-- Empty space when no files selected -->
+							<div></div>
+						{/if}
+					</div>
 				</div>
 
 				<!-- Erase before flash checkbox (show when port is selected) -->
@@ -480,7 +621,7 @@
 				{:else}
 					<button
 						on:click={flashFirmware}
-						disabled={!selectedFirmwareFile || !isPortSelected || isFlashing}
+						disabled={(!selectedFirmwareFile && selectedFirmwareFiles.length === 0) || !isPortSelected || isFlashing}
 						class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{#if isFlashing}

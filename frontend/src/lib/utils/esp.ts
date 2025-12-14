@@ -345,6 +345,37 @@ Then try flashing again.`);
 		}
 	}
 
+	// Validate flash address format
+	function isValidFlashAddress(address: string): boolean {
+		if (!address || address.trim() === '') return false;
+
+		const trimmed = address.trim();
+
+		// Check hex format (0x...)
+		if (trimmed.startsWith('0x') || trimmed.startsWith('0X')) {
+			const hexPart = trimmed.substring(2);
+			return /^[0-9A-Fa-f]*$/.test(hexPart) && hexPart.length > 0;
+		}
+
+		// Check decimal format (only digits)
+		return /^[0-9]+$/.test(trimmed);
+	}
+
+	// Sanitize address input
+	function sanitizeAddress(address: string): string {
+		const trimmed = address.trim();
+
+		// If it starts with 0x, ensure only hex digits
+		if (trimmed.startsWith('0x') || trimmed.startsWith('0X')) {
+			const hexPart = trimmed.substring(2).replace(/[^0-9A-Fa-f]/g, '');
+			return hexPart ? `0x${hexPart}` : '0x0';
+		}
+
+		// For decimal, keep only digits
+		const decimalPart = trimmed.replace(/[^0-9]/g, '');
+		return decimalPart || '0';
+	}
+
 	return {
 		connectToPort,
 		getDeviceInfo,
@@ -352,6 +383,8 @@ Then try flashing again.`);
 		resetPort,
 		getCurrentPort,
 		getBaudrateOptions,
-		parseFlashAddress
+		parseFlashAddress,
+		isValidFlashAddress,
+		sanitizeAddress
 	};
 }
