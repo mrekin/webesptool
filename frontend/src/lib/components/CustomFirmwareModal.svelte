@@ -14,7 +14,6 @@ import { ValidationErrors } from '$lib/types';
 	const fileHandler = createFirmwareFileHandler();
 
 	// Component state
-	let selectedFirmwareFile: FirmwareFile | null = null;
 	let selectedFirmwareFiles: { filename: string; address: string; file: FirmwareFile }[] = []; // Multiple files with addresses
 	let isFlashing = false;
 	let flashProgress = 0;
@@ -22,7 +21,6 @@ import { ValidationErrors } from '$lib/types';
 	let flashError = '';
 	let eraseBeforeFlash = false; // Новый параметр для чекбокса
 	let selectedBaudrate = 115200; // Выбранная скорость по умолчанию
-	let flashAddress = '0x0'; // Адрес для прошивки по умолчанию
 
 	// Новые переменные для новой логики
 	let isPortSelected = false;
@@ -81,15 +79,6 @@ import { ValidationErrors } from '$lib/types';
 		}
 
 		// Validation is handled reactively - no need to validate here
-
-		// For backward compatibility with single file
-		if (selectedFirmwareFiles.length === 1) {
-			selectedFirmwareFile = selectedFirmwareFiles[0].file;
-			flashAddress = selectedFirmwareFiles[0].address;
-		} else {
-			selectedFirmwareFile = null;
-		}
-
 		flashError = '';
 	}
 
@@ -116,16 +105,6 @@ import { ValidationErrors } from '$lib/types';
 	// Remove file from flashing list
 	function removeFile(index: number) {
 		selectedFirmwareFiles = selectedFirmwareFiles.filter((_, i) => i !== index);
-
-		// Update backward compatibility
-		if (selectedFirmwareFiles.length === 1) {
-			selectedFirmwareFile = selectedFirmwareFiles[0].file;
-			flashAddress = selectedFirmwareFiles[0].address;
-		} else if (selectedFirmwareFiles.length === 0) {
-			selectedFirmwareFile = null;
-			flashAddress = '0x0';
-		}
-
 		flashError = '';
 	}
 
@@ -176,13 +155,11 @@ import { ValidationErrors } from '$lib/types';
 	
 	// Reset file selection for flashing another file
 	function resetForAnotherFlash() {
-		selectedFirmwareFile = null;
 		selectedFirmwareFiles = [];
 		flashProgress = 0;
 		flashStatus = '';
 		flashError = '';
 		eraseBeforeFlash = false;
-		flashAddress = '0x0';
 	}
 
 	// Reset port only (when user clicks disconnect)
@@ -200,9 +177,7 @@ import { ValidationErrors } from '$lib/types';
 
 	// Reset everything when modal closes
 	async function resetState() {
-		selectedFirmwareFile = null;
 		selectedFirmwareFiles = [];
-		flashAddress = '0x0';
 
 		// Reset port using the dedicated function
 		await resetPort();
@@ -338,9 +313,12 @@ import { ValidationErrors } from '$lib/types';
 		}
 	}
 
-	// Reactive: Update flash addresses and validate when files or device info changes
+	// Reactive properties for backward compatibility
+	$: selectedFirmwareFile = selectedFirmwareFiles.length === 1 ? selectedFirmwareFiles[0].file : null;
+	$: flashAddress = selectedFirmwareFiles.length > 0 ? selectedFirmwareFiles[0].address : '0x0';
+
+	// Reactive: Update flash addresses when files or device info changes
 	$: if (selectedFirmwareFiles.length > 0) {
-		// Update addresses for all files (with or without device info)
 		selectedFirmwareFiles = selectedFirmwareFiles.map(fileItem => {
 			const addressResult = getMeshtasticFlashAddress(fileItem.filename, null, deviceInfo?.chip);
 			if (addressResult) {
@@ -351,8 +329,10 @@ import { ValidationErrors } from '$lib/types';
 			}
 			return fileItem;
 		});
+	}
 
-		// Validate files for conflicts
+	// Reactive: Validate files for conflicts
+	$: if (selectedFirmwareFiles.length > 0) {
 		const validation = validateFirmwareSelection(selectedFirmwareFiles);
 		selectedFirmwareFiles = selectedFirmwareFiles.map(file => ({
 			...file,
@@ -361,29 +341,33 @@ import { ValidationErrors } from '$lib/types';
 				? getErrorMessage(validation.errorCode)
 				: ''
 		}));
-
-		// Update single file for backward compatibility
-		if (selectedFirmwareFiles.length === 1) {
-			flashAddress = selectedFirmwareFiles[0].address;
-		}
 	}
 
 	</script>
 
 {#if isOpen}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+		on:keydown={(e) => e.key === 'Escape' && !isFlashing && handleClose()}
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="modal-title"
+		tabindex="-1"
+	>
 		<div
 			class="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-orange-600 bg-gray-800"
 		>
 			<!-- Header -->
 			<div class="flex items-center justify-between border-b border-gray-700 p-6">
-				<h2 class="text-xl font-semibold text-orange-200">
+				<h2 id="modal-title" class="text-xl font-semibold text-orange-200">
 					{$locales('customfirmware.flash_custom_firmware')}
 				</h2>
 				<button
 					on:click={async () => await handleClose()}
+					on:keydown={(e) => e.key === 'Escape' && handleClose()}
 					disabled={isFlashing}
 					class="text-gray-400 transition-colors hover:text-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+					aria-label="Close modal"
 				>
 					✕
 				</button>
@@ -405,11 +389,16 @@ import { ValidationErrors } from '$lib/types';
 					</div>
 				</div>
 
-				<!-- Two-column layout with independent left and right sides -->
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-					<!-- Left column: Port selection and options -->
-					<div class="space-y-3">
-						<!-- Port Selection Field -->
+				<!-- Screen reader only description for file drop zone -->
+			<div id="file-drop-description" class="sr-only">
+				Use drag and drop or click to select firmware files. Supported formats: .bin, .hex, .elf
+			</div>
+
+			<!-- Two-column layout with independent left and right sides -->
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+				<!-- Left column: Port selection and options -->
+				<div class="space-y-3">
+					<!-- Port Selection Field -->
 						<div class="h-[100px]">
 							{#if !isPortSelected}
 								<button
@@ -492,10 +481,15 @@ import { ValidationErrors } from '$lib/types';
 						<div class="h-[100px]">
 							<!-- Drag & Drop Area - always enabled -->
 								<div
+									role="button"
+									tabindex="0"
+									aria-label="Select firmware files"
+									aria-describedby="file-drop-description"
 									class="w-full h-full rounded-lg p-4 text-center transition-colors hover:border-orange-500 cursor-pointer flex flex-col justify-center {(selectedFirmwareFile || selectedFirmwareFiles.length > 0) ? 'border border-gray-600 bg-gray-800' : 'border-2 border-dashed border-gray-600'}"
 									on:dragover={handleDragOver}
 									on:drop={handleDrop}
 									on:click={() => fileInput?.click()}
+									on:keydown={(e) => e.key === 'Enter' || e.key === ' ' ? fileInput?.click() : null}
 								>
 									{#if selectedFirmwareFile}
 										<!-- Single file selected (backward compatibility) -->
@@ -622,16 +616,23 @@ import { ValidationErrors } from '$lib/types';
 						</div>
 
 						{#if flashError}
-							<div class="rounded-md border border-red-700 bg-red-900 p-3">
+							<div role="alert" aria-live="assertive" class="rounded-md border border-red-700 bg-red-900 p-3">
 								<div class="text-sm text-red-200">{flashError}</div>
 							</div>
 						{:else}
-							<div class="rounded-md bg-gray-700 p-3">
+							<div role="status" aria-live="polite" class="rounded-md bg-gray-700 p-3">
 								<div class="text-sm text-orange-200">{flashStatus}</div>
 
 								{#if isFlashing}
 									<div class="mt-2">
-										<div class="h-2 w-full rounded-full bg-gray-600">
+										<div
+											role="progressbar"
+											aria-valuenow={flashProgress}
+											aria-valuemin="0"
+											aria-valuemax="100"
+											aria-label="Flashing progress"
+											class="h-2 w-full rounded-full bg-gray-600"
+										>
 											<div
 												class="h-2 rounded-full bg-orange-500 transition-all duration-300"
 												style="width: {flashProgress}%"
