@@ -216,6 +216,20 @@
     "file_conflict_error": "Невозможно прошить firmware и factory firmware одновременно. Используйте только один тип файлов.",
     "unknown_validation_error": "Произошла неизвестная ошибка валидации файлов."
   },
+  "memorymap": {
+    "layout": "Расположение памяти",
+    "total": "Всего",
+    "used": "Использовано",
+    "firmware": "Прошивка",
+    "ota": "OTA",
+    "filesystem": "Файловая система",
+    "conflict": "Конфликт!",
+    "address": "Адрес",
+    "size": "Размер",
+    "type": "Тип",
+    "overlap_warning": "Сегменты памяти пересекаются! Это может вызвать ошибки при прошивке.",
+    "beyond_limits_warning": "Файл \"{filename}\" выходит за пределы памяти!"
+  },
   "settings": {
     "title": "Настройки",
     "language": "Язык",

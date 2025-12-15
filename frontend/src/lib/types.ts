@@ -242,3 +242,12 @@ export const ValidationErrors = {
 } as const;
 
 export type ValidationError = typeof ValidationErrors[keyof typeof ValidationErrors];
+
+// Memory map segment types
+export interface MemorySegment {
+  address: number;      // Starting address in bytes
+  size: number;         // Size in bytes
+  type: 'firmware' | 'ota' | 'filesystem';
+  filename: string;
+  color: string;        // Segment color
+}

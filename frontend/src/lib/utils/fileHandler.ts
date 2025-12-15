@@ -54,13 +54,19 @@ export function createFirmwareFileHandler() {
 			reader.onerror = () => {
 				reject(new Error('Failed to read file'));
 			};
-			reader.readAsBinaryString(firmwareFile.file);
+
+			// Read JSON files as text, binary files as binary string
+			if (isMetadataFile(firmwareFile.file)) {
+				reader.readAsText(firmwareFile.file);
+			} else {
+				reader.readAsBinaryString(firmwareFile.file);
+			}
 		});
 	}
 
 	// Validate file
 	function validateFile(file: File): boolean {
-		const validExtensions = ['.bin', '.hex', '.elf'];
+		const validExtensions = ['.bin', '.mt.json'];
 		const fileName = file.name.toLowerCase();
 
 		for (const ext of validExtensions) {
@@ -84,6 +90,16 @@ export function createFirmwareFileHandler() {
 	// Check if file is valid (alias for validateFile)
 	function isValidFile(file: File): boolean {
 		return validateFile(file);
+	}
+
+	// Check if file is metadata file
+	function isMetadataFile(file: File): boolean {
+		return file.name.toLowerCase().endsWith('.mt.json');
+	}
+
+	// Check if file is firmware file
+	function isFirmwareFile(file: File): boolean {
+		return file.name.toLowerCase().endsWith('.bin');
 	}
 
 	// Create firmware file from File object
@@ -122,6 +138,8 @@ export function createFirmwareFileHandler() {
 		readFileContent,
 		validateFile,
 		isValidFile,
+		isMetadataFile,
+		isFirmwareFile,
 		createFirmwareFile,
 		formatFileSize
 	};

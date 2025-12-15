@@ -37,9 +37,25 @@ export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMe
 		};
 	}
 
-	// Rule 2: Update files (non-factory .bin) - address 0x10000
+	// Rule 2: Update files (non-factory .bin) - address from app partition in metadata
 	if (basename.endsWith('.bin') && !basename.includes('factory.bin') &&
 		!basename.includes('bleota') && !basename.includes('littlefs') && !basename.includes('spiffs')) {
+
+		// Use metadata to get app partition address if available
+		if (metadata) {
+			const appPartition = metadata.part.find((p: any) =>
+				p.subtype === 'ota_0' && p.type === 'app'
+			);
+			if (appPartition) {
+				return {
+					address: appPartition.offset,
+					type: 'firmware',
+					description: `Update firmware for ${metadata.mcu} - ${metadata.board}`
+				};
+			}
+		}
+
+		// Fallback to default UPDATE_OFFSET if no metadata or app partition found
 		return {
 			address: UPDATE_OFFSET,
 			type: 'firmware',
@@ -238,18 +254,18 @@ export function getFilesystemFilename(firmwareFilename: string): string {
 // Validate firmware file selection for conflicts
 export function validateFirmwareSelection(files: { filename: string }[]): { isValid: boolean; errorCode?: ValidationError; conflictingFiles?: string[] } {
 	const hasRegularFirmware = files.some(file =>
-		/^firmware[^.]*\.bin$/i.test(file.filename) && !file.filename.includes('.factory.bin')
+		/^firmware.*\.bin$/i.test(file.filename) && !file.filename.includes('.factory.bin')
 	);
 	const hasFactoryFirmware = files.some(file =>
-		/^firmware[^.]*\.factory\.bin$/i.test(file.filename)
+		/^firmware.*\.factory\.bin$/i.test(file.filename)
 	);
 
 	if (hasRegularFirmware && hasFactoryFirmware) {
 		// Get all conflicting files
 		const conflictingFiles = files
 			.filter(file =>
-				(/^firmware[^.]*\.bin$/i.test(file.filename) && !file.filename.includes('.factory.bin')) ||
-				(/^firmware[^.]*\.factory\.bin$/i.test(file.filename))
+				(/^firmware.*\.bin$/i.test(file.filename) && !file.filename.includes('.factory.bin')) ||
+				(/^firmware.*\.factory\.bin$/i.test(file.filename))
 			)
 			.map(file => file.filename);
 

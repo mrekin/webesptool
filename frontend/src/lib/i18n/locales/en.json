@@ -216,6 +216,20 @@
     "file_conflict_error": "Cannot flash both firmware and factory firmware files simultaneously. Please use only one type.",
     "unknown_validation_error": "An unknown file validation error occurred."
   },
+  "memorymap": {
+    "layout": "Memory Layout",
+    "total": "Total",
+    "used": "Used",
+    "firmware": "Firmware",
+    "ota": "OTA",
+    "filesystem": "Filesystem",
+    "conflict": "Conflict!",
+    "address": "Address",
+    "size": "Size",
+    "type": "Type",
+    "overlap_warning": "Memory segments overlap! This may cause flashing errors.",
+    "beyond_limits_warning": "File \"{filename}\" extends beyond memory limits!"
+  },
   "settings": {
     "title": "Settings",
     "language": "Language",
