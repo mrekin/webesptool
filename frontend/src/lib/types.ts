@@ -192,6 +192,13 @@ export interface FirmwareFile {
   name: string;
 }
 
+export interface ZipExtractionResult {
+  extractedFiles: File[];
+  totalFiles: number;
+  extractedCount: number;
+  skippedCount: number;
+}
+
 export interface FlashOptions {
   baudrate: number;
   address: string;
@@ -256,7 +263,8 @@ export interface FlashAddressResult {
 // Validation error codes
 export const ValidationErrors = {
   UNKNOWN_ERROR: -1,
-  FILES_CONFLICT: -2
+  FILES_CONFLICT: -2,
+  CHIP_MISMATCH: -3
 } as const;
 
 export type ValidationError = typeof ValidationErrors[keyof typeof ValidationErrors];

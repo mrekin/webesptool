@@ -37,6 +37,7 @@
 		"@sveltejs/kit": "^2.22.0",
 		"@sveltejs/package": "^2.0.0",
 		"@sveltejs/vite-plugin-svelte": "^6.0.0",
+		"@types/jszip": "^3.4.1",
 		"autoprefixer": "^10.4.16",
 		"postcss": "^8.4.32",
 		"prettier": "^3.4.2",
@@ -60,6 +61,7 @@
 	"dependencies": {
 		"esp-web-tools": "10",
 		"esptool-js": "^0.5.7",
+		"jszip": "^3.10.1",
 		"svelte-i18n": "^4.0.1",
 		"svelte-markdown": "^0.4.1"
 	}

@@ -28,6 +28,14 @@
 	let eraseBeforeFlash = false; // Новый параметр для чекбокса
 	let selectedBaudrate = 115200; // Выбранная скорость по умолчанию
 
+	// ZIP extraction state
+	let isExtractingZip = false;
+	let zipExtractionProgress = 0;
+	let zipExtractionError = '';
+
+	// Validation state
+	let validationResult: { isValid: boolean; errorCode?: any; conflictingFiles?: string[]; errorMessage?: string } = { isValid: true };
+
 	// Metadata state
 	let metadataFile: FirmwareFile | null = null;
 	let metadata: FirmwareMetadataExtended | null = null; // Support both .mt.json and manifest.json
@@ -64,6 +72,8 @@
 		switch (errorCode) {
 			case ValidationErrors.FILES_CONFLICT:
 				return $locales('customfirmware.file_conflict_error');
+			case ValidationErrors.CHIP_MISMATCH:
+				return 'Chip mismatch: Firmware is not compatible with the connected device';
 			case ValidationErrors.UNKNOWN_ERROR:
 			default:
 				return $locales('customfirmware.unknown_validation_error');
@@ -78,12 +88,46 @@
 		metadataFile = null;
 		metadata = null;
 		flashError = '';
+		zipExtractionError = '';
+		validationResult = { isValid: true };
+
+		// Collect all files to process (including extracted from ZIPs)
+		let allFiles: File[] = [];
+
+		// First pass: handle ZIP files and collect regular files
+		for (let i = 0; i < files.length; i++) {
+			const file = files[i];
+
+			if (fileHandler.isZipFile(file)) {
+				// Extract ZIP archive
+				isExtractingZip = true;
+				zipExtractionProgress = 0;
+
+				try {
+					const extractionResult = await fileHandler.processZipArchive(file);
+					allFiles = allFiles.concat(extractionResult.extractedFiles);
+
+					// Show info about extraction
+					if (extractionResult.skippedCount > 0) {
+						console.info(`ZIP extraction: ${extractionResult.extractedCount} files extracted, ${extractionResult.skippedCount} files skipped`);
+					}
+				} catch (error) {
+					zipExtractionError = `Failed to extract ZIP file: ${error}`;
+					isExtractingZip = false;
+					return;
+				} finally {
+					isExtractingZip = false;
+				}
+			} else if (fileHandler.isValidFile(file)) {
+				allFiles.push(file);
+			}
+		}
 
 		let metadataFileCount = 0;
 
-		// First pass: count metadata files
-		for (let i = 0; i < files.length; i++) {
-			const file = files[i];
+		// First pass: count metadata files from all files (including extracted)
+		for (let i = 0; i < allFiles.length; i++) {
+			const file = allFiles[i];
 			if (fileHandler.isMetadataFile(file)) {
 				metadataFileCount++;
 			}
@@ -95,35 +139,33 @@
 			return;
 		}
 
-		// Second pass: process files
-		for (let i = 0; i < files.length; i++) {
-			const file = files[i];
-			if (fileHandler.isValidFile(file)) {
-				if (fileHandler.isMetadataFile(file)) {
-					// Handle metadata file (both .mt.json and manifest.json)
-					metadataFile = fileHandler.createFirmwareFile(file);
-					try {
-						const content = await fileHandler.readFileContent(metadataFile);
-						// Try parse as unified metadata (supports both formats)
-						metadata = parseFirmwareMetadata(content);
-						if (!metadata) {
-							flashError = 'Failed to parse metadata file';
-							return;
-						}
-					} catch (error) {
-						flashError = `Error reading metadata file: ${error}`;
+		// Second pass: process all files
+		for (let i = 0; i < allFiles.length; i++) {
+			const file = allFiles[i];
+			if (fileHandler.isMetadataFile(file)) {
+				// Handle metadata file (both .mt.json and manifest.json)
+				metadataFile = fileHandler.createFirmwareFile(file);
+				try {
+					const content = await fileHandler.readFileContent(metadataFile);
+					// Try parse as unified metadata (supports both formats)
+					metadata = parseFirmwareMetadata(content);
+					if (!metadata) {
+						flashError = 'Failed to parse metadata file';
 						return;
 					}
-				} else if (fileHandler.isFirmwareFile(file)) {
-					// Handle firmware file
-					selectedFirmwareFiles.push({
-						filename: file.name,
-						address: '0x0', // Default address in hex format
-						file: fileHandler.createFirmwareFile(file),
-						hasError: false,
-						errorMessage: ''
-					});
+				} catch (error) {
+					flashError = `Error reading metadata file: ${error}`;
+					return;
 				}
+			} else if (fileHandler.isFirmwareFile(file)) {
+				// Handle firmware file
+				selectedFirmwareFiles.push({
+					filename: file.name,
+					address: '0x0', // Default address in hex format
+					file: fileHandler.createFirmwareFile(file),
+					hasError: false,
+					errorMessage: ''
+				});
 			}
 		}
 
@@ -151,6 +193,8 @@
 	function handleFileInputChange(event: Event) {
 		const target = event.target as HTMLInputElement;
 		handleFileSelect(target.files);
+		// Clear the input value to allow selecting the same files again
+		target.value = '';
 	}
 
 	// Remove file from flashing list
@@ -227,7 +271,11 @@
 		flashProgress = 0;
 		flashStatus = '';
 		flashError = '';
+		zipExtractionProgress = 0;
+		zipExtractionError = '';
+		isExtractingZip = false;
 		eraseBeforeFlash = false;
+		validationResult = { isValid: true };
 	}
 
 	// Reset port only (when user clicks disconnect)
@@ -241,6 +289,9 @@
 		eraseBeforeFlash = false;
 		metadataFile = null;
 		metadata = null;
+		zipExtractionProgress = 0;
+		zipExtractionError = '';
+		isExtractingZip = false;
 
 		await espManager.resetPort();
 	}
@@ -250,6 +301,7 @@
 		selectedFirmwareFiles = [];
 		metadataFile = null;
 		metadata = null;
+		validationResult = { isValid: true };
 
 		// Reset port using the dedicated function
 		await resetPort();
@@ -519,17 +571,43 @@
 		selectedFirmwareFiles.length === 1 ? selectedFirmwareFiles[0].file : null;
 	$: flashAddress = selectedFirmwareFiles.length > 0 ? selectedFirmwareFiles[0].address : '0x0';
 
-	// Reactive: Validate files for conflicts
+	// Reactive: Validate files for conflicts and chip compatibility
 	$: if (selectedFirmwareFiles.length > 0) {
-		const validation = validateFirmwareSelection(selectedFirmwareFiles);
-		selectedFirmwareFiles = selectedFirmwareFiles.map((file) => ({
-			...file,
-			hasError: !validation.isValid && validation.conflictingFiles?.includes(file.filename),
-			errorMessage:
-				!validation.isValid && validation.conflictingFiles?.includes(file.filename)
-					? getErrorMessage(validation.errorCode)
-					: ''
-		}));
+		const validation = validateFirmwareSelection(
+			selectedFirmwareFiles.map(f => ({ filename: f.filename })),
+			metadata,
+			deviceInfo?.chip
+		);
+
+		// Store validation result for button state
+		validationResult = validation;
+
+		selectedFirmwareFiles = selectedFirmwareFiles.map((file) => {
+			let hasError = false;
+			let errorMessage = '';
+
+			if (!validation.isValid) {
+				if (validation.errorCode === ValidationErrors.FILES_CONFLICT && validation.conflictingFiles) {
+					// Mark only conflicting files as having errors
+					hasError = validation.conflictingFiles.includes(file.filename);
+					errorMessage = hasError ? getErrorMessage(ValidationErrors.FILES_CONFLICT) : '';
+				} else if (validation.errorCode === ValidationErrors.CHIP_MISMATCH) {
+					// For chip mismatch, don't mark individual files as error - this is a global validation issue
+					hasError = false;
+					errorMessage = '';
+				} else {
+					// For other validation errors, mark all files as having error
+					hasError = true;
+					errorMessage = validation.errorMessage || getErrorMessage(validation.errorCode);
+				}
+			}
+
+			return {
+				...file,
+				hasError,
+				errorMessage
+			};
+		});
 	}
 </script>
 
@@ -579,7 +657,7 @@
 
 				<!-- Screen reader only description for file drop zone -->
 				<div id="file-drop-description" class="sr-only">
-					Use drag and drop or click to select firmware files. Supported formats: .bin, .mt.json, manifest.json
+					Use drag and drop or click to select firmware files or ZIP archives. Supported formats: .bin, .mt.json, manifest.json, .zip
 				</div>
 
 				<!-- Two-column layout with independent left and right sides -->
@@ -714,7 +792,7 @@
 								bind:this={fileInput}
 								type="file"
 								multiple
-								accept=".bin,.mt.json,.json,application/json"
+								accept=".bin,.mt.json,.json,application/json,.zip,application/zip"
 								on:change={handleFileInputChange}
 								class="hidden"
 							/>
@@ -850,6 +928,54 @@
 					</div>
 				{/if}
 
+				<!-- ZIP Extraction Status -->
+				{#if isExtractingZip}
+					<div class="space-y-2">
+						<div class="text-sm font-medium text-blue-300">Extracting ZIP Archive...</div>
+						<div role="status" aria-live="polite" class="rounded-md bg-blue-900 p-3">
+							<div class="text-sm text-blue-200">Processing archive contents...</div>
+							<div class="mt-2">
+								<div
+									role="progressbar"
+									aria-valuenow={zipExtractionProgress}
+									aria-valuemin="0"
+									aria-valuemax="100"
+									aria-label="ZIP extraction progress"
+									class="h-2 w-full rounded-full bg-blue-800"
+								>
+									<div
+										class="h-2 rounded-full bg-blue-500 animate-pulse"
+										style="width: 100%"
+									></div>
+								</div>
+							</div>
+						</div>
+					</div>
+				{/if}
+
+				{#if zipExtractionError}
+					<div
+						role="alert"
+						aria-live="assertive"
+						class="rounded-md border border-red-700 bg-red-900 p-3"
+					>
+						<div class="text-sm text-red-200">{zipExtractionError}</div>
+					</div>
+				{/if}
+
+				<!-- Validation Error Status -->
+				{#if selectedFirmwareFiles.length > 0 && !validationResult.isValid}
+					<div
+						role="alert"
+						aria-live="assertive"
+						class="rounded-md border border-red-700 bg-red-900 p-3"
+					>
+						<div class="text-sm text-red-200">
+							{validationResult.errorMessage || getErrorMessage(validationResult.errorCode)}
+						</div>
+					</div>
+				{/if}
+
 				<!-- Flash Status -->
 				{#if isFlashing || flashStatus || flashError}
 					<div class="space-y-2">
@@ -951,6 +1077,7 @@
 						disabled={selectedFirmwareFiles.length === 0 ||
 							!isPortSelected ||
 							isFlashing ||
+							!validationResult.isValid ||
 							selectedFirmwareFiles.some((file) => file.hasError)}
 						class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
 					>

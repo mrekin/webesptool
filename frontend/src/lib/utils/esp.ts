@@ -357,8 +357,12 @@ export function getFilesystemFilename(firmwareFilename: string): string {
 	return 'littlefs.bin';
 }
 
-// Validate firmware file selection for conflicts
-export function validateFirmwareSelection(files: { filename: string }[]): { isValid: boolean; errorCode?: ValidationError; conflictingFiles?: string[] } {
+// Validate firmware file selection for conflicts and chip compatibility
+export function validateFirmwareSelection(
+	files: { filename: string }[],
+	metadata?: FirmwareMetadataExtended | null,
+	deviceChip?: string
+): { isValid: boolean; errorCode?: ValidationError; conflictingFiles?: string[]; errorMessage?: string } {
 	const hasRegularFirmware = files.some(file =>
 		/^firmware.*\.bin$/i.test(file.filename) && !file.filename.includes('.factory.bin')
 	);
@@ -366,6 +370,7 @@ export function validateFirmwareSelection(files: { filename: string }[]): { isVa
 		/^firmware.*\.factory\.bin$/i.test(file.filename)
 	);
 
+	// Check for firmware conflicts
 	if (hasRegularFirmware && hasFactoryFirmware) {
 		// Get all conflicting files
 		const conflictingFiles = files
@@ -380,6 +385,36 @@ export function validateFirmwareSelection(files: { filename: string }[]): { isVa
 			errorCode: ValidationErrors.FILES_CONFLICT,
 			conflictingFiles
 		};
+	}
+
+	// Check chip compatibility if metadata and device info are available
+	console.log('Validation inputs:', {
+		metadata,
+		deviceChip,
+		hasBuilds: metadata?.builds?.length > 0,
+		detectFormat: metadata ? detectMetadataFormat(metadata) : 'none'
+	});
+
+	if (metadata && deviceChip && metadata.builds && metadata.builds.length > 0) {
+		// Find a build in the manifest that matches the device chip family
+		// This is how esp-web-tools does it - direct string comparison
+		const matchingBuild = metadata.builds.find((build: any) => build.chipFamily === deviceChip);
+
+		console.log('Chip compatibility check:', {
+			deviceChip,
+			availableChips: metadata.builds.map((b: any) => b.chipFamily),
+			matchingBuild: matchingBuild ? matchingBuild.chipFamily : null
+		});
+
+		if (!matchingBuild) {
+			// No matching build found - chip not supported
+			const supportedChips = metadata.builds.map((b: any) => b.chipFamily).join(', ');
+			return {
+				isValid: false,
+				errorCode: ValidationErrors.CHIP_MISMATCH,
+				errorMessage: `Firmware does not support ${deviceChip}. Supported chips: ${supportedChips}`
+			};
+		}
 	}
 
 	return { isValid: true };
@@ -452,7 +487,12 @@ export function createESPManager() {
 
 			// Initialize to detect chip - main() returns chip name as string
 			const chipName = await esploader.main();
+			// Also get chip name from esploader.chip.CHIP_NAME like esp-web-tools does
+			let espChipName = esploader.chip?.CHIP_NAME || chipName;
+			// Remove revision info from chip name (e.g., "ESP32-C6 (revision 2)" -> "ESP32-C6")
+			espChipName = espChipName.replace(/\s*\(revision.*\)$/, '').trim();
 			console.log("Chip detected:", chipName);
+			console.log("ESP chip name (normalized):", espChipName);
 			console.log("Terminal output:", terminalOutput);
 
 			// Parse detailed information from terminal output
@@ -497,7 +537,7 @@ export function createESPManager() {
 			}
 
 			const deviceInfo: ESPDeviceInfo = {
-				chip: chipName,
+				chip: espChipName, // Use espChipName like esp-web-tools
 				flashSize: flashSize,
 				mac: mac,
 				features: features,
@@ -511,6 +551,7 @@ export function createESPManager() {
 			await esploader.after();
 			// Don't close the port - keep it open for flashing
 			console.log('Device detection completed, port kept open for flashing');
+			console.log(`Final device chip: ${espChipName} (was: ${chipName})`);
 
 			return deviceInfo;
 
