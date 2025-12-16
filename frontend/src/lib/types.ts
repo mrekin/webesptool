@@ -227,6 +227,24 @@ export interface FirmwareMetadata {
   has_inkhud: boolean;
 }
 
+// Extended manifest part with classification for internal use
+export interface ManifestPartExtended extends ManifestPart {
+  partType: 'firmware' | 'ota' | 'filesystem';
+}
+
+// Extended manifest build for internal processing
+export interface ManifestBuildExtended extends ManifestBuild {
+  parts: ManifestPartExtended[];
+}
+
+// Extended manifest response for internal processing
+export interface ManifestMetadata extends Omit<ManifestResponse, 'builds'> {
+  builds: ManifestBuildExtended[];
+}
+
+// Union type for both metadata formats
+export type FirmwareMetadataExtended = FirmwareMetadata | ManifestMetadata;
+
 // Flash address result
 export interface FlashAddressResult {
   address: string;

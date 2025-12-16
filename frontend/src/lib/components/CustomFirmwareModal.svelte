@@ -8,7 +8,7 @@
 		parseFirmwareMetadata
 	} from '$lib/utils/esp';
 	import { createFirmwareFileHandler } from '$lib/utils/fileHandler';
-	import type { FirmwareFile, FirmwareMetadata, MemorySegment } from '$lib/types';
+	import type { FirmwareFile, FirmwareMetadata, FirmwareMetadataExtended, MemorySegment } from '$lib/types';
 	import { ValidationErrors } from '$lib/types';
 	import MemoryMap from '$lib/components/MemoryMap.svelte';
 
@@ -30,7 +30,7 @@
 
 	// Metadata state
 	let metadataFile: FirmwareFile | null = null;
-	let metadata: FirmwareMetadata | null = null;
+	let metadata: FirmwareMetadataExtended | null = null; // Support both .mt.json and manifest.json
 
 	// Новые переменные для новой логики
 	let isPortSelected = false;
@@ -91,7 +91,7 @@
 
 		// Check for multiple metadata files
 		if (metadataFileCount > 1) {
-			flashError = 'Only one .mt.json file is allowed';
+			flashError = 'Only one metadata file (.mt.json or manifest.json) is allowed';
 			return;
 		}
 
@@ -100,10 +100,11 @@
 			const file = files[i];
 			if (fileHandler.isValidFile(file)) {
 				if (fileHandler.isMetadataFile(file)) {
-					// Handle metadata file
+					// Handle metadata file (both .mt.json and manifest.json)
 					metadataFile = fileHandler.createFirmwareFile(file);
 					try {
 						const content = await fileHandler.readFileContent(metadataFile);
+						// Try parse as unified metadata (supports both formats)
 						metadata = parseFirmwareMetadata(content);
 						if (!metadata) {
 							flashError = 'Failed to parse metadata file';
@@ -156,6 +157,18 @@
 	function removeFile(index: number) {
 		selectedFirmwareFiles = selectedFirmwareFiles.filter((_, i) => i !== index);
 		flashError = '';
+	}
+
+	// Remove metadata file
+	function removeMetadataFile() {
+		metadataFile = null;
+		metadata = null;
+		flashError = '';
+
+		// Update flash addresses after removing metadata
+		if (selectedFirmwareFiles.length > 0) {
+			updateFlashAddresses();
+		}
 	}
 
 	// Connect to serial port
@@ -566,7 +579,7 @@
 
 				<!-- Screen reader only description for file drop zone -->
 				<div id="file-drop-description" class="sr-only">
-					Use drag and drop or click to select firmware files. Supported formats: .bin, .mt.json
+					Use drag and drop or click to select firmware files. Supported formats: .bin, .mt.json, manifest.json
 				</div>
 
 				<!-- Two-column layout with independent left and right sides -->
@@ -701,7 +714,7 @@
 								bind:this={fileInput}
 								type="file"
 								multiple
-								accept=".bin,.mt.json"
+								accept=".bin,.mt.json,.json,application/json"
 								on:change={handleFileInputChange}
 								class="hidden"
 							/>
@@ -718,22 +731,36 @@
 								>
 									<div class="min-w-0 flex-1">
 										<div class="flex items-center space-x-2">
-											<div class="truncate text-xs font-medium text-blue-300">
-												{metadataFile.file.name}
-											</div>
 											<div class="text-blue-400" title="Metadata file for address prediction">
 												📋
 											</div>
-										</div>
-										<div class="text-xs text-gray-400">
-											{fileHandler.formatFileSize(metadataFile.file.size)}
+											<div class="truncate text-xs font-medium text-blue-300">
+												{metadataFile.file.name}
+											</div>
+											<div class="text-xs text-gray-400">
+												({fileHandler.formatFileSize(metadataFile.file.size)})
+											</div>
 										</div>
 										{#if metadata}
 											<div class="mt-1 text-xs text-gray-500">
-												Version: {metadata.version} | Board: {metadata.board} | MCU: {metadata.mcu}
+												{#if metadata.builds}
+													<!-- Manifest format -->
+													Version: {metadata.version} | Device: {metadata.name} | Chip: {metadata.builds[0]?.chipFamily}
+												{:else}
+													<!-- Legacy format -->
+													Version: {metadata.version} | Board: {metadata.board} | MCU: {metadata.mcu}
+												{/if}
 											</div>
 										{/if}
 									</div>
+									<button
+										on:click={removeMetadataFile}
+										disabled={isFlashing}
+										class="text-red-400 transition-colors hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+										title="Remove metadata file"
+									>
+										✕
+									</button>
 								</div>
 							</div>
 						{/if}

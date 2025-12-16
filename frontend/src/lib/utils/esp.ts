@@ -1,8 +1,8 @@
-import type { ESPDeviceInfo, FlashProgress, FlashOptions, FirmwareFile, FirmwareMetadata, FlashAddressResult, ValidationError } from '$lib/types';
+import type { ESPDeviceInfo, FlashProgress, FlashOptions, FirmwareFile, FirmwareMetadata, FirmwareMetadataExtended, FlashAddressResult, ValidationError } from '$lib/types';
 import { ValidationErrors } from '$lib/types';
 
 // Constants for flash addresses
-const FIRMWARE_OFFSET = '0x00';
+const FIRMWARE_OFFSET = '0x0';
 const UPDATE_OFFSET = '0x10000';
 const DEFAULT_OTA_OFFSET = '0x260000';
 const DEFAULT_SPIFFS_OFFSET = '0x300000';
@@ -20,16 +20,74 @@ export function parseFirmwareMetadata(metadataJson: string): FirmwareMetadata | 
 }
 
 /**
+ * Detect metadata format (manifest vs legacy)
+ */
+function detectMetadataFormat(metadata: FirmwareMetadataExtended): 'manifest' | 'legacy' | 'unknown' {
+	if (!metadata) return 'unknown';
+	if ('builds' in metadata && Array.isArray(metadata.builds)) return 'manifest';
+	if ('part' in metadata && Array.isArray(metadata.part)) return 'legacy';
+	return 'unknown';
+}
+
+/**
+ * Classify manifest part type from URL path
+ */
+function classifyManifestPart(path: string): 'firmware' | 'ota' | 'filesystem' {
+	const lowerPath = path.toLowerCase();
+	if (lowerPath.includes('p=fw')) return 'firmware';
+	if (lowerPath.includes('p=bleota')) return 'ota';
+	if (lowerPath.includes('p=littlefs')) return 'filesystem';
+	return 'firmware';
+}
+
+/**
+ * Find matching part in manifest for given filename
+ */
+function findManifestPart(filename: string, manifest: any) {
+	if (!manifest.builds?.[0]?.parts) return null;
+
+	const lowerFilename = filename.toLowerCase();
+	const parts = manifest.builds[0].parts;
+
+	for (const part of parts) {
+		const partType = classifyManifestPart(part.path);
+
+		if (partType === 'firmware' && !lowerFilename.includes('bleota') &&
+			!lowerFilename.includes('littlefs') && !lowerFilename.includes('factory.bin')) {
+			return { ...part, partType };
+		}
+
+		if ((partType === 'ota' && lowerFilename.includes('bleota')) ||
+			(partType === 'filesystem' && (lowerFilename.includes('littlefs') || lowerFilename.includes('spiffs')))) {
+			return { ...part, partType };
+		}
+	}
+	return null;
+}
+
+/**
  * Determine flash address for firmware file based on filename, metadata, and chip name
  * Works even without metadata by using filename patterns and chip detection
  */
-export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMetadata | null, chipName?: string): FlashAddressResult | null {
+export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMetadataExtended | null, chipName?: string): FlashAddressResult | null {
 	if (!filename) return null;
 
 	const basename = filename.toLowerCase();
 
-	// Rule 1: Factory firmware files - address 0x00
+	// Rule 1: Factory firmware files - address 0x0
 	if (basename.includes('factory.bin')) {
+		// Check manifest first for factory firmware
+		if (metadata && detectMetadataFormat(metadata) === 'manifest') {
+			const manifestPart = findManifestPart(filename, metadata);
+			if (manifestPart?.partType === 'firmware' && manifestPart.offset === 0) {
+				return {
+					address: `0x${manifestPart.offset.toString(16).toUpperCase()}`,
+					type: 'firmware',
+					description: `Factory firmware for ${metadata.name || 'device'}`
+				};
+			}
+		}
+
 		return {
 			address: FIRMWARE_OFFSET,
 			type: 'firmware',
@@ -41,8 +99,8 @@ export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMe
 	if (basename.endsWith('.bin') && !basename.includes('factory.bin') &&
 		!basename.includes('bleota') && !basename.includes('littlefs') && !basename.includes('spiffs')) {
 
-		// Use metadata to get app partition address if available
-		if (metadata) {
+		// Use legacy metadata to get app partition address if available
+		if (metadata && detectMetadataFormat(metadata) === 'legacy') {
 			const appPartition = metadata.part.find((p: any) =>
 				p.subtype === 'ota_0' && p.type === 'app'
 			);
@@ -52,6 +110,24 @@ export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMe
 					type: 'firmware',
 					description: `Update firmware for ${metadata.mcu} - ${metadata.board}`
 				};
+			}
+		}
+
+		// For manifest with multiple parts: don't use manifest for update firmware
+		// Manifest with multiple parts is only for factory installation
+		// For single-part manifest: check if it's an update manifest
+		if (metadata && detectMetadataFormat(metadata) === 'manifest') {
+			// Only use manifest for update firmware if it has exactly one part
+			// and that part is not at offset 0 (factory)
+			if (metadata.builds?.[0]?.parts?.length === 1) {
+				const singlePart = metadata.builds[0].parts[0];
+				if (singlePart.offset !== 0 && classifyManifestPart(singlePart.path) === 'firmware') {
+					return {
+						address: `0x${singlePart.offset.toString(16).toUpperCase()}`,
+						type: 'firmware',
+						description: `Update firmware for ${metadata.name || 'device'}`
+					};
+				}
 			}
 		}
 
@@ -68,14 +144,29 @@ export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMe
 		let otaOffset = DEFAULT_OTA_OFFSET;
 		let description = 'OTA firmware';
 
-		// Priority order: metadata > chipName > filename > default
+		// Priority order: manifest > legacy metadata > chipName > filename > default
 
-		// 1. Use metadata if available (highest priority)
-		if (metadata) {
+		// 1. Check manifest first (highest priority), but only for single-part manifests
+		// Multi-part manifests are for factory installation only
+		if (metadata && detectMetadataFormat(metadata) === 'manifest') {
+			if (metadata.builds?.[0]?.parts?.length === 1) {
+				const manifestPart = findManifestPart(filename, metadata);
+				if (manifestPart?.partType === 'ota') {
+					return {
+						address: `0x${manifestPart.offset.toString(16).toUpperCase()}`,
+						type: 'ota',
+						description: `OTA firmware for ${metadata.name || 'device'}`
+					};
+				}
+			}
+		}
+
+		// 2. Use legacy metadata if available
+		if (metadata && detectMetadataFormat(metadata) === 'legacy') {
 			description = `OTA firmware for ${metadata.mcu}`;
 			otaOffset = getOtaOffsetFromMetadata(metadata);
 		}
-		// 2. Use detected chip name if no metadata
+		// 3. Use detected chip name if no metadata
 		else if (chipName) {
 			const detectedChip = chipName.toLowerCase();
 			if (detectedChip.includes('esp32-s3') || detectedChip === 'esp32s3') {
@@ -102,7 +193,7 @@ export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMe
 				description = `OTA firmware for ${chipName}`;
 			}
 		}
-		// 3. Try to determine MCU type from filename (lower priority)
+		// 4. Try to determine MCU type from filename (lower priority)
 		else if (basename.includes('s3') || basename.includes('esp32s3')) {
 			description = 'OTA firmware for ESP32-S3';
 		} else if (basename.includes('c3') || basename.includes('esp32c3')) {
@@ -137,8 +228,23 @@ export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMe
 		let spiffsOffset = DEFAULT_SPIFFS_OFFSET;
 		let description = 'File system (LittleFS/SPIFFS)';
 
-		// Use metadata if available for precise info
-		if (metadata) {
+		// Check manifest first for filesystem, but only for single-part manifests
+		// Multi-part manifests are for factory installation only
+		if (metadata && detectMetadataFormat(metadata) === 'manifest') {
+			if (metadata.builds?.[0]?.parts?.length === 1) {
+				const manifestPart = findManifestPart(filename, metadata);
+				if (manifestPart?.partType === 'filesystem') {
+					return {
+						address: `0x${manifestPart.offset.toString(16).toUpperCase()}`,
+						type: 'filesystem',
+						description: `File system for ${metadata.name || 'device'}`
+					};
+				}
+			}
+		}
+
+		// Use legacy metadata if available for precise info
+		if (metadata && detectMetadataFormat(metadata) === 'legacy') {
 			spiffsOffset = getSpiffsOffsetFromMetadata(metadata);
 			description = 'File system (LittleFS/SPIFFS)';
 		} else {

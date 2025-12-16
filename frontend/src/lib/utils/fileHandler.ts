@@ -66,7 +66,7 @@ export function createFirmwareFileHandler() {
 
 	// Validate file
 	function validateFile(file: File): boolean {
-		const validExtensions = ['.bin', '.mt.json'];
+		const validExtensions = ['.bin', '.mt.json', 'manifest.json'];
 		const fileName = file.name.toLowerCase();
 
 		for (const ext of validExtensions) {
@@ -94,7 +94,8 @@ export function createFirmwareFileHandler() {
 
 	// Check if file is metadata file
 	function isMetadataFile(file: File): boolean {
-		return file.name.toLowerCase().endsWith('.mt.json');
+		const fileName = file.name.toLowerCase();
+		return fileName.endsWith('.mt.json') || fileName.endsWith('manifest.json');
 	}
 
 	// Check if file is firmware file
