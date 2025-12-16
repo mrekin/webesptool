@@ -466,13 +466,16 @@ async def buildManifest(t:str = None, v:str = None, u:str = "1", src:str = None)
     install_fw_offset = 0
     install_bleota_offset = 2490368
     install_littlefs_offset = 3145728
+    flashsize = '4MB'
 
     if t in BIGDB_8MB or devinfo.get("flashSize", None) == '8MB':
         install_littlefs_offset=0x670000
         install_bleota_offset=0x340000
+        flashsize = '8MB'
     elif t in BIGDB_16MB or devinfo.get("flashSize", None) == '16MB':
         install_littlefs_offset=0xc90000
         install_bleota_offset=0x650000
+        flashsize = '16MB'
 
     #s3 -v3 t-deck wireless-paper wireless-tracker 
     bleotav = 'bleota'
@@ -492,6 +495,7 @@ async def buildManifest(t:str = None, v:str = None, u:str = "1", src:str = None)
         elif  t in data.get('rp2040devices'):
             chip_family = "RP2040"
 
+    manifest['flashsize'] = flashsize
     manifest["builds"][0]["chipFamily"] = chip_family
     manifest['pathfw'] = "api/firmware?v={0}&t={1}&u={2}&e=false&src={3}".format(v,t,u,src)
     if chip_family == 'NRF52':
