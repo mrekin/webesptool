@@ -568,11 +568,13 @@ export function createESPManager() {
 			if (crystalMatch) crystal = `${crystalMatch[1]}MHz`;
 
 			// Extract flash size
-			const flashSizeMatch = outputText.match(/Auto-detected Flash size:\s*(.+)/);
+			const flashSizeMatch = outputText.match(/Embedded Flash ([0-9]+MB) /);
+			const psramSizeMatch = outputText.match(/Embedded PSRAM ([0-9]+MB) /);
 			if (flashSizeMatch) {
 				flashSize = flashSizeMatch[1];
+			}else if (psramSizeMatch) {
+				flashSize = psramSizeMatch[1];
 			}
-
 			// Extract flash ID
 			const flashIdMatch = outputText.match(/Flash ID:\s*(.+)/);
 			if (flashIdMatch) {
@@ -589,6 +591,7 @@ export function createESPManager() {
 				flashId: flashId,
 				baudrate: 115200
 			};
+
 
 			// Clean up
 			await esploader.after();
