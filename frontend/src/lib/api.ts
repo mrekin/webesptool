@@ -169,6 +169,30 @@ class APIService {
     }
   }
 
+  private async downloadFileForContent(
+    endpoint: string,
+    params: Record<string, string>
+  ): Promise<ArrayBuffer> {
+    const url = `${this.baseUrl}${endpoint}?${new URLSearchParams(params)}`;
+
+    try {
+      const response = await fetch(url, {
+        signal: AbortSignal.timeout(this.config.timeout),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+      }
+
+      return await response.arrayBuffer();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Download failed: ${error.message}`);
+      }
+      throw new Error('Unknown download error occurred');
+    }
+  }
+
   // Get available firmware versions for a device type
   async getVersions(
     devicePioTarget: string,
@@ -249,6 +273,98 @@ class APIService {
   // Get available repositories
   async getSrcs(): Promise<string[]> {
     return this.request<string[]>('/srcs');
+  }
+
+  // Download file content for processing (returns ArrayBuffer)
+  async downloadFileContent(
+    endpoint: string,
+    params: Record<string, string>
+  ): Promise<ArrayBuffer> {
+    return this.downloadFileForContent(endpoint, params);
+  }
+
+  // Download file from URL (with path parsing for manifest parts)
+  async downloadFromPath(path: string): Promise<ArrayBuffer> {
+    // Parse path to extract endpoint and params
+    const url = new URL(path, window.location.origin);
+    const pathname = url.pathname;
+    const params: Record<string, string> = {};
+
+    // Extract query parameters
+    url.searchParams.forEach((value, key) => {
+      params[key] = value;
+    });
+
+    // Remove /api prefix if present
+    const endpoint = pathname.startsWith('/api/') ? pathname.substring(4) : pathname;
+
+    const url2 = `${this.baseUrl}${endpoint}?${new URLSearchParams(params)}`;
+
+    try {
+      const response = await fetch(url2, {
+        signal: AbortSignal.timeout(this.config.timeout),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+      }
+
+      return await response.arrayBuffer();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Download failed: ${error.message}`);
+      }
+      throw new Error('Unknown download error occurred');
+    }
+  }
+
+  // Download file from URL with filename extraction
+  async downloadFromFileWithFilename(
+    path: string
+  ): Promise<{ content: ArrayBuffer; filename: string }> {
+    // Parse path to extract endpoint and params
+    const url = new URL(path, window.location.origin);
+    const pathname = url.pathname;
+    const params: Record<string, string> = {};
+
+    // Extract query parameters
+    url.searchParams.forEach((value, key) => {
+      params[key] = value;
+    });
+
+    // Remove /api prefix if present
+    const endpoint = pathname.startsWith('/api/') ? pathname.substring(4) : pathname;
+
+    const url2 = `${this.baseUrl}${endpoint}?${new URLSearchParams(params)}`;
+
+    try {
+      const response = await fetch(url2, {
+        signal: AbortSignal.timeout(this.config.timeout),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+      }
+
+      // Extract filename from Content-Disposition header
+      let filename = '';
+      const contentDisposition = response.headers.get('Content-Disposition');
+      if (contentDisposition) {
+        // Look for filename in Content-Disposition header
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+
+      const content = await response.arrayBuffer();
+      return { content, filename };
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Download failed: ${error.message}`);
+      }
+      throw new Error('Unknown download error occurred');
+    }
   }
 
   // Utility method to trigger file download in browser

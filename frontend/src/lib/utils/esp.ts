@@ -370,23 +370,6 @@ export function validateFirmwareSelection(
 		/^firmware.*\.factory\.bin$/i.test(file.filename)
 	);
 
-	// Check for firmware conflicts
-	if (hasRegularFirmware && hasFactoryFirmware) {
-		// Get all conflicting files
-		const conflictingFiles = files
-			.filter(file =>
-				(/^firmware.*\.bin$/i.test(file.filename) && !file.filename.includes('.factory.bin')) ||
-				(/^firmware.*\.factory\.bin$/i.test(file.filename))
-			)
-			.map(file => file.filename);
-
-		return {
-			isValid: false,
-			errorCode: ValidationErrors.FILES_CONFLICT,
-			conflictingFiles
-		};
-	}
-
 	// Check chip compatibility if metadata and device info are available
 	console.log('Validation inputs:', {
 		metadata,
@@ -415,6 +398,23 @@ export function validateFirmwareSelection(
 				errorMessage: `Firmware does not support ${deviceChip}. Supported chips: ${supportedChips}`
 			};
 		}
+	}
+
+	// Check for firmware conflicts (only if chip compatibility passed)
+	if (hasRegularFirmware && hasFactoryFirmware) {
+		// Get all conflicting files
+		const conflictingFiles = files
+			.filter(file =>
+				(/^firmware.*\.bin$/i.test(file.filename) && !file.filename.includes('.factory.bin')) ||
+				(/^firmware.*\.factory\.bin$/i.test(file.filename))
+			)
+			.map(file => file.filename);
+
+		return {
+			isValid: false,
+			errorCode: ValidationErrors.FILES_CONFLICT,
+			conflictingFiles
+		};
 	}
 
 	return { isValid: true };

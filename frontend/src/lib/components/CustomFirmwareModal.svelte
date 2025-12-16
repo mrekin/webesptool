@@ -8,12 +8,19 @@
 		parseFirmwareMetadata
 	} from '$lib/utils/esp';
 	import { createFirmwareFileHandler } from '$lib/utils/fileHandler';
-	import type { FirmwareFile, FirmwareMetadata, FirmwareMetadataExtended, MemorySegment } from '$lib/types';
-	import { ValidationErrors } from '$lib/types';
+	import type { FirmwareFile, FirmwareMetadata, FirmwareMetadataExtended, MemorySegment } from '$lib/types.js';
+	import { ValidationErrors } from '$lib/types.js';
 	import MemoryMap from '$lib/components/MemoryMap.svelte';
 
 	export let isOpen = false;
 	export let onClose = () => {};
+	export let preloadedFilesWithOffsets: {
+		file: FirmwareFile;
+		address: string;
+		filename: string;
+	}[] = [];
+	export let isAutoSelectMode = false;
+	export let manifestData: any = null;
 
 	// Create utility instances
 	const espManager = createESPManager();
@@ -40,11 +47,13 @@
 	let metadataFile: FirmwareFile | null = null;
 	let metadata: FirmwareMetadataExtended | null = null; // Support both .mt.json and manifest.json
 
-	// Новые переменные для новой логики
+	// New variables for new logic
 	let isPortSelected = false;
-	let deviceInfo: any = null; // Информация об устройстве
+	let deviceInfo: any = null; // Device information
 	let isConnecting = false;
-	let showInstructions = false; // Управление спойлером инструкций
+	let showInstructions = false; // Control instructions spoiler
+	let showFileDetails = false; // Control file details spoiler in AutoSelect mode
+	let autoPortSelectionTriggered = false; // Flag for tracking automatic port selection
 
 	// Ссылка на file input для замены document.getElementById
 	let fileInput: HTMLInputElement;
@@ -61,6 +70,50 @@
 						? `1500000 (${$locales('customfirmware.baudrate_very_fast')})`
 						: opt.label
 	}));
+
+	// Initialize preloaded files in AutoSelect mode when props change
+	$: if (isAutoSelectMode && preloadedFilesWithOffsets.length > 0 && isOpen) {
+		selectedFirmwareFiles = preloadedFilesWithOffsets.map(item => ({
+			filename: item.filename,
+			address: item.address,
+			file: item.file, // File object
+			hasError: false,
+			errorMessage: ''
+		}));
+	}
+
+	// Handle manifest data in AutoSelect mode
+	$: if (isAutoSelectMode && manifestData && !metadataFile) {
+		// Create a virtual metadata file from manifest data
+		const manifestContent = JSON.stringify(manifestData, null, 2);
+		const manifestBlob = new Blob([manifestContent], { type: 'application/json' });
+		const manifestFile = new File([manifestBlob], 'manifest.json', { type: 'application/json' });
+
+		metadataFile = fileHandler.createFirmwareFile(manifestFile);
+		metadata = parseFirmwareMetadata(manifestContent);
+	}
+
+	// Also handle initial mount
+	onMount(() => {
+		if (isAutoSelectMode && preloadedFilesWithOffsets.length > 0) {
+			selectedFirmwareFiles = preloadedFilesWithOffsets.map(item => ({
+				filename: item.filename,
+				address: item.address,
+				file: item.file, // File object
+				hasError: false,
+				errorMessage: ''
+			}));
+		}
+	});
+
+	// Reactive: Auto-start port selection when modal opens in AutoSelect mode
+	$: if (isOpen && isAutoSelectMode && preloadedFilesWithOffsets.length > 0 && !isPortSelected && !isConnecting && !autoPortSelectionTriggered) {
+		// Use setTimeout to ensure DOM is ready and files are loaded
+		setTimeout(() => {
+			autoPortSelectionTriggered = true;
+			selectPort();
+		}, 100);
+	}
 
 	// Clean up on unmount
 	onDestroy(async () => {
@@ -82,6 +135,7 @@
 
 	// Handle file selection (unified function for both file selection and drag & drop)
 	async function handleFileSelect(files: FileList | null) {
+		if (isAutoSelectMode) return; // Ignore file selection in AutoSelect mode
 		if (!files || files.length === 0) return;
 
 		selectedFirmwareFiles = [];
@@ -199,12 +253,14 @@
 
 	// Remove file from flashing list
 	function removeFile(index: number) {
+		if (isAutoSelectMode) return; // Cannot remove files in AutoSelect mode
 		selectedFirmwareFiles = selectedFirmwareFiles.filter((_, i) => i !== index);
 		flashError = '';
 	}
 
 	// Remove metadata file
 	function removeMetadataFile() {
+		if (isAutoSelectMode) return; // Cannot remove metadata file in AutoSelect mode
 		metadataFile = null;
 		metadata = null;
 		flashError = '';
@@ -264,18 +320,35 @@
 	}
 
 	// Reset file selection for flashing another file
-	function resetForAnotherFlash() {
-		selectedFirmwareFiles = [];
-		metadataFile = null;
-		metadata = null;
-		flashProgress = 0;
-		flashStatus = '';
-		flashError = '';
-		zipExtractionProgress = 0;
-		zipExtractionError = '';
-		isExtractingZip = false;
-		eraseBeforeFlash = false;
-		validationResult = { isValid: true };
+	async function resetForAnotherFlash() {
+		if (isAutoSelectMode) {
+			// In AutoSelect mode, reset port and status but keep files
+			isPortSelected = false;
+			deviceInfo = null;
+			isConnecting = false;
+			flashProgress = 0;
+			flashStatus = '';
+			flashError = '';
+			eraseBeforeFlash = false;
+			autoPortSelectionTriggered = false; // Reset for next auto port selection
+			validationResult = { isValid: true };
+
+			// Reset port using the dedicated function
+			await espManager.resetPort();
+		} else {
+			// In manual mode, reset everything
+			selectedFirmwareFiles = [];
+			metadataFile = null;
+			metadata = null;
+			flashProgress = 0;
+			flashStatus = '';
+			flashError = '';
+			zipExtractionProgress = 0;
+			zipExtractionError = '';
+			isExtractingZip = false;
+			eraseBeforeFlash = false;
+			validationResult = { isValid: true };
+		}
 	}
 
 	// Reset port only (when user clicks disconnect)
@@ -310,7 +383,7 @@
 	// Flash firmware
 	async function flashFirmware() {
 		// Check if we have firmware files selected (only .bin files)
-		if (!selectedFirmwareFile && selectedFirmwareFiles.length === 0) {
+		if (selectedFirmwareFiles.length === 0) {
 			flashError = 'Please select at least one firmware file (.bin)';
 			return;
 		}
@@ -337,35 +410,8 @@
 		flashError = '';
 
 		try {
-			// Handle single file case (backward compatibility)
-			if (selectedFirmwareFile) {
-				flashStatus = `Reading firmware file: ${selectedFirmwareFile.name}...`;
-
-				// Read file content using utility
-				const content = await fileHandler.readFileContent(selectedFirmwareFile);
-				const firmwareFile: FirmwareFile = {
-					...selectedFirmwareFile,
-					content: content
-				};
-
-				const flashOptions = {
-					baudrate: selectedBaudrate,
-					address: flashAddress,
-					eraseBeforeFlash: eraseBeforeFlash,
-					onProgress: (progress: any) => {
-						flashProgress = progress.progress;
-						flashStatus = `${selectedFirmwareFile.name} - ${progress.status}`;
-						if (progress.error) {
-							flashError = progress.error;
-						}
-					}
-				};
-
-				// Use ESP manager to flash firmware
-				await espManager.flashFirmware(firmwareFile, flashOptions);
-			}
-			// Handle multiple files case
-			else if (selectedFirmwareFiles.length > 0) {
+			// Handle all cases with unified approach
+			if (selectedFirmwareFiles.length > 0) {
 				// Rule 3: Sort files by flash address before flashing
 				const sortedFiles = [...selectedFirmwareFiles].sort((a, b) => {
 					const addressA = parseInt(a.address.replace('0x', ''), 16);
@@ -558,6 +604,8 @@
 	async function handleClose() {
 		if (!isFlashing) {
 			onClose();
+			// Reset auto port selection trigger for next modal open
+			autoPortSelectionTriggered = false;
 			await resetState();
 		}
 	}
@@ -566,10 +614,8 @@
 	$: totalMemorySize = deviceInfo ? parseFlashSize(deviceInfo.flashSize) : 4 * 1024 * 1024;
 	$: memorySegments = prepareMemorySegments(selectedFirmwareFiles);
 
-	// Reactive properties for backward compatibility
-	$: selectedFirmwareFile =
-		selectedFirmwareFiles.length === 1 ? selectedFirmwareFiles[0].file : null;
-	$: flashAddress = selectedFirmwareFiles.length > 0 ? selectedFirmwareFiles[0].address : '0x0';
+	// Calculate file count for File Details display
+	$: fileCount = selectedFirmwareFiles.length;
 
 	// Reactive: Validate files for conflicts and chip compatibility
 	$: if (selectedFirmwareFiles.length > 0) {
@@ -747,34 +793,21 @@
 					<div class="space-y-3">
 						<!-- File Selection Field -->
 						<div class="h-[100px]">
-							<!-- Drag & Drop Area - always enabled -->
+							<!-- Drag & Drop Area - disabled in AutoSelect mode -->
 							<div
 								role="button"
-								tabindex="0"
+								tabindex="{isAutoSelectMode ? -1 : 0}"
 								aria-label="Select firmware files"
 								aria-describedby="file-drop-description"
-								class="flex h-full w-full cursor-pointer flex-col justify-center rounded-lg p-4 text-center transition-colors hover:border-orange-500 {selectedFirmwareFile ||
-								selectedFirmwareFiles.length > 0
+								class="flex h-full w-full {isAutoSelectMode ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} flex-col justify-center rounded-lg p-4 text-center transition-colors {isAutoSelectMode ? '' : 'hover:border-orange-500'} {selectedFirmwareFiles.length > 0
 									? 'border border-gray-600 bg-gray-800'
 									: 'border-2 border-dashed border-gray-600'}"
-								on:dragover={handleDragOver}
-								on:drop={handleDrop}
-								on:click={() => fileInput?.click()}
-								on:keydown={(e) => (e.key === 'Enter' || e.key === ' ' ? fileInput?.click() : null)}
+								on:dragover={isAutoSelectMode ? undefined : handleDragOver}
+								on:drop={isAutoSelectMode ? undefined : handleDrop}
+								on:click={isAutoSelectMode ? undefined : () => fileInput?.click()}
+								on:keydown={(e) => (isAutoSelectMode || (e.key !== 'Enter' && e.key !== ' ') ? null : fileInput?.click())}
 							>
-								{#if selectedFirmwareFile}
-									<!-- Single file selected (backward compatibility) -->
-									<div class="space-y-2">
-										<div class="text-2xl">📄</div>
-										<div class="truncate text-sm font-medium text-orange-200">
-											{selectedFirmwareFile.name}
-										</div>
-										<div class="text-xs text-gray-400">
-											{fileHandler.formatFileSize(selectedFirmwareFile.size)}
-										</div>
-									</div>
-								{:else}
-									<!-- No files selected -->
+																	<!-- No files selected -->
 									<div class="space-y-2">
 										<div class="text-2xl">📁</div>
 										<div class="text-sm text-orange-200">
@@ -784,131 +817,263 @@
 											{$locales('customfirmware.or_click_to_select')}
 										</div>
 									</div>
-								{/if}
 							</div>
 
-							<!-- Hidden file input with multiple attribute -->
+							<!-- Hidden file input with multiple attribute (disabled in AutoSelect mode) -->
 							<input
 								bind:this={fileInput}
 								type="file"
 								multiple
+								disabled={isAutoSelectMode}
 								accept=".bin,.mt.json,.json,application/json,.zip,application/zip"
 								on:change={handleFileInputChange}
-								class="hidden"
+								class="{isAutoSelectMode ? 'hidden' : 'hidden'}"
 							/>
 						</div>
 
-						<!-- Metadata File Section -->
-						{#if metadataFile}
+						<!-- File Details Spoiler (for AutoSelect mode) -->
+						{#if isAutoSelectMode && (metadataFile || selectedFirmwareFiles.length > 0)}
 							<div class="pt-3">
-								<div class="mb-1 flex items-center justify-between">
-									<label class="text-sm font-medium text-blue-300">Metadata File</label>
-								</div>
-								<div
-									class="flex items-center space-x-2 rounded-md border border-blue-600 bg-blue-900/20 p-2"
+								<button
+									on:click={() => (showFileDetails = !showFileDetails)}
+									class="flex items-center space-x-2 text-sm font-medium text-orange-300 transition-colors hover:text-orange-200"
 								>
-									<div class="min-w-0 flex-1">
-										<div class="flex items-center space-x-2">
-											<div class="text-blue-400" title="Metadata file for address prediction">
-												📋
+									<span>{$locales('customfirmware.file_details')} ({$locales('customfirmware.file_details_count', {values: { count: fileCount }})})</span>
+									<span class="text-xs">{showFileDetails ? '▼' : '▶'}</span>
+								</button>
+
+								{#if showFileDetails}
+									<div class="mt-3 space-y-3">
+										<!-- Metadata File Section -->
+										{#if metadataFile}
+											<div>
+												<div class="mb-1 flex items-center justify-between">
+													<label class="text-sm font-medium text-blue-300">Metadata File</label>
+												</div>
+												<div
+													class="flex items-center space-x-2 rounded-md border border-blue-600 bg-blue-900/20 p-2"
+												>
+													<div class="min-w-0 flex-1">
+														<div class="flex items-center space-x-2">
+															<div class="text-blue-400" title="Metadata file for address prediction">
+																📋
+															</div>
+															<div class="truncate text-xs font-medium text-blue-300" title={metadataFile.file.name}>
+																{metadataFile.file.name}
+															</div>
+															<div class="text-xs text-gray-400">
+																({fileHandler.formatFileSize(metadataFile.file.size)})
+															</div>
+														</div>
+														{#if metadata}
+															<div class="mt-1 text-xs text-gray-500">
+																{#if metadata.builds}
+																	<!-- Manifest format -->
+																	Version: {metadata.version} | Device: {metadata.name} | Chip: {metadata.builds[0]?.chipFamily}
+																{:else}
+																	<!-- Legacy format -->
+																	Version: {metadata.version} | Board: {metadata.board} | MCU: {metadata.mcu}
+																{/if}
+															</div>
+														{/if}
+													</div>
+													<button
+														on:click={removeMetadataFile}
+														disabled={isFlashing || isAutoSelectMode}
+														class="text-red-400 transition-colors hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+														title="Remove metadata file"
+													>
+														✕
+													</button>
+												</div>
 											</div>
-											<div class="truncate text-xs font-medium text-blue-300">
-												{metadataFile.file.name}
-											</div>
-											<div class="text-xs text-gray-400">
-												({fileHandler.formatFileSize(metadataFile.file.size)})
-											</div>
-										</div>
-										{#if metadata}
-											<div class="mt-1 text-xs text-gray-500">
-												{#if metadata.builds}
-													<!-- Manifest format -->
-													Version: {metadata.version} | Device: {metadata.name} | Chip: {metadata.builds[0]?.chipFamily}
-												{:else}
-													<!-- Legacy format -->
-													Version: {metadata.version} | Board: {metadata.board} | MCU: {metadata.mcu}
-												{/if}
+										{/if}
+
+										<!-- Flash Address Fields -->
+										{#if selectedFirmwareFiles.length > 0}
+											<div>
+												<div class="mb-1 flex items-center justify-between">
+													<label class="text-sm font-medium text-gray-300">
+														{$locales('customfirmware.flash_addresses')}
+													</label>
+													<span class="text-xs text-gray-500">Format: 0x1000 or 4096</span>
+												</div>
+												<div class="max-h-60 overflow-y-auto space-y-2">
+													{#each selectedFirmwareFiles as fileItem, index}
+														<div
+															class="flex items-center space-x-2 border p-2 {fileItem.hasError
+																? 'border-red-600 bg-red-900/20'
+																: 'border-gray-600 bg-gray-800'} group relative rounded-md"
+														>
+															<div class="min-w-0 flex-1">
+																<div class="flex items-center space-x-2">
+																	<div class="truncate text-xs font-medium text-gray-300" title={fileItem.filename}>
+																		{fileItem.filename}
+																	</div>
+																	{#if fileItem.hasError}
+																		<div class="cursor-help text-red-400" title={fileItem.errorMessage}>
+																			⚠️
+																		</div>
+																	{/if}
+																</div>
+																<div class="text-xs text-gray-500">
+																	{fileHandler.formatFileSize(fileItem.file.size)}
+																</div>
+															</div>
+															<div class="flex flex-shrink-0 items-center space-x-2">
+																<label class="text-xs text-gray-400"
+																	>{$locales('customfirmware.address')}:</label
+																>
+																<input
+																	type="text"
+																	bind:value={fileItem.address}
+																	placeholder="0x0"
+																	disabled={isFlashing || isAutoSelectMode}
+																	class="w-24 rounded-md {espManager.isValidFlashAddress(fileItem.address)
+																		? 'border-gray-600'
+																		: 'border-red-500'} bg-gray-700 px-2 py-1 text-xs text-gray-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
+																	on:change={(e) => {
+																		if (!isAutoSelectMode) {
+																			const input = e.target as HTMLInputElement;
+																			const sanitized = espManager.sanitizeAddress(input.value);
+																			fileItem.address = sanitized;
+																		}
+																	}}
+																	title="{isAutoSelectMode ? 'Address locked (AutoSelect mode)' : 'Enter address in hex (0x...) or decimal format'}"
+																/>
+																<button
+																	on:click={() => removeFile(index)}
+																	disabled={isFlashing || isAutoSelectMode}
+																	class="text-red-400 transition-colors hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+																	title="{isAutoSelectMode ? 'Cannot remove files in AutoSelect mode' : 'Remove file'}"
+																>
+																	✕
+																</button>
+															</div>
+														</div>
+													{/each}
+												</div>
 											</div>
 										{/if}
 									</div>
-									<button
-										on:click={removeMetadataFile}
-										disabled={isFlashing}
-										class="text-red-400 transition-colors hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
-										title="Remove metadata file"
-									>
-										✕
-									</button>
-								</div>
-							</div>
-						{/if}
-
-						<!-- Flash Address Fields -->
-						{#if selectedFirmwareFiles.length > 0}
-							<div class="max-h-60 overflow-y-auto pt-3">
-								<div class="mb-1 flex items-center justify-between">
-									<label class="text-sm font-medium text-gray-300">
-										{$locales('customfirmware.flash_addresses')}
-									</label>
-									<span class="text-xs text-gray-500">Format: 0x1000 or 4096</span>
-								</div>
-								<div class="space-y-2">
-									{#each selectedFirmwareFiles as fileItem, index}
-										<div
-											class="flex items-center space-x-2 border p-2 {fileItem.hasError
-												? 'border-red-600 bg-red-900/20'
-												: 'border-gray-600 bg-gray-800'} group relative rounded-md"
-										>
-											<div class="min-w-0 flex-1">
-												<div class="flex items-center space-x-2">
-													<div class="truncate text-xs font-medium text-gray-300">
-														{fileItem.filename}
-													</div>
-													{#if fileItem.hasError}
-														<div class="cursor-help text-red-400" title={fileItem.errorMessage}>
-															⚠️
-														</div>
-													{/if}
-												</div>
-												<div class="text-xs text-gray-500">
-													{fileHandler.formatFileSize(fileItem.file.size)}
-												</div>
-											</div>
-											<div class="flex flex-shrink-0 items-center space-x-2">
-												<label class="text-xs text-gray-400"
-													>{$locales('customfirmware.address')}:</label
-												>
-												<input
-													type="text"
-													bind:value={fileItem.address}
-													placeholder="0x0"
-													disabled={isFlashing}
-													class="w-24 rounded-md {espManager.isValidFlashAddress(fileItem.address)
-														? 'border-gray-600'
-														: 'border-red-500'} bg-gray-700 px-2 py-1 text-xs text-gray-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
-													on:change={(e) => {
-														const input = e.target as HTMLInputElement;
-														const sanitized = espManager.sanitizeAddress(input.value);
-														fileItem.address = sanitized;
-													}}
-													title="Enter address in hex (0x...) or decimal format"
-												/>
-												<button
-													on:click={() => removeFile(index)}
-													disabled={isFlashing}
-													class="text-red-400 transition-colors hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
-													title="Remove file"
-												>
-													✕
-												</button>
-											</div>
-										</div>
-									{/each}
-								</div>
+								{/if}
 							</div>
 						{:else}
-							<!-- Empty space when no files selected -->
-							<div></div>
+							<!-- Regular mode (non-AutoSelect) - show sections normally -->
+							<!-- Metadata File Section -->
+							{#if metadataFile}
+								<div class="pt-3">
+									<div class="mb-1 flex items-center justify-between">
+										<label class="text-sm font-medium text-blue-300">Metadata File</label>
+									</div>
+									<div
+										class="flex items-center space-x-2 rounded-md border border-blue-600 bg-blue-900/20 p-2"
+									>
+										<div class="min-w-0 flex-1">
+											<div class="flex items-center space-x-2">
+												<div class="text-blue-400" title="Metadata file for address prediction">
+													📋
+												</div>
+												<div class="truncate text-xs font-medium text-blue-300" title={metadataFile.file.name}>
+													{metadataFile.file.name}
+												</div>
+												<div class="text-xs text-gray-400">
+													({fileHandler.formatFileSize(metadataFile.file.size)})
+												</div>
+											</div>
+											{#if metadata}
+												<div class="mt-1 text-xs text-gray-500">
+													{#if metadata.builds}
+														<!-- Manifest format -->
+														Version: {metadata.version} | Device: {metadata.name} | Chip: {metadata.builds[0]?.chipFamily}
+													{:else}
+														<!-- Legacy format -->
+														Version: {metadata.version} | Board: {metadata.board} | MCU: {metadata.mcu}
+													{/if}
+												</div>
+											{/if}
+										</div>
+										<button
+											on:click={removeMetadataFile}
+											disabled={isFlashing || isAutoSelectMode}
+											class="text-red-400 transition-colors hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+											title="Remove metadata file"
+										>
+											✕
+										</button>
+									</div>
+								</div>
+							{/if}
+
+							<!-- Flash Address Fields -->
+							{#if selectedFirmwareFiles.length > 0}
+								<div class="max-h-60 overflow-y-auto pt-3">
+									<div class="mb-1 flex items-center justify-between">
+										<label class="text-sm font-medium text-gray-300">
+											{$locales('customfirmware.flash_addresses')}
+										</label>
+										<span class="text-xs text-gray-500">Format: 0x1000 or 4096</span>
+									</div>
+									<div class="space-y-2">
+										{#each selectedFirmwareFiles as fileItem, index}
+											<div
+												class="flex items-center space-x-2 border p-2 {fileItem.hasError
+													? 'border-red-600 bg-red-900/20'
+													: 'border-gray-600 bg-gray-800'} group relative rounded-md"
+											>
+												<div class="min-w-0 flex-1">
+													<div class="flex items-center space-x-2">
+														<div class="truncate text-xs font-medium text-gray-300" title={fileItem.filename}>
+															{fileItem.filename}
+														</div>
+														{#if fileItem.hasError}
+															<div class="cursor-help text-red-400" title={fileItem.errorMessage}>
+																⚠️
+															</div>
+														{/if}
+													</div>
+													<div class="text-xs text-gray-500">
+														{fileHandler.formatFileSize(fileItem.file.size)}
+													</div>
+												</div>
+												<div class="flex flex-shrink-0 items-center space-x-2">
+													<label class="text-xs text-gray-400"
+														>{$locales('customfirmware.address')}:</label
+													>
+													<input
+														type="text"
+														bind:value={fileItem.address}
+														placeholder="0x0"
+														disabled={isFlashing || isAutoSelectMode}
+														class="w-24 rounded-md {espManager.isValidFlashAddress(fileItem.address)
+															? 'border-gray-600'
+															: 'border-red-500'} bg-gray-700 px-2 py-1 text-xs text-gray-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
+														on:change={(e) => {
+															if (!isAutoSelectMode) {
+																const input = e.target as HTMLInputElement;
+																const sanitized = espManager.sanitizeAddress(input.value);
+																fileItem.address = sanitized;
+															}
+														}}
+														title="{isAutoSelectMode ? 'Address locked (AutoSelect mode)' : 'Enter address in hex (0x...) or decimal format'}"
+													/>
+													<button
+														on:click={() => removeFile(index)}
+														disabled={isFlashing || isAutoSelectMode}
+														class="text-red-400 transition-colors hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+														title="{isAutoSelectMode ? 'Cannot remove files in AutoSelect mode' : 'Remove file'}"
+													>
+														✕
+													</button>
+												</div>
+											</div>
+										{/each}
+									</div>
+								</div>
+							{:else}
+								<!-- Empty space when no files selected -->
+								<div></div>
+							{/if}
 						{/if}
 					</div>
 				</div>
@@ -1064,12 +1229,16 @@
 				</button>
 
 				{#if flashProgress === 100 && flashStatus.includes('successfully')}
-					<!-- Show Flash Another button after successful flash -->
+					<!-- Show appropriate button after successful flash -->
 					<button
 						on:click={resetForAnotherFlash}
 						class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
 					>
-						{$locales('customfirmware.flash_another_file')}
+						{#if isAutoSelectMode}
+							{$locales('customfirmware.select_different_device')}
+						{:else}
+							{$locales('customfirmware.flash_another_file')}
+						{/if}
 					</button>
 				{:else}
 					<button

@@ -3,15 +3,34 @@
   import { apiActions } from '$lib/stores';
   import { DeviceType } from '$lib/types.js';
   import { isESP32Device, isNRF52Device, isRP2040Device, supportsESPWebTools, supportsUF2 } from '$lib/utils/deviceTypeUtils.js';
-  import type { DownloadOption } from '$lib/types';
+  import type { DownloadOption } from '$lib/types.js';
   import { _ as locales, locale } from 'svelte-i18n';
   import { onMount } from 'svelte';
+	import CustomFirmwareModal from './CustomFirmwareModal.svelte';
+	import { apiService } from '$lib/api';
+	import { createFirmwareFileHandler } from '$lib/utils/fileHandler';
+
+	// Initialize file handler
+	const fileHandler = createFirmwareFileHandler();
 
   // Local state
   let espWebToolsDialog: HTMLDialogElement;
   let espWebToolsButton: HTMLElement;
   let showMoreOptions = false;
   let firmwareMode: 'update' | 'full' = 'update'; // update = режим 1, full = режим 2
+
+  // CustomFirmwareModal state
+  let modalInstance: {
+    isOpen: boolean;
+    onClose: () => void;
+    preloadedFilesWithOffsets: {
+      file: any;
+      address: string;
+      filename: string;
+    }[];
+    isAutoSelectMode: boolean;
+    manifestData: any;
+  } | null = null;
 
   // Subscribe to stores
   $: deviceSelectionStore = $deviceSelection;
@@ -30,10 +49,10 @@
   });
 
   // Available download options based on device type and version
-  $: downloadOptions = getDownloadOptions(deviceSelectionStore.devicePioTarget, deviceDisplayInfoStore?.deviceType, deviceSelectionStore.version, $locale);
+  $: downloadOptions = getDownloadOptions(deviceSelectionStore.devicePioTarget, deviceDisplayInfoStore?.deviceType, deviceSelectionStore.version, firmwareMode, $locale);
 
   
-  function getDownloadOptions(devicePioTarget: string | null, deviceType: DeviceType | null | undefined, version: string | null, locale: any): DownloadOption[] {
+  function getDownloadOptions(devicePioTarget: string | null, deviceType: DeviceType | null | undefined, version: string | null, mode: 'update' | 'full', locale: any): DownloadOption[] {
     if (!devicePioTarget || !version) return [];
 
     const options: DownloadOption[] = [];
@@ -42,11 +61,11 @@
     if (isESP32Device(deviceType)) {
       options.push({
         id: 'esptool',
-        label: firmwareMode === 'full' ? $locales('downloadbuttons.full_flash_device') : $locales('downloadbuttons.update_device'),
-        mode: firmwareMode === 'full' ? '2' : '1', // 2=full, 1=update
+        label: mode === 'full' ? $locales('downloadbuttons.full_flash_device') : $locales('downloadbuttons.update_device'),
+        mode: mode === 'full' ? '2' : '1', // 2=full, 1=update
         available: true,
         icon: '🔧',
-        description: firmwareMode === 'full' ? $locales('downloadbuttons.complete_firmware_wipe') : $locales('downloadbuttons.update_existing_firmware')
+        description: mode === 'full' ? $locales('downloadbuttons.complete_firmware_wipe') : $locales('downloadbuttons.update_existing_firmware')
       });
     }
 
@@ -171,12 +190,8 @@
     }
 
     if (option.id === 'esptool') {
-      // For {$locales('downloadbuttons.update_device')}/{$locales('downloadbuttons.full_flash_device')} - configure and trigger ESP Web Tools on click
-      if (configureAndTriggerESPButton()) {
-        return; // ESP Web Tools was triggered successfully
-      } else {
-        await handleDownload(option);
-      }
+      // Use CustomFirmwareModal with manifest files instead of ESP Web Tools
+      await handleManifestFlash(option);
       return;
     }
 
@@ -214,6 +229,102 @@
     }
     // For uf2 and other options - use direct download
     await handleDownload(option);
+  }
+
+  // Handle manifest flashing using CustomFirmwareModal
+  async function handleManifestFlash(option: DownloadOption) {
+    try {
+      // 1. Download manifest
+      const modeDescription = option.mode === '2' ? 'Full Flash (factory)' : 'Update';
+      console.log(`Downloading manifest for ${modeDescription} mode:`, {
+        devicePioTarget: deviceSelectionStore.devicePioTarget,
+        version: deviceSelectionStore.version,
+        mode: option.mode,
+        modeDescription: modeDescription,
+        source: deviceSelectionStore.source
+      });
+      const manifest = await apiService.getManifest(
+        deviceSelectionStore.devicePioTarget!,
+        deviceSelectionStore.version!,
+        option.mode,
+        deviceSelectionStore.source
+      );
+      console.log('Manifest response:', manifest);
+
+      // 2. Download files from parts
+      const files = await downloadManifestFiles(manifest);
+
+      // 3. Open CustomFirmwareModal with preloaded data
+      modalInstance = {
+        isOpen: true,
+        onClose: () => { modalInstance = null; },
+        preloadedFilesWithOffsets: files,
+        isAutoSelectMode: true,
+        manifestData: manifest
+      };
+      
+    } catch (error) {
+      console.error('Failed to prepare manifest flashing:', error);
+      // Don't fallback - just show error
+      alert('Failed to prepare manifest flashing: ' + error.message);
+    }
+  }
+
+  // Download manifest files from parts array
+  async function downloadManifestFiles(manifest: any): Promise<{
+    file: any;
+    address: string;
+    filename: string;
+  }[]> {
+    const files = [];
+
+    for (const part of manifest.builds[0].parts) {
+      try {
+        // Download file content with filename from server headers
+        const { content, filename } = await apiService.downloadFromFileWithFilename(part.path);
+
+        // Convert ArrayBuffer to File object using server-provided filename
+        const file = new File([content], filename, { type: 'application/octet-stream' });
+
+        files.push({
+          file: fileHandler.createFirmwareFile(file),
+          address: `0x${part.offset.toString(16)}`, // Convert decimal offset to hex
+          filename: filename
+        });
+      } catch (error) {
+        console.error(`Failed to download file from ${part.path}:`, error);
+        throw new Error(`Failed to download firmware part from ${part.path}: ${error.message}`);
+      }
+    }
+
+    return files;
+  }
+
+  // Extract filename from URL path
+  function extractFilenameFromPath(path: string): string {
+    // Try to extract filename from URL parameters or path
+    const url = new URL(path, window.location.origin);
+
+    // Check for filename in query parameters
+    const filenameParam = url.searchParams.get('filename');
+    if (filenameParam) {
+      return filenameParam;
+    }
+
+    // Extract from path segments
+    const pathSegments = url.pathname.split('/');
+    const lastSegment = pathSegments[pathSegments.length - 1];
+
+    if (lastSegment && lastSegment.includes('.')) {
+      return lastSegment;
+    }
+
+    // Fallback: generate filename based on parameters
+    const part = url.searchParams.get('p') || 'firmware';
+    const device = url.searchParams.get('t') || 'device';
+    const version = url.searchParams.get('v') || 'unknown';
+
+    return `${device}-${version}-${part}.bin`;
   }
 
   </script>
@@ -347,3 +458,11 @@
   </div>
 </dialog>
 
+<!-- CustomFirmwareModal for AutoSelect mode -->
+<CustomFirmwareModal
+  isOpen={modalInstance?.isOpen || false}
+  onClose={() => modalInstance?.onClose()}
+  preloadedFilesWithOffsets={modalInstance?.preloadedFilesWithOffsets || []}
+  isAutoSelectMode={modalInstance?.isAutoSelectMode || false}
+  manifestData={modalInstance?.manifestData || null}
+/>
