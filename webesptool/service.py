@@ -495,7 +495,7 @@ async def buildManifest(t:str = None, v:str = None, u:str = "1", src:str = None)
         elif  t in data.get('rp2040devices'):
             chip_family = "RP2040"
 
-    manifest['flashsize'] = flashsize
+    manifest["builds"][0]['flashsize'] = flashsize
     manifest["builds"][0]["chipFamily"] = chip_family
     manifest['pathfw'] = "api/firmware?v={0}&t={1}&u={2}&e=false&src={3}".format(v,t,u,src)
     if chip_family == 'NRF52':
