@@ -5,10 +5,12 @@
   import { isESP32Device, isNRF52Device, isRP2040Device, supportsESPWebTools, supportsUF2 } from '$lib/utils/deviceTypeUtils.js';
   import type { DownloadOption } from '$lib/types.js';
   import { _ as locales, locale } from 'svelte-i18n';
-  import { onMount } from 'svelte';
-	import CustomFirmwareModal from './CustomFirmwareModal.svelte';
+  import { onMount, createEventDispatcher } from 'svelte';
 	import { apiService } from '$lib/api';
 	import { createFirmwareFileHandler } from '$lib/utils/fileHandler';
+
+	// Event dispatcher for CustomFirmwareModal
+	const dispatch = createEventDispatcher();
 
 	// Initialize file handler
 	const fileHandler = createFirmwareFileHandler();
@@ -19,18 +21,7 @@
   let showMoreOptions = false;
   let firmwareMode: 'update' | 'full' = 'update'; // update = режим 1, full = режим 2
 
-  // CustomFirmwareModal state
-  let modalInstance: {
-    isOpen: boolean;
-    onClose: () => void;
-    preloadedFilesWithOffsets: {
-      file: any;
-      address: string;
-      filename: string;
-    }[];
-    isAutoSelectMode: boolean;
-    manifestData: any;
-  } | null = null;
+  // CustomFirmwareModal data moved to parent component
 
   // Subscribe to stores
   $: deviceSelectionStore = $deviceSelection;
@@ -254,14 +245,12 @@
       // 2. Download files from parts
       const files = await downloadManifestFiles(manifest);
 
-      // 3. Open CustomFirmwareModal with preloaded data
-      modalInstance = {
-        isOpen: true,
-        onClose: () => { modalInstance = null; },
+      // 3. Dispatch event to open CustomFirmwareModal with preloaded data
+      dispatch('openCustomFirmwareModal', {
         preloadedFilesWithOffsets: files,
         isAutoSelectMode: true,
         manifestData: manifest
-      };
+      });
       
     } catch (error) {
       console.error('Failed to prepare manifest flashing:', error);
@@ -458,11 +447,4 @@
   </div>
 </dialog>
 
-<!-- CustomFirmwareModal for AutoSelect mode -->
-<CustomFirmwareModal
-  isOpen={modalInstance?.isOpen || false}
-  onClose={() => modalInstance?.onClose()}
-  preloadedFilesWithOffsets={modalInstance?.preloadedFilesWithOffsets || []}
-  isAutoSelectMode={modalInstance?.isAutoSelectMode || false}
-  manifestData={modalInstance?.manifestData || null}
-/>
+<!-- CustomFirmwareModal moved to +page.svelte for proper centering -->

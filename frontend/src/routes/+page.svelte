@@ -23,12 +23,37 @@
   // Custom firmware modal state
   let showCustomFirmwareModal = false;
 
+  // AutoSelect modal state
+  let autoSelectModalData = {
+    isOpen: false,
+    preloadedFilesWithOffsets: [] as any[],
+    isAutoSelectMode: false,
+    manifestData: null as any
+  };
+
   function openCustomFirmwareModal() {
     showCustomFirmwareModal = true;
   }
 
   function closeCustomFirmwareModal() {
     showCustomFirmwareModal = false;
+  }
+
+  function handleOpenCustomFirmwareModal(event: CustomEvent) {
+    const { preloadedFilesWithOffsets, isAutoSelectMode, manifestData } = event.detail;
+    autoSelectModalData = {
+      isOpen: true,
+      preloadedFilesWithOffsets,
+      isAutoSelectMode,
+      manifestData
+    };
+  }
+
+  function closeAutoSelectModal() {
+    autoSelectModalData.isOpen = false;
+    autoSelectModalData.preloadedFilesWithOffsets = [];
+    autoSelectModalData.isAutoSelectMode = false;
+    autoSelectModalData.manifestData = null;
   }
 
   // Load additional components only when needed
@@ -141,7 +166,7 @@
             </button>
           {/if}
         </h2>
-        <DownloadButtons />
+        <DownloadButtons on:openCustomFirmwareModal={handleOpenCustomFirmwareModal} />
       </div>
 
       <!-- Minimal Footer -->
@@ -264,7 +289,7 @@
                 </button>
               {/if}
             </h2>
-            <DownloadButtons />
+            <DownloadButtons on:openCustomFirmwareModal={handleOpenCustomFirmwareModal} />
           </div>
         </div>
 
@@ -324,6 +349,15 @@
 <CustomFirmwareModal
   isOpen={showCustomFirmwareModal}
   onClose={closeCustomFirmwareModal}
+/>
+
+<!-- AutoSelect Custom Firmware Modal - Outside BaseLayout -->
+<CustomFirmwareModal
+  isOpen={autoSelectModalData.isOpen}
+  onClose={closeAutoSelectModal}
+  preloadedFilesWithOffsets={autoSelectModalData.preloadedFilesWithOffsets}
+  isAutoSelectMode={autoSelectModalData.isAutoSelectMode}
+  manifestData={autoSelectModalData.manifestData}
 />
 {/if}
 
