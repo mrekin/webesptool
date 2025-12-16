@@ -611,7 +611,7 @@
 	}
 
 	// Reactive data for MemoryMap
-	$: totalMemorySize = deviceInfo ? parseFlashSize(deviceInfo.flashSize) : 4 * 1024 * 1024;
+	$: totalMemorySize = deviceInfo ? parseFlashSize(deviceInfo.flashSize) : metadata?.builds ? parseFlashSize(metadata?.builds[0]?.flashsize) : 4 *1024 * 1024;
 	$: memorySegments = prepareMemorySegments(selectedFirmwareFiles);
 
 	// Calculate file count for File Details display

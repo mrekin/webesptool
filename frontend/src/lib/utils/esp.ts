@@ -3,6 +3,8 @@ import { ValidationErrors } from '$lib/types';
 
 // Constants for flash addresses
 const FIRMWARE_OFFSET = '0x0';
+const BOOTLOADER_OFFSET = '0x0';
+const PARTITIONS_OFFSET = '0x8000';
 const UPDATE_OFFSET = '0x10000';
 const DEFAULT_OTA_OFFSET = '0x260000';
 const DEFAULT_SPIFFS_OFFSET = '0x300000';
@@ -83,7 +85,7 @@ export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMe
 				return {
 					address: `0x${manifestPart.offset.toString(16).toUpperCase()}`,
 					type: 'firmware',
-					description: `Factory firmware for ${metadata.name || 'device'}`
+					description: `Factory firmware for ${metadata.name || 'device'}. Contains bootloader, partitions, application`
 				};
 			}
 		}
@@ -92,6 +94,47 @@ export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMe
 			address: FIRMWARE_OFFSET,
 			type: 'firmware',
 			description: 'Factory firmware - full installation'
+		};
+	}
+
+	// Rule 1.1: Bootloader files - address 0x0
+	if (basename.includes('bootloader.bin')) {
+		// Check manifest first for factory firmware
+		if (metadata && detectMetadataFormat(metadata) === 'manifest') {
+			const manifestPart = findManifestPart(filename, metadata);
+			if (manifestPart?.partType === 'firmware' && manifestPart.offset === 0) {
+				return {
+					address: `0x${manifestPart.offset.toString(16).toUpperCase()}`,
+					type: 'firmware',
+					description: `Bootloader for ${metadata.name || 'device'}`
+				};
+			}
+		}
+
+		return {
+			address: BOOTLOADER_OFFSET,
+			type: 'firmware',
+			description: 'Bootloader file'
+		};
+	}
+	// Rule 1.2: Partition files - address 0x8000
+	if (basename.includes('partitions.bin')) {
+		// Check manifest first for factory firmware
+		if (metadata && detectMetadataFormat(metadata) === 'manifest') {
+			const manifestPart = findManifestPart(filename, metadata);
+			if (manifestPart?.partType === 'firmware' && manifestPart.offset === 0) {
+				return {
+					address: `0x${manifestPart.offset.toString(16).toUpperCase()}`,
+					type: 'firmware',
+					description: `Partitions for ${metadata.name || 'device'}`
+				};
+			}
+		}
+
+		return {
+			address: PARTITIONS_OFFSET,
+			type: 'firmware',
+			description: 'Partitions file'
 		};
 	}
 
