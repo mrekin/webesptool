@@ -20,40 +20,46 @@
   $: currentInterfaceMode = $uiState.interfaceMode;
   $: deviceSelectionStore = $deviceSelection;
 
-  // Custom firmware modal state
-  let showCustomFirmwareModal = false;
-
-  // AutoSelect modal state
-  let autoSelectModalData = {
+  // Unified modal state
+  let modalState = {
     isOpen: false,
+    mode: 'manual' as 'manual' | 'autoselect',
     preloadedFilesWithOffsets: [] as any[],
     isAutoSelectMode: false,
     manifestData: null as any
   };
 
-  function openCustomFirmwareModal() {
-    showCustomFirmwareModal = true;
+  function openModal(options: {
+    preloadedFilesWithOffsets?: any[];
+    isAutoSelectMode?: boolean;
+    manifestData?: any;
+  } = {}) {
+    if (options.preloadedFilesWithOffsets && options.preloadedFilesWithOffsets.length > 0) {
+      // AutoSelect режим
+      modalState = {
+        isOpen: true,
+        mode: 'autoselect',
+        preloadedFilesWithOffsets: options.preloadedFilesWithOffsets,
+        isAutoSelectMode: true,
+        manifestData: options.manifestData
+      };
+    } else {
+      // Ручной режим
+      modalState = {
+        isOpen: true,
+        mode: 'manual',
+        preloadedFilesWithOffsets: [],
+        isAutoSelectMode: false,
+        manifestData: null
+      };
+    }
   }
 
-  function closeCustomFirmwareModal() {
-    showCustomFirmwareModal = false;
-  }
-
-  function handleOpenCustomFirmwareModal(event: CustomEvent) {
-    const { preloadedFilesWithOffsets, isAutoSelectMode, manifestData } = event.detail;
-    autoSelectModalData = {
-      isOpen: true,
-      preloadedFilesWithOffsets,
-      isAutoSelectMode,
-      manifestData
-    };
-  }
-
-  function closeAutoSelectModal() {
-    autoSelectModalData.isOpen = false;
-    autoSelectModalData.preloadedFilesWithOffsets = [];
-    autoSelectModalData.isAutoSelectMode = false;
-    autoSelectModalData.manifestData = null;
+  function closeModal() {
+    modalState.isOpen = false;
+    modalState.preloadedFilesWithOffsets = [];
+    modalState.isAutoSelectMode = false;
+    modalState.manifestData = null;
   }
 
   // Load additional components only when needed
@@ -157,7 +163,7 @@
           </div>
           {#if !deviceSelectionStore.devicePioTarget}
             <button
-              on:click={openCustomFirmwareModal}
+              on:click={() => openModal()}
               class="text-orange-200 hover:text-orange-100 transition-colors p-1 rounded"
               title="{$locales('downloadbuttons.custom_firmware_description')}"
               aria-label="{$locales('downloadbuttons.custom_firmware_description')}"
@@ -166,19 +172,14 @@
             </button>
           {/if}
         </h2>
-        <DownloadButtons on:openCustomFirmwareModal={handleOpenCustomFirmwareModal} />
+        <DownloadButtons on:openCustomFirmwareModal={(e) => openModal(e.detail)} />
       </div>
 
       <!-- Minimal Footer -->
       <MinimalFooter />
     </div>
 
-    <!-- Custom Firmware Modal -->
-    <CustomFirmwareModal
-      isOpen={showCustomFirmwareModal}
-      onClose={closeCustomFirmwareModal}
-    />
-  </div>
+    </div>
 {:else}
   <!-- Full Interface Mode -->
   <BaseLayout>
@@ -280,7 +281,7 @@
               </div>
               {#if !deviceSelectionStore.devicePioTarget}
                 <button
-                  on:click={openCustomFirmwareModal}
+                  on:click={() => openModal()}
                   class="text-orange-200 hover:text-orange-100 transition-colors p-1 rounded"
                   title="{$locales('downloadbuttons.custom_firmware_description')}"
                   aria-label="{$locales('downloadbuttons.custom_firmware_description')}"
@@ -289,7 +290,7 @@
                 </button>
               {/if}
             </h2>
-            <DownloadButtons on:openCustomFirmwareModal={handleOpenCustomFirmwareModal} />
+            <DownloadButtons on:openCustomFirmwareModal={(e) => openModal(e.detail)} />
           </div>
         </div>
 
@@ -345,21 +346,16 @@
   </div>
 </BaseLayout>
 
-<!-- Custom Firmware Modal - Outside BaseLayout -->
-<CustomFirmwareModal
-  isOpen={showCustomFirmwareModal}
-  onClose={closeCustomFirmwareModal}
-/>
-
-<!-- AutoSelect Custom Firmware Modal - Outside BaseLayout -->
-<CustomFirmwareModal
-  isOpen={autoSelectModalData.isOpen}
-  onClose={closeAutoSelectModal}
-  preloadedFilesWithOffsets={autoSelectModalData.preloadedFilesWithOffsets}
-  isAutoSelectMode={autoSelectModalData.isAutoSelectMode}
-  manifestData={autoSelectModalData.manifestData}
-/>
 {/if}
+
+<!-- Custom Firmware Modal - Unified Instance -->
+<CustomFirmwareModal
+  isOpen={modalState.isOpen}
+  onClose={closeModal}
+  preloadedFilesWithOffsets={modalState.preloadedFilesWithOffsets}
+  isAutoSelectMode={modalState.isAutoSelectMode}
+  manifestData={modalState.manifestData}
+/>
 
 <style>
   /* Custom animations - optimized */
