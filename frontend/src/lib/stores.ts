@@ -12,7 +12,9 @@ import type {
   FirmwareRequest,
   UpdateMode,
   DeviceCategoryType,
-  DeviceDisplayInfo
+  DeviceDisplayInfo,
+  SelectionState,
+  Device
 } from './types.ts';
 import { InterfaceMode } from './types.ts';
 import { mapCategoryToDeviceType } from './utils/deviceTypeUtils.js';
@@ -52,6 +54,14 @@ const initialUIState: UIState = {
 
 // Device selection store - manages the current device/selection state
 export const deviceSelection = writable<DeviceSelection>(initialDeviceSelection);
+
+// Unified selection store - Единый источник правды для repository/device/version
+export const selectionState = writable<SelectionState>({
+  repository: null,
+  device: null,
+  version: null,
+  isValid: false
+});
 
 // Loading state store - manages all loading and error states
 export const loadingState = writable<LoadingState>(initialLoadingState);
@@ -221,6 +231,54 @@ export const firmwareDisplayInfo = derived(
   }
 );
 
+// NEW: Available devices derived store for unified selection
+export const availableDevicesForSelection = derived(
+  [selectionState, availableFirmwares],
+  ([$selectionState, $availableFirmwares]): Device[] => {
+    if (!$selectionState.repository) return [];
+
+    const devices: Device[] = [];
+
+    // Convert existing device lists to new Device interface
+    $availableFirmwares.espdevices.forEach((devicePioTarget: string) => {
+      devices.push({
+        device: devicePioTarget,
+        displayName: $availableFirmwares.device_names[devicePioTarget] || devicePioTarget,
+        category: 'esp'
+      });
+    });
+
+    $availableFirmwares.uf2devices.forEach((devicePioTarget: string) => {
+      devices.push({
+        device: devicePioTarget,
+        displayName: $availableFirmwares.device_names[devicePioTarget] || devicePioTarget,
+        category: 'uf2'
+      });
+    });
+
+    $availableFirmwares.rp2040devices.forEach((devicePioTarget: string) => {
+      devices.push({
+        device: devicePioTarget,
+        displayName: $availableFirmwares.device_names[devicePioTarget] || devicePioTarget,
+        category: 'rp2040'
+      });
+    });
+
+    return devices.sort((a, b) => a.displayName.localeCompare(b.displayName));
+  }
+);
+
+// NEW: Available versions derived store for unified selection
+export const availableVersionsForSelection = derived(
+  [selectionState, versionsData],
+  ([$selectionState, $versionsData]): string[] => {
+    // FIX: Проверяем и repository, и device
+    if (!$selectionState.repository || !$selectionState.device) return [];
+    return $versionsData.versions || [];
+  }
+);
+
+
 
 // Helper function to detect category from device type using provided firmwares data
 function detectCategoryFromDeviceTypeAvailableData(devicePioTarget: string, firmwares: AvailableFirmwares): DeviceCategoryType | null {
@@ -305,6 +363,15 @@ export const deviceActions = {
       version: null        // Reset version when source changes
     }));
 
+    // FIX: Update unified selection state (handle circular dependency)
+    // Use direct update to avoid triggering setRepository cascade
+    selectionState.update(s => ({
+      repository: source,
+      device: null,
+      version: null,
+      isValid: false
+    }));
+
     // Reload available firmwares for the new source
     apiActions.loadAvailableFirmwares(source || '');
   },
@@ -325,6 +392,97 @@ export const deviceActions = {
   // Reset all selections
   resetSelection: () => {
     deviceSelection.set(initialDeviceSelection);
+  }
+};
+
+// NEW: Unified selection actions with cascade validation
+export const selectionActions = {
+  // Set repository with cascade reset
+  setRepository: (repo: string | null) => {
+    selectionState.update(s => ({
+      repository: repo,
+      device: null,    // каскадный сброс
+      version: null,   // каскадный сброс
+      isValid: false
+    }));
+  },
+
+  // Update repository ONLY (без каскадного сброса) - для backend response
+  updateRepositoryOnly: (repo: string) => {
+    selectionState.update(s => ({
+      ...s,
+      repository: repo,
+      // НЕ сбрасываем device и version!
+      isValid: !!s.device && !!s.version
+    }));
+  },
+
+  // Set device with validation and cascade reset
+  setDevice: (device: string | null) => {
+    selectionState.update(s => {
+      if (!device) {
+        return {
+          ...s,
+          device: null,
+          version: null,
+          isValid: !!s.repository
+        };
+      }
+
+      // Validate device is available for current repository
+      let availableDevices: Device[] = [];
+      const unsubscribe = availableDevicesForSelection.subscribe(devices => {
+        availableDevices = devices;
+      });
+      unsubscribe();
+
+      const validDevice = availableDevices.some(d => d.device === device);
+
+      return {
+        ...s,
+        device: validDevice ? device : null,
+        version: null,   // всегда сброс при смене устройства
+        isValid: validDevice && !!s.repository
+      };
+    });
+  },
+
+  // Set version with validation
+  setVersion: (version: string | null) => {
+    selectionState.update(s => {
+      if (!version) {
+        return {
+          ...s,
+          version: null,
+          isValid: !!s.device && !!s.repository
+        };
+      }
+
+      // Validate version is available for current device
+      let availableVersions: string[] = [];
+      const unsubscribe = availableVersionsForSelection.subscribe(versions => {
+        availableVersions = versions;
+      });
+      unsubscribe();
+
+      const validVersion = availableVersions.includes(version);
+
+      return {
+        ...s,
+        version: validVersion ? version : null,
+        isValid: validVersion && !!s.device && !!s.repository
+      };
+    });
+  },
+
+  // Reset all selections
+  resetAll: () => {
+    selectionState.set({
+      repository: null,
+      device: null,
+      version: null,
+      isValid: false
+    });
   }
 };
 
@@ -428,7 +586,10 @@ export const apiActions = {
       availableSources.set(sources);
 
       if (sources.length > 0) {
-        // Set first source as default and load devices
+        // FIX: Set repository in unified selection state FIRST (without cascade reset)
+        selectionActions.updateRepositoryOnly(sources[0]);
+
+        // Then set source in old deviceSelection (this will also trigger deviceActions.setRepository)
         deviceActions.setSource(sources[0]);
       }
     } catch (error) {
@@ -442,16 +603,30 @@ export const apiActions = {
 
     loadingActions.setLoadingVersions(true);
     try {
+      // FIX: Get source from unified selection state with fallback to deviceSelection
       let source: string = '';
-      const unsubscribe = deviceSelection.subscribe(s => {
-        source = s.source || '';
+
+      // Try to get from new selectionState first
+      const unsubscribeSelection = selectionState.subscribe(s => {
+        source = s.repository || '';
       });
+      unsubscribeSelection();
+
+      // Fallback to old deviceSelection if needed
+      if (!source) {
+        const unsubscribeDevice = deviceSelection.subscribe(s => {
+          source = s.source || '';
+        });
+        unsubscribeDevice();
+      }
+
       const versions = await apiService.getVersions(devicePioTarget, source);
-      unsubscribe();
 
       // Если бэкенд вернул поле src, обновляем выбор репозитория без сброса устройства
       if (versions.src) {
         deviceActions.updateSourceOnly(versions.src);
+        // FIX: Use safe update that doesn't reset device/version
+        selectionActions.updateRepositoryOnly(versions.src);
       }
 
       versionsData.set(versions);
@@ -604,12 +779,14 @@ export const apiActions = {
   }
 };
 
-// Store subscription for reactive behavior - single subscription to avoid duplicate requests
-let previousDevicePioTarget: string | null = null;
+// NEW: Simple reactive behavior for unified selection store with race condition protection
+let previousDevice: string | null = null;
 let previousVersion: string | null = null;
+let isLoadingVersions = false; // Флаг для предотвращения race conditions
 
-deviceSelection.subscribe((selection) => {
-  const { devicePioTarget, version } = selection;
+// Subscribe to unified selection state changes
+selectionState.subscribe(async (selection) => {
+  const { repository, device, version } = selection;
 
   // Get current interface mode
   let currentInterfaceMode: InterfaceMode = InterfaceMode.FULL;
@@ -618,23 +795,51 @@ deviceSelection.subscribe((selection) => {
   });
   unsubscribeUI();
 
-  // Load versions and device info only when device type changes
-  if (devicePioTarget && devicePioTarget !== previousDevicePioTarget) {
-    apiActions.loadVersions(devicePioTarget);
+  // Load device info when device changes - с защитой от race conditions
+  if (device && device !== previousDevice && !isLoadingVersions) {
+    isLoadingVersions = true;
 
-    // Load device info only in full mode (not used in minimal mode)
-    if (currentInterfaceMode === InterfaceMode.FULL) {
-      apiActions.loadDeviceInfo(devicePioTarget);
+    try {
+      // Load versions for the new device
+      await apiActions.loadVersions(device);
+
+      // Load device info only in full mode
+      if (currentInterfaceMode === InterfaceMode.FULL) {
+        await apiActions.loadDeviceInfo(device);
+      }
+    } finally {
+      isLoadingVersions = false;
+      previousDevice = device;
     }
   }
 
-  // Load firmware info only when version is selected (and device is already set)
-  if (devicePioTarget && version && version !== previousVersion) {
-    apiActions.loadFirmwareInfo(devicePioTarget, version);
+  // Load firmware info when version changes
+  if (device && version && version !== previousVersion && !isLoadingVersions) {
+    await apiActions.loadFirmwareInfo(device, version);
+    previousVersion = version;
   }
+});
 
-  previousDevicePioTarget = devicePioTarget;
-  previousVersion = version;
+// TEMP: Keep old deviceSelection in sync with new selectionState for backward compatibility
+// Only sync what's actually needed to avoid circular dependencies
+selectionState.subscribe((selection) => {
+  deviceSelection.update(oldSelection => {
+    // Only update if values actually changed to prevent infinite loops
+    if (oldSelection.devicePioTarget !== selection.device ||
+        oldSelection.version !== selection.version ||
+        oldSelection.source !== selection.repository) {
+      return {
+        ...oldSelection,
+        devicePioTarget: selection.device,
+        version: selection.version,
+        source: selection.repository || oldSelection.source,
+        category: selection.device ? detectCategoryFromDeviceTypeAvailableData(selection.device,
+          // @ts-ignore - accessing current firmwares for compatibility
+          { espdevices: [], uf2devices: [], rp2040devices: [], device_names: {}, versions: [], srcs: [] }) : null
+      };
+    }
+    return oldSelection;
+  });
 });
 
 // Initialize on app start

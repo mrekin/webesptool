@@ -1,6 +1,7 @@
 <script lang="ts">
-    import { deviceSelection, availableFirmwares, versionsData, isDeviceSelected, isVersionSelected, allDevicesFlat, allDevicesWithCategories } from '$lib/stores';
-  import { deviceActions } from '$lib/stores';
+    import { deviceSelection, availableFirmwares, versionsData, allDevicesFlat, allDevicesWithCategories,
+         selectionState, availableDevicesForSelection, availableVersionsForSelection } from '$lib/stores';
+  import { deviceActions, selectionActions } from '$lib/stores';
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
   import { DeviceType } from '$lib/types.js';
@@ -19,14 +20,21 @@
   let showVersionDropdown = false;
   let selectedVersionIndex = -1;
 
-  // Subscribe to stores
+  // Subscribe to stores - NEW: Use unified stores
   $: deviceSelectionStore = $deviceSelection;
   $: availableFirmwaresStore = $availableFirmwares;
   $: versionsDataStore = $versionsData;
 
+  // NEW: Unified selection state
+  $: selectionStateStore = $selectionState;
+  $: availableDevicesForSelectionStore = $availableDevicesForSelection;
+  $: availableVersionsForSelectionStore = $availableVersionsForSelection;
+
+  // Legacy compatibility (can be removed later)
   $: allDevices = $allDevicesFlat;
-  $: deviceSelected = $isDeviceSelected;
-  $: versionSelected = $isVersionSelected;
+  // New derived states based on unified selectionState
+  $: deviceSelected = $selectionState.device !== null;
+  $: versionSelected = $selectionState.version !== null;
 
   // Clear filter when device type is reset to null
   $: if (deviceSelectionStore.devicePioTarget === null) {
@@ -50,8 +58,12 @@
     rp2040: filteredDevices.filter((d: {device: string; category: string}) => d.category === 'rp2040')
   };
 
-  $: if (versionsDataStore?.versions?.length > 0 && !deviceSelectionStore.version) {
-     deviceActions.setVersion(versionsDataStore?.versions[0]);
+  // FIX: Unified reactive statement for auto-version selection
+  $: if (selectionStateStore.device && availableVersionsForSelectionStore.length > 0) {
+    if (!selectionStateStore.version || !availableVersionsForSelectionStore.includes(selectionStateStore.version)) {
+      // Auto-select latest version (first in array as server returns sorted descending)
+      selectionActions.setVersion(availableVersionsForSelectionStore[0]);
+    }
   }
 
   $: if (deviceSelectionStore.devicePioTarget && !isFiltering) {
@@ -63,8 +75,9 @@
     deviceFilter = device.displayName;
     isFiltering = false; // Reset filtering flag since we made a selection
     manageDeviceDropdown('close', { restoreFilter: false }); // Don't restore filter since we made a selection
-    deviceActions.setDeviceDirectly(device.device);
-    deviceActions.setVersion(null);
+
+    // FIX: Use unified selection actions with cascade validation
+    selectionActions.setDevice(device.device);
   }
 
   // Handle input change
@@ -329,7 +342,8 @@
   
   // Handle version selection
   function selectVersion(version: string) {
-    deviceActions.setVersion(version);
+    // FIX: Use unified selection action with validation
+    selectionActions.setVersion(version);
     manageVersionDropdown('close');
   }
 
@@ -338,8 +352,12 @@
     return availableFirmwaresStore.device_names[devicePioTarget] || devicePioTarget;
   }
 
-  // Get version display text
+  // Get version display text with validation
   function getVersionDisplayText(version: string): string {
+    // NEW: Protect against invalid versions
+    if (!version || !availableVersionsForSelectionStore.includes(version)) {
+      return '';
+    }
     let displayText = version;
     return displayText;
   }
@@ -449,7 +467,9 @@
           id="firmware-version"
           type="text"
           placeholder={$locales('selectdevice.version_placeholder')}
-          value={deviceSelectionStore.version ? getVersionDisplayText(deviceSelectionStore.version) : ''}
+          value={selectionStateStore.version && availableVersionsForSelectionStore.includes(selectionStateStore.version)
+      ? getVersionDisplayText(selectionStateStore.version)
+      : (deviceSelectionStore.version ? getVersionDisplayText(deviceSelectionStore.version) : '')}
           on:input={handleVersionInputChange}
           on:click={handleVersionInputClick}
           on:keydown={(e) => handleDropdownKeydown(e, 'version')}

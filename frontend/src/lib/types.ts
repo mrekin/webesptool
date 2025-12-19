@@ -1,14 +1,37 @@
 // TypeScript type definitions for WebESPTool Frontend
 
-export interface DeviceCategory {
-  espdevices: string[];
-  uf2devices: string[];
-  rp2040devices: string[];
+// REMOVED: DeviceCategory replaced by AvailableDevices
+
+// Repository Level
+export interface Repository {
+  name: string;
+  url: string;
 }
 
-export interface DeviceNames {
-  [key: string]: string;
+// Device Level
+export interface Device {
+  device: string;      // ← Соответствует старому коду
+  displayName: string;
+  category: 'esp' | 'uf2' | 'rp2040';
 }
+
+
+// Version Level
+export interface Version {
+  version: string;
+  buildDate: string;
+  notes?: string;
+  latestTag?: string;
+}
+
+// Selection State (Единый источник правды)
+export interface SelectionState {
+  repository: string | null;
+  device: string | null;      // pioTarget
+  version: string | null;     // только из списка versions[]
+  isValid: boolean;           // true если все зависимости соблюдены
+}
+
 
 export interface VersionsResponse {
   versions: string[];
@@ -32,7 +55,7 @@ export interface FirmwareRequest {
   t: string; // device type
   v: string; // version
   u: UpdateMode; // update mode: 1=update, 2=install/wipe, 4=OTA, 5=ZIP
-  p?: 'fw' | 'littlefs' | 'bleota' | 'bleota-s3'; // part
+  p?: 'fw' | 'littlefs' | 'bleota'; // part
   e?: boolean; // ESP32 flag
   src?: string; // source repository
 }
@@ -67,7 +90,7 @@ export interface AvailableFirmwares {
   uf2devices: string[];
   rp2040devices: string[];
   versions: string[];
-  device_names: DeviceNames;
+  device_names: { [key: string]: string };
   srcs: string[];
 }
 
