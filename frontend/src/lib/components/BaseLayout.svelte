@@ -160,15 +160,7 @@
     }
   }
 
-  /* Loading overlay animation */
-  #loading-overlay:not(.hidden) {
-    display: flex;
-  }
-
-  #loading-overlay.hidden {
-    display: none;
-  }
-
+  
   /* Improved scrollbar styling */
   ::-webkit-scrollbar {
     width: 8px;
@@ -212,14 +204,9 @@
       color: black;
     }
 
-    /* Hide non-essential elements */
-    .fixed.inset-0 {
-      display: none !important;
-    }
-
+    
     /* Ensure text is readable */
-    .bg-opacity-90,
-    .bg-opacity-40 {
+    .bg-opacity-90 {
       background-color: transparent !important;
     }
   }

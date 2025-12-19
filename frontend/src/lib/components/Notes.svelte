@@ -300,12 +300,7 @@
     animation: fadeIn 0.5s ease-out forwards;
   }
 
-  /* Ensure proper text wrapping for long content */
-  .text-wrap {
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-  }
-
+  
   /* Icon animation for attention */
   @keyframes pulse-gentle {
     0%, 100% {
@@ -318,14 +313,4 @@
     }
   }
 
-  .pulse-gentle {
-    animation: pulse-gentle 2s ease-in-out infinite;
-  }
-
-  /* Responsive adjustments */
-  @media (max-width: 768px) {
-    .md\\:grid-cols-2 {
-      grid-template-columns: 1fr;
-    }
-  }
-</style>
+  </style>

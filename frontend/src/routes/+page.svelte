@@ -392,10 +392,4 @@
     outline-offset: 2px;
   }
 
-  /* Ensure responsive spacing */
-  @media (max-width: 1024px) {
-    .lg\:col-span-2 {
-      grid-column: span 1;
-    }
-  }
-</style>
+  </style>
