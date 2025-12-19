@@ -8,7 +8,8 @@
 		parseFirmwareMetadata
 	} from '$lib/utils/esp';
 	import { createFirmwareFileHandler } from '$lib/utils/fileHandler';
-	import type { FirmwareFile, FirmwareMetadata, FirmwareMetadataExtended, MemorySegment } from '$lib/types.js';
+	import { apiService } from '$lib/api';
+	import type { FirmwareFile, FirmwareMetadata, FirmwareMetadataExtended, MemorySegment, SelectedFirmwareFile } from '$lib/types.js';
 	import { ValidationErrors } from '$lib/types.js';
 	import MemoryMap from '$lib/components/MemoryMap.svelte';
 
@@ -27,7 +28,7 @@
 	const fileHandler = createFirmwareFileHandler();
 
 	// Component state
-	let selectedFirmwareFiles: { filename: string; address: string; file: FirmwareFile }[] = []; // Multiple files with addresses
+	let selectedFirmwareFiles: SelectedFirmwareFile[] = []; // Multiple files with addresses
 	let isFlashing = false;
 	let flashProgress = 0;
 	let flashStatus = '';
@@ -39,6 +40,13 @@
 	let isExtractingZip = false;
 	let zipExtractionProgress = 0;
 	let zipExtractionError = '';
+
+	// File download state
+	let isDownloadingFiles = false;
+	let downloadError = '';
+	let downloadAbortController: AbortController | null = null;
+	let downloadCompleted = false;
+	let downloadErrors: string[] = []; // Collect individual file download errors
 
 	// Validation state
 	let validationResult: { isValid: boolean; errorCode?: any; conflictingFiles?: string[]; errorMessage?: string } = { isValid: true };
@@ -106,9 +114,14 @@
 		}
 	});
 
-	// Reactive: Auto-start port selection when modal opens in AutoSelect mode
-	$: if (isOpen && isAutoSelectMode && preloadedFilesWithOffsets.length > 0 && !isPortSelected && !isConnecting && !autoPortSelectionTriggered) {
-		// Use setTimeout to ensure DOM is ready and files are loaded
+	// Reactive: Start file download when modal opens in AutoSelect mode
+	$: if (isOpen && isAutoSelectMode && manifestData && !isDownloadingFiles && !downloadError && !downloadCompleted) {
+		startFileDownload();
+	}
+
+	// Reactive: Auto-start port selection when modal opens in AutoSelect mode (parallel to download)
+	$: if (isOpen && isAutoSelectMode && !isPortSelected && !isConnecting && !autoPortSelectionTriggered) {
+		// Use setTimeout to ensure DOM is ready
 		setTimeout(() => {
 			autoPortSelectionTriggered = true;
 			selectPort();
@@ -371,10 +384,22 @@
 
 	// Reset everything when modal closes
 	async function resetState() {
+		// Cancel any ongoing file download
+		if (downloadAbortController) {
+			downloadAbortController.abort();
+			downloadAbortController = null;
+		}
+
 		selectedFirmwareFiles = [];
 		metadataFile = null;
 		metadata = null;
 		validationResult = { isValid: true };
+
+		// Reset download state
+		isDownloadingFiles = false;
+		downloadError = '';
+		downloadErrors = [];
+		downloadCompleted = false;
 
 		// Reset port using the dedicated function
 		await resetPort();
@@ -470,6 +495,93 @@
 			flashError = error instanceof Error ? error.message : String(error);
 		} finally {
 			isFlashing = false;
+		}
+	}
+
+	
+	// Start file download for AutoSelect mode
+	async function startFileDownload() {
+		if (!manifestData || isDownloadingFiles) return;
+
+		isDownloadingFiles = true;
+		downloadError = '';
+		downloadErrors = []; // Reset errors
+		downloadCompleted = false; // Reset for retry
+		downloadAbortController = new AbortController();
+
+		try {
+			const parts = manifestData.builds[0].parts;
+
+			// Create file entries immediately with downloading status
+			selectedFirmwareFiles = parts.map(part => ({
+				filename: '', // Will be updated when we get the filename from headers
+				address: `0x${part.offset.toString(16)}`,
+				file: { file: new File([], ''), content: '', size: 0, name: '' }, // Placeholder
+				hasError: false,
+				errorMessage: '',
+				isDownloading: true,
+				downloadProgress: 0,
+				fileSize: 0
+			}));
+
+			// Download each file individually with progress tracking
+			const downloadPromises = parts.map(async (part, index) => {
+				try {
+					// Download file with progress tracking
+					const { content, filename } = await apiService.downloadFromFileWithFilename(
+						part.path,
+						(progress) => {
+							// Update progress for this specific file
+							selectedFirmwareFiles[index].downloadProgress = progress;
+						}
+					);
+
+					// Convert ArrayBuffer to File object
+					const file = new File([content], filename, { type: 'application/octet-stream' });
+					const firmwareFile = fileHandler.createFirmwareFile(file);
+
+					// Update file entry with downloaded data
+					selectedFirmwareFiles[index] = {
+						...selectedFirmwareFiles[index],
+						filename: filename,
+						file: firmwareFile,
+						isDownloading: false,
+						downloadProgress: 100,
+						fileSize: content.byteLength
+					};
+
+				} catch (error) {
+					// Mark this file as failed but continue with others
+					const errorMessage = error instanceof Error ? error.message : String(error);
+					downloadErrors.push(`${part.path}: ${errorMessage}`);
+
+					selectedFirmwareFiles[index] = {
+						...selectedFirmwareFiles[index],
+						hasError: true,
+						errorMessage: errorMessage,
+						isDownloading: false
+					};
+				}
+			});
+
+			// Wait for all downloads to complete (or fail)
+			await Promise.allSettled(downloadPromises);
+
+			// Check if any files failed to download
+			const failedCount = selectedFirmwareFiles.filter(f => f.hasError).length;
+			if (failedCount > 0) {
+				downloadError = $locales('customfirmware.download_failed_details', {
+					values: { error: `${failedCount} files failed` }
+				});
+			} else {
+				downloadCompleted = true;
+			}
+
+		} catch (error) {
+			console.error('Download error:', error);
+			downloadError = error instanceof Error ? error.message : String(error);
+		} finally {
+			isDownloadingFiles = false;
 		}
 	}
 
@@ -905,6 +1017,19 @@
 																? 'border-red-600 bg-red-900/20'
 																: 'border-gray-600 bg-gray-800'} group relative rounded-md"
 														>
+															<!-- Download progress overlay -->
+															{#if fileItem.isDownloading}
+																<div class="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-black bg-opacity-70">
+																	<div class="w-full max-w-[80%]">
+																		<div class="h-1 w-full rounded-full bg-gray-700">
+																			<div
+																				class="h-1 rounded-full bg-blue-500 transition-all duration-300"
+																				style="width: {fileItem.downloadProgress || 0}%"
+																			></div>
+																		</div>
+																	</div>
+																</div>
+															{/if}
 															<div class="min-w-0 flex-1">
 																<div class="flex items-center space-x-2">
 																	<div class="truncate text-xs font-medium text-gray-300" title={fileItem.filename}>
@@ -917,7 +1042,7 @@
 																	{/if}
 																</div>
 																<div class="text-xs text-gray-500">
-																	{fileHandler.formatFileSize(fileItem.file.size)}
+																	{fileItem.fileSize > 0 ? fileHandler.formatFileSize(fileItem.fileSize) : (fileItem.isDownloading ? '...' : fileHandler.formatFileSize(fileItem.file.size))}
 																</div>
 															</div>
 															<div class="flex flex-shrink-0 items-center space-x-2">
@@ -1021,6 +1146,19 @@
 													? 'border-red-600 bg-red-900/20'
 													: 'border-gray-600 bg-gray-800'} group relative rounded-md"
 											>
+												<!-- Download progress overlay -->
+												{#if fileItem.isDownloading}
+													<div class="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-black bg-opacity-70">
+														<div class="w-full max-w-[80%]">
+															<div class="h-1 w-full rounded-full bg-gray-700">
+																<div
+																	class="h-1 rounded-full bg-blue-500 transition-all duration-300"
+																	style="width: {fileItem.downloadProgress || 0}%"
+																></div>
+															</div>
+														</div>
+													</div>
+												{/if}
 												<div class="min-w-0 flex-1">
 													<div class="flex items-center space-x-2">
 														<div class="truncate text-xs font-medium text-gray-300" title={fileItem.filename}>
@@ -1033,7 +1171,7 @@
 														{/if}
 													</div>
 													<div class="text-xs text-gray-500">
-														{fileHandler.formatFileSize(fileItem.file.size)}
+														{fileItem.fileSize > 0 ? fileHandler.formatFileSize(fileItem.fileSize) : (fileItem.isDownloading ? '...' : fileHandler.formatFileSize(fileItem.file.size))}
 													</div>
 												</div>
 												<div class="flex flex-shrink-0 items-center space-x-2">
@@ -1125,6 +1263,35 @@
 						class="rounded-md border border-red-700 bg-red-900 p-3"
 					>
 						<div class="text-sm text-red-200">{zipExtractionError}</div>
+					</div>
+				{/if}
+
+				<!-- File Download Error Status -->
+				{#if downloadError}
+					<div
+						role="alert"
+						aria-live="assertive"
+						class="rounded-md border border-red-700 bg-red-900 p-3"
+					>
+						<div class="mb-2 text-sm font-medium text-red-200">{$locales('customfirmware.download_files_error')}</div>
+						<div class="text-sm text-red-300">{downloadError}</div>
+						{#if downloadErrors.length > 0}
+							<div class="mt-2 text-xs text-red-400">
+								{#each downloadErrors.slice(0, 3) as error}
+									<div>{error}</div>
+								{/each}
+								{#if downloadErrors.length > 3}
+									<div>... and {downloadErrors.length - 3} more errors</div>
+								{/if}
+							</div>
+						{/if}
+						<button
+							on:click={startFileDownload}
+							disabled={isDownloadingFiles}
+							class="mt-3 rounded-md bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							{$locales('customfirmware.retry_download_all')}
+						</button>
 					</div>
 				{/if}
 

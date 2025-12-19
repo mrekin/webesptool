@@ -242,12 +242,9 @@
       );
       console.log('Manifest response:', manifest);
 
-      // 2. Download files from parts
-      const files = await downloadManifestFiles(manifest);
-
-      // 3. Dispatch event to open CustomFirmwareModal with preloaded data
+      // 2. Dispatch event to open CustomFirmwareModal with manifest (files will be downloaded inside)
       dispatch('openCustomFirmwareModal', {
-        preloadedFilesWithOffsets: files,
+        preloadedFilesWithOffsets: [], // Files will be downloaded asynchronously in the modal
         isAutoSelectMode: true,
         manifestData: manifest
       });

@@ -20,11 +20,17 @@ class APIService {
     this.config = {
       apiBaseUrl: config.apiBaseUrl || import.meta.env.VITE_API_URL || 'api',
       defaultSource: config.defaultSource || '',
-      timeout: config.timeout || 30000,
+      timeout: config.timeout || 120000, // 2 minutes default for large firmware files
       retryAttempts: config.retryAttempts || 3
     };
     this.baseUrl = this.config.apiBaseUrl;
     this.cache = new Map();
+  }
+
+  private calculateDynamicTimeout(fileSizeBytes?: number): number {
+    const baseTimeout = this.config.timeout; // Use configured timeout (2 minutes by default)
+    const fileSizeMB = fileSizeBytes ? fileSizeBytes / (1024 * 1024) : 0;
+    return baseTimeout + (fileSizeMB * 5000); // Add 5 seconds per MB
   }
 
   private async request<T>(
@@ -320,7 +326,8 @@ class APIService {
 
   // Download file from URL with filename extraction
   async downloadFromFileWithFilename(
-    path: string
+    path: string,
+    onProgress?: (progress: number) => void
   ): Promise<{ content: ArrayBuffer; filename: string }> {
     // Parse path to extract endpoint and params
     const url = new URL(path, window.location.origin);
@@ -338,8 +345,12 @@ class APIService {
     const url2 = `${this.baseUrl}${endpoint}?${new URLSearchParams(params)}`;
 
     try {
+      // Use extended dynamic timeout for large firmware files
+      // Start with a generous base timeout since we can't reliably get file size
+      const timeout = this.calculateDynamicTimeout(); // No size parameter = use base timeout
+
       const response = await fetch(url2, {
-        signal: AbortSignal.timeout(this.config.timeout),
+        signal: AbortSignal.timeout(timeout),
       });
 
       if (!response.ok) {
@@ -357,8 +368,51 @@ class APIService {
         }
       }
 
-      const content = await response.arrayBuffer();
-      return { content, filename };
+      // Get content length for progress calculation
+      const contentLength = response.headers.get('Content-Length');
+      const total = contentLength ? parseInt(contentLength, 10) : 0;
+      let loaded = 0;
+
+      if (!onProgress || total === 0) {
+        // No progress callback or unknown size - use simple method
+        const content = await response.arrayBuffer();
+        return { content, filename };
+      }
+
+      // Create reader from response body for progress tracking
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('Response body is not readable');
+      }
+
+      // Create chunks array to collect data
+      const chunks: Uint8Array[] = [];
+
+      // Read data with progress tracking
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) break;
+
+        chunks.push(value);
+        loaded += value.length;
+
+        // Report progress
+        const progress = Math.min(Math.round((loaded / total) * 100), 100);
+        onProgress(progress);
+      }
+
+      // Combine all chunks into single ArrayBuffer
+      const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+      const content = new Uint8Array(totalLength);
+      let offset = 0;
+
+      for (const chunk of chunks) {
+        content.set(chunk, offset);
+        offset += chunk.length;
+      }
+
+      return { content: content.buffer, filename };
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(`Download failed: ${error.message}`);

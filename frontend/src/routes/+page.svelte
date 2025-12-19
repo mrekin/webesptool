@@ -34,12 +34,12 @@
     isAutoSelectMode?: boolean;
     manifestData?: any;
   } = {}) {
-    if (options.preloadedFilesWithOffsets && options.preloadedFilesWithOffsets.length > 0) {
-      // AutoSelect режим
+    if (options.isAutoSelectMode && options.manifestData) {
+      // AutoSelect режим (с предзагруженными файлами или для скачивания)
       modalState = {
         isOpen: true,
         mode: 'autoselect',
-        preloadedFilesWithOffsets: options.preloadedFilesWithOffsets,
+        preloadedFilesWithOffsets: options.preloadedFilesWithOffsets || [],
         isAutoSelectMode: true,
         manifestData: options.manifestData
       };

@@ -192,6 +192,17 @@ export interface FirmwareFile {
   name: string;
 }
 
+export interface SelectedFirmwareFile {
+  filename: string;
+  address: string;
+  file: FirmwareFile;
+  hasError?: boolean;
+  errorMessage?: string;
+  isDownloading?: boolean;
+  downloadProgress?: number;
+  fileSize?: number;
+}
+
 export interface ZipExtractionResult {
   extractedFiles: File[];
   totalFiles: number;
