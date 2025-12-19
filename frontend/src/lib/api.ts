@@ -327,7 +327,8 @@ class APIService {
   // Download file from URL with filename extraction
   async downloadFromFileWithFilename(
     path: string,
-    onProgress?: (progress: number, total?: number) => void
+    onProgress?: (progress: number, total?: number) => void,
+    abortController?: AbortController
   ): Promise<{ content: ArrayBuffer; filename: string }> {
     // Parse path to extract endpoint and params
     const url = new URL(path, window.location.origin);
@@ -349,8 +350,11 @@ class APIService {
       // Start with a generous base timeout since we can't reliably get file size
       const timeout = this.calculateDynamicTimeout(); // No size parameter = use base timeout
 
+      // Use provided abort controller or create timeout signal
+      const signal = abortController ? abortController.signal : AbortSignal.timeout(timeout);
+
       const response = await fetch(url2, {
-        signal: AbortSignal.timeout(timeout),
+        signal,
       });
 
       if (!response.ok) {

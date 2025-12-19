@@ -79,17 +79,7 @@
 						: opt.label
 	}));
 
-	// Initialize preloaded files in AutoSelect mode when props change
-	$: if (isAutoSelectMode && preloadedFilesWithOffsets.length > 0 && isOpen) {
-		selectedFirmwareFiles = preloadedFilesWithOffsets.map(item => ({
-			filename: item.filename,
-			address: item.address,
-			file: item.file, // File object
-			hasError: false,
-			errorMessage: ''
-		}));
-	}
-
+	
 	// Handle manifest data in AutoSelect mode
 	$: if (isAutoSelectMode && manifestData && !metadataFile) {
 		// Create a virtual metadata file from manifest data
@@ -382,7 +372,7 @@
 		await espManager.resetPort();
 	}
 
-	// Reset everything when modal closes
+	// Cancel any ongoing operations when modal closes
 	async function resetState() {
 		// Cancel any ongoing file download
 		if (downloadAbortController) {
@@ -390,18 +380,7 @@
 			downloadAbortController = null;
 		}
 
-		selectedFirmwareFiles = [];
-		metadataFile = null;
-		metadata = null;
-		validationResult = { isValid: true };
-
-		// Reset download state
-		isDownloadingFiles = false;
-		downloadError = '';
-		downloadErrors = [];
-		downloadCompleted = false;
-
-		// Reset port using the dedicated function
+		// Reset port only
 		await resetPort();
 	}
 
@@ -533,6 +512,9 @@
 			// Download each file individually with progress tracking
 			const downloadPromises = parts.map(async (part, index) => {
 				try {
+					// Check if aborted before starting download
+					if (downloadAbortController.signal.aborted) return;
+
 					// Download file with progress tracking
 					const { content, filename } = await apiService.downloadFromFileWithFilename(
 						part.path,
@@ -543,12 +525,16 @@
 							if (total > 0) {
 								selectedFirmwareFiles[index].fileSize = total;
 							}
-						}
+						},
+						downloadAbortController
 					);
 
 					// Convert ArrayBuffer to File object
 					const file = new File([content], filename, { type: 'application/octet-stream' });
 					const firmwareFile = fileHandler.createFirmwareFile(file);
+
+					// Don't update if aborted
+					if (downloadAbortController.signal.aborted) return;
 
 					// Update file entry with downloaded data
 					selectedFirmwareFiles[index] = {
@@ -695,16 +681,20 @@
 		const segments = files.map((fileItem) => {
 			// Parse the address - handle both hex (0x...) and decimal formats
 			let address: number;
-			if (fileItem.address.startsWith('0x') || fileItem.address.startsWith('0X')) {
+			if (fileItem.address && typeof fileItem.address === 'string' &&
+				(fileItem.address.startsWith('0x') || fileItem.address.startsWith('0X'))) {
 				address = parseInt(fileItem.address, 16);
 			} else {
-				address = parseInt(fileItem.address, 10);
+				address = parseInt(fileItem.address || '0x0', 10);
 			}
 
 			// Ensure address is a valid number
 			if (isNaN(address) || address < 0) {
 				address = 0x0; // Default to 0x0 for invalid addresses
 			}
+
+			// Skip files without file object
+			if (!fileItem.file) return null;
 
 			// Get file type and color
 			const type = getFileType(fileItem.filename);
@@ -719,7 +709,8 @@
 			} as MemorySegment;
 		});
 
-		return segments;
+		return segments.filter(segment => segment !== null);
+
 	}
 
 	// Close modal
@@ -960,7 +951,12 @@
 									on:click={() => (showFileDetails = !showFileDetails)}
 									class="flex items-center space-x-2 text-sm font-medium text-orange-300 transition-colors hover:text-orange-200"
 								>
-									<span>{$locales('customfirmware.file_details')} ({$locales('customfirmware.file_details_count', {values: { count: fileCount }})})</span>
+									<span class="flex items-center space-x-2">
+										{#if isDownloadingFiles}
+											<div class="animate-spin">⏳</div>
+										{/if}
+										<span>{$locales('customfirmware.file_details')} ({$locales('customfirmware.file_details_count', {values: { count: fileCount }})})</span>
+									</span>
 									<span class="text-xs">{showFileDetails ? '▼' : '▶'}</span>
 								</button>
 
@@ -1053,7 +1049,7 @@
 																	{/if}
 																</div>
 																<div class="text-xs text-gray-500">
-																	{fileItem.fileSize > 0 ? fileHandler.formatFileSize(fileItem.fileSize) : fileHandler.formatFileSize(fileItem.file.size)}
+																	{fileItem.fileSize > 0 ? fileHandler.formatFileSize(fileItem.fileSize) : (fileItem.file?.size ? fileHandler.formatFileSize(fileItem.file.size) : '0 bytes')}
 																</div>
 															</div>
 															<div class="flex flex-shrink-0 items-center space-x-2">

@@ -349,6 +349,7 @@
 {/if}
 
 <!-- Custom Firmware Modal - Unified Instance -->
+{#if modalState.isOpen}
 <CustomFirmwareModal
   isOpen={modalState.isOpen}
   onClose={closeModal}
@@ -356,6 +357,7 @@
   isAutoSelectMode={modalState.isAutoSelectMode}
   manifestData={modalState.manifestData}
 />
+{/if}
 
 <style>
   /* Custom animations - optimized */
