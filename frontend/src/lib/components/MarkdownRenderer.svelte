@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import SvelteMarkdown from 'svelte-markdown';
+  import Markdown from '@humanspeak/svelte-markdown';
   import { insertDoc } from '$lib/utils/markdown';
   import { locale } from 'svelte-i18n';
   import { get } from 'svelte/store';
@@ -123,10 +123,10 @@
     };
   });
 
-  // Custom components to override link behavior
-  const components = {
-    a: (props: any) => {
-      return `<a href="${props.href}" target="_blank" rel="noopener noreferrer" class="text-orange-400 hover:text-orange-300 underline">${props.children || ''}</a>`;
+  // Custom renderer for links
+  const renderer = {
+    link: (href: string, title: string | null, text: string) => {
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="text-orange-400 hover:text-orange-300 underline">${text}</a>`;
     },
   };
 </script>
@@ -148,42 +148,32 @@
       <div class="border border-orange-600 rounded-lg overflow-hidden ml-4">
         <button
           onclick={() => isSpoilerOpen = !isSpoilerOpen}
-          class="w-full flex items-center justify-between p-3 bg-orange-900 bg-opacity-30 hover:bg-orange-900 bg-opacity-40 transition-colors text-left"
+          class="w-full flex items-center justify-between p-3 transition-all duration-300 text-left bg-orange-900/30 hover:bg-orange-900/50 hover:border-orange-500"
           aria-expanded={isSpoilerOpen}
         >
           <h4 class="text-lg font-semibold text-orange-200">{spoilerTitle}</h4>
-          <span class="text-orange-300 transform transition-transform duration-200" style="transform: {isSpoilerOpen ? 'rotate(180deg)' : 'rotate(0deg)'}">
+          <span class="text-orange-300 transform transition-transform duration-300" style="transform: {isSpoilerOpen ? 'rotate(180deg)' : 'rotate(0deg)'}">
             ▼
           </span>
         </button>
         {#if isSpoilerOpen}
           <div class="p-4 border-t border-orange-600 animate-fade-in">
-            <SvelteMarkdown
+            <Markdown
               source={content}
-              options={{
-                breaks: true,
-                linkify: true,
-                typographer: true,
-                sanitize: false,
-                openLinksInNewTab: true
-              }}
-              {components}
+              {renderer}
+              breaks={true}
+              linkify={true}
             />
           </div>
         {/if}
       </div>
     {:else}
       <!-- Normal mode -->
-      <SvelteMarkdown
+      <Markdown
         source={content}
-        options={{
-          breaks: true,
-          linkify: true,
-          typographer: true,
-          sanitize: false,
-          openLinksInNewTab: true
-        }}
-        {components}
+        {renderer}
+        breaks={true}
+        linkify={true}
       />
     {/if}
   {:else}

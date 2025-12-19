@@ -408,7 +408,7 @@
       </div>
 
       {#if showMoreOptions}
-        <div class="space-y-3 pt-4 border-t border-orange-700 rounded-lg">
+        <div class="space-y-3 pt-4 border-t border-orange-500 rounded-lg">
           <h3 class="text-lg font-semibold text-orange-200">{$locales('downloadbuttons.additional_download_options')}</h3>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">

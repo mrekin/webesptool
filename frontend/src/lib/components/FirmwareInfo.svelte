@@ -96,7 +96,7 @@
         <div class="mt-6 mb-6">
           <button
             on:click={toggleDeviceInfo}
-            class="w-full flex items-center justify-between p-3 bg-orange-900 bg-opacity-30 border border-orange-600 rounded hover:bg-orange-900 bg-opacity-40 transition-colors text-left"
+            class="w-full flex items-center justify-between p-3 transition-all duration-300 text-left bg-orange-900/30 border border-orange-600 rounded hover:bg-orange-900/50 hover:border-orange-500"
             aria-expanded={showDeviceInfo}
             aria-controls="howto-content"
           >
@@ -104,7 +104,7 @@
               <span class="mr-2">📖</span>
               {$locales('firmwareinfo.device_details')}
             </h3>
-            <span class="text-orange-300 transform transition-transform duration-200" style="transform: {showDeviceInfo ? 'rotate(180deg)' : 'rotate(0deg)'}">
+            <span class="text-orange-300 transform transition-transform duration-300" style="transform: {showDeviceInfo ? 'rotate(180deg)' : 'rotate(0deg)'}">
               ▼
             </span>
           </button>
@@ -236,62 +236,107 @@
 <style>
   /* Custom styles for rendered HTML content */
   :global(.prose h1) {
-    @apply text-xl font-bold text-orange-200 mb-2 mt-4;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #fed7aa;
+    margin-bottom: 0.5rem;
+    margin-top: 1rem;
   }
 
   :global(.prose h2) {
-    @apply text-lg font-semibold text-orange-200 mb-2 mt-3;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #fed7aa;
+    margin-bottom: 0.5rem;
+    margin-top: 0.75rem;
   }
 
   :global(.prose h3) {
-    @apply text-base font-medium text-orange-200 mb-1 mt-2;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #fed7aa;
+    margin-bottom: 0.25rem;
+    margin-top: 0.5rem;
   }
 
   :global(.prose p) {
-    @apply text-orange-100 mb-2;
+    color: #fed7aa;
+    margin-bottom: 0.5rem;
   }
 
   :global(.prose ul) {
-    @apply list-disc list-inside text-orange-100 mb-2;
+    list-style-type: disc;
+    list-style-position: inside;
+    color: #fed7aa;
+    margin-bottom: 0.5rem;
   }
 
   :global(.prose ol) {
-    @apply list-decimal list-inside text-orange-100 mb-2;
+    list-style-type: decimal;
+    list-style-position: inside;
+    color: #fed7aa;
+    margin-bottom: 0.5rem;
   }
 
   :global(.prose li) {
-    @apply mb-1;
+    margin-bottom: 0.25rem;
   }
 
   :global(.prose code) {
-    @apply bg-gray-900 px-1 py-0.5 rounded text-orange-200 font-mono text-xs;
+    background-color: #111827;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    color: #fed7aa;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.75rem;
   }
 
   :global(.prose pre) {
-    @apply bg-gray-900 p-3 rounded mb-2 overflow-x-auto;
+    background-color: #111827;
+    padding: 0.75rem;
+    border-radius: 0.375rem;
+    margin-bottom: 0.5rem;
+    overflow-x: auto;
   }
 
   :global(.prose pre code) {
-    @apply bg-transparent p-0;
+    background-color: transparent;
+    padding: 0;
   }
 
   :global(.prose a) {
-    @apply text-orange-400 hover:text-orange-300 underline;
+    color: #fb923c;
+    text-decoration: underline;
+  }
+
+  :global(.prose a:hover) {
+    color: #fdba74;
   }
 
   :global(.prose blockquote) {
-    @apply border-l-4 border-orange-600 pl-4 italic text-orange-200;
+    border-left: 4px solid #d8690e;
+    padding-left: 1rem;
+    font-style: italic;
+    color: #fed7aa;
   }
 
   :global(.prose table) {
-    @apply w-full text-sm mb-2;
+    width: 100%;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
   }
 
   :global(.prose th) {
-    @apply bg-gray-900 px-2 py-1 text-left font-medium text-orange-200;
+    background-color: #111827;
+    padding: 0.5rem;
+    text-align: left;
+    font-weight: 500;
+    color: #fed7aa;
   }
 
   :global(.prose td) {
-    @apply px-2 py-1 border-t border-gray-700 text-orange-100;
+    padding: 0.5rem;
+    border-top: 1px solid #374151;
+    color: #fed7aa;
   }
 </style>

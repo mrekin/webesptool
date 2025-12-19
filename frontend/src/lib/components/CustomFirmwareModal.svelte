@@ -772,7 +772,7 @@
 
 {#if isOpen}
 	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in"
 		on:keydown={(e) => e.key === 'Escape' && !isFlashing && handleClose()}
 		role="dialog"
 		aria-modal="true"
@@ -780,7 +780,7 @@
 		tabindex="-1"
 	>
 		<div
-			class="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-orange-600 bg-gray-800"
+			class="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-orange-600 bg-gray-800 shadow-2xl shadow-orange-900/50"
 		>
 			<!-- Header -->
 			<div class="flex items-center justify-between border-b border-gray-700 p-6">

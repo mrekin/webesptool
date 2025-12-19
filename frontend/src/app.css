@@ -1,17 +1,94 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Define custom color palette for TailwindCSS 4 */
+@theme {
+  --color-orange-50: #fffbf5;
+  --color-orange-100: #fff1e6;
+  --color-orange-200: #ffe4cc;
+  --color-orange-300: #ffd6a3;
+  --color-orange-400: #ffbc80;
+  --color-orange-500: #ff9a50;
+  --color-orange-600: #fb7d26;
+  --color-orange-700: #ea6005;
+  --color-orange-800: #c2410c;
+  --color-orange-900: #9a3412;
+  --color-orange-950: #431407;
+
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+  --color-gray-950: #030712;
+
+  /* Ensure spacing utilities work correctly */
+  --spacing-0: 0px;
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-5: 1.25rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-10: 2.5rem;
+  --spacing-12: 3rem;
+  --spacing-16: 4rem;
+  --spacing-20: 5rem;
+
+  /* Custom animations for better hover effects */
+  --transition-colors: color 250ms ease-in-out, background-color 250ms ease-in-out, border-color 250ms ease-in-out;
+  --transition-transform: transform 300ms ease-in-out;
+}
+
+/* Global animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    max-height: 1000px;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.4s ease-out forwards;
+  overflow: hidden;
+}
 
 /* Global styles for exact theme matching */
 :root {
   /* CSS Custom Properties for dynamic theming */
   --color-primary-bg: #615353;
-  --color-primary-border: #d8690e;
-  --color-primary-accent: #fb923c;
+  --color-primary-border: #ff9a50;
+  --color-primary-accent: #ffbc80;
   --color-content-bg: #1f2937;
-  --color-text-primary: #fed7aa;
-  --color-text-secondary: #fdba74;
-  --color-text-muted: #f5946c;
+  --color-text-primary: #ffe4cc;
+  --color-text-secondary: #ffd6a3;
+  --color-text-muted: #ff9a50;
 }
 
 /* Global background and base styles */

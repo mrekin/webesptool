@@ -114,7 +114,7 @@
     <div class="mb-6">
       <button
         onclick={toggleHowTo}
-        class="w-full flex items-center justify-between p-3 bg-orange-900 bg-opacity-30 border border-orange-600 rounded hover:bg-orange-900 bg-opacity-40 transition-colors text-left"
+        class="w-full flex items-center justify-between p-3 transition-all duration-300 text-left bg-orange-900/30 border border-orange-600 rounded hover:bg-orange-900/50 hover:border-orange-500"
         aria-expanded={showHowTo}
         aria-controls="howto-content"
       >
@@ -122,7 +122,7 @@
           <span class="mr-2">📖</span>
           {$locales('notes.howto')}
         </h3>
-        <span class="text-orange-300 transform transition-transform duration-200" style="transform: {showHowTo ? 'rotate(180deg)' : 'rotate(0deg)'}">
+        <span class="text-orange-300 transform transition-transform duration-300" style="transform: {showHowTo ? 'rotate(180deg)' : 'rotate(0deg)'}">
           ▼
         </span>
       </button>
@@ -148,7 +148,7 @@
     <div class="mb-6">
       <button
         onclick={toggleImportantNotes}
-        class="w-full flex items-center justify-between p-3 bg-orange-900 bg-opacity-30 border border-orange-600 rounded hover:bg-orange-900 bg-opacity-40 transition-colors text-left"
+        class="w-full flex items-center justify-between p-3 transition-all duration-300 text-left bg-orange-900/30 border border-orange-600 rounded hover:bg-orange-900/50 hover:border-orange-500"
         aria-expanded={showImportantNotes}
         aria-controls="important-notes-content"
       >
@@ -156,7 +156,7 @@
           <span class="mr-2">📝</span>
           {$locales('notes.notes')}
         </h3>
-        <span class="text-orange-300 transform transition-transform duration-200" style="transform: {showImportantNotes ? 'rotate(180deg)' : 'rotate(0deg)'}">
+        <span class="text-orange-300 transform transition-transform duration-300" style="transform: {showImportantNotes ? 'rotate(180deg)' : 'rotate(0deg)'}">
           ▼
         </span>
       </button>
@@ -199,7 +199,7 @@
     <div class="mb-6">
       <button
         onclick={toggleMore}
-        class="w-full flex items-center justify-between p-3 bg-orange-900 bg-opacity-30 border border-orange-600 rounded hover:bg-orange-900 bg-opacity-40 transition-colors text-left"
+        class="w-full flex items-center justify-between p-3 transition-all duration-300 text-left bg-orange-900/30 border border-orange-600 rounded hover:bg-orange-900/50 hover:border-orange-500"
         aria-expanded={showMoreSection}
         aria-controls="more-content"
       >
@@ -207,7 +207,7 @@
           <span class="mr-2">📋</span>
           {$locales('notes.more')}
         </h4>
-        <span class="text-orange-300 transform transition-transform duration-200" style="transform: {showMoreSection ? 'rotate(180deg)' : 'rotate(0deg)'}">
+        <span class="text-orange-300 transform transition-transform duration-300" style="transform: {showMoreSection ? 'rotate(180deg)' : 'rotate(0deg)'}">
           ▼
         </span>
       </button>
@@ -222,7 +222,7 @@
             </h5>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-orange-100">
               {#each bestPractices as practice}
-                <div class="flex items-start space-x-3 p-3 bg-orange-900 bg-opacity-20 rounded border border-orange-700">
+                <div class="flex items-start space-x-3 p-3 bg-gray-800 rounded border border-orange-500">
                   <span class="text-base flex-shrink-0 mt-0.5">{practice.icon}</span>
                   <div class="flex-1">
                     <h6 class="font-medium text-orange-200 mb-1">{practice.title}</h6>
@@ -234,7 +234,7 @@
           </div>
 
           <!-- Help and Support -->
-          <div class="p-3 bg-orange-900 bg-opacity-30 border border-orange-600 rounded">
+          <div class="p-3 bg-orange-900/30 border border-orange-600 rounded">
             <h5 class="font-medium text-orange-200 mb-2 flex items-center">
               <span class="mr-2">💬</span>
               {$locales('notes.need_help')}
@@ -254,7 +254,8 @@
                   href="https://github.com/mrekin/MeshtasticCustomBoards"
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="inline-flex items-center px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors text-sm"
+                  class="inline-flex items-center px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors text-sm font-medium"
+                  style="color: white !important;"
                 >
                   <span class="mr-2">🐛</span>
                   {$locales('notes.report_issue')}
@@ -263,7 +264,8 @@
                   href="https://meshtastic.org/docs/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="inline-flex items-center px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors text-sm ml-2"
+                  class="inline-flex items-center px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors text-sm ml-2 font-medium"
+                  style="color: white !important;"
                 >
                   <span class="mr-2">📚</span>
                   {$locales('notes.documentation')}
@@ -276,7 +278,7 @@
     </div>
 
     <!-- Version Information -->
-    <div class="mt-4 text-xs text-orange-400 border-t border-orange-700 pt-3">
+    <div class="mt-4 text-xs text-orange-400 border-t border-orange-500 pt-3">
       <div class="flex justify-between items-center">
         <span>{$locales('notes.firmware_build_service')}</span>
         <span>{$locales('notes.beta_version')}</span>

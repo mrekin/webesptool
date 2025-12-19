@@ -67,7 +67,7 @@
   }
 </script>
 
-<footer class="w-full border-t border-orange-800 bg-gray-900 bg-opacity-90 backdrop-blur-sm mt-auto">
+<footer class="w-full border-t border-orange-600 bg-gray-900 bg-opacity-90 backdrop-blur-sm mt-auto">
     <!-- Main footer content -->
     <div class="container mx-auto px-4 py-8">
       <!-- Top section with main links -->
@@ -120,7 +120,7 @@
         <!-- Combined cards row -->
         <div class="flex flex-wrap justify-center gap-2 sm:gap-3">
           {#each [...toolLinks, ...mirrorLinks] as link}
-            <div class="flex-1 min-w-[180px] sm:min-w-[200px] p-2 bg-gray-800 border border-orange-700 rounded hover:bg-gray-700 transition-all duration-200">
+            <div class="flex-1 min-w-[180px] sm:min-w-[200px] p-2 bg-gray-800 border border-orange-500 rounded hover:bg-gray-700 transition-all duration-200">
               <h4 class="font-medium text-orange-200 mb-1 text-xs truncate">
                 {link.name}
               </h4>
@@ -140,14 +140,14 @@
       </div>
 
       <!-- Divider -->
-      <div class="border-t border-orange-800 pt-8">
+      <div class="border-t border-orange-600 pt-8">
         <!-- Bottom section with legal and info -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
 
         </div>
 
         <!-- Copyright and credits -->
-        <div class="border-t border-orange-800 pt-6 mt-8">
+        <div class="border-t border-orange-600 pt-6 mt-8">
           <div class="text-center space-y-2 text-sm text-orange-400">
             <p class="flex flex-col sm:flex-row items-center justify-center gap-1 text-xs">
               <span>{$locales('footer.license_info')}</span>
@@ -178,7 +178,7 @@
     </div>
 
     <!-- Bottom bar with additional info -->
-    <div class="border-t border-orange-800 bg-gray-800">
+    <div class="border-t border-orange-600 bg-gray-800">
       <div class="container mx-auto px-4 py-3">
         <div class="flex flex-col sm:flex-row justify-between items-center text-xs text-orange-400">
           <div class="flex items-center space-x-4">
