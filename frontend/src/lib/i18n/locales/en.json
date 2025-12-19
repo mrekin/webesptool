@@ -226,7 +226,7 @@
     "address": "Address",
     "file_details": "File Details",
     "file_details_count": "{count} {count, plural, one {file} other {files}}",
-    "file_conflict_error": "Cannot flash both firmware and factory firmware files simultaneously. Please use only one type.",
+    "file_conflict_error": "Cannot flash firmware and factory firmware simultaneously. Use only one file type. Factory firmware contains bootloader, partitions, firmware.",
     "unknown_validation_error": "An unknown file validation error occurred.",
     "download_files_error": "Failed to download firmware files",
     "download_failed_details": "Download failed: {error}",

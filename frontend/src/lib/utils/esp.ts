@@ -54,8 +54,8 @@ function findManifestPart(filename: string, manifest: any) {
 	for (const part of parts) {
 		const partType = classifyManifestPart(part.path);
 
-		if (partType === 'firmware' && !lowerFilename.includes('bleota') &&
-			!lowerFilename.includes('littlefs') && !lowerFilename.includes('factory.bin')) {
+		// Only match firmware parts for actual firmware files
+		if (partType === 'firmware' && (lowerFilename.includes('firmware') || lowerFilename.includes('factory'))) {
 			return { ...part, partType };
 		}
 
