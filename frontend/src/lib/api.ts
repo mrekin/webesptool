@@ -327,7 +327,7 @@ class APIService {
   // Download file from URL with filename extraction
   async downloadFromFileWithFilename(
     path: string,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number, total?: number) => void
   ): Promise<{ content: ArrayBuffer; filename: string }> {
     // Parse path to extract endpoint and params
     const url = new URL(path, window.location.origin);
@@ -379,6 +379,9 @@ class APIService {
         return { content, filename };
       }
 
+      // Report initial progress with total size
+      onProgress(0, total);
+
       // Create reader from response body for progress tracking
       const reader = response.body?.getReader();
       if (!reader) {
@@ -399,7 +402,7 @@ class APIService {
 
         // Report progress
         const progress = Math.min(Math.round((loaded / total) * 100), 100);
-        onProgress(progress);
+        onProgress(progress, total);
       }
 
       // Combine all chunks into single ArrayBuffer

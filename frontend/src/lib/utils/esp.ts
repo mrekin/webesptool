@@ -414,12 +414,6 @@ export function validateFirmwareSelection(
 	);
 
 	// Check chip compatibility if metadata and device info are available
-	console.log('Validation inputs:', {
-		metadata,
-		deviceChip,
-		hasBuilds: metadata?.builds?.length > 0,
-		detectFormat: metadata ? detectMetadataFormat(metadata) : 'none'
-	});
 
 	if (metadata && deviceChip && metadata.builds && metadata.builds.length > 0) {
 		// Find a build in the manifest that matches the device chip family

@@ -513,16 +513,22 @@
 			const parts = manifestData.builds[0].parts;
 
 			// Create file entries immediately with downloading status
-			selectedFirmwareFiles = parts.map(part => ({
-				filename: '', // Will be updated when we get the filename from headers
-				address: `0x${part.offset.toString(16)}`,
-				file: { file: new File([], ''), content: '', size: 0, name: '' }, // Placeholder
-				hasError: false,
-				errorMessage: '',
-				isDownloading: true,
-				downloadProgress: 0,
-				fileSize: 0
-			}));
+			selectedFirmwareFiles = parts.map(part => {
+				// Extract filename from path for immediate display
+				const pathSegments = part.path.split('/');
+				const extractedFilename = pathSegments[pathSegments.length - 1] || 'firmware.bin';
+
+				return {
+					filename: extractedFilename,
+					address: `0x${part.offset.toString(16)}`,
+					file: { file: new File([], ''), content: '', size: 0, name: extractedFilename }, // Placeholder
+					hasError: false,
+					errorMessage: '',
+					isDownloading: true,
+					downloadProgress: 0,
+					fileSize: 0
+				};
+			});
 
 			// Download each file individually with progress tracking
 			const downloadPromises = parts.map(async (part, index) => {
@@ -530,9 +536,13 @@
 					// Download file with progress tracking
 					const { content, filename } = await apiService.downloadFromFileWithFilename(
 						part.path,
-						(progress) => {
+						(progress, total) => {
 							// Update progress for this specific file
 							selectedFirmwareFiles[index].downloadProgress = progress;
+							// Set file size from headers
+							if (total > 0) {
+								selectedFirmwareFiles[index].fileSize = total;
+							}
 						}
 					);
 
@@ -1019,16 +1029,17 @@
 														>
 															<!-- Download progress overlay -->
 															{#if fileItem.isDownloading}
-																<div class="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-black bg-opacity-70">
-																	<div class="w-full max-w-[80%]">
-																		<div class="h-1 w-full rounded-full bg-gray-700">
-																			<div
-																				class="h-1 rounded-full bg-blue-500 transition-all duration-300"
-																				style="width: {fileItem.downloadProgress || 0}%"
-																			></div>
-																		</div>
-																	</div>
-																</div>
+																<div
+																	class="absolute inset-0 z-10 rounded-md transition-all duration-300"
+																	style="
+																		background: linear-gradient(to right,
+																			rgba(59, 130, 246, 0.3) 0%,
+																			rgba(59, 130, 246, 0.3) {fileItem.downloadProgress || 0}%,
+																			rgba(0, 0, 0, 0.3) {fileItem.downloadProgress || 0}%,
+																			rgba(0, 0, 0, 0.3) 100%
+																		);
+																	"
+																></div>
 															{/if}
 															<div class="min-w-0 flex-1">
 																<div class="flex items-center space-x-2">
@@ -1042,7 +1053,7 @@
 																	{/if}
 																</div>
 																<div class="text-xs text-gray-500">
-																	{fileItem.fileSize > 0 ? fileHandler.formatFileSize(fileItem.fileSize) : (fileItem.isDownloading ? '...' : fileHandler.formatFileSize(fileItem.file.size))}
+																	{fileItem.fileSize > 0 ? fileHandler.formatFileSize(fileItem.fileSize) : fileHandler.formatFileSize(fileItem.file.size)}
 																</div>
 															</div>
 															<div class="flex flex-shrink-0 items-center space-x-2">
@@ -1148,16 +1159,17 @@
 											>
 												<!-- Download progress overlay -->
 												{#if fileItem.isDownloading}
-													<div class="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-black bg-opacity-70">
-														<div class="w-full max-w-[80%]">
-															<div class="h-1 w-full rounded-full bg-gray-700">
-																<div
-																	class="h-1 rounded-full bg-blue-500 transition-all duration-300"
-																	style="width: {fileItem.downloadProgress || 0}%"
-																></div>
-															</div>
-														</div>
-													</div>
+													<div
+														class="absolute inset-0 z-10 rounded-md transition-all duration-300"
+														style="
+															background: linear-gradient(to right,
+																rgba(59, 130, 246, 0.3) 0%,
+																rgba(59, 130, 246, 0.3) {fileItem.downloadProgress || 0}%,
+																rgba(0, 0, 0, 0.3) {fileItem.downloadProgress || 0}%,
+																rgba(0, 0, 0, 0.3) 100%
+															);
+														"
+													></div>
 												{/if}
 												<div class="min-w-0 flex-1">
 													<div class="flex items-center space-x-2">
@@ -1171,7 +1183,7 @@
 														{/if}
 													</div>
 													<div class="text-xs text-gray-500">
-														{fileItem.fileSize > 0 ? fileHandler.formatFileSize(fileItem.fileSize) : (fileItem.isDownloading ? '...' : fileHandler.formatFileSize(fileItem.file.size))}
+														{fileItem.fileSize > 0 ? fileHandler.formatFileSize(fileItem.fileSize) : fileHandler.formatFileSize(fileItem.file.size)}
 													</div>
 												</div>
 												<div class="flex flex-shrink-0 items-center space-x-2">
