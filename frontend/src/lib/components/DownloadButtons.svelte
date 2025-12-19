@@ -326,6 +326,23 @@
   </div>
 {/if}
 
+<!-- Download Options Header -->
+<h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center justify-between">
+  <div class="flex items-center">
+    <span class="mr-3">⬇️</span>
+    {$locales('page.download_options')}
+  </div>
+  {#if !deviceSelectionStore.devicePioTarget}
+    <button
+      on:click={() => dispatch('openCustomFirmwareModal', {})}
+      class="text-orange-200 hover:text-orange-100 transition-colors p-1 rounded"
+      title="{$locales('downloadbuttons.custom_firmware_description')}"
+      aria-label="{$locales('downloadbuttons.custom_firmware_description')}"
+    >
+      <span class="text-xl">🔧</span>
+    </button>
+  {/if}
+</h2>
 
 {#if deviceSelectionStore.devicePioTarget && deviceSelectionStore.version}
   <div class="space-y-4">

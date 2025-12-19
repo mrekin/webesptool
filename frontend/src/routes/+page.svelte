@@ -157,22 +157,6 @@
 
       <!-- Download Options -->
       <div class="bg-gray-800 border border-orange-600 rounded-lg p-6">
-        <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center justify-between">
-          <div class="flex items-center">
-            <span class="mr-3">⬇️</span>
-            {$locales('page.download_options')}
-          </div>
-          {#if !deviceSelectionStore.devicePioTarget}
-            <button
-              on:click={() => openModal()}
-              class="text-orange-200 hover:text-orange-100 transition-colors p-1 rounded"
-              title="{$locales('downloadbuttons.custom_firmware_description')}"
-              aria-label="{$locales('downloadbuttons.custom_firmware_description')}"
-            >
-              <span class="text-xl">🔧</span>
-            </button>
-          {/if}
-        </h2>
         <DownloadButtons on:openCustomFirmwareModal={(e) => openModal(e.detail)} />
       </div>
 
@@ -275,22 +259,6 @@
 
           <!-- Download Actions -->
           <div class="p-6 bg-gray-800 border border-orange-600 rounded-lg">
-            <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center justify-between">
-              <div class="flex items-center">
-                <span class="mr-3">⬇️</span>
-                {$locales('page.download_options')}
-              </div>
-              {#if !deviceSelectionStore.devicePioTarget}
-                <button
-                  on:click={() => openModal()}
-                  class="text-orange-200 hover:text-orange-100 transition-colors p-1 rounded"
-                  title="{$locales('downloadbuttons.custom_firmware_description')}"
-                  aria-label="{$locales('downloadbuttons.custom_firmware_description')}"
-                >
-                  <span class="text-xl">🔧</span>
-                </button>
-              {/if}
-            </h2>
             <DownloadButtons on:openCustomFirmwareModal={(e) => openModal(e.detail)} />
           </div>
         </div>
