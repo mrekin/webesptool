@@ -108,7 +108,13 @@ export interface UIState {
   showAdvancedOptions: boolean;
   selectedDownloadMode: string | null;
   showSecurityWarning: boolean;
-  interfaceMode: 'full' | 'minimal';
+  interfaceMode: InterfaceMode;
+}
+
+// Interface mode enum
+export enum InterfaceMode {
+  FULL = 'full',
+  MINIMAL = 'minimal'
 }
 
 // API Error types

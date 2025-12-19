@@ -14,6 +14,7 @@ import type {
   DeviceCategoryType,
   DeviceDisplayInfo
 } from './types.ts';
+import { InterfaceMode } from './types.ts';
 import { mapCategoryToDeviceType } from './utils/deviceTypeUtils.js';
 import { apiService } from './api.ts';
 
@@ -34,12 +35,12 @@ const initialLoadingState: LoadingState = {
 };
 
 // Get interface mode from cookie or default to 'full'
-const getInitialInterfaceMode = (): 'full' | 'minimal' => {
+const getInitialInterfaceMode = (): InterfaceMode => {
   if (browser) {
     const savedMode = getCookie('meshtastic-interface-mode');
-    return savedMode === 'minimal' ? 'minimal' : 'full';
+    return savedMode === 'minimal' ? InterfaceMode.MINIMAL : InterfaceMode.FULL;
   }
-  return 'full';
+  return InterfaceMode.FULL;
 };
 
 const initialUIState: UIState = {
@@ -406,7 +407,7 @@ export const uiActions = {
   },
 
   // Set interface mode
-  setInterfaceMode: (mode: 'full' | 'minimal') => {
+  setInterfaceMode: (mode: InterfaceMode) => {
     uiState.update(state => ({
       ...state,
       interfaceMode: mode
@@ -610,10 +611,21 @@ let previousVersion: string | null = null;
 deviceSelection.subscribe((selection) => {
   const { devicePioTarget, version } = selection;
 
+  // Get current interface mode
+  let currentInterfaceMode: InterfaceMode = InterfaceMode.FULL;
+  const unsubscribeUI = uiState.subscribe(state => {
+    currentInterfaceMode = state.interfaceMode;
+  });
+  unsubscribeUI();
+
   // Load versions and device info only when device type changes
   if (devicePioTarget && devicePioTarget !== previousDevicePioTarget) {
     apiActions.loadVersions(devicePioTarget);
-    apiActions.loadDeviceInfo(devicePioTarget);
+
+    // Load device info only in full mode (not used in minimal mode)
+    if (currentInterfaceMode === InterfaceMode.FULL) {
+      apiActions.loadDeviceInfo(devicePioTarget);
+    }
   }
 
   // Load firmware info only when version is selected (and device is already set)

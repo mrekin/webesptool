@@ -5,6 +5,7 @@
   import { uiState, uiActions } from '$lib/stores';
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
+  import { InterfaceMode } from '$lib/types';
 
   // Local state
   let showDropdown = false;
@@ -23,9 +24,9 @@
   $: currentInterfaceMode = $uiState.interfaceMode;
 
   // Sync local state with store
-  $: if (currentInterfaceMode === 'minimal' && !isMinimalMode) {
+  $: if (currentInterfaceMode === InterfaceMode.MINIMAL && !isMinimalMode) {
     isMinimalMode = true;
-  } else if (currentInterfaceMode === 'full' && isMinimalMode) {
+  } else if (currentInterfaceMode === InterfaceMode.FULL && isMinimalMode) {
     isMinimalMode = false;
   }
 
@@ -37,7 +38,7 @@
 
   // Handle interface mode change
   function handleInterfaceModeChange() {
-    const newMode = isMinimalMode ? 'minimal' : 'full';
+    const newMode = isMinimalMode ? InterfaceMode.MINIMAL : InterfaceMode.FULL;
     uiActions.setInterfaceMode(newMode);
     // Don't close dropdown for toggle - keep settings open
   }

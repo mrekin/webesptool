@@ -10,6 +10,7 @@
   import { loadingState, availableFirmwares, uiState, deviceSelection } from '$lib/stores';
   import { onMount } from 'svelte';
   import { _ as locales, locale } from 'svelte-i18n';
+  import { InterfaceMode } from '$lib/types';
 
   // Dynamic imports for components used only in full mode
   let FirmwareInfo: any = null;
@@ -63,7 +64,7 @@
   }
 
   // Load additional components only when needed
-  $: if (currentInterfaceMode === 'full' && !FirmwareInfo) {
+  $: if (currentInterfaceMode === InterfaceMode.FULL && !FirmwareInfo) {
     loadFullModeComponents();
   }
 
@@ -110,7 +111,7 @@
   <meta property="og:type" content="website" />
 </svelte:head>
 
-{#if currentInterfaceMode === 'minimal'}
+{#if currentInterfaceMode === InterfaceMode.MINIMAL}
   <!-- Minimal Interface Mode -->
   <div class="min-h-screen bg-gray-900 py-8">
     <div class="max-w-2xl mx-auto px-4 space-y-8">
