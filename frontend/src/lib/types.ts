@@ -55,7 +55,7 @@ export interface FirmwareRequest {
   t: string; // device type
   v: string; // version
   u: UpdateMode; // update mode: 1=update, 2=install/wipe, 4=OTA, 5=ZIP
-  p?: 'fw' | 'littlefs' | 'bleota'; // part
+  p?: 'fw' | 'littlefs' | 'bleota' | 'bleota-s3'; // part
   e?: boolean; // ESP32 flag
   src?: string; // source repository
 }

@@ -1,11 +1,11 @@
 <script lang="ts">
   import { locale } from 'svelte-i18n';
-  import { changeLocale, supportedLocales } from '$lib/i18n';
+  import { changeLocale, supportedLocales } from '$lib/i18n/index.js';
   import { _ as locales } from 'svelte-i18n';
-  import { uiState, uiActions } from '$lib/stores';
+  import { uiState, uiActions } from '$lib/stores.js';
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
-  import { InterfaceMode } from '$lib/types';
+  import { InterfaceMode } from '$lib/types.js';
 
   // Local state
   let showDropdown = false;

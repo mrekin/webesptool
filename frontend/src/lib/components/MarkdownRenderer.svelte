@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import Markdown from '@humanspeak/svelte-markdown';
-  import { insertDoc } from '$lib/utils/markdown';
+  import { insertDoc } from '$lib/utils/markdown.js';
   import { locale } from 'svelte-i18n';
   import { get } from 'svelte/store';
 

@@ -1,17 +1,17 @@
 // Export all dropdown utilities
-export * from './clickOutside';
-export * from './keyboardNavigation';
-export * from './dropdownManager';
-export * from './dropdownUtils';
-export * from './cookies';
+export * from './clickOutside.js';
+export * from './keyboardNavigation.js';
+export * from './dropdownManager.js';
+export * from './dropdownUtils.js';
+export * from './cookies.js';
 
 // Export markdown utilities
 export {
   insertDoc,
   clearMarkdownCache,
   getMarkdownCacheStats
-} from './markdown';
-export type { MarkdownOptions } from './markdown';
+} from './markdown.js';
+// export type { MarkdownOptions } from './markdown.js'; // Commenting out since MarkdownOptions is not exported from markdown.js
 
 // Re-export commonly used functions with shorter names
 export {
@@ -19,17 +19,17 @@ export {
   createKeyboardNavigation,
   createDropdownUtils,
   createSimpleDropdown
-} from './dropdownUtils';
+} from './dropdownUtils.js';
 
 // Export ESP and file handling utilities
-export * from './esp';
-export * from './fileHandler';
+export * from './esp.js';
+export * from './fileHandler.js';
 
 // Re-export ESP and file handler factory functions
 export {
   createESPManager
-} from './esp';
+} from './esp.js';
 
 export {
   createFirmwareFileHandler
-} from './fileHandler';
+} from './fileHandler.js';

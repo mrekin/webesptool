@@ -1,6 +1,6 @@
 <script lang="ts">
   import { _ as locales } from 'svelte-i18n';
-  import { appVersion } from '$lib/utils/envVariables';
+  import { appVersion } from '$lib/utils/envVariables.js';
 
   // Local state
   let currentYear = new Date().getFullYear();
@@ -42,7 +42,7 @@
     },
     {
       name: $locales('footer.esp_web_tools_name'),
-      href: 'https://esphome.github.io/esp-web-tools/',
+      href: 'https://github.com/esphome/esp-web-tools',
       description: $locales('footer.esp_web_tools_desc')
     }
   ];

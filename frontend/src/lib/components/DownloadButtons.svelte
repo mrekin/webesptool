@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { deviceSelection, loadingState, deviceDisplayInfo } from '$lib/stores';
-  import { apiActions } from '$lib/stores';
+  import { deviceSelection, loadingState, deviceDisplayInfo } from '$lib/stores.js';
+  import { apiActions } from '$lib/stores.js';
   import { DeviceType } from '$lib/types.js';
-  import { isESP32Device, isNRF52Device, isRP2040Device, supportsESPWebTools, supportsUF2 } from '$lib/utils/deviceTypeUtils.js';
+  import { isESP32Device, isNRF52Device, isRP2040Device, supportsUF2 } from '$lib/utils/deviceTypeUtils.js';
   import type { DownloadOption } from '$lib/types.js';
   import { _ as locales, locale } from 'svelte-i18n';
   import { onMount, createEventDispatcher } from 'svelte';
-	import { apiService } from '$lib/api';
-	import { createFirmwareFileHandler } from '$lib/utils/fileHandler';
+	import { apiService } from '$lib/api.js';
+	import { createFirmwareFileHandler } from '$lib/utils/fileHandler.js';
 
 	// Event dispatcher for CustomFirmwareModal
 	const dispatch = createEventDispatcher();
@@ -17,7 +17,6 @@
 
   // Local state
   let espWebToolsDialog: HTMLDialogElement;
-  let espWebToolsButton: HTMLElement;
   let showMoreOptions = false;
   let firmwareMode: 'update' | 'full' = 'update'; // update = mode 1, full = mode 2
 
@@ -28,16 +27,6 @@
   $: isDownloading = $loadingState.isDownloading;
   $: deviceDisplayInfoStore = $deviceDisplayInfo;
 
-  // Import esp-web-tools only on client side
-  onMount(async () => {
-    if (typeof window !== 'undefined') {
-      try {
-        await import('esp-web-tools/dist/web/install-button.js');
-      } catch (error) {
-        console.error('Failed to load ESP Web Tools:', error);
-      }
-    }
-  });
 
   // Available download options based on device type and version
   $: downloadOptions = getDownloadOptions(deviceSelectionStore.devicePioTarget, deviceDisplayInfoStore?.deviceType, deviceSelectionStore.version, firmwareMode, $locale);
@@ -48,8 +37,8 @@
 
     const options: DownloadOption[] = [];
 
-    // ESP32 devices get ESP Web Tools (primary button) and firmware mode selector
-    if (isESP32Device(deviceType)) {
+    // ESP32 devices get esptool (primary button) and firmware mode selector
+    if (isESP32Device(deviceType as DeviceType)) {
       options.push({
         id: 'esptool',
         label: mode === 'full' ? $locales('downloadbuttons.full_flash_device') : $locales('downloadbuttons.update_device'),
@@ -61,7 +50,7 @@
     }
 
     // UF2 downloads for NRF52 devices
-    if (isNRF52Device(deviceType)) {
+    if (isNRF52Device(deviceType as DeviceType)) {
       options.push({
         id: 'uf2',
         label: $locales('downloadbuttons.download_fw_uf2'),
@@ -92,7 +81,7 @@
     }
 
     // UF2 downloads for RP2040 devices
-    if (isRP2040Device(deviceType)) {
+    if (isRP2040Device(deviceType as DeviceType)) {
       options.push({
         id: 'uf2',
         label: $locales('downloadbuttons.download_uf2'),
@@ -120,29 +109,13 @@
   function generateManifestUrl(): string {
     // Use relative path to work with current base path
     return `./api/manifest?${new URLSearchParams({
-      t: deviceSelectionStore.devicePioTarget,
-      v: deviceSelectionStore.version,
+      t: deviceSelectionStore.devicePioTarget || '',
+      v: deviceSelectionStore.version || '',
       u: firmwareMode === 'full' ? '2' : '1',
-      src: deviceSelectionStore.source
+      src: deviceSelectionStore.source || ''
     })}`;
   }
 
-  // Function to configure and trigger ESP Web Tools button
-  function configureAndTriggerESPButton(): boolean {
-    if (espWebToolsButton) {
-      const manifestUrl = generateManifestUrl();
-      espWebToolsButton.setAttribute('manifest', manifestUrl);
-
-      // Trigger the ESP Web Tools installation
-      const activateButton = espWebToolsButton.querySelector('button[slot="activate"]');
-
-      if (activateButton) {
-        activateButton.click();
-        return true;
-      }
-    }
-    return false;
-  }
 
   // Simplified function to download files from URL
   function downloadFromUrl(url: string): void {
@@ -238,7 +211,7 @@
         deviceSelectionStore.devicePioTarget!,
         deviceSelectionStore.version!,
         option.mode,
-        deviceSelectionStore.source
+        deviceSelectionStore.source || ''
       );
       console.log('Manifest response:', manifest);
 
@@ -252,7 +225,7 @@
     } catch (error) {
       console.error('Failed to prepare manifest flashing:', error);
       // Don't fallback - just show error
-      alert('Failed to prepare manifest flashing: ' + error.message);
+      alert('Failed to prepare manifest flashing: ' + (error as any).message);
     }
   }
 
@@ -279,7 +252,7 @@
         });
       } catch (error) {
         console.error(`Failed to download file from ${part.path}:`, error);
-        throw new Error(`Failed to download firmware part from ${part.path}: ${error.message}`);
+        throw new Error(`Failed to download firmware part from ${part.path}: ${(error as any).message}`);
       }
     }
 
@@ -315,16 +288,6 @@
 
   </script>
 
-<!-- ESP Web Tools is now loaded as npm module in script section -->
-
-<!-- ESP Web Tools Button (hidden, used for firmware installation) -->
-{#if supportsESPWebTools(deviceDisplayInfoStore?.deviceType) && deviceSelectionStore.version}
-  <div style="display: none;">
-    <esp-web-install-button bind:this={espWebToolsButton} manifest="">
-      <button slot="activate">{$locales('downloadbuttons.esp_web_tools_install')}</button>
-    </esp-web-install-button>
-  </div>
-{/if}
 
 <!-- Download Options Header -->
 <h2 class="text-xl font-bold text-orange-200 mb-6 flex items-center justify-between">
@@ -348,35 +311,33 @@
   <div class="space-y-4">
 
     <!-- Firmware Mode Selector for ESP32 Devices -->
-    {#if supportsESPWebTools(deviceDisplayInfoStore?.deviceType)}
-      <div class="space-y-2 sm:space-y-3">
-        <label class="block text-sm font-medium text-orange-200 mb-2">
-          {$locales('downloadbuttons.flash_mode')}
+    <div class="space-y-2 sm:space-y-3">
+      <label class="block text-sm font-medium text-orange-200 mb-2">
+        {$locales('downloadbuttons.flash_mode')}
+      </label>
+      <div class="flex flex-col sm:flex-row sm:space-x-4 space-y-2 sm:space-y-0">
+        <label class="flex items-center space-x-2 cursor-pointer" title="{$locales('downloadbuttons.update_existing_firmware')}">
+          <input
+            type="radio"
+            bind:group={firmwareMode}
+            value="update"
+            class="text-orange-500 focus:ring-orange-500 focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900"
+          />
+          <span class="text-orange-100">{$locales('downloadbuttons.update_device')}</span>
+          <span class="text-xs text-orange-400 max-w-[100px] sm:max-w-none break-words sm:break-normal">{$locales('downloadbuttons.preserves_settings')}</span>
         </label>
-        <div class="flex flex-col sm:flex-row sm:space-x-4 space-y-2 sm:space-y-0">
-          <label class="flex items-center space-x-2 cursor-pointer" title="{$locales('downloadbuttons.update_existing_firmware')}">
-            <input
-              type="radio"
-              bind:group={firmwareMode}
-              value="update"
-              class="text-orange-500 focus:ring-orange-500 focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900"
-            />
-            <span class="text-orange-100">{$locales('downloadbuttons.update_device')}</span>
-            <span class="text-xs text-orange-400 max-w-[100px] sm:max-w-none break-words sm:break-normal">{$locales('downloadbuttons.preserves_settings')}</span>
-          </label>
-          <label class="flex items-center space-x-2 cursor-pointer" title="{$locales('downloadbuttons.complete_firmware_wipe')}">
-            <input
-              type="radio"
-              bind:group={firmwareMode}
-              value="full"
-              class="text-orange-500 focus:ring-orange-500 focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900"
-            />
-            <span class="text-orange-100">{$locales('downloadbuttons.full_flash')}</span>
-            <span class="text-xs text-orange-400 max-w-[100px] sm:max-w-none break-words sm:break-normal">{$locales('downloadbuttons.wipe_reinstall')}</span>
-          </label>
-        </div>
+        <label class="flex items-center space-x-2 cursor-pointer" title="{$locales('downloadbuttons.complete_firmware_wipe')}">
+          <input
+            type="radio"
+            bind:group={firmwareMode}
+            value="full"
+            class="text-orange-500 focus:ring-orange-500 focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900"
+          />
+          <span class="text-orange-100">{$locales('downloadbuttons.full_flash')}</span>
+          <span class="text-xs text-orange-400 max-w-[100px] sm:max-w-none break-words sm:break-normal">{$locales('downloadbuttons.wipe_reinstall')}</span>
+        </label>
       </div>
-    {/if}
+    </div>
 
     <!-- Primary Download Actions -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">

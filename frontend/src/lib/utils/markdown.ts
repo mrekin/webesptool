@@ -1,8 +1,8 @@
 import { browser } from '$app/environment';
 import { locale } from 'svelte-i18n';
 import { get } from 'svelte/store';
-import { isESP32Device, isNRF52Device, isRP2040Device } from '$lib/utils/deviceTypeUtils';
-import { DeviceType } from '$lib/types';
+import { isESP32Device, isNRF52Device, isRP2040Device } from '$lib/utils/deviceTypeUtils.js';
+import { DeviceType } from '$lib/types.js';
 
 interface MarkdownOptions {
   /** Whether to cache loaded files, defaults to true */

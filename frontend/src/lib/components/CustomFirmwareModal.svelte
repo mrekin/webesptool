@@ -6,9 +6,9 @@
 		getMeshtasticFlashAddress,
 		validateFirmwareSelection,
 		parseFirmwareMetadata
-	} from '$lib/utils/esp';
-	import { createFirmwareFileHandler } from '$lib/utils/fileHandler';
-	import { apiService } from '$lib/api';
+	} from '$lib/utils/esp.js';
+	import { createFirmwareFileHandler } from '$lib/utils/fileHandler.js';
+	import { apiService } from '$lib/api.js';
 	import type { FirmwareFile, FirmwareMetadata, FirmwareMetadataExtended, MemorySegment, SelectedFirmwareFile } from '$lib/types.js';
 	import { ValidationErrors } from '$lib/types.js';
 	import MemoryMap from '$lib/components/MemoryMap.svelte';
@@ -492,7 +492,7 @@
 			const parts = manifestData.builds[0].parts;
 
 			// Create file entries immediately with downloading status
-			selectedFirmwareFiles = parts.map(part => {
+			selectedFirmwareFiles = parts.map((part: any) => {
 				// Extract filename from path for immediate display
 				const pathSegments = part.path.split('/');
 				const extractedFilename = pathSegments[pathSegments.length - 1] || 'firmware.bin';
@@ -510,10 +510,10 @@
 			});
 
 			// Download each file individually with progress tracking
-			const downloadPromises = parts.map(async (part, index) => {
+			const downloadPromises = parts.map(async (part: any, index: number) => {
 				try {
 					// Check if aborted before starting download
-					if (downloadAbortController.signal.aborted) return;
+					if (downloadAbortController?.signal.aborted) return;
 
 					// Download file with progress tracking
 					const { content, filename } = await apiService.downloadFromFileWithFilename(
@@ -522,11 +522,11 @@
 							// Update progress for this specific file
 							selectedFirmwareFiles[index].downloadProgress = progress;
 							// Set file size from headers
-							if (total > 0) {
+							if (total && total > 0) {
 								selectedFirmwareFiles[index].fileSize = total;
 							}
 						},
-						downloadAbortController
+						downloadAbortController as any
 					);
 
 					// Convert ArrayBuffer to File object
@@ -534,7 +534,7 @@
 					const firmwareFile = fileHandler.createFirmwareFile(file);
 
 					// Don't update if aborted
-					if (downloadAbortController.signal.aborted) return;
+					if (downloadAbortController?.signal.aborted) return;
 
 					// Update file entry with downloaded data
 					selectedFirmwareFiles[index] = {
@@ -724,7 +724,7 @@
 	}
 
 	// Reactive data for MemoryMap
-	$: totalMemorySize = deviceInfo ? parseFlashSize(deviceInfo.flashSize) : metadata?.builds ? parseFlashSize(metadata?.builds[0]?.flashsize) : 4 *1024 * 1024;
+	$: totalMemorySize = deviceInfo ? parseFlashSize(deviceInfo.flashSize) : (metadata as any)?.builds ? parseFlashSize((metadata as any)?.builds[0]?.flashsize) : 4 *1024 * 1024;
 	$: memorySegments = prepareMemorySegments(selectedFirmwareFiles);
 
 	// Calculate file count for File Details display
@@ -985,12 +985,12 @@
 														</div>
 														{#if metadata}
 															<div class="mt-1 text-xs text-gray-500">
-																{#if metadata.builds}
+																{#if (metadata as any).builds}
 																	<!-- Manifest format -->
-																	Version: {metadata.version} | Device: {metadata.name} | Chip: {metadata.builds[0]?.chipFamily}
+																	Version: {metadata.version} | Device: {(metadata as any).name} | Chip: {(metadata as any).builds[0]?.chipFamily}
 																{:else}
 																	<!-- Legacy format -->
-																	Version: {metadata.version} | Board: {metadata.board} | MCU: {metadata.mcu}
+																	Version: {metadata.version} | Board: {(metadata as any).board} | MCU: {(metadata as any).mcu}
 																{/if}
 															</div>
 														{/if}
@@ -1049,7 +1049,7 @@
 																	{/if}
 																</div>
 																<div class="text-xs text-gray-500">
-																	{fileItem.fileSize > 0 ? fileHandler.formatFileSize(fileItem.fileSize) : (fileItem.file?.size ? fileHandler.formatFileSize(fileItem.file.size) : '0 bytes')}
+																	{fileItem.fileSize && fileItem.fileSize > 0 ? fileHandler.formatFileSize(fileItem.fileSize) : (fileItem.file?.size ? fileHandler.formatFileSize(fileItem.file.size) : '0 bytes')}
 																</div>
 															</div>
 															<div class="flex flex-shrink-0 items-center space-x-2">
@@ -1115,12 +1115,12 @@
 											</div>
 											{#if metadata}
 												<div class="mt-1 text-xs text-gray-500">
-													{#if metadata.builds}
+													{#if (metadata as any).builds}
 														<!-- Manifest format -->
-														Version: {metadata.version} | Device: {metadata.name} | Chip: {metadata.builds[0]?.chipFamily}
+														Version: {metadata.version} | Device: {(metadata as any).name} | Chip: {(metadata as any).builds[0]?.chipFamily}
 													{:else}
 														<!-- Legacy format -->
-														Version: {metadata.version} | Board: {metadata.board} | MCU: {metadata.mcu}
+														Version: {metadata.version} | Board: {(metadata as any).board} | MCU: {(metadata as any).mcu}
 													{/if}
 												</div>
 											{/if}
@@ -1179,7 +1179,7 @@
 														{/if}
 													</div>
 													<div class="text-xs text-gray-500">
-														{fileItem.fileSize > 0 ? fileHandler.formatFileSize(fileItem.fileSize) : fileHandler.formatFileSize(fileItem.file.size)}
+														{fileItem.fileSize && fileItem.fileSize > 0 ? fileHandler.formatFileSize(fileItem.fileSize) : fileHandler.formatFileSize(fileItem.file.size)}
 													</div>
 												</div>
 												<div class="flex flex-shrink-0 items-center space-x-2">

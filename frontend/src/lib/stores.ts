@@ -15,10 +15,10 @@ import type {
   DeviceDisplayInfo,
   SelectionState,
   Device
-} from './types.ts';
-import { InterfaceMode } from './types.ts';
+} from './types.js';
+import { InterfaceMode } from './types.js';
 import { mapCategoryToDeviceType } from './utils/deviceTypeUtils.js';
-import { apiService } from './api.ts';
+import { apiService } from './api.js';
 
 // Initial state values
 const initialDeviceSelection: DeviceSelection = {
@@ -727,7 +727,7 @@ export const apiActions = {
         t: devicePioTarget,
         v: version,
         u: mode,
-        ...(part && { p: part as 'fw' | 'littlefs' | 'bleota' | 'bleota-s3' }),
+        ...(part && { p: part as 'fw' | 'littlefs' | 'bleota' }),
         src: source,
         e: category == 'esp' ? true : false
       };

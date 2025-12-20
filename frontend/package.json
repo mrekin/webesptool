@@ -62,7 +62,6 @@
 	},
 	"dependencies": {
 		"@humanspeak/svelte-markdown": "^0.8.13",
-		"esp-web-tools": "10",
 		"esptool-js": "^0.5.7",
 		"jszip": "^3.10.1",
 		"svelte-i18n": "^4.0.1"

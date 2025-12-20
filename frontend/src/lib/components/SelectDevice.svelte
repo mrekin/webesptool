@@ -1,7 +1,7 @@
 <script lang="ts">
     import { deviceSelection, availableFirmwares, versionsData, allDevicesFlat, allDevicesWithCategories,
-         selectionState, availableDevicesForSelection, availableVersionsForSelection } from '$lib/stores';
-  import { deviceActions, selectionActions } from '$lib/stores';
+         selectionState, availableDevicesForSelection, availableVersionsForSelection } from '$lib/stores.js';
+  import { deviceActions, selectionActions } from '$lib/stores.js';
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
   import { DeviceType } from '$lib/types.js';
@@ -508,10 +508,10 @@
       </div>
 
       <!-- Version Notes -->
-      {#if versionSelected && versionsDataStore.notes[deviceSelectionStore.version]}
+      {#if versionSelected && versionsDataStore.notes[deviceSelectionStore.version as any]}
         <div class="mt-2 p-3 bg-gray-800 border border-orange-600 rounded-md version-notes">
           <div class="text-sm text-orange-200 prose prose-invert prose-sm max-w-none">
-            {@html versionsDataStore.notes[deviceSelectionStore.version]}
+            {@html versionsDataStore.notes[deviceSelectionStore.version as any]}
           </div>
         </div>
       {/if}

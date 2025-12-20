@@ -34,7 +34,7 @@ export function createDropdownManager() {
     /**
      * Set dropdown state
      */
-    setState: (type: DropdownType, state: Partial<DropdownState>) => {
+    setState: function(type: DropdownType, state: Partial<DropdownState>) {
       const current = this.getState(type);
       dropdowns.set(type, { ...current, ...state });
     },
@@ -49,9 +49,9 @@ export function createDropdownManager() {
     /**
      * Close all dropdowns
      */
-    closeAll: () => {
+    closeAll: function() {
       for (const [type] of dropdowns) {
-        this.setState(type, { isOpen: false, selectedIndex: -1 });
+        this.setState(type as DropdownType, { isOpen: false, selectedIndex: -1 });
       }
     },
 
@@ -77,7 +77,7 @@ export function manageDropdown(
   type: DropdownType,
   action: DropdownAction,
   options: DropdownOptions = {},
-  setter: (state: { isOpen: boolean; selectedIndex: number }) => void
+  setter: (state: any) => void
 ) {
   switch (action) {
     case 'open':
@@ -95,7 +95,8 @@ export function manageDropdown(
       break;
 
     case 'toggle':
-      setter((currentState) => ({
+      setter((currentState: { isOpen: boolean; selectedIndex: number }) => ({
+        ...currentState,
         isOpen: !currentState.isOpen,
         selectedIndex: !currentState.isOpen ? -1 : currentState.selectedIndex
       }));
@@ -117,12 +118,7 @@ export function manageEnhancedDropdown(
   type: DropdownType,
   action: DropdownAction,
   options: EnhancedDropdownOptions = {},
-  setter: (state: {
-    isOpen: boolean;
-    selectedIndex: number;
-    filter?: string;
-    filteredItems?: any[];
-  }) => void
+  setter: (state: any) => void
 ) {
   switch (type) {
     case 'device':
@@ -145,7 +141,8 @@ export function manageEnhancedDropdown(
           break;
 
         case 'toggle':
-          setter((currentState) => ({
+          setter((currentState: { isOpen: boolean; selectedIndex: number; filter?: string; filteredItems?: any[] }) => ({
+            ...currentState,
             isOpen: !currentState.isOpen,
             selectedIndex: !currentState.isOpen ? -1 : currentState.selectedIndex,
             filter: !currentState.isOpen && options.saveFilter ? options.filter : ''
@@ -171,7 +168,8 @@ export function manageEnhancedDropdown(
           break;
 
         case 'toggle':
-          setter((currentState) => ({
+          setter((currentState: { isOpen: boolean; selectedIndex: number; filter?: string; filteredItems?: any[] }) => ({
+            ...currentState,
             isOpen: !currentState.isOpen,
             selectedIndex: !currentState.isOpen ? -1 : currentState.selectedIndex
           }));

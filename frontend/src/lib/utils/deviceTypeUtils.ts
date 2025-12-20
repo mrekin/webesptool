@@ -1,4 +1,4 @@
-import { DeviceType } from '$lib/types';
+import { DeviceType } from '$lib/types.js';
 
 /**
  * Mapping API categories to DeviceType
@@ -92,9 +92,3 @@ export function supportsUF2(deviceType: DeviceType): boolean {
   return deviceType === DeviceType.NRF52 || deviceType === DeviceType.RP2040;
 }
 
-/**
- * Проверить, поддерживает ли устройство ESP Web Tools
- */
-export function supportsESPWebTools(deviceType: DeviceType): boolean {
-  return deviceType === DeviceType.ESP32;
-}

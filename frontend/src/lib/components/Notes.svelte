@@ -1,15 +1,15 @@
 <script lang="ts">
   import { _ as locales } from 'svelte-i18n';
-  import { deviceDisplayInfo } from '$lib/stores';
+  import { deviceDisplayInfo } from '$lib/stores.js';
   import { isNRF52Device, isESP32Device } from '$lib/utils/deviceTypeUtils.js';
   import MarkdownRenderer from '$lib/components/MarkdownRenderer.svelte';
-  import { getAvailableDocuments } from '$lib/utils/markdown';
+  import { getAvailableDocuments } from '$lib/utils/markdown.js';
 
   // Local state
   let showMoreSection = $state(false);
   let showImportantNotes = $state(false);
   let showHowTo = $state(false);
-  let availableDocuments = $state([]);
+  let availableDocuments = $state<string[]>([]);
 
   // Subscribe to device display info
   let currentDeviceInfo = $derived($deviceDisplayInfo);
@@ -23,8 +23,8 @@
   async function loadDocuments() {
     try {
       // Load documents from howto directory with device type filtering
-      const docs = await getAvailableDocuments('howto', currentDeviceInfo?.deviceType);
-      availableDocuments = docs;
+      const docs: string[] = await getAvailableDocuments('howto', currentDeviceInfo?.deviceType);
+      availableDocuments = docs as string[];
     } catch (error) {
       console.error('Failed to load documents:', error);
       availableDocuments = [];

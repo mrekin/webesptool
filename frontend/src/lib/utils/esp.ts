@@ -1,5 +1,5 @@
-import type { ESPDeviceInfo, FlashProgress, FlashOptions, FirmwareFile, FirmwareMetadata, FirmwareMetadataExtended, FlashAddressResult, ValidationError } from '$lib/types';
-import { ValidationErrors } from '$lib/types';
+import type { ESPDeviceInfo, FlashProgress, FlashOptions, FirmwareFile, FirmwareMetadata, FirmwareMetadataExtended, FlashAddressResult, ValidationError } from '$lib/types.js';
+import { ValidationErrors } from '$lib/types.js';
 
 // Constants for flash addresses
 const FIRMWARE_OFFSET = '0x0';
@@ -103,7 +103,7 @@ export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMe
 				return {
 					address: `0x${manifestPart.offset.toString(16).toUpperCase()}`,
 					type: 'firmware',
-					description: `Factory firmware for ${metadata.name || 'device'}. Contains bootloader, partitions, application`
+					description: `Factory firmware for ${(metadata as any).name || 'device'}. Contains bootloader, partitions, application`
 				};
 			}
 		}
@@ -124,7 +124,7 @@ export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMe
 				return {
 					address: `0x${manifestPart.offset.toString(16).toUpperCase()}`,
 					type: 'firmware',
-					description: `Bootloader for ${metadata.name || 'device'}`
+					description: `Bootloader for ${(metadata as any).name || 'device'}`
 				};
 			}
 		}
@@ -144,7 +144,7 @@ export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMe
 				return {
 					address: `0x${manifestPart.offset.toString(16).toUpperCase()}`,
 					type: 'firmware',
-					description: `Partitions for ${metadata.name || 'device'}`
+					description: `Partitions for ${(metadata as any).name || 'device'}`
 				};
 			}
 		}
@@ -162,14 +162,14 @@ export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMe
 
 		// Use legacy metadata to get app partition address if available
 		if (metadata && detectMetadataFormat(metadata) === 'legacy') {
-			const appPartition = metadata.part.find((p: any) =>
+			const appPartition = (metadata as any).part.find((p: any) =>
 				p.subtype === 'ota_0' && p.type === 'app'
 			);
 			if (appPartition) {
 				return {
 					address: appPartition.offset,
 					type: 'firmware',
-					description: `Update firmware for ${metadata.mcu} - ${metadata.board}`
+					description: `Update firmware for ${(metadata as any).mcu} - ${(metadata as any).board}`
 				};
 			}
 		}
@@ -180,13 +180,13 @@ export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMe
 		if (metadata && detectMetadataFormat(metadata) === 'manifest') {
 			// Only use manifest for update firmware if it has exactly one part
 			// and that part is not at offset 0 (factory)
-			if (metadata.builds?.[0]?.parts?.length === 1) {
-				const singlePart = metadata.builds[0].parts[0];
+			if ((metadata as any).builds?.[0]?.parts?.length === 1) {
+				const singlePart = (metadata as any).builds[0].parts[0];
 				if (singlePart.offset !== 0 && classifyManifestPart(singlePart.path) === 'firmware') {
 					return {
 						address: `0x${singlePart.offset.toString(16).toUpperCase()}`,
 						type: 'firmware',
-						description: `Update firmware for ${metadata.name || 'device'}`
+						description: `Update firmware for ${(metadata as any).name || 'device'}`
 					};
 				}
 			}
@@ -210,13 +210,13 @@ export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMe
 		// 1. Check manifest first (highest priority), but only for single-part manifests
 		// Multi-part manifests are for factory installation only
 		if (metadata && detectMetadataFormat(metadata) === 'manifest') {
-			if (metadata.builds?.[0]?.parts?.length === 1) {
+			if ((metadata as any).builds?.[0]?.parts?.length === 1) {
 				const manifestPart = findManifestPart(filename, metadata);
 				if (manifestPart?.partType === 'ota') {
 					return {
 						address: `0x${manifestPart.offset.toString(16).toUpperCase()}`,
 						type: 'ota',
-						description: `OTA firmware for ${metadata.name || 'device'}`
+						description: `OTA firmware for ${(metadata as any).name || 'device'}`
 					};
 				}
 			}
@@ -224,8 +224,8 @@ export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMe
 
 		// 2. Use legacy metadata if available
 		if (metadata && detectMetadataFormat(metadata) === 'legacy') {
-			description = `OTA firmware for ${metadata.mcu}`;
-			otaOffset = getOtaOffsetFromMetadata(metadata);
+			description = `OTA firmware for ${(metadata as any).mcu}`;
+			otaOffset = getOtaOffsetFromMetadata(metadata as any);
 		}
 		// 3. Use detected chip name if no metadata
 		else if (chipName) {
@@ -292,13 +292,13 @@ export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMe
 		// Check manifest first for filesystem, but only for single-part manifests
 		// Multi-part manifests are for factory installation only
 		if (metadata && detectMetadataFormat(metadata) === 'manifest') {
-			if (metadata.builds?.[0]?.parts?.length === 1) {
+			if ((metadata as any).builds?.[0]?.parts?.length === 1) {
 				const manifestPart = findManifestPart(filename, metadata);
 				if (manifestPart?.partType === 'filesystem') {
 					return {
 						address: `0x${manifestPart.offset.toString(16).toUpperCase()}`,
 						type: 'filesystem',
-						description: `File system for ${metadata.name || 'device'}`
+						description: `File system for ${(metadata as any).name || 'device'}`
 					};
 				}
 			}
@@ -333,8 +333,8 @@ function getOtaOffsetFromMetadata(metadata: FirmwareMetadata): string {
 /**
  * Get SPIFFS offset from metadata partitions
  */
-function getSpiffsOffsetFromMetadata(metadata: FirmwareMetadata): string {
-	const spiffsPartition = metadata.part.find((p: any) => p.subtype === 'spiffs');
+function getSpiffsOffsetFromMetadata(metadata: FirmwareMetadataExtended): string {
+	const spiffsPartition = (metadata as any).part.find((p: any) => p.subtype === 'spiffs');
 	return spiffsPartition ? spiffsPartition.offset : DEFAULT_SPIFFS_OFFSET;
 }
 
@@ -429,20 +429,20 @@ export function validateFirmwareSelection(
 
 	// Check chip compatibility if metadata and device info are available
 
-	if (metadata && deviceChip && metadata.builds && metadata.builds.length > 0) {
+	if (metadata && deviceChip && (metadata as any).builds && (metadata as any).builds.length > 0) {
 		// Find a build in the manifest that matches the device chip family
-		// This is how esp-web-tools does it - direct string comparison
-		const matchingBuild = metadata.builds.find((build: any) => build.chipFamily === deviceChip);
+		// Direct string comparison to match device chip family
+		const matchingBuild = (metadata as any).builds.find((build: any) => build.chipFamily === deviceChip);
 
 		console.log('Chip compatibility check:', {
 			deviceChip,
-			availableChips: metadata.builds.map((b: any) => b.chipFamily),
+			availableChips: (metadata as any).builds.map((b: any) => b.chipFamily),
 			matchingBuild: matchingBuild ? matchingBuild.chipFamily : null
 		});
 
 		if (!matchingBuild) {
 			// No matching build found - chip not supported
-			const supportedChips = metadata.builds.map((b: any) => b.chipFamily).join(', ');
+			const supportedChips = (metadata as any).builds.map((b: any) => b.chipFamily).join(', ');
 			return {
 				isValid: false,
 				errorCode: ValidationErrors.CHIP_MISMATCH,
@@ -472,7 +472,7 @@ export function validateFirmwareSelection(
 }
 
 export function createESPManager() {
-	let port: SerialPort | null = null;
+	let port: any = null; // Use 'any' type for SerialPort since it's not defined in the current context
 	let esploader: any = null;
 	let transport: any = null;
 
@@ -507,7 +507,8 @@ export function createESPManager() {
 
 		try {
 			// Import ESPLoader
-			const { ESPLoader, LoaderOptions } = await import('esptool-js');
+			const { ESPLoader } = await import('esptool-js');
+			type LoaderOptions = any; // Define LoaderOptions as any since it's not exported from esptool-js
 
 			// Create transport and store for reuse
 			transport = new (await import('esptool-js')).Transport(port, true);
@@ -527,18 +528,18 @@ export function createESPManager() {
 			};
 
 			// Create ESPLoader with minimal options
-			const loaderOptions = {
+			const loaderOptions: any = {
 				transport,
 				baudrate: 115200, // Use standard speed for detection
 				terminal: espLoaderTerminal,
 				debugLogging: false,
-			} as LoaderOptions;
+			};
 
 			esploader = new ESPLoader(loaderOptions);
 
 			// Initialize to detect chip - main() returns chip name as string
 			const chipName = await esploader.main();
-			// Also get chip name from esploader.chip.CHIP_NAME like esp-web-tools does
+			// Also get chip name from esploader.chip.CHIP_NAME
 			let espChipName = esploader.chip?.CHIP_NAME || chipName;
 			// Remove revision info from chip name (e.g., "ESP32-C6 (revision 2)" -> "ESP32-C6")
 			espChipName = espChipName.replace(/\s*\(revision.*\)$/, '').trim();
@@ -590,7 +591,7 @@ export function createESPManager() {
 			}
 
 			const deviceInfo: ESPDeviceInfo = {
-				chip: espChipName, // Use espChipName like esp-web-tools
+				chip: espChipName, // Use normalized chip name
 				flashSize: flashSize,
 				mac: mac,
 				features: features,
@@ -776,7 +777,7 @@ Then try flashing again.`);
 			}
 		} catch (e) {
 			// Ignore errors if port is already closed
-			console.log('ESPLoader cleanup note:', e.message || e);
+			console.log('ESPLoader cleanup note:', (e as any).message || e);
 		}
 
 		try {
@@ -786,7 +787,7 @@ Then try flashing again.`);
 			}
 		} catch (e) {
 			// Ignore errors if transport is already disconnected
-			console.log('Transport disconnect note:', e.message || e);
+			console.log('Transport disconnect note:', (e as any).message || e);
 		}
 
 		// Try to close port directly if still open
@@ -797,7 +798,7 @@ Then try flashing again.`);
 			}
 		} catch (e) {
 			// Port might already be closed, that's ok
-			console.log('Port close note:', e.message || e);
+			console.log('Port close note:', (e as any).message || e);
 		}
 
 		// Reset all references
@@ -807,7 +808,7 @@ Then try flashing again.`);
 	}
 
 	// Get current port
-	function getCurrentPort(): SerialPort | null {
+	function getCurrentPort(): any {
 		return port;
 	}
 

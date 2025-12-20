@@ -1,7 +1,7 @@
 import { onMount, onDestroy } from 'svelte';
-import { createClickOutside } from './clickOutside';
-import { createEnhancedKeyboardNavigation, type EnhancedKeyboardNavigationConfig } from './keyboardNavigation';
-import { createDropdownManager } from './dropdownManager';
+import { createClickOutside } from './clickOutside.js';
+import { createEnhancedKeyboardNavigation, type EnhancedKeyboardNavigationConfig } from './keyboardNavigation.js';
+import { createDropdownManager } from './dropdownManager.js';
 
 /**
  * Complete dropdown management utility
@@ -115,29 +115,37 @@ export function createSimpleDropdown(element: HTMLElement, options: {
     options.onClose?.();
   });
 
-  // Simple keyboard navigation
-  const keyboardNavigation = createSimpleKeyboardNavigation(
-    options.items,
-    (item, index) => {
-      options.onSelect(item, index);
-      isOpen = false;
-      selectedIndex = -1;
-    },
-    () => {
-      isOpen = false;
-      selectedIndex = -1;
-      options.onClose?.();
-    }
-  );
+  // Create keyboard navigation handler
+  let keyboardNavHandler: any;
 
-  function handleKeydown(event: KeyboardEvent) {
-    if (!isOpen) return;
-    keyboardNavigation.handleKeydown(event);
-  }
-
+  // Initialize keyboard navigation
   onMount(() => {
+    keyboardNavHandler = createEnhancedKeyboardNavigation(
+      {
+        dropdownType: 'custom' as const,
+        selectedIndex: -1,
+        items: options.items,
+        onSelection: (item: any, index: number) => {
+          options.onSelect(item, index);
+          isOpen = false;
+          selectedIndex = -1;
+        },
+        onClose: () => {
+          isOpen = false;
+          selectedIndex = -1;
+          options.onClose?.();
+        },
+        onIndexChange: (index: number) => {} // Placeholder
+      }
+    );
+
     document.addEventListener('keydown', handleKeydown);
   });
+
+  function handleKeydown(event: KeyboardEvent) {
+    if (!isOpen || !keyboardNavHandler) return;
+    keyboardNavHandler.handleKeydown(event);
+  }
 
   onDestroy(() => {
     document.removeEventListener('keydown', handleKeydown);
@@ -148,30 +156,34 @@ export function createSimpleDropdown(element: HTMLElement, options: {
     open: () => {
       isOpen = true;
       selectedIndex = -1;
-      keyboardNavigation.resetSelection();
+      if (keyboardNavHandler) keyboardNavHandler.resetSelection();
     },
     close: () => {
       isOpen = false;
       selectedIndex = -1;
-      keyboardNavigation.resetSelection();
+      if (keyboardNavHandler) keyboardNavHandler.resetSelection();
     },
     toggle: () => {
       if (isOpen) {
-        this.close();
+        isOpen = false;
+        selectedIndex = -1;
+        if (keyboardNavHandler) keyboardNavHandler.resetSelection();
       } else {
-        this.open();
+        isOpen = true;
+        selectedIndex = -1;
+        if (keyboardNavHandler) keyboardNavHandler.resetSelection();
       }
     },
     getIsOpen: () => isOpen,
     getSelectedIndex: () => selectedIndex,
     setSelectedIndex: (index: number) => {
       selectedIndex = index;
-      keyboardNavigation.setSelectedIndex(index);
+      if (keyboardNavHandler) keyboardNavHandler.setSelectedIndex(index);
     }
   };
 }
 
 // Re-export for convenience
-export { createClickOutside } from './clickOutside';
-export { createKeyboardNavigation, createEnhancedKeyboardNavigation, createSimpleKeyboardNavigation } from './keyboardNavigation';
-export { createDropdownManager, manageDropdown, manageEnhancedDropdown } from './dropdownManager';
+export { createClickOutside } from './clickOutside.js';
+export { createKeyboardNavigation, createEnhancedKeyboardNavigation, createSimpleKeyboardNavigation } from './keyboardNavigation.js';
+export { createDropdownManager, manageDropdown, manageEnhancedDropdown } from './dropdownManager.js';

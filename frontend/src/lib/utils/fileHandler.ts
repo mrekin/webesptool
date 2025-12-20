@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import type { FirmwareFile, ZipExtractionResult } from '$lib/types';
+import type { FirmwareFile, ZipExtractionResult } from '$lib/types.js';
 
 export function createFirmwareFileHandler() {
 	// Handle file selection

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { deviceDisplayInfo, firmwareDisplayInfo, loadingState } from '$lib/stores';
+  import { deviceDisplayInfo, firmwareDisplayInfo, loadingState } from '$lib/stores.js';
   import { DeviceType } from '$lib/types.js';
   import { isESP32Device, isNRF52Device, isRP2040Device, getDeviceTypeLabel } from '$lib/utils/deviceTypeUtils.js';
   import { _ as locales } from 'svelte-i18n';
@@ -141,7 +141,7 @@
         <h2 class="text-xl font-bold text-orange-200 mb-4">{$locales('firmwareinfo.installation_instructions')}</h2>
 
         <div class="space-y-3 text-sm text-orange-100">
-          {#if isESP32Device(deviceInfo?.deviceType)}
+          {#if isESP32Device(deviceInfo?.deviceType as DeviceType)}
             <div class="flex items-start space-x-3">
               <span class="text-orange-400 font-bold">1.</span>
               <div>
@@ -157,7 +157,7 @@
                 <p class="text-orange-300">{$locales('firmwareinfo.alternative_download_desc')}</p>
               </div>
             </div>
-          {:else if isNRF52Device(deviceInfo?.deviceType)}
+          {:else if isNRF52Device(deviceInfo?.deviceType as DeviceType)}
             <div class="flex items-start space-x-3">
               <span class="text-orange-400 font-bold">1.</span>
               <div>
@@ -173,7 +173,7 @@
                 <p class="text-orange-300">{$locales('firmwareinfo.device_bootloader_desc')}</p>
               </div>
             </div>
-          {:else if isRP2040Device(deviceInfo?.deviceType)}
+          {:else if isRP2040Device(deviceInfo?.deviceType as DeviceType)}
             <div class="flex items-start space-x-3">
               <span class="text-orange-400 font-bold">1.</span>
               <div>

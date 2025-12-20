@@ -7,10 +7,10 @@
   import RepositorySelector from '$lib/components/RepositorySelector.svelte';
   import MinimalFooter from '$lib/components/MinimalFooter.svelte';
   import CustomFirmwareModal from '$lib/components/CustomFirmwareModal.svelte';
-  import { loadingState, availableFirmwares, uiState, deviceSelection } from '$lib/stores';
+  import { loadingState, availableFirmwares, uiState, deviceSelection } from '$lib/stores.js';
   import { onMount } from 'svelte';
   import { _ as locales, locale } from 'svelte-i18n';
-  import { InterfaceMode } from '$lib/types';
+  import { InterfaceMode } from '$lib/types.js';
 
   // Dynamic imports for components used only in full mode
   let FirmwareInfo: any = null;
