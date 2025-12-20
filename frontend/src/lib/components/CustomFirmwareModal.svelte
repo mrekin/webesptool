@@ -33,8 +33,8 @@
 	let flashProgress = 0;
 	let flashStatus = '';
 	let flashError = '';
-	let eraseBeforeFlash = false; // Новый параметр для чекбокса
-	let selectedBaudrate = 115200; // Выбранная скорость по умолчанию
+	let eraseBeforeFlash = false; // New parameter for checkbox
+	let selectedBaudrate = 115200; // Default selected speed
 
 	// ZIP extraction state
 	let isExtractingZip = false;
@@ -63,7 +63,7 @@
 	let showFileDetails = false; // Control file details spoiler in AutoSelect mode
 	let autoPortSelectionTriggered = false; // Flag for tracking automatic port selection
 
-	// Ссылка на file input для замены document.getElementById
+	// Reference to file input to replace document.getElementById
 	let fileInput: HTMLInputElement;
 
 	// Get baudrate options from utility

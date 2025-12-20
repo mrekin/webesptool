@@ -10,7 +10,7 @@ export interface Repository {
 
 // Device Level
 export interface Device {
-  device: string;      // ← Соответствует старому коду
+  device: string;      // ← Corresponds to legacy code
   displayName: string;
   category: 'esp' | 'uf2' | 'rp2040';
 }
@@ -24,12 +24,12 @@ export interface Version {
   latestTag?: string;
 }
 
-// Selection State (Единый источник правды)
+// Selection State (Single source of truth)
 export interface SelectionState {
   repository: string | null;
   device: string | null;      // pioTarget
-  version: string | null;     // только из списка versions[]
-  isValid: boolean;           // true если все зависимости соблюдены
+  version: string | null;     // only from versions[] list
+  isValid: boolean;           // true if all dependencies are met
 }
 
 
@@ -157,7 +157,7 @@ export type DeviceCategoryType = 'esp' | 'uf2' | 'rp2040';
 // Chip families for manifest generation
 export type ChipFamily = 'ESP32' | 'ESP32-S3' | 'ESP32-C3' | 'NRF52' | 'RP2040';
 
-// Унифицированный enum типов устройств
+// Unified device type enum
 export enum DeviceType {
   ESP32 = 'esp32',
   NRF52 = 'nrf52',
@@ -190,8 +190,8 @@ export interface SelectionChangeEvent {
 export interface DeviceDisplayInfo {
   devicePioTarget: string;  // Previously deviceType - the PIO target from firmware
   deviceName: string;       // Human-readable device name
-  deviceType: DeviceType;   // Унифицированный тип устройства
-  deviceTypeCategory: DeviceCategoryType;  // Device category type (временно для API)
+  deviceType: DeviceType;   // Unified device type
+  deviceTypeCategory: DeviceCategoryType;  // Device category type (temporary for API)
   availableVersions: string[];  // List of available firmware versions
   deviceInfo: FirmwareInfo | null;  // Device firmware information
 }

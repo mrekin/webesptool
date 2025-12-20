@@ -19,7 +19,7 @@
   let espWebToolsDialog: HTMLDialogElement;
   let espWebToolsButton: HTMLElement;
   let showMoreOptions = false;
-  let firmwareMode: 'update' | 'full' = 'update'; // update = режим 1, full = режим 2
+  let firmwareMode: 'update' | 'full' = 'update'; // update = mode 1, full = mode 2
 
   // CustomFirmwareModal data moved to parent component
 

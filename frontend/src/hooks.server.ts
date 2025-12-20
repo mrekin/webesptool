@@ -39,11 +39,11 @@ export async function handle({ event, resolve }) {
   // Initialize i18n with the detected locale
   await initializeSimpleI18n(currentLocale);
   
-  // Прокси для API
+  // API proxy
   const backendUrl = process.env.API_URL || 'http://localhost:5546';
   const url = new URL(event.request.url);
 
-  // Проверяем только путь /api/ (baseUrl теперь обрабатывается Caddy)
+  // Check only /api/ path (baseUrl is now handled by Caddy)
   let apiPath = null;
   if (url.pathname.startsWith('/api/')) {
     apiPath = url.pathname;
@@ -111,10 +111,10 @@ export async function handle({ event, resolve }) {
     }
   }
 
-  // Передаем локаль в data для клиента
+  // Pass locale to client
   const response = await resolve(event, {
     transformPageChunk: ({ html }) => {
-      // Добавляем локаль в HTML для клиента
+      // Add locale to HTML for client
       return html.replace(
         '<body',
         `<body data-server-locale="${currentLocale}"`

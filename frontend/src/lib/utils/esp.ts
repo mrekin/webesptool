@@ -515,7 +515,7 @@ export function createESPManager() {
 			// Create ESPLoader with minimal options
 			const loaderOptions = {
 				transport,
-				baudrate: 115200, // Используем стандартную скорость для определения
+				baudrate: 115200, // Use standard speed for detection
 				terminal: espLoaderTerminal,
 				debugLogging: false,
 			} as LoaderOptions;
@@ -677,10 +677,10 @@ export function createESPManager() {
 						address: address
 					}
 				],
-				flashMode: 'keep', // Оставить текущий режим
-				flashFreq: 'keep', // Оставить текущую частоту
-				flashSize: 'keep', // Оставить текущий размер флеш-памяти
-				eraseAll: options.eraseBeforeFlash, // Использовать значение из опций
+				flashMode: 'keep', // Keep current mode
+				flashFreq: 'keep', // Keep current frequency
+				flashSize: 'keep', // Keep current flash size
+				eraseAll: options.eraseBeforeFlash, // Use value from options
 				compress: true,
 				reportProgress: (fileIndex: number, written: number, total: number) => {
 					const progress = Math.round((written / total) * 100);
@@ -696,7 +696,7 @@ export function createESPManager() {
 			console.log('Flash options:', flashOptions);
 			console.log('Starting write flash...');
 
-			// Простая запись как в примере
+			// Simple write as in example
 			console.log('Starting writeFlash...');
 			await esploader.writeFlash(flashOptions);
 			console.log('writeFlash completed successfully');

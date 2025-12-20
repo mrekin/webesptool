@@ -1,14 +1,14 @@
 import { DeviceType } from '$lib/types';
 
 /**
- * Маппинг категорий из API в DeviceType
+ * Mapping API categories to DeviceType
  */
 export function mapCategoryToDeviceType(category: string): DeviceType {
   switch (category) {
     case 'esp':
       return DeviceType.ESP32;
     case 'uf2':
-      return DeviceType.NRF52;  // Сохраняем текущую логику
+      return DeviceType.NRF52;  // Keep current logic
     case 'rp2040':
       return DeviceType.RP2040;
     default:

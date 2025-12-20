@@ -55,7 +55,7 @@ const initialUIState: UIState = {
 // Device selection store - manages the current device/selection state
 export const deviceSelection = writable<DeviceSelection>(initialDeviceSelection);
 
-// Unified selection store - Единый источник правды для repository/device/version
+// Unified selection store - Single source of truth for repository/device/version
 export const selectionState = writable<SelectionState>({
   repository: null,
   device: null,
@@ -205,8 +205,8 @@ export const deviceDisplayInfo = derived(
     return {
       devicePioTarget: $deviceSelection.devicePioTarget,
       deviceName: $deviceNames[$deviceSelection.devicePioTarget] || $deviceSelection.devicePioTarget,
-      deviceType,  // Унифицированный тип устройства
-      deviceTypeCategory: deviceTypeCategory || 'esp',  // Временно для API
+      deviceType,  // Unified device type
+      deviceTypeCategory: deviceTypeCategory || 'esp',  // Temporary for API
       availableVersions: $versionsData.versions || [],
       deviceInfo: $firmwareInfo
     } as DeviceDisplayInfo;
@@ -272,7 +272,7 @@ export const availableDevicesForSelection = derived(
 export const availableVersionsForSelection = derived(
   [selectionState, versionsData],
   ([$selectionState, $versionsData]): string[] => {
-    // FIX: Проверяем и repository, и device
+    // FIX: Check both repository and device
     if (!$selectionState.repository || !$selectionState.device) return [];
     return $versionsData.versions || [];
   }
@@ -401,18 +401,18 @@ export const selectionActions = {
   setRepository: (repo: string | null) => {
     selectionState.update(s => ({
       repository: repo,
-      device: null,    // каскадный сброс
-      version: null,   // каскадный сброс
+      device: null,    // cascade reset
+      version: null,   // cascade reset
       isValid: false
     }));
   },
 
-  // Update repository ONLY (без каскадного сброса) - для backend response
+  // Update repository ONLY (without cascade reset) - for backend response
   updateRepositoryOnly: (repo: string) => {
     selectionState.update(s => ({
       ...s,
       repository: repo,
-      // НЕ сбрасываем device и version!
+      // DO NOT reset device and version!
       isValid: !!s.device && !!s.version
     }));
   },
@@ -441,7 +441,7 @@ export const selectionActions = {
       return {
         ...s,
         device: validDevice ? device : null,
-        version: null,   // всегда сброс при смене устройства
+        version: null,   // always reset when changing device
         isValid: validDevice && !!s.repository
       };
     });
@@ -622,7 +622,7 @@ export const apiActions = {
 
       const versions = await apiService.getVersions(devicePioTarget, source);
 
-      // Если бэкенд вернул поле src, обновляем выбор репозитория без сброса устройства
+      // If backend returns src field, update repository selection without resetting device
       if (versions.src) {
         deviceActions.updateSourceOnly(versions.src);
         // FIX: Use safe update that doesn't reset device/version
@@ -782,7 +782,7 @@ export const apiActions = {
 // NEW: Simple reactive behavior for unified selection store with race condition protection
 let previousDevice: string | null = null;
 let previousVersion: string | null = null;
-let isLoadingVersions = false; // Флаг для предотвращения race conditions
+let isLoadingVersions = false; // Flag to prevent race conditions
 
 // Subscribe to unified selection state changes
 selectionState.subscribe(async (selection) => {
@@ -795,7 +795,7 @@ selectionState.subscribe(async (selection) => {
   });
   unsubscribeUI();
 
-  // Load device info when device changes - с защитой от race conditions
+  // Load device info when device changes - with race condition protection
   if (device && device !== previousDevice && !isLoadingVersions) {
     isLoadingVersions = true;
 

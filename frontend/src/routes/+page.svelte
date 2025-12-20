@@ -36,7 +36,7 @@
     manifestData?: any;
   } = {}) {
     if (options.isAutoSelectMode && options.manifestData) {
-      // AutoSelect режим (с предзагруженными файлами или для скачивания)
+      // AutoSelect mode (with preloaded files or for download)
       modalState = {
         isOpen: true,
         mode: 'autoselect',
@@ -45,7 +45,7 @@
         manifestData: options.manifestData
       };
     } else {
-      // Ручной режим
+      // Manual mode
       modalState = {
         isOpen: true,
         mode: 'manual',
