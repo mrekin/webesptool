@@ -9,6 +9,24 @@ const UPDATE_OFFSET = '0x10000';
 const DEFAULT_OTA_OFFSET = '0x260000';
 const DEFAULT_SPIFFS_OFFSET = '0x300000';
 
+// Full firmware file types (factory and merged files that should be treated the same way)
+const FULL_FIRMWARE_FILE_TYPES = ['factory.bin', 'merged.bin'];
+
+/**
+ * Check if a filename matches any of the full firmware file types
+ */
+function isFullFirmwareFile(filename: string): boolean {
+	const lowerFilename = filename.toLowerCase();
+	return FULL_FIRMWARE_FILE_TYPES.some(type => lowerFilename.includes(type));
+}
+
+/**
+ * Check if a filename is a regular firmware file (not a full firmware file)
+ */
+function isRegularFirmwareFile(filename: string): boolean {
+	return /^firmware.*\.bin$/i.test(filename) && !isFullFirmwareFile(filename);
+}
+
 /**
  * Parse firmware metadata from JSON string
  */
@@ -55,7 +73,7 @@ function findManifestPart(filename: string, manifest: any) {
 		const partType = classifyManifestPart(part.path);
 
 		// Only match firmware parts for actual firmware files
-		if (partType === 'firmware' && (lowerFilename.includes('firmware') || lowerFilename.includes('factory'))) {
+		if (partType === 'firmware' && (lowerFilename.includes('firmware') || lowerFilename.includes('factory') || lowerFilename.includes('merged'))) {
 			return { ...part, partType };
 		}
 
@@ -77,7 +95,7 @@ export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMe
 	const basename = filename.toLowerCase();
 
 	// Rule 1: Factory firmware files - address 0x0
-	if (basename.includes('factory.bin')) {
+	if (FULL_FIRMWARE_FILE_TYPES.some(type => basename.includes(type))) {
 		// Check manifest first for factory firmware
 		if (metadata && detectMetadataFormat(metadata) === 'manifest') {
 			const manifestPart = findManifestPart(filename, metadata);
@@ -139,7 +157,7 @@ export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMe
 	}
 
 	// Rule 2: Update files (non-factory .bin) - address from app partition in metadata
-	if (basename.endsWith('.bin') && !basename.includes('factory.bin') &&
+	if (basename.endsWith('.bin') && !isFullFirmwareFile(filename) &&
 		!basename.includes('bleota') && !basename.includes('littlefs') && !basename.includes('spiffs')) {
 
 		// Use legacy metadata to get app partition address if available
@@ -330,9 +348,9 @@ export function getCompleteFlashAddresses(metadata: FirmwareMetadata): {
 } | null {
 	if (!metadata) return null;
 
-	// Find factory firmware filename
+	// Find factory firmware filename (includes both factory.bin and merged.bin files)
 	const factoryFirmwareFile = metadata.files.find((file: any) =>
-		file.name.includes('.factory.bin')
+		FULL_FIRMWARE_FILE_TYPES.some(type => file.name.includes(type))
 	);
 	const firmwareFilename = factoryFirmwareFile ? factoryFirmwareFile.name : '';
 
@@ -406,12 +424,8 @@ export function validateFirmwareSelection(
 	metadata?: FirmwareMetadataExtended | null,
 	deviceChip?: string
 ): { isValid: boolean; errorCode?: ValidationError; conflictingFiles?: string[]; errorMessage?: string } {
-	const hasRegularFirmware = files.some(file =>
-		/^firmware.*\.bin$/i.test(file.filename) && !file.filename.includes('.factory.bin')
-	);
-	const hasFactoryFirmware = files.some(file =>
-		/^firmware.*\.factory\.bin$/i.test(file.filename)
-	);
+	const hasRegularFirmware = files.some(file => isRegularFirmwareFile(file.filename));
+	const hasFactoryFirmware = files.some(file => isFullFirmwareFile(file.filename));
 
 	// Check chip compatibility if metadata and device info are available
 
@@ -442,8 +456,8 @@ export function validateFirmwareSelection(
 		// Get all conflicting files
 		const conflictingFiles = files
 			.filter(file =>
-				(/^firmware.*\.bin$/i.test(file.filename) && !file.filename.includes('.factory.bin')) ||
-				(/^firmware.*\.factory\.bin$/i.test(file.filename))
+				isRegularFirmwareFile(file.filename) || // regular firmware
+				isFullFirmwareFile(file.filename) // full firmware (factory, merged, etc.)
 			)
 			.map(file => file.filename);
 
