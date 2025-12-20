@@ -18,6 +18,10 @@ IMAGE_NAME="webesptool-frontend"
 REGISTRY="registry.mrekin.ru"
 FRONTEND_DIR="./frontend"
 
+# Global variables
+APP_VERSION=""
+SHOULD_TAG_LATEST=""
+
 # Information output functions
 info() {
     echo -e "${BLUE}[INFO]${NC} $1"
@@ -107,11 +111,20 @@ build_image() {
     # Prepare version for build (version + date)
     BUILD_VERSION="${APP_VERSION}.${BUILD_DATE}"
 
+    # Build tags
+    local build_tags="-t $REGISTRY/$IMAGE_NAME:$APP_VERSION"
+
+    if [ "$SHOULD_TAG_LATEST" = "yes" ]; then
+        build_tags="$build_tags -t $REGISTRY/$IMAGE_NAME:latest"
+        info "Will also tag as latest"
+    else
+        info "Will NOT tag as latest"
+    fi
+
     # Build image
     docker build \
         --build-arg APP_VERSION="$BUILD_VERSION" \
-        -t "$REGISTRY/$IMAGE_NAME:$APP_VERSION" \
-        -t "$REGISTRY/$IMAGE_NAME:latest" \
+        $build_tags \
         "$FRONTEND_DIR"
 
     if [ $? -eq 0 ]; then
@@ -140,7 +153,7 @@ get_image_size() {
 push_image() {
     info "Pushing images to registry..."
 
-    # Push version
+    # Always push version
     info "Pushing $REGISTRY/$IMAGE_NAME:$APP_VERSION"
     docker push "$REGISTRY/$IMAGE_NAME:$APP_VERSION"
 
@@ -149,16 +162,93 @@ push_image() {
         exit 1
     fi
 
-    # Push latest
-    info "Pushing $REGISTRY/$IMAGE_NAME:latest"
-    docker push "$REGISTRY/$IMAGE_NAME:latest"
+    # Push latest only if tagged
+    if [ "$SHOULD_TAG_LATEST" = "yes" ]; then
+        info "Pushing $REGISTRY/$IMAGE_NAME:latest"
+        docker push "$REGISTRY/$IMAGE_NAME:latest"
 
-    if [ $? -ne 0 ]; then
-        error "Failed to push latest"
-        exit 1
+        if [ $? -ne 0 ]; then
+            error "Failed to push latest"
+            exit 1
+        fi
+    else
+        warning "Skipping latest tag push (not requested)"
     fi
 
     success "Images successfully pushed to registry"
+}
+
+# Function to get latest version from registry
+get_latest_version() {
+    info "Checking for existing versions in registry..."
+
+    # Try to get latest tag info from registry
+    local latest_info=$(docker manifest inspect "$REGISTRY/$IMAGE_NAME:latest" 2>/dev/null)
+
+    if [ $? -eq 0 ] && [ -n "$latest_info" ]; then
+        # Get the actual version tag from latest manifest
+        local version_from_manifest=$(echo "$latest_info" | grep -o '"v[0-9]\+\.[0-9]\+\.[0-9]\+"' | head -1 | tr -d '"')
+
+        if [ -n "$version_from_manifest" ]; then
+            echo "$version_from_manifest"
+            return 0
+        fi
+    fi
+
+    # Fallback: try to list local images
+    local local_latest=$(docker images "$REGISTRY/$IMAGE_NAME" --format "table {{.Tag}}" | grep "^v[0-9]" | sort -V | tail -1)
+
+    if [ -n "$local_latest" ]; then
+        echo "$local_latest"
+        return 0
+    fi
+
+    echo "None found"
+}
+
+# Function to show existing versions
+show_existing_versions() {
+    echo
+    info "Existing versions in registry/local:"
+
+    # Get latest version
+    LATEST_VERSION=$(get_latest_version)
+
+    if [ "$LATEST_VERSION" != "None found" ]; then
+        echo -e "  Latest:   ${GREEN}$LATEST_VERSION${NC}"
+
+        # Get size of latest image if available locally
+        if docker images -q "$REGISTRY/$IMAGE_NAME:$LATEST_VERSION" &>/dev/null; then
+            local latest_size=$(get_image_size_for_tag "$LATEST_VERSION")
+            echo -e "  Size:     ${YELLOW}$latest_size${NC}"
+        fi
+    else
+        echo -e "  Latest:   ${RED}No existing versions found${NC}"
+    fi
+
+    # Show all local versions
+    local local_versions=$(docker images "$REGISTRY/$IMAGE_NAME" --format "table {{.Tag}}" | grep "^v[0-9]" | sort -V)
+    if [ -n "$local_versions" ]; then
+        echo -e "  Local:    ${YELLOW}$(echo "$local_versions" | tr '\n' ', ' | sed 's/,$//')${NC}"
+    fi
+    echo
+}
+
+# Function to get image size for specific tag
+get_image_size_for_tag() {
+    local tag=$1
+    local image_id=$(docker images -q "$REGISTRY/$IMAGE_NAME:$tag")
+    if [ -n "$image_id" ]; then
+        local size_bytes=$(docker image inspect "$image_id" --format='{{.Size}}' 2>/dev/null)
+        if [ -n "$size_bytes" ] && [ "$size_bytes" != "0" ]; then
+            local size_mb=$((size_bytes / 1024 / 1024))
+            echo "${size_mb}MB"
+        else
+            echo "Size unknown"
+        fi
+    else
+        echo "Not available locally"
+    fi
 }
 
 # Information display function
@@ -181,6 +271,35 @@ show_image_info() {
     fi
 }
 
+# Function to prompt for latest tag
+prompt_latest_tag() {
+    echo
+    while true; do
+        read -p "Tag this version as latest? (y/N): " latest_confirm
+
+        if [ -z "$latest_confirm" ]; then
+            SHOULD_TAG_LATEST="no"
+            break
+        fi
+
+        if [[ $latest_confirm =~ ^[Yy]$ ]]; then
+            SHOULD_TAG_LATEST="yes"
+            break
+        elif [[ $latest_confirm =~ ^[Nn]$ ]]; then
+            SHOULD_TAG_LATEST="no"
+            break
+        else
+            warning "Please enter 'y' or 'n'"
+        fi
+    done
+
+    if [ "$SHOULD_TAG_LATEST" = "yes" ]; then
+        success "Will tag $APP_VERSION as latest"
+    else
+        warning "Will NOT tag $APP_VERSION as latest"
+    fi
+}
+
 # Main function
 main() {
     echo -e "${BLUE}================================${NC}"
@@ -192,13 +311,20 @@ main() {
     check_docker
     check_frontend_dir
 
+    # Show existing versions first
+    show_existing_versions
+
     # Version prompt
     prompt_version
+
+    # Ask about latest tag
+    prompt_latest_tag
 
     # Build confirmation
     echo
     echo -e "${BLUE}Build configuration:${NC}"
     echo -e "  Version:   ${GREEN}$APP_VERSION${NC}"
+    echo -e "  Latest:    ${GREEN}$SHOULD_TAG_LATEST${NC}"
     echo -e "  Base Path: ${YELLOW}Can be set at runtime with -e VITE_BASE_PATH=/path${NC}"
     echo
 
@@ -239,6 +365,13 @@ main() {
     echo
     info "With custom base path:"
     echo -e "  docker run -p 3000:3000 -e VITE_BASE_PATH=/your/path $REGISTRY/$IMAGE_NAME:$APP_VERSION"
+    echo
+
+    # Show tag info
+    if [ "$SHOULD_TAG_LATEST" = "yes" ]; then
+        info "Also available as latest:"
+        echo -e "  docker run -p 3000:3000 $REGISTRY/$IMAGE_NAME:latest"
+    fi
     echo
 }
 
