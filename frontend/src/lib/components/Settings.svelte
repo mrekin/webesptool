@@ -1,6 +1,6 @@
 <script lang="ts">
   import { locale } from 'svelte-i18n';
-  import { changeLocale } from '$lib/i18n';
+  import { changeLocale, supportedLocales } from '$lib/i18n';
   import { _ as locales } from 'svelte-i18n';
   import { uiState, uiActions } from '$lib/stores';
   import { onMount, onDestroy } from 'svelte';
@@ -16,8 +16,9 @@
   // Language options
   const languages = [
     { code: 'en', name: 'English', flag: '🇺🇸' },
-    { code: 'ru', name: 'Русский', flag: '🇷🇺' }
-  ];
+    { code: 'ru', name: 'Русский', flag: '🇷🇺' },
+    { code: 'pl', name: 'Polski', flag: '🇵🇱' }
+  ].filter(lang => supportedLocales.includes(lang.code as any));
 
   // Subscribe to stores
   $: currentLanguage = $locale;

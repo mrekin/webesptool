@@ -2,11 +2,13 @@ import { browser } from '$app/environment';
 import { init, register, _ } from 'svelte-i18n';
 import { getCookie, setCookie } from '../utils/cookies.js';
 
-const defaultLocale = 'en';
+export const defaultLocale = 'en';
+export const supportedLocales = ['en', 'ru', 'pl'] as const;
 
 // Register locales
-register('en', () => import('./locales/en.json'));
-register('ru', () => import('./locales/ru.json'));
+supportedLocales.forEach(locale => {
+  register(locale, () => import(`./locales/${locale}.json`));
+});
 
 
 // Monkey patch the original _ function to support nested keys
@@ -36,12 +38,15 @@ export const locales = _;
 const getInitialLocale = () => {
   if (browser) {
     const savedLocale = getCookie('locale');
-    if (savedLocale && ['en', 'ru'].includes(savedLocale)) {
+    if (savedLocale && supportedLocales.includes(savedLocale as any)) {
       return savedLocale;
     }
     const browserLocale = navigator.language;
     if (browserLocale.startsWith('ru')) {
       return 'ru';
+    }
+    if (browserLocale.startsWith('pl')) {
+      return 'pl';
     }
   }
   return defaultLocale;

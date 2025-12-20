@@ -1,14 +1,16 @@
 import { init, register } from 'svelte-i18n';
+import { defaultLocale, supportedLocales } from '$lib/i18n/index.js';
 
 // Register locales on client
-register('en', () => import('$lib/i18n/locales/en.json'));
-register('ru', () => import('$lib/i18n/locales/ru.json'));
+supportedLocales.forEach(locale => {
+  register(locale, () => import(`$lib/i18n/locales/${locale}.json`));
+});
 
-// Initialize i18n with fallback to English
+// Initialize i18n with fallback to default locale
 try {
   await init({
-    fallbackLocale: 'en',
-    initialLocale: 'en'
+    fallbackLocale: defaultLocale,
+    initialLocale: defaultLocale
   });
 } catch (error) {
   console.error('Error setting up i18n:', error);

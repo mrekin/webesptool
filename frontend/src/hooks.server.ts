@@ -1,4 +1,5 @@
 import { init, locale, register } from 'svelte-i18n';
+import { defaultLocale, supportedLocales } from '$lib/i18n/index.js';
 
 // Load .env file for dev environment
 if (process.env.NODE_ENV !== 'production') {
@@ -6,13 +7,14 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Register locales on server
-register('en', () => import('$lib/i18n/locales/en.json'));
-register('ru', () => import('$lib/i18n/locales/ru.json'));
+supportedLocales.forEach(locale => {
+  register(locale, () => import(`$lib/i18n/locales/${locale}.json`));
+});
 
 let initialized = false;
 let initializedLocale: string | null = null;
 
-async function initializeSimpleI18n(initialLocale = 'en') {
+async function initializeSimpleI18n(initialLocale = defaultLocale) {
   // Always reinitialize if the locale is different
   if (initialized && initializedLocale === initialLocale) {
     locale.set(initialLocale);
@@ -20,7 +22,7 @@ async function initializeSimpleI18n(initialLocale = 'en') {
   }
 
   await init({
-    fallbackLocale: 'en',
+    fallbackLocale: defaultLocale,
     initialLocale: initialLocale
   });
 
@@ -34,7 +36,9 @@ export async function handle({ event, resolve }) {
   const acceptLanguage = event.request.headers.get('accept-language');
   const browserLocale = acceptLanguage?.split(',')[0]?.split('-')[0];
 
-  const currentLocale = cookieLocale || browserLocale || 'en';
+  // Only use supported locales
+  const detectedLocale = cookieLocale || browserLocale || defaultLocale;
+  const currentLocale = supportedLocales.includes(detectedLocale as any) ? detectedLocale : defaultLocale;
 
   // Initialize i18n with the detected locale
   await initializeSimpleI18n(currentLocale);
