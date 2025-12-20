@@ -1,5 +1,10 @@
 import { init, locale, register } from 'svelte-i18n';
 
+// Load .env file for dev environment
+if (process.env.NODE_ENV !== 'production') {
+  await import('dotenv').then(dotenv => dotenv.config());
+}
+
 // Register locales on server
 register('en', () => import('$lib/i18n/locales/en.json'));
 register('ru', () => import('$lib/i18n/locales/ru.json'));
@@ -35,16 +40,13 @@ export async function handle({ event, resolve }) {
   await initializeSimpleI18n(currentLocale);
   
   // Прокси для API
-  const backendUrl = process.env.VITE_API_URL || 'http://192.168.1.115:5546';
-  const baseUrl = process.env.VITE_BASE_PATH || '';
+  const backendUrl = process.env.API_URL || 'http://localhost:5546';
   const url = new URL(event.request.url);
 
-  // Проверяем оба пути: /api/ и {baseUrl}/api/
+  // Проверяем только путь /api/ (baseUrl теперь обрабатывается Caddy)
   let apiPath = null;
   if (url.pathname.startsWith('/api/')) {
     apiPath = url.pathname;
-  } else if (url.pathname.startsWith(`${baseUrl}/api/`)) {
-    apiPath = url.pathname.replace(new RegExp(`^${baseUrl}`), '');
   }
 
   if (apiPath) {

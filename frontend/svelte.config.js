@@ -9,8 +9,8 @@ const config = {
 	kit: {
 		adapter: adapter(),
 		paths: {
-            base: process.env.VITE_BASE_PATH || '', // Empty base path by default, can be overridden via VITE_BASE_PATH
-			relative: false
+            base: '', // Используем пустой base path
+			relative: true // Относительные пути для ассетов
         }
 	}
 };

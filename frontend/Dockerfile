@@ -20,9 +20,7 @@ COPY . .
 RUN rm -f .env
 
 # Build the Svelte application for production
-# Pass VITE_BASE_PATH from build environment if available
-ARG VITE_BASE_PATH
-ENV VITE_BASE_PATH=${VITE_BASE_PATH:-}
+# Больше не нужен VITE_BASE_PATH - используем относительные пути
 RUN pnpm run build
 
 # Stage 2: Create the final production image

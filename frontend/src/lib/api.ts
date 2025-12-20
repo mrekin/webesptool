@@ -18,7 +18,7 @@ class APIService {
 
   constructor(config: Partial<AppConfig> = {}) {
     this.config = {
-      apiBaseUrl: config.apiBaseUrl || import.meta.env.VITE_API_URL || 'api',
+      apiBaseUrl: 'api',
       defaultSource: config.defaultSource || '',
       timeout: config.timeout || 120000, // 2 minutes default for large firmware files
       retryAttempts: config.retryAttempts || 3
