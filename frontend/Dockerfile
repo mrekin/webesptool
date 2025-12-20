@@ -19,9 +19,11 @@ COPY . .
 # Remove the development .env file if present
 RUN rm -f .env
 
-# Build the Svelte application for production
-# Больше не нужен VITE_BASE_PATH - используем относительные пути
-RUN pnpm run build
+# Set build argument for app version
+ARG APP_VERSION
+
+# Build the Svelte application for production with version
+RUN VITE_APP_VERSION=$APP_VERSION pnpm run build
 
 # Stage 2: Create the final production image
 FROM node:22-alpine AS runner

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { _ as locales } from 'svelte-i18n';
+  import { appVersion } from '$lib/utils/envVariables';
 
   // Local state
   let currentYear = new Date().getFullYear();
@@ -187,8 +188,8 @@
             <span class="inline-block w-2 h-2 bg-yellow-500 rounded-full ml-2"></span>
           </div>
           <div class="flex items-center space-x-4">
-            <span>{$locales('footer.last_updated')}:</span>
-            <span class="text-orange-300">{currentYear}-{String(new Date().getMonth() + 1).padStart(2, '0')}</span>
+            <span>{$locales('footer.version')}:</span>
+            <span class="text-orange-300">{appVersion}</span>
           </div>
         </div>
       </div>

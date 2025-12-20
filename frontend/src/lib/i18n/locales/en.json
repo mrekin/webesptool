@@ -176,7 +176,7 @@
     "trademark_notice": "<a href=\"https://meshtastic.org/\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-orange-400 hover:text-orange-300 underline\">Meshtastic®</a> is a registered trademark. All other trademarks are the property of their respective owners.",
     "status": "Status",
     "beta_service": "Beta Service",
-    "last_updated": "Last Updated",
+    "version": "Version",
     "license_info": "Licensed under Creative Commons Attribution-NonCommercial 4.0",
     "license_desc": "Non-commercial use with attribution required"
   },
@@ -231,7 +231,10 @@
     "download_files_error": "Failed to download firmware files",
     "download_failed_details": "Download failed: {error}",
     "retry_download_all": "Retry Download",
-    "some_files_failed": "Some files failed to download"
+    "some_files_failed": "Some files failed to download",
+    "metadata_file": "Metadata File",
+    "device_information": "Device Information",
+    "flash_firmware_with_count": "{count} {count, plural, one {file} other {files}}"
   },
   "memorymap": {
     "layout": "Memory Layout",

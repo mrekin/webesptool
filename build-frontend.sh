@@ -101,9 +101,15 @@ build_image() {
     info "Starting Docker image build..."
     info "Image: $REGISTRY/$IMAGE_NAME:$APP_VERSION"
 
+    # Get current date in YYYYMMDD format
+    BUILD_DATE=$(date +%Y%m%d)
+
+    # Prepare version for build (version + date)
+    BUILD_VERSION="${APP_VERSION}.${BUILD_DATE}"
+
     # Build image
     docker build \
-        --build-arg APP_VERSION="$APP_VERSION" \
+        --build-arg APP_VERSION="$BUILD_VERSION" \
         -t "$REGISTRY/$IMAGE_NAME:$APP_VERSION" \
         -t "$REGISTRY/$IMAGE_NAME:latest" \
         "$FRONTEND_DIR"

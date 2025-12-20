@@ -966,7 +966,7 @@
 										{#if metadataFile}
 											<div>
 												<div class="mb-1 flex items-center justify-between">
-													<label class="text-sm font-medium text-blue-300">Metadata File</label>
+													<label class="text-sm font-medium text-blue-300">{$locales('customfirmware.metadata_file')}</label>
 												</div>
 												<div
 													class="flex items-center space-x-2 rounded-md border border-blue-600 bg-blue-900/20 p-2"
@@ -1428,17 +1428,14 @@
 						{#if isFlashing}
 							{$locales('customfirmware.flashing')}...
 						{:else}
-							{$locales('customfirmware.flash_firmware')} ({selectedFirmwareFiles.length} file{selectedFirmwareFiles.length !==
-							1
-								? 's'
-								: ''})
+							{$locales('customfirmware.flash_firmware')} ({$locales('customfirmware.flash_firmware_with_count', {values: { count: selectedFirmwareFiles.length }})})
 						{/if}
 					</button>
 				{/if}
 			</div>
 			{#if isPortSelected && deviceInfo}
 				<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-4">
-					<div class="mb-3 text-sm font-medium text-orange-300">Device Information</div>
+					<div class="mb-3 text-sm font-medium text-orange-300">{$locales('customfirmware.device_information')}</div>
 					<div class="grid grid-cols-1 gap-4 text-xs text-gray-400 md:grid-cols-2 lg:grid-cols-3">
 						{#if deviceInfo.chip !== 'Unknown'}
 							<div><strong>Chip:</strong> {deviceInfo.chip}</div>
