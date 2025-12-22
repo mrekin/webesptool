@@ -13,6 +13,11 @@
       description: $locales('footer.meshtastic_desc')
     },
     {
+      name: $locales('footer.meshcore_name'),
+      href: 'https://meshcore.co.uk',
+      description: $locales('footer.meshcore_desc')
+    },
+    {
       name: $locales('footer.documentation_name'),
       href: 'https://meshtastic.org/docs/',
       description: $locales('footer.documentation_desc')
