@@ -2,8 +2,11 @@
 \.*/
 log/
 webesptool/data*
+webesptool/meshcore
 *.pyc
 claude_code_zai_env.sh
 frontend/static/radio.webp
 webesptool/static/radio2.webp
-temp
+docker-compose_fr_dev.yml
+plans/
+temp/

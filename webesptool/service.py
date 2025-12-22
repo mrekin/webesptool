@@ -1,5 +1,10 @@
 import json
 import yaml
+from enum import Enum
+
+class FirmwareType(Enum):
+    MESHTASTIC = "meshtastic"
+    MESHCORE = "meshcore"
 
 from jsonmerge import merge
 import utils.logger
@@ -50,10 +55,17 @@ class CustomLooseVersion(LooseVersion):
             other = CustomLooseVersion(other)
         elif not isinstance(other, CustomLooseVersion):
             return NotImplemented
-        
+
         #If elements has different types - compare as strings
-        for i in range(len(self.version)):
+        max_len = max(len(self.version), len(other.version))
+        for i in range(max_len):
             try:
+                # If one version has more components, it's considered newer
+                if i >= len(other.version):
+                    return 1
+                if i >= len(self.version):
+                    return -1
+
                 if type(self.version[i]) != type(other.version[i]):
                     self.version[i] = str(self.version[i])
                     other.version[i] = str(other.version[i])
@@ -172,7 +184,7 @@ async def getAvailableFirmwares(src = None, rootFolder = None, t:str = None):
     versions = set()
     device_names = {}
 
-    rootFolder, src = await getRootFolder(src=src)
+    rootFolder, src, fw_type = await getRootFolder(src=src)
 
     paths = [rf if isinstance(rf, str) else rf.get('path', None) for rf in config['fwDirs']]
     srcs =  [{'src': rf.get('src', None), 'desc': rf.get('desc', '')} for rf in config['fwDirs'] if isinstance(rf,dict) and rf.get('src', None)]
@@ -261,7 +273,7 @@ async def buildInfoblock(t:str = None, v:str = None, src:str = None):
     infoblock={'info':""}
     rmfile = "readme.md"
     
-    rootFolder, src = await getRootFolder(t,v,src)
+    rootFolder, src, fw_type = await getRootFolder(t,v,src)
     if rootFolder:
         rmfile = os.path.join(rootFolder,t,rmfile)
     
@@ -282,11 +294,19 @@ async def buildVersions(t:str = None, src:str = None):
     notes_map = {}
     latestTags = {}
 
-    rootFolder, src = await getRootFolder(t=t, src=src)
+    rootFolder, src, fw_type = await getRootFolder(t=t, src=src)
 
     if rootFolder:
         address_pattern = re.compile("^"+rootFolder+"[^/]+$")
-        reg = r"^(?P<mver>([\w\d]+\.){2}([\w\d]+))\.(?P<n>[\w\d]+)\.*(?P<daily>daily)*$"
+
+        # Choose regex based on firmware type
+        if fw_type == FirmwareType.MESHCORE:
+            # Meshcore: v1.11.0.6d32193.companion.ble format
+            reg = r"^v(?P<mver>([\w\d]+\.){2}([\w\d]+))\.(?P<n>[\w\d-]+)\.(?P<variant>[^\.]+)(\.(?P<extra>.+))?$"
+        else:
+            # Meshtastic: v2.4.3.efc27f2 format
+            reg = r"^(?P<mver>([\w\d]+\.){2}([\w\d]+))\.(?P<n>[\w\d]+)\.*(?P<daily>daily)*$"
+
         path = os.path.join(rootFolder,t)
         if os.path.commonprefix((os.path.realpath(path),os.path.realpath(rootFolder))) != os.path.realpath(rootFolder):
             pass # Something incorrect with path, maybe traversal attack
@@ -314,12 +334,21 @@ async def buildVersions(t:str = None, src:str = None):
                                 jver = json.loads(content)
                                         
                                 matches= re.search(reg, jver.get('version'))
-                                
+
                                 # Assume that `latestTag`` exist only for daily versions
                                 if jver.get('latestTag',None):
                                     latestTags[jver.get('version')] = jver.get('latestTag',None)
-                                        
-                                sver = f"{matches.group('mver')} {jver.get('date')} {matches.group('daily')}"
+
+                                if matches:
+                                    if fw_type == FirmwareType.MESHCORE:
+                                        # Meshcore: use full version for uniqueness (includes variant)
+                                        sver = f"{jver.get('version')} {jver.get('date')} "
+                                    else:
+                                        # Meshtastic: use mver + date + daily format
+                                        sver = f"{matches.group('mver')} {jver.get('date')} {matches.group('daily')}"
+                                else:
+                                    # Fallback for versions without regex match
+                                    sver = f"{jver.get('version')} {jver.get('date')} "
                                 versions_map[sver] = jver.get('version')
                                 dates_map[jver.get('version')] = jver.get('date')
                                 notes_map[jver.get('version')] = jver.get('notes')
@@ -327,7 +356,16 @@ async def buildVersions(t:str = None, src:str = None):
                         else:
                                     #reg = r"^(?P<mver>([\w\d]+\.){2}([\w\d]+))\.(?P<n>[\w\d]+)\.*(?P<daily>daily)*$"
                             matches= re.search(reg, d)
-                            sver = f"{matches.group('mver')} 00:00:00 {matches.group('daily')}"
+                            if matches:
+                                if fw_type == FirmwareType.MESHCORE:
+                                    # Meshcore: use full version
+                                    sver = f"{d} 00:00:00 "
+                                else:
+                                    # Meshtastic: use mver format
+                                    sver = f"{matches.group('mver')} 00:00:00 {matches.group('daily')}"
+                            else:
+                                # Fallback for versions without regex match
+                                sver = f"{d} 00:00:00 "
                             versions_map[sver] = d
                                     #data.get('versions',[]).append(sver)    
 
@@ -413,6 +451,7 @@ async def getFileByMask(path, mask):
 
 async def getRootFolder(t = None, v = None, src:str = None):
     rootFolder = None
+    fw_type = FirmwareType.MESHTASTIC  # default type
 
     paths = [rf if isinstance(rf, str) else rf.get('path', None) for rf in config['fwDirs']]
     srcs =  [rf.get('src', None) for rf in config['fwDirs'] if isinstance(rf,dict) and rf.get('src', None)]
@@ -420,7 +459,8 @@ async def getRootFolder(t = None, v = None, src:str = None):
         for rf in config['fwDirs']:
             if isinstance(rf,dict) and src == rf.get('src', None) and rf.get('path', None):
                 rootFolder = rf.get('path')
-                return rootFolder, src
+                fw_type = FirmwareType(rf.get('type', 'meshtastic'))  # get type from config
+                return rootFolder, src, fw_type
     
     # Get devices and versions at first path if not provided
     if not rootFolder and paths:
@@ -436,12 +476,13 @@ async def getRootFolder(t = None, v = None, src:str = None):
                     for s in config['fwDirs']:
                         if isinstance(s,dict) and s.get('path', None) == rf:
                             src = s.get('src', None)
+                            fw_type = FirmwareType(s.get('type', 'meshtastic'))  # get type from config
                             break
-                    return rf, src
+                    return rf, src, fw_type
                     
         except Exception:
             rootFolder = None
-    return rootFolder, src
+    return rootFolder, src, fw_type
 
 async def buildManifest(t:str = None, v:str = None, u:str = "1", src:str = None):
     log.debug("Build manifest: %s, %s for %s",t,v, src)
@@ -459,7 +500,7 @@ async def buildManifest(t:str = None, v:str = None, u:str = "1", src:str = None)
             }
         ]
     }
-    rootFolder, src = await getRootFolder(t,v,src)
+    rootFolder, src, fw_type = await getRootFolder(t,v,src)
     devinfo = await loadInfo(t,v, rootFolder)
 
     update_offset = 65536
@@ -508,15 +549,21 @@ async def buildManifest(t:str = None, v:str = None, u:str = "1", src:str = None)
         offset= update_offset
         path = "firmware?v={0}&t={1}&u={2}&src={3}".format(v,t,u,src)
         manifest["builds"][0]["parts"].append({ "path": path, "offset": offset })
-        
-    else:
 
-        pathfw = "firmware?v={0}&t={1}&u={2}&p={3}&src={4}".format(v,t,u,'fw',src)
-        pathbleota = "firmware?v={0}&t={1}&u={2}&p={3}&src={4}".format(v,t,u, bleotav,src)
-        pathlittlefs = "firmware?v={0}&t={1}&u={2}&p={3}&src={4}".format(v,t,u,'littlefs',src)
-        manifest["builds"][0]["parts"].append({ "path": pathfw, "offset": install_fw_offset })
-        manifest["builds"][0]["parts"].append({ "path": pathbleota, "offset": install_bleota_offset })
-        manifest["builds"][0]["parts"].append({ "path": pathlittlefs, "offset": install_littlefs_offset })
+    else:
+        # Build manifest based on firmware type
+        if fw_type == FirmwareType.MESHCORE:
+            # Meshcore: only firmware part (no OTA/LittleFS)
+            pathfw = "firmware?v={0}&t={1}&u={2}&p={3}&src={4}".format(v,t,u,'fw',src)
+            manifest["builds"][0]["parts"].append({ "path": pathfw, "offset": install_fw_offset })
+        else:
+            # Meshtastic: standard manifest with all parts
+            pathfw = "firmware?v={0}&t={1}&u={2}&p={3}&src={4}".format(v,t,u,'fw',src)
+            pathbleota = "firmware?v={0}&t={1}&u={2}&p={3}&src={4}".format(v,t,u, bleotav,src)
+            pathlittlefs = "firmware?v={0}&t={1}&u={2}&p={3}&src={4}".format(v,t,u,'littlefs',src)
+            manifest["builds"][0]["parts"].append({ "path": pathfw, "offset": install_fw_offset })
+            manifest["builds"][0]["parts"].append({ "path": pathbleota, "offset": install_bleota_offset })
+            manifest["builds"][0]["parts"].append({ "path": pathlittlefs, "offset": install_littlefs_offset })
 
     return manifest
 
@@ -577,7 +624,7 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
     #u: 5 - zip, 4 - ota, 1 - update, 2 - install
     #check which source folder used
     logInd = True
-    rootFolder, src = await getRootFolder(t,v,src)
+    rootFolder, src, fw_type = await getRootFolder(t,v,src)
 
     if not rootFolder:
         return {'error': 'No such firmware found'}
@@ -622,16 +669,24 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
         if u=="1": #update
             #path = os.path.join(rootFolder,t,v,"firmware.bin")
             #filename = t+"-"+v+".bin"
-            path, filename = await getFileByMask(os.path.join(rootFolder,t,v),r".*firmware(?!.*factory).*\.bin")
+            if fw_type == FirmwareType.MESHCORE:
+                # Meshcore: regular .bin files (not merged)
+                path, filename = await getFileByMask(os.path.join(rootFolder,t,v),r"(?!.*merged).*\.bin")
+            else:
+                # Meshtastic: firmware.bin files (not factory)
+                path, filename = await getFileByMask(os.path.join(rootFolder,t,v),r".*firmware(?!.*factory).*\.bin")
             if filename == "firmware.bin":
                 filename = t+"-"+v+".bin"
         elif u=="2":  #install
             if p == 'fw':
-                #path = os.path.join(rootFolder,t,v,"firmware.factory.bin")
-                #filename = t+"-"+v+".factory.bin"
-                path, filename = await getFileByMask(os.path.join(rootFolder,t,v),r".*firmware.*factory\.bin")
-                if filename == "firmware.factory.bin":
-                    filename = t+"-"+v+".factory.bin"
+                if fw_type == FirmwareType.MESHCORE:
+                    # Meshcore: merged.bin
+                    path, filename = await getFileByMask(os.path.join(rootFolder,t,v),r".*merged\.bin")
+                else:
+                    # Meshtastic: firmware.*factory.bin
+                    path, filename = await getFileByMask(os.path.join(rootFolder,t,v),r".*firmware.*factory\.bin")
+                    if filename == "firmware.factory.bin":
+                        filename = t+"-"+v+".factory.bin"
             if p == 'littlefs':
                 logInd = False # Do not log additional files downloads
                 #path = os.path.join(rootFolder,t,v,"littlefs.bin")
