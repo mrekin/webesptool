@@ -311,6 +311,7 @@
   <div class="space-y-4">
 
     <!-- Firmware Mode Selector for ESP32 Devices -->
+    {#if deviceDisplayInfoStore?.deviceType && isESP32Device(deviceDisplayInfoStore.deviceType)}
     <div class="space-y-2 sm:space-y-3">
       <label class="block text-sm font-medium text-orange-200 mb-2">
         {$locales('downloadbuttons.flash_mode')}
@@ -338,6 +339,7 @@
         </label>
       </div>
     </div>
+    {/if}
 
     <!-- Primary Download Actions -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">

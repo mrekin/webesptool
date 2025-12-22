@@ -509,9 +509,12 @@
 
       <!-- Version Notes -->
       {#if versionSelected && versionsDataStore.notes[deviceSelectionStore.version as any]}
-        <div class="mt-2 p-3 bg-gray-800 border border-orange-600 rounded-md version-notes">
-          <div class="text-sm text-orange-200 prose prose-invert prose-sm max-w-none">
-            {@html versionsDataStore.notes[deviceSelectionStore.version as any]}
+        <div class="mt-3 p-4 bg-gray-700/50 border-l-4 border-orange-500 rounded-r-md">
+          <div class="flex items-start space-x-3">
+            <span class="text-orange-400 flex-shrink-0 text-lg">ℹ️</span>
+            <div class="text-sm text-orange-100 prose prose-invert prose-sm max-w-none prose-p:my-1 prose-headings:mt-2 prose-headings:mb-1">
+              {@html versionsDataStore.notes[deviceSelectionStore.version as any]}
+            </div>
           </div>
         </div>
       {/if}

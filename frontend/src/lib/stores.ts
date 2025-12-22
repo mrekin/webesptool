@@ -828,14 +828,22 @@ selectionState.subscribe((selection) => {
     if (oldSelection.devicePioTarget !== selection.device ||
         oldSelection.version !== selection.version ||
         oldSelection.source !== selection.repository) {
+
+      // Get current availableFirmwares data for proper category detection
+      let currentFirmwares: AvailableFirmwares | null = null;
+      const unsubscribeFirmwares = availableFirmwares.subscribe(firmwares => {
+        currentFirmwares = firmwares;
+      });
+      unsubscribeFirmwares();
+
       return {
         ...oldSelection,
         devicePioTarget: selection.device,
         version: selection.version,
         source: selection.repository || oldSelection.source,
-        category: selection.device ? detectCategoryFromDeviceTypeAvailableData(selection.device,
-          // @ts-ignore - accessing current firmwares for compatibility
-          { espdevices: [], uf2devices: [], rp2040devices: [], device_names: {}, versions: [], srcs: [] }) : null
+        category: selection.device && currentFirmwares
+          ? detectCategoryFromDeviceTypeAvailableData(selection.device, currentFirmwares)
+          : null
       };
     }
     return oldSelection;
