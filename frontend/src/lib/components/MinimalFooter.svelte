@@ -1,9 +1,90 @@
 <script lang="ts">
   import { _ as locales } from 'svelte-i18n';
+  import NewYearModal from './NewYearModal.svelte';
+  import { browser } from '$app/environment';
+
+  let showNewYearModal = false;
+
+  function openNewYearModal() {
+    showNewYearModal = true;
+  }
+
+  function closeNewYearModal() {
+    showNewYearModal = false;
+  }
+
+  // Check if we should show the New Year tree
+  function showNewYearTree(): boolean {
+    if (!browser) return false;
+
+    const now = new Date();
+    console.log('🎄 New Year Tree Check - Current date:', now.toISOString(), 'Local:', now.toLocaleString());
+
+    // Always show on localhost
+    if (browser && window.location.hostname === 'localhost') {
+      console.log('🎄 Showing tree - localhost detected');
+      return true;
+    }
+
+    // Check if current date is between Dec 31 and Jan 7
+    const currentYear = now.getFullYear();
+    const startDate = new Date(currentYear - 1, 11, 31); // Dec 31 of previous year
+    const endDate = new Date(currentYear, 0, 7); // Jan 7 of current year
+
+    // If we're in January before Jan 7, use previous year for start date
+    if (now.getMonth() === 0 && now.getDate() <= 7) {
+      const adjustedStartDate = new Date(currentYear - 1, 11, 31);
+      const adjustedEndDate = new Date(currentYear, 0, 7);
+      const inRange = now >= adjustedStartDate && now <= adjustedEndDate;
+      console.log('🎄 January check - in range:', inRange, 'adjustedStartDate:', adjustedStartDate.toISOString(), 'adjustedEndDate:', adjustedEndDate.toISOString());
+      return inRange;
+    }
+
+    // For Dec 31, use current year start date and Dec 31 end date
+    if (now.getMonth() === 11 && now.getDate() === 31) {
+      console.log('🎄 Showing tree - Dec 31 detected');
+      return true;
+    }
+
+    const inRange = now >= startDate && now <= endDate;
+    console.log('🎄 Range check - in range:', inRange, 'startDate:', startDate.toISOString(), 'endDate:', endDate.toISOString());
+    return inRange;
+  }
+
+  let showTree = showNewYearTree();
 </script>
 
 <div class="mt-8 pt-6 border-t border-gray-700">
   <p class="text-center text-xs text-gray-400">
     {@html $locales('footer.trademark_notice')}
+    <!-- New Year Surprise -->
+    {#if showTree}
+      <button
+        on:click={openNewYearModal}
+        class="ml-1 text-xs hover:scale-125 transition-transform duration-300 cursor-pointer bg-transparent border-none p-0 hover:animate-sparkle align-middle"
+        aria-label="New Year surprise"
+        title="Click for a New Year surprise!"
+      >
+        🎄
+      </button>
+    {/if}
   </p>
 </div>
+
+<!-- New Year Modal -->
+<NewYearModal isOpen={showNewYearModal} onClose={closeNewYearModal} />
+
+<style>
+  @keyframes sparkle {
+    0%, 100% {
+      filter: brightness(1) drop-shadow(0 0 5px rgba(255, 215, 0, 0));
+    }
+    50% {
+      filter: brightness(1.3) drop-shadow(0 0 15px rgba(255, 215, 0, 0.8));
+    }
+  }
+
+  .animate-sparkle:hover {
+    animation: sparkle 1s ease-in-out infinite;
+  }
+</style>

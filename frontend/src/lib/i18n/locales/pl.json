@@ -180,7 +180,9 @@
     "beta_service": "Usługa Beta",
     "version": "Wersja",
     "license_info": "Licencjonowany na warunkach Creative Commons Attribution-NonCommercial 4.0",
-    "license_desc": "Użycie niekomercyjne z wymaganym atrybucją"
+    "license_desc": "Użycie niekomercyjne z wymaganym atrybucją",
+    "new_year_title": "Szczęśliwego Nowego Roku!",
+    "new_year_greeting": "Niech Nowy Rok przyniesie Ci radość, zdrowie i szczęście! Dziękujemy za korzystanie z naszego serwisu. 🎄✨"
   },
   "customfirmware": {
     "flash_custom_firmware": "Flashuj niestandardowy firmware",
