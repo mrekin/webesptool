@@ -132,6 +132,7 @@ export interface DownloadOption {
   icon?: string;
   description?: string;
   url?: string;
+  openInNewTab?: boolean;
 }
 
 export interface UIState {

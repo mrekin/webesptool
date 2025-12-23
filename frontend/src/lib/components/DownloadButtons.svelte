@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { deviceSelection, loadingState, deviceDisplayInfo } from '$lib/stores.js';
+  import { deviceSelection, loadingState, deviceDisplayInfo, currentSource } from '$lib/stores.js';
   import { apiActions } from '$lib/stores.js';
   import { DeviceType } from '$lib/types.js';
   import { isESP32Device, isNRF52Device, isRP2040Device, supportsUF2 } from '$lib/utils/deviceTypeUtils.js';
@@ -26,13 +26,14 @@
   $: deviceSelectionStore = $deviceSelection;
   $: isDownloading = $loadingState.isDownloading;
   $: deviceDisplayInfoStore = $deviceDisplayInfo;
+  $: currentSourceStore = $currentSource;
 
 
   // Available download options based on device type and version
-  $: downloadOptions = getDownloadOptions(deviceSelectionStore.devicePioTarget, deviceDisplayInfoStore?.deviceType, deviceSelectionStore.version, firmwareMode, $locale);
+  $: downloadOptions = getDownloadOptions(deviceSelectionStore.devicePioTarget, deviceDisplayInfoStore?.deviceType, deviceSelectionStore.version, firmwareMode, $locale, currentSourceStore?.type);
 
-  
-  function getDownloadOptions(devicePioTarget: string | null, deviceType: DeviceType | null | undefined, version: string | null, mode: 'update' | 'full', locale: any): DownloadOption[] {
+
+  function getDownloadOptions(devicePioTarget: string | null, deviceType: DeviceType | null | undefined, version: string | null, mode: 'update' | 'full', locale: any, sourceType: string | undefined): DownloadOption[] {
     if (!devicePioTarget || !version) return [];
 
     const options: DownloadOption[] = [];
@@ -69,15 +70,30 @@
         description: $locales('downloadbuttons.download_ota_firmware')
       });
 
-      options.push({
-        id: 'url',
-        label: $locales('downloadbuttons.download_erase_uf2'),
-        mode: '4',
-        available: true,
-        icon: '💾',
-        description: $locales('downloadbuttons.download_nrf_erase'),
-        url: 'https://flasher.meshtastic.org/uf2/nrf_erase2.uf2'
-      });
+      // Show erase UF2 option only for Meshtastic, not Meshcore
+      if (sourceType === 'meshtastic') {
+        options.push({
+          id: 'url',
+          label: $locales('downloadbuttons.download_erase_uf2'),
+          mode: '4',
+          available: true,
+          icon: '💾',
+          description: $locales('downloadbuttons.download_nrf_erase'),
+          url: 'https://flasher.meshtastic.org/uf2/nrf_erase2.uf2'
+        });
+      } else if (sourceType === 'meshcore') {
+        // For Meshcore, show link to nRF52 Flash Format GitHub releases
+        options.push({
+          id: 'url',
+          label: 'nRF52 Flash Format',
+          mode: '4',
+          available: true,
+          icon: '🔗',
+          description: 'Open Meshcore nRF52 Flash Format releases',
+          url: 'https://github.com/meshcore-dev/nRF52-Flash-Format/releases',
+          openInNewTab: true
+        });
+      }
     }
 
     // UF2 downloads for RP2040 devices
@@ -117,15 +133,20 @@
   }
 
 
-  // Simplified function to download files from URL
-  function downloadFromUrl(url: string): void {
-    // Create download link and trigger it
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = ''; // Let browser use filename from server or URL
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  // Simplified function to download files from URL or open in new tab
+  function downloadFromUrl(url: string, openInNewTab: boolean = false): void {
+    if (openInNewTab) {
+      // Open in new tab (for GitHub releases, etc.)
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      // Create download link and trigger it
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = ''; // Let browser use filename from server or URL
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   }
 
   // Handle download action
@@ -148,8 +169,8 @@
   // Handle click action based on option
   async function handleDownloadClick(option: DownloadOption) {
     if (option.id === 'url' && option.url) {
-      // For URL download options (e.g., Erase UF2 files)
-      downloadFromUrl(option.url);
+      // For URL download options (e.g., Erase UF2 files or GitHub links)
+      downloadFromUrl(option.url, option.openInNewTab);
       return;
     }
 

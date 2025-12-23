@@ -73,6 +73,14 @@ export const uiState = writable<UIState>(initialUIState);
 // Available repositories store - manages repository list
 export const availableSources = writable<SourceInfo[]>([]);
 
+// Current source store - derived from availableSources and deviceSelection
+export const currentSource = derived(
+  [availableSources, deviceSelection],
+  ([$sources, $selection]) => {
+    return $sources.find(s => s.src === $selection.source) || null;
+  }
+);
+
 // Available firmwares store - manages device categories and names
 export const availableFirmwares = writable<AvailableFirmwares>({
   espdevices: [],
