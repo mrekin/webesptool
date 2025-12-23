@@ -459,9 +459,10 @@ export const selectionActions = {
       }
 
       // Validate version is available for current device
+      // Use versionsData instead of availableVersionsForSelection to avoid dependency on repository
       let availableVersions: string[] = [];
-      const unsubscribe = availableVersionsForSelection.subscribe(versions => {
-        availableVersions = versions;
+      const unsubscribe = versionsData.subscribe(versions => {
+        availableVersions = versions.versions;
       });
       unsubscribe();
 
@@ -786,7 +787,7 @@ let isLoadingVersions = false; // Flag to prevent race conditions
 
 // Subscribe to unified selection state changes
 selectionState.subscribe(async (selection) => {
-  const { repository, device, version } = selection;
+  const { device, version } = selection;
 
   // Get current interface mode
   let currentInterfaceMode: InterfaceMode = InterfaceMode.FULL;

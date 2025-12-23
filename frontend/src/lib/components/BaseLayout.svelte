@@ -37,15 +37,9 @@
 </script>
 
 <svelte:head>
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="/static/meshicon.png" />
-
   <!-- Viewport and theme -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#615353" />
-
-  <!-- Apple touch icon -->
-  <link rel="apple-touch-icon" href="/static/meshicon.png" />
 </svelte:head>
 
 <div

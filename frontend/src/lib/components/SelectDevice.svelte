@@ -20,15 +20,28 @@
   let showVersionDropdown = false;
   let selectedVersionIndex = -1;
 
-  // Subscribe to stores - NEW: Use unified stores
+  // Subscribe to stores
   $: deviceSelectionStore = $deviceSelection;
   $: availableFirmwaresStore = $availableFirmwares;
   $: versionsDataStore = $versionsData;
 
-  // NEW: Unified selection state
-  $: selectionStateStore = $selectionState;
-  $: availableDevicesForSelectionStore = $availableDevicesForSelection;
-  $: availableVersionsForSelectionStore = $availableVersionsForSelection;
+  // Unified selection state - use direct subscribe to fix reactivity issue
+  let selectionStateStore = $selectionState;
+  let availableDevicesForSelectionStore = $availableDevicesForSelection;
+  let availableVersionsForSelectionStore = $availableVersionsForSelection;
+
+  // Direct subscriptions to fix reactivity issues with Svelte stores
+  selectionState.subscribe(value => {
+    selectionStateStore = value;
+  });
+
+  availableDevicesForSelection.subscribe(value => {
+    availableDevicesForSelectionStore = value;
+  });
+
+  availableVersionsForSelection.subscribe(value => {
+    availableVersionsForSelectionStore = value;
+  });
 
   // Legacy compatibility (can be removed later)
   $: allDevices = $allDevicesFlat;
@@ -58,13 +71,18 @@
     rp2040: filteredDevices.filter((d: {device: string; category: string}) => d.category === 'rp2040')
   };
 
-  // FIX: Unified reactive statement for auto-version selection
-  $: if (selectionStateStore.device && availableVersionsForSelectionStore.length > 0) {
-    if (!selectionStateStore.version || !availableVersionsForSelectionStore.includes(selectionStateStore.version)) {
+  // Auto-select latest version when versions are loaded for selected device
+  $: if (selectionStateStore.device && versionsDataStore.versions.length > 0) {
+    if (!selectionStateStore.version || !versionsDataStore.versions.includes(selectionStateStore.version)) {
       // Auto-select latest version (first in array as server returns sorted descending)
-      selectionActions.setVersion(availableVersionsForSelectionStore[0]);
+      selectionActions.setVersion(versionsDataStore.versions[0]);
     }
   }
+
+  // Computed display value for input
+  $: versionDisplayValue = selectionStateStore.version
+    ? getVersionDisplayText(selectionStateStore.version)
+    : (deviceSelectionStore.version ? getVersionDisplayText(deviceSelectionStore.version) : '');
 
   $: if (deviceSelectionStore.devicePioTarget && !isFiltering) {
    deviceFilter = getDeviceDisplayName(deviceSelectionStore.devicePioTarget);
@@ -352,14 +370,13 @@
     return availableFirmwaresStore.device_names[devicePioTarget] || devicePioTarget;
   }
 
-  // Get version display text with validation
+  // Get version display text
   function getVersionDisplayText(version: string): string {
-    // NEW: Protect against invalid versions
-    if (!version || !availableVersionsForSelectionStore.includes(version)) {
+    // Check if version exists and is in the actual versions list for current device
+    if (!version || !versionsDataStore.versions.includes(version)) {
       return '';
     }
-    let displayText = version;
-    return displayText;
+    return version;
   }
 </script>
 
@@ -467,7 +484,7 @@
           id="firmware-version"
           type="text"
           placeholder={$locales('selectdevice.version_placeholder')}
-          value={selectionStateStore.version && availableVersionsForSelectionStore.includes(selectionStateStore.version)
+          value={selectionStateStore.version
       ? getVersionDisplayText(selectionStateStore.version)
       : (deviceSelectionStore.version ? getVersionDisplayText(deviceSelectionStore.version) : '')}
           on:input={handleVersionInputChange}
