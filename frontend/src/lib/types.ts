@@ -85,13 +85,20 @@ export interface ManifestResponse {
   pathota: string;
 }
 
+// Source repository information
+export interface SourceInfo {
+  src: string;
+  desc: string;
+  type: string;
+}
+
 export interface AvailableFirmwares {
   espdevices: string[];
   uf2devices: string[];
   rp2040devices: string[];
   versions: string[];
   device_names: { [key: string]: string };
-  srcs: string[];
+  srcs: SourceInfo[];
 }
 
 export interface DeviceSelection {

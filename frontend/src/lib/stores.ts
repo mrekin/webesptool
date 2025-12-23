@@ -7,6 +7,7 @@ import type {
   VersionsResponse,
   FirmwareInfo,
   AvailableFirmwares,
+  SourceInfo,
   UIState,
   DownloadEvent,
   FirmwareRequest,
@@ -70,7 +71,7 @@ export const loadingState = writable<LoadingState>(initialLoadingState);
 export const uiState = writable<UIState>(initialUIState);
 
 // Available repositories store - manages repository list
-export const availableSources = writable<string[]>([]);
+export const availableSources = writable<SourceInfo[]>([]);
 
 // Available firmwares store - manages device categories and names
 export const availableFirmwares = writable<AvailableFirmwares>({
@@ -79,7 +80,7 @@ export const availableFirmwares = writable<AvailableFirmwares>({
   rp2040devices: [],
   versions: [],
   device_names: {},
-  srcs: ['']
+  srcs: []
 });
 
 // Versions data store - manages available versions for selected device
@@ -588,10 +589,10 @@ export const apiActions = {
 
       if (sources.length > 0) {
         // FIX: Set repository in unified selection state FIRST (without cascade reset)
-        selectionActions.updateRepositoryOnly(sources[0]);
+        selectionActions.updateRepositoryOnly(sources[0].src);
 
         // Then set source in old deviceSelection (this will also trigger deviceActions.setRepository)
-        deviceActions.setSource(sources[0]);
+        deviceActions.setSource(sources[0].src);
       }
     } catch (error) {
       loadingActions.setError(error instanceof Error ? error.message : 'Failed to load repositories');

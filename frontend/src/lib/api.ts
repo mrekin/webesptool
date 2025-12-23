@@ -5,6 +5,7 @@ import type {
   FirmwareDownloadResponse,
   ManifestResponse,
   AvailableFirmwares,
+  SourceInfo,
   APIError,
   AppConfig,
   UpdateMode
@@ -277,8 +278,8 @@ class APIService {
   }
 
   // Get available repositories
-  async getSrcs(): Promise<string[]> {
-    return this.request<string[]>('/srcs');
+  async getSrcs(): Promise<SourceInfo[]> {
+    return this.request<SourceInfo[]>('/srcs');
   }
 
   // Download file content for processing (returns ArrayBuffer)

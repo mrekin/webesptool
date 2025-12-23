@@ -187,8 +187,9 @@ async def getAvailableFirmwares(src = None, rootFolder = None, t:str = None):
     rootFolder, src, fw_type = await getRootFolder(src=src)
 
     paths = [rf if isinstance(rf, str) else rf.get('path', None) for rf in config['fwDirs']]
-    srcs =  [{'src': rf.get('src', None), 'desc': rf.get('desc', '')} for rf in config['fwDirs'] if isinstance(rf,dict) and rf.get('src', None)]
-    if not rootFolder and src in srcs:
+    srcs =  [{'src': rf.get('src', None), 'desc': rf.get('desc', ''), 'type': rf.get('type', 'meshtastic')} for rf in config['fwDirs'] if isinstance(rf,dict) and rf.get('src', None)]
+    src_values = [s['src'] for s in srcs]
+    if not rootFolder and src in src_values:
         for rf in config['fwDirs']:
             if isinstance(rf,dict) and src == rf.get('src', None) and rf.get('path', None):
                 rootFolder = rf.get('path')
@@ -430,7 +431,21 @@ async def generate_zip(folder_path, json_data:str = None):
     return zip_buffer
 
 async def getSrcs():
-    srcs =  [rf.get('src', None) if isinstance(rf, dict) else rf  for rf in config['fwDirs']]
+    srcs = []
+    for rf in config['fwDirs']:
+        if isinstance(rf, dict):
+            srcs.append({
+                'src': rf.get('src', None),
+                'desc': rf.get('desc', ''),
+                'type': rf.get('type', 'meshtastic')
+            })
+        else:
+            # For string entries (legacy), provide default values
+            srcs.append({
+                'src': rf,
+                'desc': '',
+                'type': 'meshtastic'
+            })
     return srcs
 
 # Search single file in path by regexp mask
