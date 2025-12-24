@@ -49,11 +49,107 @@ validate_version() {
     fi
 }
 
-# Version prompt function
+# Get version from package.json
+get_package_version() {
+    if [ -f "$FRONTEND_DIR/package.json" ]; then
+        local pkg_version=$(grep '"version"' "$FRONTEND_DIR/package.json" | head -1 | sed 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+        if [ -n "$pkg_version" ]; then
+            # Add 'v' prefix if not present
+            if [[ ! $pkg_version =~ ^v ]]; then
+                pkg_version="v$pkg_version"
+            fi
+            echo "$pkg_version"
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Compare two versions (returns 0 if $1 > $2, 1 if $1 <= $2)
+compare_versions() {
+    local v1=$1
+    local v2=$2
+
+    # Remove 'v' prefix for comparison
+    v1=${v1#v}
+    v2=${v2#v}
+
+    # Split versions into arrays
+    IFS='.' read -ra v1_parts <<< "$v1"
+    IFS='.' read -ra v2_parts <<< "$v2"
+
+    # Compare major, minor, patch
+    for i in 0 1 2; do
+        local n1=${v1_parts[$i]:-0}
+        local n2=${v2_parts[$i]:-0}
+
+        if ((n1 > n2)); then
+            return 0  # v1 > v2
+        elif ((n1 < n2)); then
+            return 1  # v1 < v2
+        fi
+    done
+
+    return 1  # Versions are equal
+}
+
+# Version prompt function with default from package.json
 prompt_version() {
+    local pkg_version=""
+    local latest_version=""
+    local suggested_version=""
+    local suggestion_reason=""
+
+    # Get version from package.json
+    pkg_version=$(get_package_version)
+
+    # Get latest version from registry
+    latest_version=$(get_latest_version)
+    if [ "$latest_version" = "None found" ]; then
+        latest_version=""
+    fi
+
+    # Determine suggested version
+    if [ -n "$pkg_version" ]; then
+        if [ -n "$latest_version" ]; then
+            # Compare package version with latest registry version
+            if compare_versions "$pkg_version" "$latest_version"; then
+                suggested_version="$pkg_version"
+                suggestion_reason="newer than latest registry version ($latest_version)"
+            else
+                suggested_version="$latest_version"
+                suggestion_reason="package.json version ($pkg_version) is not newer than latest ($latest_version)"
+            fi
+        else
+            suggested_version="$pkg_version"
+            suggestion_reason="from package.json (no existing versions in registry)"
+        fi
+    elif [ -n "$latest_version" ]; then
+        # Try to increment latest version's patch number
+        local major=$(echo "$latest_version" | sed 's/v\([0-9]*\)\..*/\1/')
+        local minor=$(echo "$latest_version" | sed 's/v[0-9]*\.\([0-9]*\)\..*/\1/')
+        local patch=$(echo "$latest_version" | sed 's/v[0-9]*\.[0-9]*\.\([0-9]*\)/\1/')
+        patch=$((patch + 1))
+        suggested_version="v${major}.${minor}.${patch}"
+        suggestion_reason="incremented from latest registry version ($latest_version)"
+    fi
+
     while true; do
         echo
-        read -p "Enter version in format v1.0.0: " version
+        if [ -n "$suggested_version" ]; then
+            echo -e "  Suggested: ${GREEN}$suggested_version${NC} ($suggestion_reason)"
+        fi
+
+        local prompt_text="Enter version in format v1.0.0"
+        if [ -n "$suggested_version" ]; then
+            prompt_text="$prompt_text [$suggested_version]"
+        fi
+        read -p "$prompt_text: " version
+
+        # Use suggested version if empty
+        if [ -z "$version" ] && [ -n "$suggested_version" ]; then
+            version="$suggested_version"
+        fi
 
         if [ -z "$version" ]; then
             error "Version cannot be empty"
@@ -178,10 +274,8 @@ push_image() {
     success "Images successfully pushed to registry"
 }
 
-# Function to get latest version from registry
+# Function to get latest version from registry (silent)
 get_latest_version() {
-    info "Checking for existing versions in registry..."
-
     # Try to get latest tag info from registry
     local latest_info=$(docker manifest inspect "$REGISTRY/$IMAGE_NAME:latest" 2>/dev/null)
 
