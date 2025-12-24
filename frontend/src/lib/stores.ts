@@ -904,6 +904,11 @@ async function initializeFromDeviceParam(devicePioTarget: string) {
 
       // Set device selection after data is loaded
       deviceActions.setDeviceDirectly(devicePioTarget);
+
+      // FIX: Update unified selection state repository FIRST, then device
+      // This ensures availableDevicesForSelection validation passes
+      selectionActions.updateRepositoryOnly(versions.src);
+      selectionActions.setDevice(devicePioTarget);
     } else {
       // No src returned - device not found, load default repositories
       apiActions.loadSrcs();

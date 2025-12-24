@@ -10,10 +10,10 @@
   import { _ as locales } from 'svelte-i18n';
 
   // Local state
-  let deviceFilter = '';
+  let deviceFilter = '';  // For filtering the dropdown list only
+  let deviceInputValue = '';  // For displaying in the input field
   let showDropdown = false;
   let selectedIndex = -1;
-  let savedFilter = ''; // Save filter value to restore if dropdown is cancelled
   let isFiltering = false; // Track if user is actively filtering vs just opening dropdown
 
   // Version selector state
@@ -49,11 +49,17 @@
   $: deviceSelected = $selectionState.device !== null;
   $: versionSelected = $selectionState.version !== null;
 
-  // Clear filter when device type is reset to null
+  // Clear input when device type is reset to null
   $: if (deviceSelectionStore.devicePioTarget === null) {
     deviceFilter = '';
+    deviceInputValue = '';
     showDropdown = false;
     selectedIndex = -1;
+  }
+
+  // Update input value when device changes from store
+  $: if (deviceSelectionStore.devicePioTarget && !isFiltering) {
+    deviceInputValue = getDeviceDisplayName(deviceSelectionStore.devicePioTarget);
   }
 
   // Filter devices based on search input
@@ -83,16 +89,14 @@
   $: versionDisplayValue = selectionStateStore.version
     ? getVersionDisplayText(selectionStateStore.version)
     : (deviceSelectionStore.version ? getVersionDisplayText(deviceSelectionStore.version) : '');
-
-  $: if (deviceSelectionStore.devicePioTarget && !isFiltering) {
-   deviceFilter = getDeviceDisplayName(deviceSelectionStore.devicePioTarget);
-  }
   
   // Handle device selection from dropdown
   function selectDevice(device: {device: string; displayName: string}) {
-    deviceFilter = device.displayName;
-    isFiltering = false; // Reset filtering flag since we made a selection
-    manageDeviceDropdown('close', { restoreFilter: false }); // Don't restore filter since we made a selection
+    deviceInputValue = device.displayName;
+    deviceFilter = '';
+    isFiltering = false;
+    showDropdown = false;
+    selectedIndex = -1;
 
     // FIX: Use unified selection actions with cascade validation
     selectionActions.setDevice(device.device);
@@ -102,14 +106,22 @@
   function handleInputChange(event: Event) {
     const input = event.target as HTMLInputElement;
     deviceFilter = input.value;
-    isFiltering = true; // Mark this as a filtering action
+    deviceInputValue = input.value;
+    isFiltering = true;
     showDropdown = true;
     selectedIndex = -1;
   }
 
-  // Handle input focus - show all devices
-  function handleInputFocus() {
-    openDropdown(false); // Don't save filter on focus
+  // Handle input focus - show all devices, keep input value, select all text
+  function handleInputFocus(event: Event) {
+    const input = event.target as HTMLInputElement;
+    deviceFilter = ''; // Reset filter to show all devices
+    showDropdown = true;
+    selectedIndex = -1;
+    isFiltering = false;
+
+    // Select all text for easy replacement
+    input.select();
   }
 
   // Handle version input click - toggle dropdown
@@ -214,42 +226,36 @@
   // Clear filter
   function clearFilter() {
     deviceFilter = '';
+    deviceInputValue = '';
     selectedIndex = -1;
     deviceActions.setDeviceDirectly(null);
   }
 
-  // Simplified dropdown management using new utilities
-  function manageDeviceDropdown(action: 'open' | 'close' | 'toggle', options?: any) {
-    switch (action) {
-      case 'open':
-        showDropdown = true;
-        selectedIndex = -1;
-        isFiltering = false;
-        if (options?.saveFilter && deviceFilter && deviceSelected) {
-          savedFilter = deviceFilter;
-        } else {
-          savedFilter = '';
-        }
-        deviceFilter = '';
-        break;
-
-      case 'close':
-        showDropdown = false;
-        selectedIndex = -1;
-        if (options?.restoreFilter && !isFiltering) {
-          restoreFilterIfNeeded();
-        }
-        isFiltering = false;
-        break;
-
-      case 'toggle':
-        if (showDropdown) {
-          manageDeviceDropdown('close');
-        } else {
-          manageDeviceDropdown('open', { saveFilter: true });
-        }
-        break;
+  // Toggle dropdown (show all devices)
+  function toggleDropdown(event?: Event) {
+    if (event) {
+      event.stopPropagation();
     }
+    if (showDropdown) {
+      // Closing - just hide dropdown, keep input value as is
+      showDropdown = false;
+      selectedIndex = -1;
+      isFiltering = false;
+    } else {
+      // Opening - reset filter, show all devices
+      deviceFilter = '';
+      showDropdown = true;
+      selectedIndex = -1;
+      isFiltering = false;
+    }
+  }
+
+  // Close dropdown without losing input value
+  function closeDropdown() {
+    showDropdown = false;
+    selectedIndex = -1;
+    isFiltering = false;
+    deviceFilter = ''; // Reset filter for next time
   }
 
   function manageVersionDropdown(action: 'open' | 'close' | 'toggle') {
@@ -273,36 +279,13 @@
     }
   }
 
-  // Helper functions for filter management
-  function restoreFilterIfNeeded() {
-    if (savedFilter) {
-      deviceFilter = savedFilter;
-    }
-  }
-
-  function openDropdown(saveFilter = false) {
-    manageDeviceDropdown('open', { saveFilter });
-  }
-
-  function closeDropdown(restoreFilter = true) {
-    manageDeviceDropdown('close', { restoreFilter });
-  }
-
-  // Toggle dropdown
-  function toggleDropdown(event?: Event) {
-    if (event) {
-      event.stopPropagation();
-    }
-    manageDeviceDropdown('toggle');
-  }
-
   // Universal click outside handler
   function handleClickOutside(event: MouseEvent) {
     const target = event.target as HTMLElement;
 
     // Close device dropdown when clicking outside
     if (!target.closest('#device-combobox') && !target.closest('.dropdown-list')) {
-      manageDeviceDropdown('close');
+      closeDropdown();
     }
 
     // Close version dropdown when clicking outside
@@ -317,7 +300,7 @@
       // Close device dropdown if open
       if (showDropdown) {
         event.preventDefault();
-        manageDeviceDropdown('close');
+        closeDropdown();
       }
       // Close version dropdown if open
       if (showVersionDropdown) {
@@ -393,7 +376,7 @@
         id="device-combobox"
         type="text"
         placeholder={$locales('selectdevice.filter_placeholder')}
-        value={deviceFilter}
+        value={deviceInputValue}
         on:input={handleInputChange}
         on:focus={handleInputFocus}
         on:keydown={handleKeydown}
@@ -402,7 +385,7 @@
 
       <!-- Dropdown Arrow and Clear Button -->
       <div class="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
-        {#if deviceFilter}
+        {#if deviceInputValue}
           <button
             type="button"
             on:click={clearFilter}
@@ -549,4 +532,9 @@
   {/if}
   </div>
 <style>
+  /* Softer text selection highlight */
+  #device-combobox::selection {
+    background-color: rgba(249, 115, 22, 0.3);
+    color: inherit;
+  }
 </style>
