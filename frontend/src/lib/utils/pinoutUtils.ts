@@ -3,42 +3,42 @@ import { isNRF52Device } from './deviceTypeUtils';
 import type { DeviceType } from '$lib/types';
 import pinoutJson from '$lib/config/my_pinout.json';
 
-// Cache для pinout данных
+// Cache for pinout data
 let pinoutCache: PinoutData | null = null;
 
-// Загрузка pinout данных из JSON файла
+// Load pinout data from JSON file
 export async function loadPinoutData(): Promise<PinoutData> {
   if (pinoutCache) return pinoutCache;
 
   try {
-    // Используем импортированные данные напрямую
+    // Use imported data directly
     const data = pinoutJson as PinoutData;
     pinoutCache = data;
-    return pinoutCache;
+    return data;
   } catch (error) {
     console.error('Error loading pinout data:', error);
     throw error;
   }
 }
 
-// Маппинг devicePioTarget на (variant, board) из my_pinout.json
-// Решает проблему, что devicePioTarget не всегда совпадает с board name
+// Map devicePioTarget to (variant, board) from my_pinout.json
+// Solves the problem that devicePioTarget doesn't always match board name
 export function mapDeviceToPinout(devicePioTarget: string, pinoutData: PinoutData): { variant: string; board: string } | null {
   const { variants } = pinoutData;
 
-  // Стратегия 1: Прямое совпадение (новая структура v2.0)
+  // Strategy 1: Direct match (new structure v2.0)
   if (variants[devicePioTarget]) {
     return { variant: devicePioTarget, board: devicePioTarget };
   }
 
-  // Стратегия 2: Case-insensitive совпадение
+  // Strategy 2: Case-insensitive match
   for (const [boardName] of Object.entries(variants)) {
     if (boardName.toLowerCase() === devicePioTarget.toLowerCase()) {
       return { variant: boardName, board: boardName };
     }
   }
 
-  // Стратегия 3: Частичное совпадение (для "t-deck" → "tdeck")
+  // Strategy 3: Partial match (for "t-deck" → "tdeck")
   for (const [boardName] of Object.entries(variants)) {
     const normalizedBoard = boardName.toLowerCase().replace(/[-_]/g, '');
     const normalizedDevice = devicePioTarget.toLowerCase().replace(/[-_]/g, '');
@@ -48,9 +48,9 @@ export function mapDeviceToPinout(devicePioTarget: string, pinoutData: PinoutDat
     }
   }
 
-  // Стратегия 4: Ручной маппинг для специальных случаев
+  // Strategy 4: Manual mapping for special cases
   const manualMapping: Record<string, { variant: string; board: string }> = {
-    // Добавлять по мере необходимости
+    // Add as needed
   };
 
   if (manualMapping[devicePioTarget]) {
@@ -60,16 +60,16 @@ export function mapDeviceToPinout(devicePioTarget: string, pinoutData: PinoutDat
   return null;
 }
 
-// Парсинг C-выражений для пинов (например "(0 + 13)", "(32 + 4)")
+// Parse C expressions for pins (e.g. "(0 + 13)", "(32 + 4)")
 function parsePinExpression(expr: string): number | null {
   if (!expr) return null;
 
-  // Если это простое число
+  // If it's a simple number
   const simpleNum = Number(expr);
   if (!isNaN(simpleNum)) return simpleNum;
 
-  // Парсим выражения типа "(0 + 13)", "(32 + 4)"
-  // Убираем пробелы и проверяем на паттерн (число + число)
+  // Parse expressions like "(0 + 13)", "(32 + 4)"
+  // Remove spaces and check for pattern (number + number)
   const cleaned = expr.replace(/\s+/g, '');
   const match = cleaned.match(/^\(?(\d+)\s*\+\s*(\d+)\)?$/);
 
@@ -82,43 +82,43 @@ function parsePinExpression(expr: string): number | null {
   return null;
 }
 
-// Форматирование номера пина в зависимости от типа устройства
-// Для NRF52: формат P<port>.<pin>, где port = pinNumber // 32, pin = pinNumber % 32
-// Для других: десятичный номер как строка
+// Format pin number based on device type
+// For NRF52: format P<port>.<pin>, where port = pinNumber // 32, pin = pinNumber % 32
+// For others: decimal number as string
 function formatPinNumber(pinNumber: number, deviceType: DeviceType | null): string {
   if (deviceType && isNRF52Device(deviceType)) {
     const port = Math.floor(pinNumber / 32);
     const pin = pinNumber % 32;
-    // Добавляем ведущий ноль для pin < 10
+    // Add leading zero for pin < 10
     return `P${port}.${pin.toString().padStart(2, '0')}`;
   }
   return pinNumber.toString();
 }
 
-// Резолвинг значения пина - поддерживает цепочки ссылок (например KB_INT -> TCA8418_INT -> 15)
+// Resolve pin value - supports chain of references (e.g. KB_INT -> TCA8418_INT -> 15)
 function resolvePinValue(
   pinValue: string,
   pinData: PinDefines,
   visited: Set<string> = new Set()
 ): string | null {
-  // Проверка на циклические ссылки
+  // Check for circular references
   if (visited.has(pinValue)) {
     console.warn(`Circular reference detected: ${Array.from(visited).join(' -> ')} -> ${pinValue}`);
     return null;
   }
 
-  // Если значение - число или выражение, возвращаем как есть
+  // If value is a number or expression, return as is
   const simpleNum = Number(pinValue);
   if (!isNaN(simpleNum)) return pinValue;
 
-  // Проверяем, является ли значение ссылкой на другой пин
-  // Ищем во всех категориях
+  // Check if value is a reference to another pin
+  // Search in all categories
   for (const [_category, categoryDefines] of Object.entries(pinData)) {
     if (!categoryDefines) continue;
 
     if (pinValue in categoryDefines) {
       const resolvedValue = categoryDefines[pinValue];
-      // Рекурсивно резолвим дальше
+      // Recursively resolve further
       visited.add(pinValue);
       const result = resolvePinValue(resolvedValue, pinData, visited);
       visited.delete(pinValue);
@@ -126,11 +126,11 @@ function resolvePinValue(
     }
   }
 
-  // Если это выражение (не число и не ссылка), возвращаем как есть
+  // If it's an expression (not a number and not a reference), return as is
   return pinValue;
 }
 
-// Извлечение пинов из данных варианта платы
+// Extract pins from board variant data
 export function extractPinsFromVariant(variant: BoardVariant, deviceType: DeviceType | null = null): PinInfo[] {
   const pins: PinInfo[] = [];
   const { pins: pinData } = variant;
@@ -139,11 +139,11 @@ export function extractPinsFromVariant(variant: BoardVariant, deviceType: Device
     if (!categoryDefines) continue;
 
     for (const [pinName, pinValue] of Object.entries(categoryDefines)) {
-      // Резолвим значение пина (может быть ссылкой на другой пин)
+      // Resolve pin value (may be a reference to another pin)
       const resolvedValue = resolvePinValue(pinValue as string, pinData);
       if (!resolvedValue) continue;
 
-      // Парсим значение пина (может быть выражением типа "(0 + 13)")
+      // Parse pin value (may be an expression like "(0 + 13)")
       const parsedPin = parsePinExpression(resolvedValue);
       if (parsedPin === null) {
         continue;
@@ -158,7 +158,7 @@ export function extractPinsFromVariant(variant: BoardVariant, deviceType: Device
     }
   }
 
-  // Сортировка по числовому значению для корректного отображения
+  // Sort by numeric value for correct display
   return pins.sort((a, b) => {
     const numA = parseInt(a.pinNumber.replace(/\D/g, '') || a.pinNumber);
     const numB = parseInt(b.pinNumber.replace(/\D/g, '') || b.pinNumber);
@@ -166,7 +166,7 @@ export function extractPinsFromVariant(variant: BoardVariant, deviceType: Device
   });
 }
 
-// Получение человекочитаемого описания для пина
+// Get human-readable description for pin
 function getPinDescription(pinName: string, category: PinCategory): string {
   const descriptions: Record<string, string> = {
     'LORA_SCK': 'LoRa SPI Clock',
@@ -188,7 +188,7 @@ function getPinDescription(pinName: string, category: PinCategory): string {
   return descriptions[pinName] || `${category} pin`;
 }
 
-// Получение цвета для категории пина
+// Get color for pin category
 export function getCategoryColor(category: PinCategory): string {
   const colors: Record<PinCategory, string> = {
     button: '#f59e0b',      // orange

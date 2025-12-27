@@ -273,8 +273,8 @@
                   </div>
                 </div>
 
-                <!-- Medium (600px-1024px): Centered MCU layout with auto-scale -->
-                <div class="hidden md:flex lg:hidden items-center justify-center mb-6 w-full" bind:this={mediumContainer}>
+                <!-- Medium (640px-1024px): Centered MCU layout with auto-scale -->
+                <div class="hidden sm:flex lg:hidden items-center justify-center mb-6 w-full" bind:this={mediumContainer}>
                   <div class="relative mx-auto" style="transform: scale({mediumScale}); transform-origin: center center;">
                     <div class="w-32 bg-gray-700 border-4 border-orange-500 rounded-lg flex items-center justify-center py-6" style="min-height: {mcuHeight}rem;">
                       <div class="text-center">
@@ -346,9 +346,9 @@
                   </div>
                 </div>
 
-                <!-- Mobile (<600px): Vertical layout with MCU on left, pins on right -->
-                <div class="md:hidden flex flex-row gap-3 w-full">
-                  <!-- MCU Rectangle слева -->
+                <!-- Mobile (<640px): Vertical layout with MCU on left, pins on right -->
+                <div class="sm:hidden flex flex-row w-full">
+                  <!-- MCU Rectangle on the left -->
                   <div class="w-16 bg-gray-700 border-4 border-orange-500 rounded-lg flex items-center justify-center py-4 flex-shrink-0"
                        style="min-height: {mobileMcuHeight}rem;">
                     <div class="text-center">
@@ -358,15 +358,12 @@
                     </div>
                   </div>
 
-                  <!-- Все пины справа одной колонкой -->
-                  <div class="flex-1 flex flex-col gap-2">
+                  <!-- All pins in one column on the right -->
+                  <div class="flex-1 flex flex-col gap-2 -ml-[1.125rem]">
                     {#each [...diagramPins.left, ...diagramPins.right] as pinGroup}
                       {@const isSelected = pinGroup.pins.some(p => p.pinNumber === selectedPin?.pinNumber)}
                       <div class="flex items-center gap-2 group">
-                        <!-- Линия-коннектор -->
-                        <div class="w-4 h-0.5 {isSelected ? 'bg-orange-500' : 'bg-gray-600'} group-hover:{isSelected ? 'bg-orange-400' : 'bg-gray-500'} transition-colors"></div>
-
-                        <!-- Пин-круг -->
+                        <!-- Pin circle -->
                         <div
                           class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-pointer hover:scale-110 transition-transform flex-shrink-0 {isSelected ? 'ring-2 ring-orange-300' : ''}"
                           style="background-color: {getCategoryColor(pinGroup.category)}"
@@ -376,7 +373,10 @@
                           {pinGroup.pinNumber}
                         </div>
 
-                        <!-- Имена пинов -->
+                        <!-- Connector line -->
+                        <div class="w-4 h-0.5 {isSelected ? 'bg-orange-500' : 'bg-gray-600'} group-hover:{isSelected ? 'bg-orange-400' : 'bg-gray-500'} transition-colors"></div>
+
+                        <!-- Pin names -->
                         <div class="flex-1 min-w-0">
                           {#if pinGroup.pins.length > 1}
                             <div class="text-sm text-gray-300 space-y-0.5">
@@ -389,11 +389,6 @@
                               {pinGroup.name}
                             </span>
                           {/if}
-                        </div>
-
-                        <!-- Категория -->
-                        <div class="text-xs text-gray-500 capitalize flex-shrink-0">
-                          {pinGroup.category}
                         </div>
                       </div>
                     {/each}
