@@ -325,3 +325,77 @@ export interface MemorySegment {
   filename: string;
   color: string;        // Segment color
 }
+
+// ==================== PINOUT TYPES ====================
+
+export type PinCategory = 'button' | 'lora' | 'lora_power' | 'power' | 'led' | 'audio' | 'i2c' | 'uart' | 'gps' | 'gps_config' | 'led_config' | 'spi' | 'other';
+
+export interface PinDefine {
+  [key: string]: string;  // e.g., "LORA_SCK": "10"
+}
+
+export interface PinDefines {
+  button?: PinDefine;
+  lora?: PinDefine;
+  lora_power?: PinDefine;
+  power?: PinDefine;
+  led?: PinDefine;
+  audio?: PinDefine;
+  i2c?: PinDefine;
+  uart?: PinDefine;
+  gps?: PinDefine;
+  gps_config?: PinDefine;
+  led_config?: PinDefine;
+  spi?: PinDefine;
+  other?: PinDefine;
+}
+
+export interface PinSummary {
+  button?: number;
+  lora?: number;
+  lora_power?: number;
+  power?: number;
+  led?: number;
+  audio?: number;
+  i2c?: number;
+  uart?: number;
+  gps?: number;
+  gps_config?: number;
+  led_config?: number;
+  other?: number;
+}
+
+export interface BoardVariantConfig {
+  [key: string]: string;  // Config parameters like HAS_WIFI, BATTERY_PIN, etc.
+}
+
+export interface BoardVariant {
+  file: string;
+  board: string;
+  family: string;
+  pins: PinDefines;
+  config?: BoardVariantConfig;
+}
+
+export interface PinoutVariant {
+  [boardName: string]: BoardVariant;
+}
+
+export interface PinoutData {
+  metadata: {
+    total_variants: number;
+    generated_date: string;
+    format_version: string;
+    source_dir: string;
+    total_variants_including_aliases?: number;
+  };
+  variants: PinoutVariant;  // Flat structure: boardName -> BoardVariant (v2.0)
+}
+
+// UI Types for pinout visualization
+export interface PinInfo {
+  name: string;          // e.g., "LORA_SCK"
+  pinNumber: string;     // e.g., "10" or "P1.04" for NRF52
+  category: PinCategory;
+  description?: string;
+}

@@ -1,6 +1,6 @@
 <script lang="ts">
     import { deviceSelection, availableFirmwares, versionsData, allDevicesFlat, allDevicesWithCategories,
-         selectionState, availableDevicesForSelection, availableVersionsForSelection } from '$lib/stores.js';
+         selectionState, availableDevicesForSelection, availableVersionsForSelection, hasPinoutData } from '$lib/stores.js';
   import { deviceActions, selectionActions } from '$lib/stores.js';
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
@@ -8,6 +8,7 @@
   import { DEVICE_GROUP_LABELS } from '$lib/utils/deviceTypeUtils.js';
   import type { DeviceCategoryType } from '$lib/types.ts';
   import { _ as locales } from 'svelte-i18n';
+  import PinoutModal from '$lib/components/PinoutModal.svelte';
 
   // Local state
   let deviceFilter = '';  // For filtering the dropdown list only
@@ -19,6 +20,9 @@
   // Version selector state
   let showVersionDropdown = false;
   let selectedVersionIndex = -1;
+
+  // Pinout modal state
+  let showPinoutModal = false;
 
   // Subscribe to stores
   $: deviceSelectionStore = $deviceSelection;
@@ -395,6 +399,18 @@
             ✕
           </button>
         {/if}
+
+        {#if $hasPinoutData && deviceSelectionStore.devicePioTarget}
+          <button
+            type="button"
+            on:click={() => showPinoutModal = true}
+            class="text-orange-400 hover:text-orange-300 transition-colors p-1"
+            title={$locales('pinout.show_pinout')}
+          >
+            🪛
+          </button>
+        {/if}
+
         <button
           type="button"
           on:click={toggleDropdown}
@@ -531,6 +547,13 @@
     {/if}
   {/if}
   </div>
+
+  <!-- Pinout Modal -->
+  <PinoutModal
+    isOpen={showPinoutModal}
+    onClose={() => showPinoutModal = false}
+    devicePioTarget={deviceSelectionStore.devicePioTarget || ''}
+  />
 <style>
   /* Softer text selection highlight */
   #device-combobox::selection {

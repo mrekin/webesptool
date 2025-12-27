@@ -15,7 +15,8 @@ import type {
   DeviceCategoryType,
   DeviceDisplayInfo,
   SelectionState,
-  Device
+  Device,
+  PinoutData
 } from './types.js';
 import { InterfaceMode } from './types.js';
 import { mapCategoryToDeviceType } from './utils/deviceTypeUtils.js';
@@ -919,4 +920,60 @@ async function initializeFromDeviceParam(devicePioTarget: string) {
     // Fallback to loading repositories
     apiActions.loadSrcs();
   }
+}
+
+// ==================== PINOUT STORE ====================
+
+import { loadPinoutData, mapDeviceToPinout } from '$lib/utils/pinoutUtils.js';
+
+interface PinoutState {
+  data: PinoutData | null;
+  isLoading: boolean;
+  error: string | null;
+}
+
+const initialPinoutState: PinoutState = {
+  data: null,
+  isLoading: false,
+  error: null
+};
+
+export const pinoutStore = writable<PinoutState>(initialPinoutState);
+
+// Actions для pinout store
+export const pinoutActions = {
+  async loadPinoutData() {
+    pinoutStore.update(state => ({ ...state, isLoading: true, error: null }));
+
+    try {
+      const data = await loadPinoutData();
+      pinoutStore.set({ data, isLoading: false, error: null });
+    } catch (error) {
+      pinoutStore.update(state => ({
+        ...state,
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Failed to load pinout data'
+      }));
+    }
+  },
+
+  clearError() {
+    pinoutStore.update(state => ({ ...state, error: null }));
+  }
+};
+
+// Derived store для проверки наличия pinout данных для выбранного устройства
+export const hasPinoutData = derived(
+  [pinoutStore, selectionState],
+  ([$pinoutState, $selectionState]) => {
+    if (!$pinoutState.data || !$selectionState.device) return false;
+
+    const mapping = mapDeviceToPinout($selectionState.device, $pinoutState.data);
+    return mapping !== null;
+  }
+);
+
+// Инициализация - загрузить pinout данные при старте приложения
+if (browser) {
+  pinoutActions.loadPinoutData();
 }
