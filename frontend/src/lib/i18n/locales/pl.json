@@ -210,6 +210,7 @@
   },
   "customfirmware": {
     "flash_custom_firmware": "Flashuj niestandardowy firmware",
+    "flash_device": "Flashowanie urządzenia",
     "select_firmware_file": "Wybierz plik firmware",
     "drag_drop_file": "Przeciągnij i upuść tutaj swój plik firmware",
     "or_click_to_select": "lub kliknij, aby wybrać plik",

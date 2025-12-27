@@ -785,7 +785,7 @@
 			<!-- Header -->
 			<div class="flex items-center justify-between border-b border-gray-700 p-6">
 				<h2 id="modal-title" class="text-xl font-semibold text-orange-200">
-					{$locales('customfirmware.flash_custom_firmware')}
+					{isAutoSelectMode ? $locales('customfirmware.flash_device') : $locales('customfirmware.flash_custom_firmware')}
 				</h2>
 				<button
 					on:click={async () => await handleClose()}

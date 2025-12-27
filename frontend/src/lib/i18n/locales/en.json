@@ -210,6 +210,7 @@
   },
   "customfirmware": {
     "flash_custom_firmware": "Flash Custom Firmware",
+    "flash_device": "Device Flashing",
     "select_firmware_file": "Select Firmware File",
     "drag_drop_file": "Drag & drop your firmware file here",
     "or_click_to_select": "or click to select file",

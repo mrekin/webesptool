@@ -210,6 +210,7 @@
   },
   "customfirmware": {
     "flash_custom_firmware": "Прошить свою прошивку",
+    "flash_device": "Прошивка устройства",
     "select_firmware_file": "Выберите файл прошивки",
     "drag_drop_file": "Перетащите файл прошивки сюда",
     "or_click_to_select": "или нажмите для выбора файла",
