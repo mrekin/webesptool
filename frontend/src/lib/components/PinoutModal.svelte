@@ -3,6 +3,7 @@
   import { pinoutStore, deviceDisplayInfo } from '$lib/stores';
   import { mapDeviceToPinout, extractPinsFromVariant, getCategoryColor } from '$lib/utils/pinoutUtils';
   import type { PinInfo, PinCategory } from '$lib/types';
+  import { onMount, onDestroy } from 'svelte';
 
   export let isOpen: boolean = false;
   export let onClose: () => void = () => {};
@@ -110,6 +111,39 @@
   // Mobile MCU height: based on total number of pins (left + right)
   $: mobileMcuHeight = 3 + [...diagramPins.left, ...diagramPins.right].length * 1.5;
 
+  // Auto-scale for medium layout (600px-1024px)
+  let mediumContainer: HTMLDivElement;
+  let mediumScale = 1;
+  let resizeObserver: ResizeObserver | null = null;
+
+  function updateMediumScale() {
+    if (!mediumContainer) return;
+    const containerWidth = mediumContainer.offsetWidth;
+    // MCU layout width: 32px (center) + 192px (left pins) + 192px (right pins) = 416px
+    const layoutWidth = 416;
+    mediumScale = Math.min(1, containerWidth / layoutWidth);
+  }
+
+  // Set up ResizeObserver when component mounts
+  onMount(() => {
+    if (typeof window !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => updateMediumScale());
+    }
+  });
+
+  // Clean up on destroy
+  onDestroy(() => {
+    if (resizeObserver) {
+      resizeObserver.disconnect();
+    }
+  });
+
+  // Observe container when it changes
+  $: if (mediumContainer && resizeObserver) {
+    resizeObserver.observe(mediumContainer);
+    updateMediumScale();
+  }
+
   // Handle keyboard close
   function handleKeydown(event: KeyboardEvent) {
     if (event.key === 'Escape') {
@@ -164,7 +198,8 @@
                 <h3 class="text-lg font-medium text-orange-300 mb-6">
                   {$locales('pinout.diagram')}
                 </h3>
-                <!-- Desktop: MCU Chip visualization -->
+
+                <!-- Desktop (>1024px): Horizontal MCU layout -->
                 <div class="hidden lg:flex items-center justify-center mb-6">
                   <div class="relative">
                     <div class="w-32 bg-gray-700 border-4 border-orange-500 rounded-lg flex items-center justify-center py-6" style="min-height: {mcuHeight}rem;">
@@ -237,8 +272,81 @@
                   </div>
                 </div>
 
-                <!-- Mobile: Vertical layout with MCU on left, pins on right -->
-                <div class="lg:hidden flex flex-row gap-3 w-full">
+                <!-- Medium (600px-1024px): Centered MCU layout with auto-scale -->
+                <div class="hidden md:flex lg:hidden items-center justify-center mb-6 w-full" bind:this={mediumContainer}>
+                  <div class="relative mx-auto" style="transform: scale({mediumScale}); transform-origin: center center;">
+                    <div class="w-32 bg-gray-700 border-4 border-orange-500 rounded-lg flex items-center justify-center py-6" style="min-height: {mcuHeight}rem;">
+                      <div class="text-center">
+                        <div class="text-orange-400 font-bold text-sm">{boardVariant.family.toUpperCase()}</div>
+                      </div>
+                    </div>
+
+                    <!-- Left pins -->
+                    <div class="absolute -left-48 top-0 h-full flex flex-col justify-between py-6">
+                      {#each diagramPins.left as pinGroup}
+                        {@const isSelected = pinGroup.pins.some(p => p.pinNumber === selectedPin?.pinNumber)}
+                        <div class="flex items-center group">
+                          <div class="w-32 text-right pr-1">
+                            {#if pinGroup.pins.length > 1}
+                              <div class="text-xs text-gray-400 space-y-0.5">
+                                {#each pinGroup.pins as pin, index}
+                                  <span class="block">{pin.name}</span>
+                                {/each}
+                              </div>
+                            {:else}
+                              <span class="text-xs text-gray-400">{pinGroup.name}</span>
+                            {/if}
+                          </div>
+                          <div class="flex items-center gap-2">
+                            <div class="w-12 h-0.5 {isSelected ? 'bg-orange-500' : 'bg-gray-600'} group-hover:{isSelected ? 'bg-orange-400' : 'bg-gray-500'} transition-colors"></div>
+                            <div
+                              class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-pointer hover:scale-110 transition-transform {isSelected ? 'ring-2 ring-orange-300' : ''}"
+                              style="background-color: {getCategoryColor(pinGroup.category)}"
+                              on:click={() => selectedPin = pinGroup.pins[0]}
+                              title="{pinGroup.name}: {pinGroup.description}"
+                            >
+                              {pinGroup.pinNumber}
+                            </div>
+                          </div>
+                        </div>
+                      {/each}
+                    </div>
+
+                    <!-- Right pins -->
+                    <div class="absolute -right-48 top-0 h-full flex flex-col justify-between py-6">
+                      {#each diagramPins.right as pinGroup}
+                        {@const isSelected = pinGroup.pins.some(p => p.pinNumber === selectedPin?.pinNumber)}
+                        <div class="flex items-center group">
+                          <div class="flex items-center gap-2">
+                            <div
+                              class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-pointer hover:scale-110 transition-transform {isSelected ? 'ring-2 ring-orange-300' : ''}"
+                              style="background-color: {getCategoryColor(pinGroup.category)}"
+                              on:click={() => selectedPin = pinGroup.pins[0]}
+                              title="{pinGroup.name}: {pinGroup.description}"
+                            >
+                              {pinGroup.pinNumber}
+                            </div>
+                            <div class="w-12 h-0.5 {isSelected ? 'bg-orange-500' : 'bg-gray-600'} group-hover:{isSelected ? 'bg-orange-400' : 'bg-gray-500'} transition-colors"></div>
+                          </div>
+                          <div class="w-32 pl-1">
+                            {#if pinGroup.pins.length > 1}
+                              <div class="text-xs text-gray-400 space-y-0.5">
+                                {#each pinGroup.pins as pin, index}
+                                  <span class="block">{pin.name}</span>
+                                {/each}
+                              </div>
+                            {:else}
+                              <span class="text-xs text-gray-400">{pinGroup.name}</span>
+                            {/if}
+                          </div>
+                        </div>
+                      {/each}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Mobile (<600px): Vertical layout with MCU on left, pins on right -->
+                <div class="md:hidden flex flex-row gap-3 w-full">
                   <!-- MCU Rectangle слева -->
                   <div class="w-16 bg-gray-700 border-4 border-orange-500 rounded-lg flex items-center justify-center py-4 flex-shrink-0"
                        style="min-height: {mobileMcuHeight}rem;">
