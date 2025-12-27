@@ -1,6 +1,7 @@
-import type { PinoutData, PinInfo, PinCategory, BoardVariant } from '$lib/types';
+import type { PinoutData, PinInfo, PinCategory, BoardVariant, PinDefines } from '$lib/types';
 import { isNRF52Device } from './deviceTypeUtils';
 import type { DeviceType } from '$lib/types';
+import pinoutJson from '$lib/config/my_pinout.json';
 
 // Cache для pinout данных
 let pinoutCache: PinoutData | null = null;
@@ -10,9 +11,8 @@ export async function loadPinoutData(): Promise<PinoutData> {
   if (pinoutCache) return pinoutCache;
 
   try {
-    const response = await fetch('/my_pinout.json');
-    if (!response.ok) throw new Error('Failed to load pinout data');
-    const data = await response.json() as PinoutData;
+    // Используем импортированные данные напрямую
+    const data = pinoutJson as PinoutData;
     pinoutCache = data;
     return pinoutCache;
   } catch (error) {
@@ -113,11 +113,11 @@ function resolvePinValue(
 
   // Проверяем, является ли значение ссылкой на другой пин
   // Ищем во всех категориях
-  for (const [category, categoryDefines] of Object.entries(pinData)) {
+  for (const [_category, categoryDefines] of Object.entries(pinData)) {
     if (!categoryDefines) continue;
 
-    if (Object.keys(categoryDefines).includes(pinValue)) {
-      const resolvedValue = categoryDefines[pinValue] as string;
+    if (pinValue in categoryDefines) {
+      const resolvedValue = categoryDefines[pinValue];
       // Рекурсивно резолвим дальше
       visited.add(pinValue);
       const result = resolvePinValue(resolvedValue, pinData, visited);

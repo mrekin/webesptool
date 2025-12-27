@@ -366,7 +366,7 @@ export interface PinSummary {
 }
 
 export interface BoardVariantConfig {
-  [key: string]: string;  // Config parameters like HAS_WIFI, BATTERY_PIN, etc.
+  [key: string]: Record<string, string>;  // Config categories like system, battery, lora, etc.
 }
 
 export interface BoardVariant {
