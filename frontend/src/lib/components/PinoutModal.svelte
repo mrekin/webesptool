@@ -154,14 +154,15 @@
 
 {#if isOpen}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in"
+    class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm p-4 animate-fade-in overflow-y-auto"
     on:keydown={handleKeydown}
     role="dialog"
     aria-modal="true"
     aria-labelledby="pinout-modal-title"
     tabindex="-1"
   >
-    <div class="max-h-[90vh] w-full max-w-6xl overflow-y-auto rounded-xl border border-orange-600 bg-gray-800 shadow-2xl shadow-orange-900/50">
+    <div class="min-h-full flex items-center justify-center">
+      <div class="w-full max-w-6xl max-h-screen overflow-y-auto rounded-xl border border-orange-600 bg-gray-800 shadow-2xl shadow-orange-900/50 my-4">
       <!-- Header -->
       <div class="flex items-center justify-between border-b border-gray-700 p-6 sticky top-0 bg-gray-800 z-10">
         <div>
@@ -459,6 +460,7 @@
           </button>
         </div>
       </div>
+    </div>
     </div>
   </div>
 {/if}
