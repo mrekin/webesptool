@@ -1,6 +1,6 @@
 {
 	"name": "frontend",
-	"version": "0.9.6",
+	"version": "0.9.7",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build && npm run prepack",
