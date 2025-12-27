@@ -7,6 +7,7 @@
   import RepositorySelector from '$lib/components/RepositorySelector.svelte';
   import MinimalFooter from '$lib/components/MinimalFooter.svelte';
   import CustomFirmwareModal from '$lib/components/CustomFirmwareModal.svelte';
+  import PinoutModal from '$lib/components/PinoutModal.svelte';
   import { loadingState, availableFirmwares, uiState, deviceSelection } from '$lib/stores.js';
   import { onMount } from 'svelte';
   import { _ as locales, locale } from 'svelte-i18n';
@@ -29,6 +30,9 @@
     isAutoSelectMode: false,
     manifestData: null as any
   };
+
+  // Pinout modal state
+  let showPinoutModal = false;
 
   function openModal(options: {
     preloadedFilesWithOffsets?: any[];
@@ -152,7 +156,7 @@
           </span>
           {$locales('page.device_selection')}
         </h2>
-        <SelectDevice />
+        <SelectDevice on:openPinoutModal={() => showPinoutModal = true} />
       </div>
 
       <!-- Download Options -->
@@ -254,7 +258,7 @@
 
               {$locales('page.device_selection')}
             </h2>
-            <SelectDevice />
+            <SelectDevice on:openPinoutModal={() => showPinoutModal = true} />
           </div>
 
           <!-- Download Actions -->
@@ -325,6 +329,15 @@
   preloadedFilesWithOffsets={modalState.preloadedFilesWithOffsets}
   isAutoSelectMode={modalState.isAutoSelectMode}
   manifestData={modalState.manifestData}
+/>
+{/if}
+
+<!-- Pinout Modal - Unified Instance -->
+{#if showPinoutModal}
+<PinoutModal
+  isOpen={showPinoutModal}
+  onClose={() => showPinoutModal = false}
+  devicePioTarget={deviceSelectionStore.devicePioTarget || ''}
 />
 {/if}
 
