@@ -173,6 +173,7 @@
                     <!-- Left pins -->
                     <div class="absolute -left-48 top-0 h-full flex flex-col justify-between py-6">
                       {#each diagramPins.left as pinGroup}
+                        {@const isSelected = pinGroup.pins.some(p => p.pinNumber === selectedPin?.pinNumber)}
                         <div class="flex items-center group">
                           <div class="w-32 text-right pr-1">
                             {#if pinGroup.pins.length > 1}
@@ -186,9 +187,9 @@
                             {/if}
                           </div>
                           <div class="flex items-center gap-2">
-                            <div class="w-12 h-0.5 bg-gray-600 group-hover:bg-gray-500 transition-colors"></div>
+                            <div class="w-12 h-0.5 {isSelected ? 'bg-orange-500' : 'bg-gray-600'} group-hover:{isSelected ? 'bg-orange-400' : 'bg-gray-500'} transition-colors"></div>
                             <div
-                              class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-pointer hover:scale-110 transition-transform"
+                              class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-pointer hover:scale-110 transition-transform {isSelected ? 'ring-2 ring-orange-300' : ''}"
                               style="background-color: {getCategoryColor(pinGroup.category)}"
                               on:click={() => selectedPin = pinGroup.pins[0]}
                               title="{pinGroup.name}: {pinGroup.description}"
@@ -203,17 +204,18 @@
                     <!-- Right pins -->
                     <div class="absolute -right-48 top-0 h-full flex flex-col justify-between py-6">
                       {#each diagramPins.right as pinGroup}
+                        {@const isSelected = pinGroup.pins.some(p => p.pinNumber === selectedPin?.pinNumber)}
                         <div class="flex items-center group">
                           <div class="flex items-center gap-2">
                             <div
-                              class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-pointer hover:scale-110 transition-transform"
+                              class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-pointer hover:scale-110 transition-transform {isSelected ? 'ring-2 ring-orange-300' : ''}"
                               style="background-color: {getCategoryColor(pinGroup.category)}"
                               on:click={() => selectedPin = pinGroup.pins[0]}
                               title="{pinGroup.name}: {pinGroup.description}"
                             >
                               {pinGroup.pinNumber}
                             </div>
-                            <div class="w-12 h-0.5 bg-gray-600 group-hover:bg-gray-500 transition-colors"></div>
+                            <div class="w-12 h-0.5 {isSelected ? 'bg-orange-500' : 'bg-gray-600'} group-hover:{isSelected ? 'bg-orange-400' : 'bg-gray-500'} transition-colors"></div>
                           </div>
                           <div class="w-32 pl-1">
                             {#if pinGroup.pins.length > 1}
@@ -253,8 +255,8 @@
                       {#each pins as pin}
                         <div
                           class="flex items-center gap-1.5 text-xs bg-gray-900 rounded px-2 py-1 cursor-pointer hover:bg-gray-700 transition-colors"
+                          class:bg-orange-900={selectedPin?.pinNumber === pin.pinNumber}
                           on:click={() => selectedPin = pin}
-                          class:bg-orange-900={selectedPin?.name === pin.name}
                         >
                           <div
                             class="w-2 h-2 rounded-full flex-shrink-0"
@@ -270,33 +272,6 @@
               </div>
             </div>
           </div>
-
-          <!-- Pin details -->
-          {#if selectedPin}
-            <div class="bg-gray-900 rounded-lg p-4 border border-orange-600">
-              <h4 class="text-md font-medium text-orange-300 mb-3">
-                {$locales('pinout.pin_details')}
-              </h4>
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <span class="text-gray-500">{$locales('pinout.pin_name')}:</span>
-                  <span class="text-gray-200 ml-2 font-mono">{selectedPin.name}</span>
-                </div>
-                <div>
-                  <span class="text-gray-500">{$locales('pinout.pin_number')}:</span>
-                  <span class="text-gray-200 ml-2">GPIO {selectedPin.pinNumber}</span>
-                </div>
-                <div>
-                  <span class="text-gray-500">{$locales('pinout.category')}:</span>
-                  <span class="text-gray-200 ml-2 capitalize">{selectedPin.category}</span>
-                </div>
-                <div>
-                  <span class="text-gray-500">{$locales('pinout.description')}:</span>
-                  <span class="text-gray-200 ml-2">{selectedPin.description}</span>
-                </div>
-              </div>
-            </div>
-          {/if}
         {/if}
       </div>
 
