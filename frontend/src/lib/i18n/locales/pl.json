@@ -170,7 +170,8 @@
     "close_notice": "Zamknij uwagi",
     "expand_notice": "Rozwiń uwagi",
     "unofficial_builds": "To są nieoficjalne buildy firmware Meshtastic, dostarczone do testowania i celów deweloperskich. Mogą zawierać eksperymentalne funkcje i nie są oficjalnie wspierane przez projekt Meshtastic.",
-    "backup_before_flashing": "Zawsze wykonuj kopię zapasową konfiguracji urządzenia przed flashowaniem firmware."
+    "backup_before_flashing": "Zawsze wykonuj kopię zapasową konfiguracji urządzenia przed flashowaniem firmware.",
+    "old_flasher_available": "⚠️ Stara wersja flashera będzie dostępna pod linkiem https://mrekin.duckdns.org/oldflasher/ do 01.02.2026"
   },
   "footer": {
     "development_tools": "Narzędzia deweloperskie",

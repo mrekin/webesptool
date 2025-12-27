@@ -5,18 +5,18 @@
   import ImportantNotice from '$lib/components/ImportantNotice.svelte';
   // Components needed in both modes, so import statically
   import RepositorySelector from '$lib/components/RepositorySelector.svelte';
-  import MinimalFooter from '$lib/components/MinimalFooter.svelte';
   import CustomFirmwareModal from '$lib/components/CustomFirmwareModal.svelte';
   import PinoutModal from '$lib/components/PinoutModal.svelte';
+
+  // Dynamic imports for components used only in specific modes
+  let FirmwareInfo: any = null;
+  let Notes: any = null;
+  let Footer: any = null;
+  let MinimalFooter: any = null;
   import { loadingState, availableFirmwares, uiState, deviceSelection } from '$lib/stores.js';
   import { onMount } from 'svelte';
   import { _ as locales, locale } from 'svelte-i18n';
   import { InterfaceMode } from '$lib/types.js';
-
-  // Dynamic imports for components used only in full mode
-  let FirmwareInfo: any = null;
-  let Notes: any = null;
-  let Footer: any = null;
 
   // Subscribe to stores
   $: currentInterfaceMode = $uiState.interfaceMode;
@@ -72,6 +72,10 @@
     loadFullModeComponents();
   }
 
+  $: if (currentInterfaceMode === InterfaceMode.MINIMAL && !MinimalFooter) {
+    loadMinimalModeComponents();
+  }
+
   async function loadFullModeComponents() {
     if (!FirmwareInfo) {
       const [FWInfo, NotesComp, FooterComp] = await Promise.all([
@@ -83,6 +87,13 @@
       FirmwareInfo = FWInfo.default;
       Notes = NotesComp.default;
       Footer = FooterComp.default;
+    }
+  }
+
+  async function loadMinimalModeComponents() {
+    if (!MinimalFooter) {
+      const MinimalFooterComp = await import('$lib/components/MinimalFooter.svelte');
+      MinimalFooter = MinimalFooterComp.default;
     }
   }
 
@@ -165,7 +176,12 @@
       </div>
 
       <!-- Minimal Footer -->
-      <MinimalFooter />
+      {#if MinimalFooter}
+        <svelte:component this={MinimalFooter} />
+      {:else}
+        <!-- Loading placeholder -->
+        <div class="h-16 bg-gray-700 rounded animate-pulse"></div>
+      {/if}
     </div>
 
     </div>

@@ -2,16 +2,25 @@
   import { onMount } from 'svelte';
   import { setCookie, hasCookie } from '$lib/utils/cookies.js';
   import { _ as locales } from 'svelte-i18n';
+  import { browser } from '$app/environment';
 
   export let cookieName = "meshtastic-important-notice-hidden";
 
   let isExpanded = true;
   let isClient = false;
+  let showOldFlasherMessage = false;
 
   // Check cookie state on mount
   onMount(() => {
     isClient = true;
     isExpanded = !hasCookie(cookieName);
+
+    // Check if we should show old flasher message (until 30.01.2026)
+    if (browser) {
+      const now = new Date();
+      const endDate = new Date(2026, 0, 31, 23, 59, 59); // Jan 31, 2026 23:59:59
+      showOldFlasherMessage = now <= endDate;
+    }
   });
 
   function closeNotice() {
@@ -54,6 +63,11 @@
             <p class="text-orange-300 text-sm mt-2">
               {$locales('importantnotice.backup_before_flashing')}
             </p>
+            {#if showOldFlasherMessage}
+              <p class="text-orange-300 text-sm mt-2">
+                {$locales('importantnotice.old_flasher_available')}
+              </p>
+            {/if}
           </div>
         </div>
       </div>
