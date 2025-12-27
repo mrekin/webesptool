@@ -1,7 +1,7 @@
 <script lang="ts">
   import { deviceSelection, loadingState, deviceDisplayInfo, currentSource } from '$lib/stores.js';
   import { apiActions } from '$lib/stores.js';
-  import { DeviceType } from '$lib/types.js';
+  import { DeviceType, RepositoryType } from '$lib/types.js';
   import { isESP32Device, isNRF52Device, isRP2040Device, supportsUF2 } from '$lib/utils/deviceTypeUtils.js';
   import type { DownloadOption } from '$lib/types.js';
   import { _ as locales, locale } from 'svelte-i18n';
@@ -33,7 +33,7 @@
   $: downloadOptions = getDownloadOptions(deviceSelectionStore.devicePioTarget, deviceDisplayInfoStore?.deviceType, deviceSelectionStore.version, firmwareMode, $locale, currentSourceStore?.type);
 
 
-  function getDownloadOptions(devicePioTarget: string | null, deviceType: DeviceType | null | undefined, version: string | null, mode: 'update' | 'full', locale: any, sourceType: string | undefined): DownloadOption[] {
+  function getDownloadOptions(devicePioTarget: string | null, deviceType: DeviceType | null | undefined, version: string | null, mode: 'update' | 'full', locale: any, sourceType: RepositoryType | undefined): DownloadOption[] {
     if (!devicePioTarget || !version) return [];
 
     const options: DownloadOption[] = [];
@@ -71,7 +71,7 @@
       });
 
       // Show erase UF2 option only for Meshtastic, not Meshcore
-      if (sourceType === 'meshtastic') {
+      if (sourceType === RepositoryType.MESHTASTIC) {
         options.push({
           id: 'url',
           label: $locales('downloadbuttons.download_erase_uf2'),
@@ -81,7 +81,7 @@
           description: $locales('downloadbuttons.download_nrf_erase'),
           url: 'https://flasher.meshtastic.org/uf2/nrf_erase2.uf2'
         });
-      } else if (sourceType === 'meshcore') {
+      } else if (sourceType === RepositoryType.MESHCORE) {
         // For Meshcore, show link to nRF52 Flash Format GitHub releases
         options.push({
           id: 'url',

@@ -1,10 +1,10 @@
 <script lang="ts">
     import { deviceSelection, availableFirmwares, versionsData, allDevicesFlat, allDevicesWithCategories,
-         selectionState, availableDevicesForSelection, availableVersionsForSelection, hasPinoutData } from '$lib/stores.js';
+         selectionState, availableDevicesForSelection, availableVersionsForSelection, hasPinoutData, currentSource } from '$lib/stores.js';
   import { deviceActions, selectionActions } from '$lib/stores.js';
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
-  import { DeviceType } from '$lib/types.js';
+  import { DeviceType, RepositoryType } from '$lib/types.js';
   import { DEVICE_GROUP_LABELS } from '$lib/utils/deviceTypeUtils.js';
   import type { DeviceCategoryType } from '$lib/types.ts';
   import { _ as locales } from 'svelte-i18n';
@@ -28,6 +28,7 @@
   $: deviceSelectionStore = $deviceSelection;
   $: availableFirmwaresStore = $availableFirmwares;
   $: versionsDataStore = $versionsData;
+  $: currentSourceStore = $currentSource;
 
   // Unified selection state - use direct subscribe to fix reactivity issue
   let selectionStateStore = $selectionState;
@@ -400,7 +401,7 @@
           </button>
         {/if}
 
-        {#if $hasPinoutData && deviceSelectionStore.devicePioTarget}
+        {#if $hasPinoutData && deviceSelectionStore.devicePioTarget && currentSourceStore?.type === RepositoryType.MESHTASTIC}
           <button
             type="button"
             on:click={() => dispatch('openPinoutModal')}

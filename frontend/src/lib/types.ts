@@ -86,10 +86,15 @@ export interface ManifestResponse {
 }
 
 // Source repository information
+export enum RepositoryType {
+  MESHTASTIC = 'meshtastic',
+  MESHCORE = 'meshcore'
+}
+
 export interface SourceInfo {
   src: string;
   desc: string;
-  type: string;
+  type: RepositoryType;
 }
 
 export interface AvailableFirmwares {
