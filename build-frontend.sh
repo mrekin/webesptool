@@ -21,6 +21,7 @@ FRONTEND_DIR="./frontend"
 # Global variables
 APP_VERSION=""
 SHOULD_TAG_LATEST=""
+SHOULD_PUSH=""
 
 # Information output functions
 info() {
@@ -394,6 +395,35 @@ prompt_latest_tag() {
     fi
 }
 
+# Function to prompt for registry push
+prompt_push_to_registry() {
+    echo
+    while true; do
+        read -p "Push image to registry after build? (y/N): " push_confirm
+
+        if [ -z "$push_confirm" ]; then
+            SHOULD_PUSH="no"
+            break
+        fi
+
+        if [[ $push_confirm =~ ^[Yy]$ ]]; then
+            SHOULD_PUSH="yes"
+            break
+        elif [[ $push_confirm =~ ^[Nn]$ ]]; then
+            SHOULD_PUSH="no"
+            break
+        else
+            warning "Please enter 'y' or 'n'"
+        fi
+    done
+
+    if [ "$SHOULD_PUSH" = "yes" ]; then
+        success "Will push to registry $REGISTRY"
+    else
+        warning "Will NOT push to registry"
+    fi
+}
+
 # Main function
 main() {
     echo -e "${BLUE}================================${NC}"
@@ -414,11 +444,15 @@ main() {
     # Ask about latest tag
     prompt_latest_tag
 
+    # Ask about registry push
+    prompt_push_to_registry
+
     # Build confirmation
     echo
     echo -e "${BLUE}Build configuration:${NC}"
     echo -e "  Version:   ${GREEN}$APP_VERSION${NC}"
     echo -e "  Latest:    ${GREEN}$SHOULD_TAG_LATEST${NC}"
+    echo -e "  Push:      ${GREEN}$SHOULD_PUSH${NC}"
     echo -e "  Base Path: ${YELLOW}Can be set at runtime with -e VITE_BASE_PATH=/path${NC}"
     echo
 
@@ -436,15 +470,13 @@ main() {
         # Display information
         show_image_info
 
-        # Push to registry
-        echo
-        warning "Push image to registry $REGISTRY ?"
-        read -p "Continue? (y/N): " push_confirm
-
-        if [[ $push_confirm =~ ^[Yy]$ ]]; then
+        # Push to registry (based on earlier choice)
+        if [ "$SHOULD_PUSH" = "yes" ]; then
+            echo
             push_image
             success "Process completed successfully!"
         else
+            echo
             warning "Image built but not pushed to registry"
             info "To push manually: docker push $REGISTRY/$IMAGE_NAME:$APP_VERSION"
         fi
