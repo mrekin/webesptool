@@ -29,7 +29,7 @@
 {:else}
 	<div class="min-h-screen bg-gray-900 relative">
 		<!-- Settings - sticky floating button -->
-		<div class="fixed top-4 right-4 z-50">
+		<div class="fixed top-4 right-2 z-50">
 			<Settings />
 		</div>
 

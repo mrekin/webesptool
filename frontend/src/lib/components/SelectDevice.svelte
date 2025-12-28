@@ -8,10 +8,9 @@
   import { DEVICE_GROUP_LABELS } from '$lib/utils/deviceTypeUtils.js';
   import type { DeviceCategoryType } from '$lib/types.ts';
   import { _ as locales } from 'svelte-i18n';
-  import { createEventDispatcher } from 'svelte';
 
-  // Event dispatcher
-  const dispatch = createEventDispatcher();
+  // Callback props
+  export let onOpenPinoutModal: () => void = () => {};
 
   // Local state
   let deviceFilter = '';  // For filtering the dropdown list only
@@ -404,7 +403,7 @@
         {#if $hasPinoutData && deviceSelectionStore.devicePioTarget && currentSourceStore?.type === RepositoryType.MESHTASTIC}
           <button
             type="button"
-            on:click={() => dispatch('openPinoutModal')}
+            on:click={onOpenPinoutModal}
             class="text-orange-400 hover:text-orange-300 transition-colors p-1"
             title={$locales('pinout.show_pinout')}
           >
@@ -424,7 +423,7 @@
 
       <!-- Dropdown List -->
       {#if showDropdown && allDevices.length > 0}
-        <div class="dropdown-list absolute z-10 left-0 right-0 mt-1 bg-gray-800 border border-orange-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+        <div class="dropdown-list absolute z-50 left-0 right-0 mt-1 bg-gray-800 border border-orange-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
         {#if filteredDevices.length === 0 && deviceFilter}
           <div class="px-4 py-3 text-sm text-orange-300">
             {$locales('selectdevice.no_devices_match')}
@@ -508,7 +507,7 @@
 
         <!-- Version Dropdown List -->
         {#if showVersionDropdown}
-          <div class="dropdown-list absolute z-10 w-full mt-1 bg-gray-800 border border-orange-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+          <div class="dropdown-list absolute z-50 w-full mt-1 bg-gray-800 border border-orange-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
             {#each versionsDataStore.versions as version, i}
               <button
                 type="button"
