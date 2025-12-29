@@ -99,7 +99,8 @@
 				address: item.address,
 				file: item.file, // File object
 				hasError: false,
-				errorMessage: ''
+				errorMessage: '',
+				isEnabled: true // File is enabled by default
 			}));
 		}
 	});
@@ -221,7 +222,8 @@
 					address: '0x0', // Default address in hex format
 					file: fileHandler.createFirmwareFile(file),
 					hasError: false,
-					errorMessage: ''
+					errorMessage: '',
+					isEnabled: true // File is enabled by default
 				});
 			}
 		}
@@ -386,8 +388,11 @@
 
 	// Flash firmware
 	async function flashFirmware() {
+		// Only use enabled files for flashing
+		const enabledFiles = selectedFirmwareFiles.filter(f => f.isEnabled !== false);
+
 		// Check if we have firmware files selected (only .bin files)
-		if (selectedFirmwareFiles.length === 0) {
+		if (enabledFiles.length === 0) {
 			flashError = 'Please select at least one firmware file (.bin)';
 			return;
 		}
@@ -397,14 +402,12 @@
 			return;
 		}
 
-		// Validate all addresses for multiple files
-		if (selectedFirmwareFiles.length > 0) {
-			for (let i = 0; i < selectedFirmwareFiles.length; i++) {
-				const fileItem = selectedFirmwareFiles[i];
-				if (!espManager.isValidFlashAddress(fileItem.address)) {
-					flashError = `Invalid address format for file "${fileItem.filename}": ${fileItem.address}. Please enter a valid address (e.g., 0x0, 0x1000, 4096)`;
-					return;
-				}
+		// Validate all addresses for enabled files
+		for (let i = 0; i < enabledFiles.length; i++) {
+			const fileItem = enabledFiles[i];
+			if (!espManager.isValidFlashAddress(fileItem.address)) {
+				flashError = `Invalid address format for file "${fileItem.filename}": ${fileItem.address}. Please enter a valid address (e.g., 0x0, 0x1000, 4096)`;
+				return;
 			}
 		}
 
@@ -415,9 +418,9 @@
 
 		try {
 			// Handle all cases with unified approach
-			if (selectedFirmwareFiles.length > 0) {
+			if (enabledFiles.length > 0) {
 				// Rule 3: Sort files by flash address before flashing
-				const sortedFiles = [...selectedFirmwareFiles].sort((a, b) => {
+				const sortedFiles = [...enabledFiles].sort((a, b) => {
 					const addressA = parseInt(a.address.replace('0x', ''), 16);
 					const addressB = parseInt(b.address.replace('0x', ''), 16);
 					return addressA - addressB;
@@ -505,7 +508,8 @@
 					errorMessage: '',
 					isDownloading: true,
 					downloadProgress: 0,
-					fileSize: 0
+					fileSize: 0,
+					isEnabled: true // File is enabled by default
 				};
 			});
 
@@ -725,15 +729,17 @@
 
 	// Reactive data for MemoryMap
 	$: totalMemorySize = deviceInfo ? parseFlashSize(deviceInfo.flashSize) : (metadata as any)?.builds ? parseFlashSize((metadata as any)?.builds[0]?.flashsize) : 4 *1024 * 1024;
-	$: memorySegments = prepareMemorySegments(selectedFirmwareFiles);
+	$: memorySegments = prepareMemorySegments(selectedFirmwareFiles.filter(f => f.isEnabled !== false));
 
 	// Calculate file count for File Details display
 	$: fileCount = selectedFirmwareFiles.length;
 
 	// Reactive: Validate files for conflicts and chip compatibility
 	$: if (selectedFirmwareFiles.length > 0) {
+		// Only validate enabled files
+		const enabledFiles = selectedFirmwareFiles.filter(f => f.isEnabled !== false);
 		const validation = validateFirmwareSelection(
-			selectedFirmwareFiles.map(f => ({ filename: f.filename })),
+			enabledFiles.map(f => ({ filename: f.filename })),
 			metadata,
 			deviceInfo?.chip
 		);
@@ -745,7 +751,8 @@
 			let hasError = false;
 			let errorMessage = '';
 
-			if (!validation.isValid) {
+			// Only validate enabled files
+			if (file.isEnabled !== false && !validation.isValid) {
 				if (validation.errorCode === ValidationErrors.FILES_CONFLICT && validation.conflictingFiles) {
 					// Mark only conflicting files as having errors
 					hasError = validation.conflictingFiles.includes(file.filename);
@@ -1019,10 +1026,21 @@
 												<div class="max-h-60 overflow-y-auto space-y-2">
 													{#each selectedFirmwareFiles as fileItem, index}
 														<div
-															class="flex items-center space-x-2 border p-2 {fileItem.hasError
-																? 'border-red-600 bg-red-900/20'
+															class="flex items-center space-x-2 border p-2 {fileItem.hasError || (fileItem.isEnabled === false)
+																? (fileItem.hasError ? 'border-red-600 bg-red-900/20' : 'border-gray-600 bg-gray-800 opacity-50')
 																: 'border-gray-600 bg-gray-800'} group relative rounded-md"
 														>
+															<!-- Checkbox to enable/disable file -->
+															<div class="flex flex-shrink-0 items-center">
+																<input
+																	type="checkbox"
+																	bind:checked={fileItem.isEnabled}
+																	disabled={isFlashing || isAutoSelectMode}
+																	class="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
+																	title="Enable/disable this file for flashing"
+																/>
+															</div>
+
 															<!-- Download progress overlay -->
 															{#if fileItem.isDownloading}
 																<div
@@ -1060,27 +1078,19 @@
 																	type="text"
 																	bind:value={fileItem.address}
 																	placeholder="0x0"
-																	disabled={isFlashing || isAutoSelectMode}
+																	disabled={isFlashing || isAutoSelectMode || fileItem.isEnabled === false}
 																	class="w-24 rounded-md {espManager.isValidFlashAddress(fileItem.address)
 																		? 'border-gray-600'
 																		: 'border-red-500'} bg-gray-700 px-2 py-1 text-xs text-gray-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
 																	on:change={(e) => {
-																		if (!isAutoSelectMode) {
+																		if (!isAutoSelectMode && fileItem.isEnabled !== false) {
 																			const input = e.target as HTMLInputElement;
 																			const sanitized = espManager.sanitizeAddress(input.value);
 																			fileItem.address = sanitized;
 																		}
 																	}}
-																	title="{isAutoSelectMode ? 'Address locked (AutoSelect mode)' : 'Enter address in hex (0x...) or decimal format'}"
+																	title="{isAutoSelectMode || fileItem.isEnabled === false ? 'Address locked' : 'Enter address in hex (0x...) or decimal format'}"
 																/>
-																<button
-																	on:click={() => removeFile(index)}
-																	disabled={isFlashing || isAutoSelectMode}
-																	class="text-red-400 transition-colors hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
-																	title="{isAutoSelectMode ? 'Cannot remove files in AutoSelect mode' : 'Remove file'}"
-																>
-																	✕
-																</button>
 															</div>
 														</div>
 													{/each}
@@ -1149,10 +1159,21 @@
 									<div class="space-y-2">
 										{#each selectedFirmwareFiles as fileItem, index}
 											<div
-												class="flex items-center space-x-2 border p-2 {fileItem.hasError
-													? 'border-red-600 bg-red-900/20'
+												class="flex items-center space-x-2 border p-2 {fileItem.hasError || (fileItem.isEnabled === false)
+													? (fileItem.hasError ? 'border-red-600 bg-red-900/20' : 'border-gray-600 bg-gray-800 opacity-50')
 													: 'border-gray-600 bg-gray-800'} group relative rounded-md"
 											>
+												<!-- Checkbox to enable/disable file -->
+												<div class="flex flex-shrink-0 items-center">
+													<input
+														type="checkbox"
+														bind:checked={fileItem.isEnabled}
+														disabled={isFlashing || isAutoSelectMode}
+														class="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
+														title="Enable/disable this file for flashing"
+													/>
+												</div>
+
 												<!-- Download progress overlay -->
 												{#if fileItem.isDownloading}
 													<div
@@ -1190,27 +1211,19 @@
 														type="text"
 														bind:value={fileItem.address}
 														placeholder="0x0"
-														disabled={isFlashing || isAutoSelectMode}
+														disabled={isFlashing || isAutoSelectMode || fileItem.isEnabled === false}
 														class="w-24 rounded-md {espManager.isValidFlashAddress(fileItem.address)
 															? 'border-gray-600'
 															: 'border-red-500'} bg-gray-700 px-2 py-1 text-xs text-gray-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
 														on:change={(e) => {
-															if (!isAutoSelectMode) {
+															if (!isAutoSelectMode && fileItem.isEnabled !== false) {
 																const input = e.target as HTMLInputElement;
 																const sanitized = espManager.sanitizeAddress(input.value);
 																fileItem.address = sanitized;
 															}
 														}}
-														title="{isAutoSelectMode ? 'Address locked (AutoSelect mode)' : 'Enter address in hex (0x...) or decimal format'}"
+														title="{isAutoSelectMode || fileItem.isEnabled === false ? 'Address locked' : 'Enter address in hex (0x...) or decimal format'}"
 													/>
-													<button
-														on:click={() => removeFile(index)}
-														disabled={isFlashing || isAutoSelectMode}
-														class="text-red-400 transition-colors hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
-														title="{isAutoSelectMode ? 'Cannot remove files in AutoSelect mode' : 'Remove file'}"
-													>
-														✕
-													</button>
 												</div>
 											</div>
 										{/each}
@@ -1422,13 +1435,14 @@
 							!isPortSelected ||
 							isFlashing ||
 							!validationResult.isValid ||
-							selectedFirmwareFiles.some((file) => file.hasError)}
+							selectedFirmwareFiles.some((file) => file.hasError) ||
+							selectedFirmwareFiles.filter(f => f.isEnabled !== false).length === 0}
 						class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{#if isFlashing}
 							{$locales('customfirmware.flashing')}...
 						{:else}
-							{$locales('customfirmware.flash_firmware')} ({$locales('customfirmware.flash_firmware_with_count', {values: { count: selectedFirmwareFiles.length }})})
+							{$locales('customfirmware.flash_firmware')} ({$locales('customfirmware.flash_firmware_with_count', {values: { count: selectedFirmwareFiles.filter(f => f.isEnabled !== false).length }})})
 						{/if}
 					</button>
 				{/if}

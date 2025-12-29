@@ -243,6 +243,7 @@ export interface SelectedFirmwareFile {
   isDownloading?: boolean;
   downloadProgress?: number;
   fileSize?: number;
+  isEnabled?: boolean; // If false, file is ignored during flashing and validation
 }
 
 export interface ZipExtractionResult {
