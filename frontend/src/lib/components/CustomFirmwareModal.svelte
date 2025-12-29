@@ -1036,7 +1036,7 @@
 																	type="checkbox"
 																	bind:checked={fileItem.isEnabled}
 																	disabled={isFlashing || isAutoSelectMode}
-																	class="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
+																	class="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500 accent-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
 																	title="Enable/disable this file for flashing"
 																/>
 															</div>
@@ -1169,7 +1169,7 @@
 														type="checkbox"
 														bind:checked={fileItem.isEnabled}
 														disabled={isFlashing || isAutoSelectMode}
-														class="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
+														class="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500 accent-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
 														title="Enable/disable this file for flashing"
 													/>
 												</div>
@@ -1244,7 +1244,7 @@
 							type="checkbox"
 							id="erase-before-flash"
 							bind:checked={eraseBeforeFlash}
-							class="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+							class="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500 accent-blue-600"
 						/>
 						<label for="erase-before-flash" class="cursor-pointer text-sm text-gray-300">
 							{$locales('customfirmware.erase_before_flash')}
