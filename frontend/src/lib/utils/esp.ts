@@ -207,18 +207,15 @@ export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMe
 
 		// Priority order: manifest > legacy metadata > chipName > filename > default
 
-		// 1. Check manifest first (highest priority), but only for single-part manifests
-		// Multi-part manifests are for factory installation only
+		// 1. Check manifest first (highest priority)
 		if (metadata && detectMetadataFormat(metadata) === 'manifest') {
-			if ((metadata as any).builds?.[0]?.parts?.length === 1) {
-				const manifestPart = findManifestPart(filename, metadata);
-				if (manifestPart?.partType === 'ota') {
-					return {
-						address: `0x${manifestPart.offset.toString(16).toUpperCase()}`,
-						type: 'ota',
-						description: `OTA firmware for ${(metadata as any).name || 'device'}`
-					};
-				}
+			const manifestPart = findManifestPart(filename, metadata);
+			if (manifestPart?.partType === 'ota') {
+				return {
+					address: `0x${manifestPart.offset.toString(16).toUpperCase()}`,
+					type: 'ota',
+					description: `OTA firmware for ${(metadata as any).name || 'device'}`
+				};
 			}
 		}
 
@@ -289,18 +286,15 @@ export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMe
 		let spiffsOffset = DEFAULT_SPIFFS_OFFSET;
 		let description = 'File system (LittleFS/SPIFFS)';
 
-		// Check manifest first for filesystem, but only for single-part manifests
-		// Multi-part manifests are for factory installation only
+		// Check manifest first for filesystem
 		if (metadata && detectMetadataFormat(metadata) === 'manifest') {
-			if ((metadata as any).builds?.[0]?.parts?.length === 1) {
-				const manifestPart = findManifestPart(filename, metadata);
-				if (manifestPart?.partType === 'filesystem') {
-					return {
-						address: `0x${manifestPart.offset.toString(16).toUpperCase()}`,
-						type: 'filesystem',
-						description: `File system for ${(metadata as any).name || 'device'}`
-					};
-				}
+			const manifestPart = findManifestPart(filename, metadata);
+			if (manifestPart?.partType === 'filesystem') {
+				return {
+					address: `0x${manifestPart.offset.toString(16).toUpperCase()}`,
+					type: 'filesystem',
+					description: `File system for ${(metadata as any).name || 'device'}`
+				};
 			}
 		}
 
