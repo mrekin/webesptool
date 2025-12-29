@@ -472,12 +472,13 @@ export function createESPManager() {
 
 	// Baudrate options
 	const baudrateOptions = [
-		{ value: 115200, label: '115200 (стандартная)' },
-		{ value: 230400, label: '230400' },
-		{ value: 460800, label: '460800' },
-		{ value: 512000, label: '512000' },
-		{ value: 921600, label: '921600 (быстрая)' },
-		{ value: 1500000, label: '1500000 (очень быстрая)' }
+		{ value: 57600, labelKey: 'customfirmware.baudrate_57600' },
+		{ value: 115200, labelKey: 'customfirmware.baudrate_115200' },
+		{ value: 230400, labelKey: 'customfirmware.baudrate_230400' },
+		{ value: 460800, labelKey: 'customfirmware.baudrate_460800' },
+		{ value: 512000, labelKey: 'customfirmware.baudrate_512000' },
+		{ value: 921600, labelKey: 'customfirmware.baudrate_921600' },
+		{ value: 1500000, labelKey: 'customfirmware.baudrate_1500000' }
 	];
 
 	// Connect to serial port

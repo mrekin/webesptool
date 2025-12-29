@@ -69,14 +69,7 @@
 	// Get baudrate options from utility
 	const baudrateOptions = espManager.getBaudrateOptions().map((opt) => ({
 		...opt,
-		label:
-			opt.value === 115200
-				? `115200 (${$locales('customfirmware.baudrate_standard')})`
-				: opt.value === 921600
-					? `921600 (${$locales('customfirmware.baudrate_fast')})`
-					: opt.value === 1500000
-						? `1500000 (${$locales('customfirmware.baudrate_very_fast')})`
-						: opt.label
+		label: $locales(opt.labelKey)
 	}));
 
 	
