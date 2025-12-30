@@ -47,7 +47,7 @@
     },
     {
       name: $locales('footer.esp_web_tools_name'),
-      href: 'https://github.com/esphome/esp-web-tools',
+      href: 'https://github.com/espressif/esptool-js',
       description: $locales('footer.esp_web_tools_desc')
     }
   ];

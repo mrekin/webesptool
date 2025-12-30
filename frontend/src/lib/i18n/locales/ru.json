@@ -192,7 +192,7 @@
     "mrekin_github_desc": "Репозиторий вариантов прошивок данного проекта",
     "meshtastic_flasher_name": "Meshtastic Flasher",
     "meshtastic_flasher_desc": "Веб-инструмент для прошивки",
-    "esp_web_tools_name": "ESP Web Tools",
+    "esp_web_tools_name": "Esptool-js",
     "esp_web_tools_desc": "Web инструменты разработки ESP32",
     "primary_mirror_name": "Основное зеркало",
     "primary_mirror_desc": "Основное зеркало сервиса",

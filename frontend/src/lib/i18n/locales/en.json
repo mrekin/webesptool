@@ -192,7 +192,7 @@
     "mrekin_github_desc": "Custom variants repository",    
     "meshtastic_flasher_name": "Meshtastic Flasher",
     "meshtastic_flasher_desc": "Web-based firmware flashing tool",
-    "esp_web_tools_name": "ESP Web Tools",
+    "esp_web_tools_name": "Esptool-js",
     "esp_web_tools_desc": "Browser-based ESP32 development tools",
     "primary_mirror_name": "Primary Mirror",
     "primary_mirror_desc": "Main service mirror",
