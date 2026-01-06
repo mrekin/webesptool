@@ -92,7 +92,7 @@
   // Computed display value for input
   $: versionDisplayValue = selectionStateStore.version
     ? getVersionDisplayText(selectionStateStore.version)
-    : (deviceSelectionStore.version ? getVersionDisplayText(deviceSelectionStore.version) : '');
+    : '';
   
   // Handle device selection from dropdown
   function selectDevice(device: {device: string; displayName: string}) {
@@ -485,7 +485,7 @@
           placeholder={$locales('selectdevice.version_placeholder')}
           value={selectionStateStore.version
       ? getVersionDisplayText(selectionStateStore.version)
-      : (deviceSelectionStore.version ? getVersionDisplayText(deviceSelectionStore.version) : '')}
+      : ''}
           on:input={handleVersionInputChange}
           on:click={handleVersionInputClick}
           on:keydown={(e) => handleDropdownKeydown(e, 'version')}

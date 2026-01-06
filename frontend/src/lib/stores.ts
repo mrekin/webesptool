@@ -382,6 +382,9 @@ export const deviceActions = {
       isValid: false
     }));
 
+    // FIX: Reset previousDevice to trigger version reload when selecting same device in new repository
+    previousDevice = null;
+
     // Reload available firmwares for the new source
     apiActions.loadAvailableFirmwares(source || '');
   },
@@ -409,12 +412,15 @@ export const deviceActions = {
 export const selectionActions = {
   // Set repository with cascade reset
   setRepository: (repo: string | null) => {
-    selectionState.update(s => ({
+    selectionState.update(() => ({
       repository: repo,
       device: null,    // cascade reset
       version: null,   // cascade reset
       isValid: false
     }));
+
+    // FIX: Reset previousDevice to trigger version reload when selecting same device in new repository
+    previousDevice = null;
   },
 
   // Update repository ONLY (without cascade reset) - for backend response
