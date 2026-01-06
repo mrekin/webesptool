@@ -611,6 +611,33 @@ export function createESPManager() {
 		}
 	}
 
+	// Erase flash memory
+	async function eraseFlash(options: { onProgress?: (progress: FlashProgress) => void } = {}): Promise<void> {
+		if (!esploader) {
+			throw new Error('ESP loader not initialized. Please connect to device first.');
+		}
+
+		try {
+			options.onProgress?.({
+				progress: 0,
+				status: 'Erasing flash...',
+				error: ''
+			});
+
+			await esploader.eraseFlash();
+			console.log('Flash erase completed successfully');
+
+			options.onProgress?.({
+				progress: 100,
+				status: 'Flash erased successfully',
+				error: ''
+			});
+		} catch (error) {
+			console.error('Erase error:', error);
+			throw new Error(`Erase failed: ${error instanceof Error ? error.message : String(error)}`);
+		}
+	}
+
 	// Flash firmware
 	async function flashFirmware(firmwareFile: FirmwareFile, options: FlashOptions): Promise<void> {
 		if (!port) {
@@ -622,38 +649,7 @@ export function createESPManager() {
 		}
 
 		try {
-			options.onProgress?.({
-				progress: 10,
-				status: 'Starting flash process...',
-				error: ''
-			});
-
 			console.log('Firmware size:', firmwareFile.content.length);
-
-			options.onProgress?.({
-				progress: 20,
-				status: 'Preparing to flash...',
-				error: ''
-			});
-
-			// Only erase flash if requested
-			if (options.eraseBeforeFlash) {
-				options.onProgress?.({
-					progress: 40,
-					status: 'Erasing flash...',
-					error: ''
-				});
-				await esploader.eraseFlash();
-				console.log('Full device erase performed (eraseBeforeFlash enabled)');
-			} else {
-				console.log('Skipping flash erase (eraseBeforeFlash disabled)');
-			}
-
-			options.onProgress?.({
-				progress: 60,
-				status: 'Writing firmware...',
-				error: ''
-			});
 
 			// Parse flash address
 			let address = 0x0;
@@ -690,12 +686,12 @@ export function createESPManager() {
 				flashMode: 'keep', // Keep current mode
 				flashFreq: 'keep', // Keep current frequency
 				flashSize: 'keep', // Keep current flash size
-				eraseAll: options.eraseBeforeFlash, // Use value from options
+				eraseAll: false, // Erase is now handled separately
 				compress: true,
 				reportProgress: (fileIndex: number, written: number, total: number) => {
 					const progress = Math.round((written / total) * 100);
 					options.onProgress?.({
-						progress: 60 + Math.round(progress * 0.4), // 60-100%
+						progress: progress, // 0-100%
 						status: `Writing firmware... ${progress}%`,
 						error: ''
 					});
@@ -711,22 +707,10 @@ export function createESPManager() {
 			await esploader.writeFlash(flashOptions);
 			console.log('writeFlash completed successfully');
 
-			options.onProgress?.({
-				progress: 90,
-				status: 'Finalizing...',
-				error: ''
-			});
-
 			console.log('Starting after() call...');
 			// Call after to reset the chip
 			await esploader.after();
 			console.log('after() completed successfully');
-
-			options.onProgress?.({
-				progress: 100,
-				status: 'Firmware flashed successfully!',
-				error: ''
-			});
 
 		} catch (error) {
 			console.error('Flash error:', error);
@@ -856,6 +840,7 @@ Then try flashing again.`);
 		connectToPort,
 		getDeviceInfo,
 		flashFirmware,
+		eraseFlash,
 		resetPort,
 		getCurrentPort,
 		getBaudrateOptions,

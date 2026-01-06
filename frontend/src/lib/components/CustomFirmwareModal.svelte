@@ -410,61 +410,96 @@
 		flashError = '';
 
 		try {
-			// Handle all cases with unified approach
-			if (enabledFiles.length > 0) {
-				// Rule 3: Sort files by flash address before flashing
-				const sortedFiles = [...enabledFiles].sort((a, b) => {
-					const addressA = parseInt(a.address.replace('0x', ''), 16);
-					const addressB = parseInt(b.address.replace('0x', ''), 16);
-					return addressA - addressB;
+			// Sort files by flash address before flashing
+			const sortedFiles = [...enabledFiles].sort((a, b) => {
+				const addressA = parseInt(a.address.replace('0x', ''), 16);
+				const addressB = parseInt(b.address.replace('0x', ''), 16);
+				return addressA - addressB;
+			});
+
+			const totalFiles = sortedFiles.length;
+
+			// Calculate total volume for progress tracking
+			let totalVolume = 0;
+			let flashSizeBytes = 0;
+
+			// Get flash size if erase is enabled
+			if (eraseBeforeFlash && deviceInfo?.flashSize) {
+				flashSizeBytes = parseFlashSize(deviceInfo.flashSize);
+				totalVolume += flashSizeBytes;
+			}
+
+			// Add all file sizes
+			for (const fileItem of sortedFiles) {
+				totalVolume += fileItem.file.size;
+			}
+
+			// Fixed progress ranges: 0-5% (preparation), 5-95% (work), 95-100% (finalization)
+			flashProgress = 0;
+			flashStatus = 'Starting flash process...';
+
+			// Step 1: Erase flash if requested (0-5% preparation, then part of 5-95% work)
+			let cumulativeProcessed = 0;
+
+			if (eraseBeforeFlash && flashSizeBytes > 0) {
+				flashProgress = 5;
+				flashStatus = 'Erasing flash...';
+
+				await espManager.eraseFlash({
+					onProgress: (progress: any) => {
+						// Erase progress 0-100 maps to 5-95% range
+						const eraseProgress = (progress.progress / 100) * (flashSizeBytes / totalVolume);
+						flashProgress = Math.round(5 + eraseProgress * 90);
+						flashStatus = `Erasing flash... ${progress.progress}%`;
+						if (progress.error) {
+							flashError = progress.error;
+						}
+					}
 				});
 
-				const totalFiles = sortedFiles.length;
-
-				for (let i = 0; i < totalFiles; i++) {
-					const fileItem = sortedFiles[i];
-					// Reserve space for file completion (5% per file)
-					const progressRange = (100 - totalFiles * 5) / totalFiles;
-					const progressBase = (i / totalFiles) * (100 - totalFiles * 5);
-
-					// Rule 4: Include flash address in progress status
-					flashStatus = `Flashing file ${i + 1}/${totalFiles}: ${fileItem.filename} @ ${fileItem.address}...`;
-					flashProgress = Math.round(progressBase);
-
-					// Read file content using utility
-					const content = await fileHandler.readFileContent(fileItem.file);
-					const firmwareFile: FirmwareFile = {
-						...fileItem.file,
-						content: content
-					};
-
-					const flashOptions = {
-						baudrate: selectedBaudrate,
-						address: fileItem.address, // Already in hex format
-						eraseBeforeFlash: eraseBeforeFlash && i === 0, // Only erase before first file
-						onProgress: (progress: any) => {
-							// Calculate overall progress combining file progress with current file position
-							const overallProgress = progressBase + (progress.progress / 100) * progressRange;
-							flashProgress = Math.round(overallProgress);
-							// Rule 4: Include flash address in progress status
-							flashStatus = `Flashing file ${i + 1}/${totalFiles}: ${fileItem.filename} @ ${fileItem.address} - ${progress.status}`;
-							if (progress.error) {
-								flashError = progress.error;
-							}
-						}
-					};
-
-					// Use ESP manager to flash firmware
-					await espManager.flashFirmware(firmwareFile, flashOptions);
-
-					// Mark file as completed
-					flashProgress = Math.round(progressBase + progressRange);
-					flashStatus = `Completed file ${i + 1}/${totalFiles}: ${fileItem.filename} @ ${fileItem.address}`;
-				}
-
-				flashStatus = 'All files flashed successfully!';
-				flashProgress = 100;
+				cumulativeProcessed += flashSizeBytes;
 			}
+
+			// Step 2: Flash all files (part of 5-95% work)
+			for (let i = 0; i < totalFiles; i++) {
+				const fileItem = sortedFiles[i];
+
+				flashStatus = `Flashing file ${i + 1}/${totalFiles}: ${fileItem.filename} @ ${fileItem.address}...`;
+
+				// Read file content using utility
+				const content = await fileHandler.readFileContent(fileItem.file);
+				const firmwareFile: FirmwareFile = {
+					...fileItem.file,
+					content: content
+				};
+
+				const flashOptions = {
+					baudrate: selectedBaudrate,
+					address: fileItem.address, // Already in hex format
+					onProgress: (progress: any) => {
+						// File progress 0-100 maps to portion of 5-95% range
+						const fileSize = fileItem.file.size;
+						const processedBytes = cumulativeProcessed + (progress.progress / 100) * fileSize;
+						flashProgress = Math.round(5 + (processedBytes / totalVolume) * 90);
+						flashStatus = `Flashing file ${i + 1}/${totalFiles}: ${fileItem.filename} @ ${fileItem.address} - ${progress.status}`;
+						if (progress.error) {
+							flashError = progress.error;
+						}
+					}
+				};
+
+				// Use ESP manager to flash firmware
+				await espManager.flashFirmware(firmwareFile, flashOptions);
+
+				// Add completed file to cumulative processed
+				cumulativeProcessed += fileItem.file.size;
+			}
+
+			// Step 3: Finalization (95-100%)
+			flashProgress = 95;
+			flashStatus = 'Finalizing...';
+			flashProgress = 100;
+			flashStatus = 'All files flashed successfully!';
 		} catch (error) {
 			console.error('Flash error:', error);
 			flashError = error instanceof Error ? error.message : String(error);

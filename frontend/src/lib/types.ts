@@ -256,7 +256,6 @@ export interface ZipExtractionResult {
 export interface FlashOptions {
   baudrate: number;
   address: string;
-  eraseBeforeFlash: boolean;
   onProgress?: (progress: FlashProgress) => void;
 }
 
