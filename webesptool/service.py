@@ -656,6 +656,14 @@ async def homepage(request: Request, src:str = None, t:str = None):
 # availableSRCs
 @app.get("/api/srcs", status_code=200)
 async def getSources(request: Request):
+    clientIp = getClientIp(request)
+    ipInfo = await getIpInfo(clientIp) if clientIp else None
+
+    logMsg = f"GetSources: url: {str(request.url)}, client: {str(request.client)}, headers: {str(request.headers)}"
+    if ipInfo:
+        logMsg += f", country: {ipInfo.get('country')}, city: {ipInfo.get('city')}"
+
+    log.debug(logMsg)
     return JSONResponse(content= await getSrcs())
 
 # availableFirmwares.json
