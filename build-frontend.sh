@@ -370,21 +370,14 @@ show_image_info() {
 prompt_latest_tag() {
     echo
     while true; do
-        read -p "Tag this version as latest? (y/N): " latest_confirm
+        read -p "Tag this version as latest? (Y/n): " latest_confirm
 
-        if [ -z "$latest_confirm" ]; then
-            SHOULD_TAG_LATEST="no"
-            break
-        fi
-
-        if [[ $latest_confirm =~ ^[Yy]$ ]]; then
-            SHOULD_TAG_LATEST="yes"
-            break
-        elif [[ $latest_confirm =~ ^[Nn]$ ]]; then
+        if [[ $latest_confirm =~ ^[Nn]$ ]]; then
             SHOULD_TAG_LATEST="no"
             break
         else
-            warning "Please enter 'y' or 'n'"
+            SHOULD_TAG_LATEST="yes"
+            break
         fi
     done
 
@@ -399,21 +392,14 @@ prompt_latest_tag() {
 prompt_push_to_registry() {
     echo
     while true; do
-        read -p "Push image to registry after build? (y/N): " push_confirm
+        read -p "Push image to registry after build? (Y/n): " push_confirm
 
-        if [ -z "$push_confirm" ]; then
-            SHOULD_PUSH="no"
-            break
-        fi
-
-        if [[ $push_confirm =~ ^[Yy]$ ]]; then
-            SHOULD_PUSH="yes"
-            break
-        elif [[ $push_confirm =~ ^[Nn]$ ]]; then
+        if [[ $push_confirm =~ ^[Nn]$ ]]; then
             SHOULD_PUSH="no"
             break
         else
-            warning "Please enter 'y' or 'n'"
+            SHOULD_PUSH="yes"
+            break
         fi
     done
 
@@ -457,32 +443,32 @@ main() {
     echo
 
     warning "Start building image $REGISTRY/$IMAGE_NAME:$APP_VERSION ?"
-    read -p "Continue? (y/N): " confirm
+    read -p "Continue? (Y/n): " confirm
 
-    if [[ $confirm =~ ^[Yy]$ ]]; then
-        echo
-        info "Starting build process..."
-        echo
-
-        # Build
-        build_image
-
-        # Display information
-        show_image_info
-
-        # Push to registry (based on earlier choice)
-        if [ "$SHOULD_PUSH" = "yes" ]; then
-            echo
-            push_image
-            success "Process completed successfully!"
-        else
-            echo
-            warning "Image built but not pushed to registry"
-            info "To push manually: docker push $REGISTRY/$IMAGE_NAME:$APP_VERSION"
-        fi
-    else
+    if [[ $confirm =~ ^[Nn]$ ]]; then
         warning "Build cancelled"
         exit 0
+    fi
+
+    echo
+    info "Starting build process..."
+    echo
+
+    # Build
+    build_image
+
+    # Display information
+    show_image_info
+
+    # Push to registry (based on earlier choice)
+    if [ "$SHOULD_PUSH" = "yes" ]; then
+        echo
+        push_image
+        success "Process completed successfully!"
+    else
+        echo
+        warning "Image built but not pushed to registry"
+        info "To push manually: docker push $REGISTRY/$IMAGE_NAME:$APP_VERSION"
     fi
 
     echo

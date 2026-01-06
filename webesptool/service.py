@@ -32,6 +32,7 @@ from pathlib import Path
 from looseversion import LooseVersion
 import io
 import mimetypes
+import aiohttp
 
 
 
@@ -592,6 +593,42 @@ async def getMimeType(filename):
     # Fallback для неизвестных типов
     return 'application/octet-stream'
 
+def getClientIp(request: Request) -> str:
+    """Extract IP from x-forwarded-for header or request.client.host"""
+    forwarded = request.headers.get('x-forwarded-for')
+    if forwarded:
+        return forwarded.split(',')[0].strip()
+    return request.client.host if request.client else None
+
+async def getIpInfo(ip: str):
+    """Get IP geolocation info (country, city) with timeout"""
+    if not ip:
+        return None
+
+    ipInfoConfig = config.get('ipInfo', {})
+    url = ipInfoConfig.get('url')
+    timeout = ipInfoConfig.get('timeout')
+
+    if not url:
+        return None
+
+    try:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session:
+            async with session.get(f"{url}/{ip}") as response:
+                if response.status == 200:
+                    data = await response.json()
+                    country = data.get('country_name_official')
+                    city = data.get('city')
+                    if country or city:
+                        return {
+                            'country': country,
+                            'city': city
+                        }
+    except Exception as e:
+        log.debug(f"Failed to get IP info for {ip}: {e}")
+
+    return None
+
 
 app = FastAPI()
 
@@ -606,7 +643,14 @@ general_pages_router = APIRouter()
 # Page with script
 @app.get("/", status_code=200)
 async def homepage(request: Request, src:str = None, t:str = None):
-    log.debug("Main page builder: %s, %s, %s", str(request.url), str(request.client), str(request.headers))
+    clientIp = getClientIp(request)
+    ipInfo = await getIpInfo(clientIp) if clientIp else None
+
+    logMsg = f"Main page builder: {str(request.url)}, {str(request.client)}, {str(request.headers)}"
+    if ipInfo:
+        logMsg += f", country: {ipInfo.get('country')}, city: {ipInfo.get('city')}"
+
+    log.debug(logMsg)
     return templates.TemplateResponse("general/homepage.html",{"request":request, "data" : await getAvailableFirmwares(src = src, t =t), "defaultDevice" : t})
 
 # availableSRCs
@@ -716,7 +760,14 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
                     path = "bin/bleota.bin"
                     filename = "bleota.bin"
     if logInd:
-        log.info(f"DownloadFile: type: {t}, version: {v}, path: {path}, filename: {filename}, url: {str(request.url)}, client: {str(request.client)}, headers: {str(request.headers)}")
+        clientIp = getClientIp(request)
+        ipInfo = await getIpInfo(clientIp) if clientIp else None
+
+        logMsg = f"DownloadFile: type: {t}, version: {v}, path: {path}, filename: {filename}, url: {str(request.url)}, client: {str(request.client)}, headers: {str(request.headers)}"
+        if ipInfo:
+            logMsg += f", country: {ipInfo.get('country')}, city: {ipInfo.get('city')}"
+
+        log.info(logMsg)
     return FileResponse(path=path, filename=filename, media_type=await getMimeType(path))
 
 
