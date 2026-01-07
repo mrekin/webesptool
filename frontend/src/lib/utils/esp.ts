@@ -517,6 +517,18 @@ export function createESPManager() {
 			// Create transport and store for reuse (disable trace logging)
 			transport = new (await import('esptool-js')).Transport(port, false);
 
+			// Monkey patch trace() method to respect tracing flag
+			// The original implementation always logs regardless of the tracing flag
+			transport.trace = function(message: string) {
+				if (this.tracing) {
+					const delta = Date.now() - (this as any).lastTraceTime;
+					const prefix = `TRACE ${delta.toFixed(3)}`;
+					const traceMessage = `${prefix} ${message}`;
+					console.log(traceMessage);
+					(this as any).traceLog += traceMessage + "\n";
+				}
+			};
+
 			// Create terminal and collect all output
 			const terminalOutput: string[] = [];
 			const espLoaderTerminal = {
