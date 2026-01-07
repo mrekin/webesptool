@@ -12,6 +12,7 @@
 	import type { FirmwareFile, FirmwareMetadata, FirmwareMetadataExtended, MemorySegment, SelectedFirmwareFile } from '$lib/types.js';
 	import { ValidationErrors } from '$lib/types.js';
 	import MemoryMap from '$lib/components/MemoryMap.svelte';
+	import BackupConfirmModal from '$lib/components/BackupConfirmModal.svelte';
 
 	export let isOpen = false;
 	export let onClose = () => {};
@@ -35,6 +36,31 @@
 	let flashError = '';
 	let eraseBeforeFlash = false; // New parameter for checkbox
 	let selectedBaudrate = 115200; // Default selected speed
+
+	// Watch for baudrate changes and update esploader
+	$: if (selectedBaudrate && espManager) {
+		updateBaudrate(selectedBaudrate);
+	}
+
+	// Function to update baudrate in esploader
+	async function updateBaudrate(newBaudrate: number) {
+		if (isFlashing || isBackingUp) return; // Don't change during operations
+
+		try {
+			const currentBaudrate = espManager.getCurrentBaudrate();
+			if (currentBaudrate !== newBaudrate) {
+				console.log(`Changing baudrate from ${currentBaudrate} to ${newBaudrate}...`);
+				await espManager.changeBaudrate(newBaudrate);
+				console.log(`Baudrate changed to ${newBaudrate}`);
+			}
+		} catch (error) {
+			console.error('Failed to change baudrate:', error);
+		}
+	}
+
+	// Memory backup state
+	let isBackingUp = false;
+	let showBackupConfirm = false; // Confirm dialog state
 
 	// ZIP extraction state
 	let isExtractingZip = false;
@@ -508,7 +534,70 @@
 		}
 	}
 
-	
+	// Open backup confirmation dialog
+	function openBackupConfirm() {
+		showBackupConfirm = true;
+	}
+
+	// Backup device memory
+	async function backupMemory() {
+		if (!isPortSelected || !deviceInfo || !espManager.getCurrentPort()) {
+			flashError = 'Please select a port first';
+			return;
+		}
+
+		// Parse flash size to bytes
+		const flashSizeBytes = parseFlashSize(deviceInfo.flashSize);
+		console.log(`Backup memory: deviceInfo.flashSize=${deviceInfo.flashSize}, flashSizeBytes=${flashSizeBytes}`);
+
+		isBackingUp = true;
+		isFlashing = true; // Use same flag to disable other actions
+		flashProgress = 0;
+		flashStatus = 'Starting memory backup...';
+		flashError = '';
+		showBackupConfirm = false; // Close confirm dialog
+
+		try {
+			// Read flash memory with progress tracking
+			const { data: flashData, flashId } = await espManager.readFlashMemory(flashSizeBytes, {
+				onProgress: (progress) => {
+					console.log(`Backup progress update: ${progress.progress}% - ${progress.status}`);
+					flashProgress = progress.progress;
+					flashStatus = progress.status;
+					if (progress.error) {
+						flashError = progress.error;
+					}
+				}
+			});
+
+			// Generate filename with flash ID
+			const filename = espManager.generateDumpFilename(deviceInfo.chip, deviceInfo.flashSize, flashId);
+
+			// Create blob and trigger download
+			const blob = new Blob([flashData as unknown as BlobPart], { type: 'application/octet-stream' });
+
+			// Use the same download pattern as in apiService
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = filename;
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			URL.revokeObjectURL(url);
+
+			flashStatus = `Backup saved: ${filename}`;
+			flashProgress = 100;
+		} catch (error) {
+			console.error('Backup error:', error);
+			flashError = error instanceof Error ? error.message : String(error);
+		} finally {
+			isBackingUp = false;
+			isFlashing = false;
+		}
+	}
+
+
 	// Start file download for AutoSelect mode
 	async function startFileDownload() {
 		if (!manifestData || isDownloadingFiles) return;
@@ -898,7 +987,17 @@
 											<div class="text-xs text-gray-400">
 												<div><strong>Device:</strong> {deviceInfo.chip}</div>
 												{#if deviceInfo.flashSize !== 'Unknown'}
-													<div><strong>Flash:</strong> {deviceInfo.flashSize}</div>
+													<div class="flex items-center justify-between">
+														<span><strong>Flash:</strong> {deviceInfo.flashSize}</span>
+														<button
+															on:click={openBackupConfirm}
+															disabled={isFlashing || isBackingUp}
+															class="ml-4 text-lg hover:scale-110 transition-transform disabled:cursor-not-allowed disabled:opacity-50"
+															title="Сохранить дамп памяти устройства"
+														>
+															💾
+														</button>
+													</div>
 												{/if}
 											</div>
 										{/if}
@@ -1505,4 +1604,13 @@
 			{/if}
 		</div>
 	</div>
+
+	<!-- Backup Confirmation Modal -->
+	<BackupConfirmModal
+		isOpen={showBackupConfirm}
+		deviceInfo={deviceInfo}
+		flashSizeBytes={deviceInfo ? parseFlashSize(deviceInfo.flashSize) : 0}
+		onConfirm={backupMemory}
+		onCancel={() => (showBackupConfirm = false)}
+	/>
 {/if}

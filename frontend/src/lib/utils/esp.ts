@@ -94,6 +94,15 @@ export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMe
 
 	const basename = filename.toLowerCase();
 
+	// Rule 0: Dump files - address 0x0
+	if (basename.startsWith('dump_') && basename.endsWith('.bin')) {
+		return {
+			address: '0x0',
+			type: 'firmware',
+			description: 'Memory dump file - restores complete flash memory'
+		};
+	}
+
 	// Rule 1: Factory firmware files - address 0x0
 	if (FULL_FIRMWARE_FILE_TYPES.some(type => basename.includes(type))) {
 		// Check manifest first for factory firmware
@@ -505,8 +514,8 @@ export function createESPManager() {
 			const { ESPLoader } = await import('esptool-js');
 			type LoaderOptions = any; // Define LoaderOptions as any since it's not exported from esptool-js
 
-			// Create transport and store for reuse
-			transport = new (await import('esptool-js')).Transport(port, true);
+			// Create transport and store for reuse (disable trace logging)
+			transport = new (await import('esptool-js')).Transport(port, false);
 
 			// Create terminal and collect all output
 			const terminalOutput: string[] = [];
@@ -528,6 +537,7 @@ export function createESPManager() {
 				baudrate: 115200, // Use standard speed for detection
 				terminal: espLoaderTerminal,
 				debugLogging: false,
+				enableTracing: false, // Disable TRACE logs
 			};
 
 			esploader = new ESPLoader(loaderOptions);
@@ -635,6 +645,63 @@ export function createESPManager() {
 		} catch (error) {
 			console.error('Erase error:', error);
 			throw new Error(`Erase failed: ${error instanceof Error ? error.message : String(error)}`);
+		}
+	}
+
+	// Read flash memory
+	async function readFlashMemory(
+		sizeBytes: number,
+		options: {
+			onProgress?: (progress: FlashProgress) => void
+		} = {}
+	): Promise<{ data: Uint8Array; flashId: string }> {
+		if (!esploader) {
+			throw new Error('ESP loader not initialized. Please connect to device first.');
+		}
+
+		try {
+			options.onProgress?.({
+				progress: 0,
+				status: 'Reading flash memory...',
+				error: ''
+			});
+
+			console.log(`Reading ${sizeBytes} bytes from flash memory...`);
+
+			// Read flash ID first
+			let flashId = 'Unknown';
+			try {
+				const flashIdResult = await esploader.flashId();
+				flashId = typeof flashIdResult === 'object' ? JSON.stringify(flashIdResult) : String(flashIdResult);
+				console.log('Flash ID:', flashId);
+			} catch (error) {
+				console.warn('Failed to read flash ID:', error);
+			}
+
+			// Read entire flash memory from address 0x0
+			// esptool-js callback signature: onPacketReceived(packet, bytesRead, totalSize)
+			const flashData = await esploader.readFlash(0x0, sizeBytes, (packet: Uint8Array, bytesRead: number, totalSize: number) => {
+				const progress = Math.round((bytesRead / totalSize) * 100);
+				console.log(`Read progress: ${bytesRead}/${totalSize} bytes (${progress}%)`);
+				options.onProgress?.({
+					progress: progress,
+					status: `Reading flash memory... ${progress}%`,
+					error: ''
+				});
+			});
+
+			console.log(`Flash read completed successfully. Total bytes: ${flashData.length}`);
+
+			options.onProgress?.({
+				progress: 100,
+				status: 'Flash memory read completed',
+				error: ''
+			});
+
+			return { data: flashData, flashId };
+		} catch (error) {
+			console.error('Flash read error:', error);
+			throw new Error(`Flash read failed: ${error instanceof Error ? error.message : String(error)}`);
 		}
 	}
 
@@ -796,6 +863,26 @@ Then try flashing again.`);
 		return baudrateOptions;
 	}
 
+	// Generate dump filename
+	function generateDumpFilename(chip: string, flashSize: string, flashId?: string): string {
+		const now = new Date();
+		const date = now.toISOString().split('T')[0].replace(/-/g, '.');
+		const time = now.toTimeString().split(' ')[0].replace(/:/g, '.');
+		// Sanitize chip name (remove spaces and special chars)
+		const sanitizedChip = chip.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+		// Sanitize flash size (remove spaces, convert to MB notation)
+		const sanitizedSize = flashSize.replace(/\s+/g, '');
+		// Sanitize flash ID (remove spaces and special chars)
+		const sanitizedFlashId = flashId && flashId !== 'Unknown' && flashId !== 'undefined'
+			? flashId.replace(/\s+/g, '').replace(/[^a-zA-Z0-9]/g, '')
+			: '';
+
+		if (sanitizedFlashId) {
+			return `dump_${sanitizedChip}_${sanitizedSize}_${sanitizedFlashId}_${date}_${time}.bin`;
+		}
+		return `dump_${sanitizedChip}_${sanitizedSize}_${date}_${time}.bin`;
+	}
+
 	// Parse flash address
 	function parseFlashAddress(address: string): number {
 		if (address.startsWith('0x') || address.startsWith('0X')) {
@@ -841,11 +928,32 @@ Then try flashing again.`);
 		getDeviceInfo,
 		flashFirmware,
 		eraseFlash,
+		readFlashMemory,
 		resetPort,
 		getCurrentPort,
 		getBaudrateOptions,
+		generateDumpFilename,
 		parseFlashAddress,
 		isValidFlashAddress,
-		sanitizeAddress
+		sanitizeAddress,
+		getCurrentBaudrate,
+		changeBaudrate
 	};
+
+	// Get current baudrate from esploader
+	function getCurrentBaudrate(): number {
+		return esploader?.baudrate || 115200;
+	}
+
+	// Change baudrate in esploader
+	async function changeBaudrate(newBaudrate: number): Promise<void> {
+		if (!esploader) {
+			throw new Error('ESP loader not initialized');
+		}
+
+		if (esploader.baudrate !== newBaudrate) {
+			esploader.baudrate = newBaudrate;
+			await esploader.changeBaud();
+		}
+	}
 }

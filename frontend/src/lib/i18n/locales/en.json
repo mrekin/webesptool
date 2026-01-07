@@ -269,6 +269,15 @@
     "device_information": "Device Information",
     "flash_firmware_with_count": "{count} {count, plural, one {file} other {files}}"
   },
+  "backupconfirm": {
+    "title": "Save Device Flash Dump?",
+    "device_label": "Device:",
+    "memory_size": "Flash Size:",
+    "file_size": "File Size:",
+    "warning": "Reading the entire memory may take some time. Do not disconnect the device during the process.",
+    "cancel": "Cancel",
+    "confirm": "Save"
+  },
   "memorymap": {
     "layout": "Memory Layout",
     "total": "Total",
