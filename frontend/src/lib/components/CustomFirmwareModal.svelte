@@ -61,6 +61,7 @@
 	// Memory backup state
 	let isBackingUp = false;
 	let showBackupConfirm = false; // Confirm dialog state
+	let backupAbortController: AbortController | null = null; // For cancelling backup
 
 	// ZIP extraction state
 	let isExtractingZip = false;
@@ -401,6 +402,12 @@
 			downloadAbortController = null;
 		}
 
+		// Cancel any ongoing backup
+		if (backupAbortController) {
+			backupAbortController.abort();
+			backupAbortController = null;
+		}
+
 		// Reset port only
 		await resetPort();
 	}
@@ -539,6 +546,19 @@
 		showBackupConfirm = true;
 	}
 
+	// Cancel backup operation
+	function cancelBackup() {
+		if (backupAbortController) {
+			backupAbortController.abort();
+			backupAbortController = null;
+		}
+		flashStatus = $locales('customfirmware.backup_cancelled');
+		flashError = $locales('customfirmware.backup_cancelled');
+		isBackingUp = false;
+		isFlashing = false;
+		flashProgress = 0;
+	}
+
 	// Backup device memory
 	async function backupMemory() {
 		if (!isPortSelected || !deviceInfo || !espManager.getCurrentPort()) {
@@ -550,15 +570,18 @@
 		const flashSizeBytes = parseFlashSize(deviceInfo.flashSize);
 		console.log(`Backup memory: deviceInfo.flashSize=${deviceInfo.flashSize}, flashSizeBytes=${flashSizeBytes}`);
 
+		// Create abort controller for this backup
+		backupAbortController = new AbortController();
+
 		isBackingUp = true;
 		isFlashing = true; // Use same flag to disable other actions
 		flashProgress = 0;
-		flashStatus = 'Starting memory backup...';
+		flashStatus = $locales('customfirmware.backup_status');
 		flashError = '';
 		showBackupConfirm = false; // Close confirm dialog
 
 		try {
-			// Read flash memory with progress tracking
+			// Read flash memory with progress tracking and abort signal
 			const { data: flashData, flashId } = await espManager.readFlashMemory(flashSizeBytes, {
 				onProgress: (progress) => {
 					console.log(`Backup progress update: ${progress.progress}% - ${progress.status}`);
@@ -567,8 +590,14 @@
 					if (progress.error) {
 						flashError = progress.error;
 					}
-				}
+				},
+				abortSignal: backupAbortController.signal
 			});
+
+			// Check if was cancelled during operation
+			if (backupAbortController.signal.aborted) {
+				throw new Error('Backup cancelled');
+			}
 
 			// Generate filename with flash ID
 			const filename = espManager.generateDumpFilename(deviceInfo.chip, deviceInfo.flashSize, flashId);
@@ -590,10 +619,15 @@
 			flashProgress = 100;
 		} catch (error) {
 			console.error('Backup error:', error);
-			flashError = error instanceof Error ? error.message : String(error);
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			// Don't show error if user cancelled
+			if (errorMessage !== 'Backup cancelled' && errorMessage !== 'Backup cancelled') {
+				flashError = errorMessage;
+			}
 		} finally {
 			isBackingUp = false;
 			isFlashing = false;
+			backupAbortController = null;
 		}
 	}
 
@@ -1536,11 +1570,24 @@
 			<!-- Footer -->
 			<div class="flex justify-end space-x-3 border-t border-gray-700 p-6">
 				<button
-					on:click={async () => await handleClose()}
-					disabled={isFlashing}
+					on:click={async () => {
+						if (isBackingUp) {
+							cancelBackup();
+						} else {
+							await handleClose();
+						}
+					}}
 					class="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+					disabled={isFlashing && !isBackingUp}
+					class:bg-red-500={isBackingUp}
+					class:hover:bg-red-600={isBackingUp}
+					class:text-white={isBackingUp}
 				>
-					{$locales('common.cancel')}
+					{#if isBackingUp}
+						{$locales('backupconfirm.cancel')}
+					{:else}
+						{$locales('common.cancel')}
+					{/if}
 				</button>
 
 				{#if flashProgress === 100 && flashStatus.includes('successfully')}

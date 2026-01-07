@@ -652,11 +652,17 @@ export function createESPManager() {
 	async function readFlashMemory(
 		sizeBytes: number,
 		options: {
-			onProgress?: (progress: FlashProgress) => void
+			onProgress?: (progress: FlashProgress) => void;
+			abortSignal?: AbortSignal;
 		} = {}
 	): Promise<{ data: Uint8Array; flashId: string }> {
 		if (!esploader) {
 			throw new Error('ESP loader not initialized. Please connect to device first.');
+		}
+
+		// Check if aborted before starting
+		if (options.abortSignal?.aborted) {
+			throw new Error('Backup cancelled');
 		}
 
 		try {
@@ -671,16 +677,30 @@ export function createESPManager() {
 			// Read flash ID first
 			let flashId = 'Unknown';
 			try {
+				// Check if aborted before reading flash ID
+				if (options.abortSignal?.aborted) {
+					throw new Error('Backup cancelled');
+				}
+
 				const flashIdResult = await esploader.flashId();
 				flashId = typeof flashIdResult === 'object' ? JSON.stringify(flashIdResult) : String(flashIdResult);
 				console.log('Flash ID:', flashId);
 			} catch (error) {
 				console.warn('Failed to read flash ID:', error);
+				// Check if error is from abort
+				if (error instanceof Error && error.message === 'Backup cancelled') {
+					throw error;
+				}
 			}
 
 			// Read entire flash memory from address 0x0
 			// esptool-js callback signature: onPacketReceived(packet, bytesRead, totalSize)
 			const flashData = await esploader.readFlash(0x0, sizeBytes, (packet: Uint8Array, bytesRead: number, totalSize: number) => {
+				// Check if aborted during read
+				if (options.abortSignal?.aborted) {
+					throw new Error('Backup cancelled');
+				}
+
 				const progress = Math.round((bytesRead / totalSize) * 100);
 				console.log(`Read progress: ${bytesRead}/${totalSize} bytes (${progress}%)`);
 				options.onProgress?.({
