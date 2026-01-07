@@ -26,17 +26,14 @@
       return true;
     }
 
-    // Check if current date is between Dec 31 and Jan 7
-    const currentYear = now.getFullYear();
-    const startDate = new Date(currentYear - 1, 11, 31); // Dec 31 of previous year
-    const endDate = new Date(currentYear, 0, 7); // Jan 7 of current year
+    // Check if current date is between Dec 31, 2025 and Jan 13, 2026
+    const startDate = new Date(2025, 11, 31); // Dec 31, 2025
+    const endDate = new Date(2026, 0, 13); // Jan 13, 2026
 
-    // If we're in January before Jan 7, use previous year for start date
-    if (now.getMonth() === 0 && now.getDate() <= 7) {
-      const adjustedStartDate = new Date(currentYear - 1, 11, 31);
-      const adjustedEndDate = new Date(currentYear, 0, 7);
-      const inRange = now >= adjustedStartDate && now <= adjustedEndDate;
-      console.log('🎄 January check - in range:', inRange, 'adjustedStartDate:', adjustedStartDate.toISOString(), 'adjustedEndDate:', adjustedEndDate.toISOString());
+    // If we're in January before Jan 13, use previous year for start date
+    if (now.getMonth() === 0 && now.getDate() <= 13) {
+      const inRange = now >= startDate && now <= endDate;
+      console.log('🎄 January check - in range:', inRange, 'startDate:', startDate.toISOString(), 'endDate:', endDate.toISOString());
       return inRange;
     }
 
