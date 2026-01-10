@@ -46,6 +46,7 @@
     "show_pinout": "Show pinout diagram",
     "diagram": "Pin Diagram",
     "peripherals": "Peripherals",
+    "configs": "Configs",
     "no_data": "No pinout data available for this device",
     "disclaimer": "Information on this page may be unreliable, check source code for details.",
     "filter_category": "Filter by category",

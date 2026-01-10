@@ -576,23 +576,54 @@ export function createESPManager() {
 			// Parse terminal output for detailed info
 			const outputText = terminalOutput.join('\n');
 
-			// Extract MAC address
-			const macMatch = outputText.match(/MAC:\s*([0-9A-Fa-f:]+)/);
-			if (macMatch) mac = macMatch[1];
+			// Use ROM API methods when available, fallback to parsing terminal output
 
-			// Extract chip info with revision
-			const chipMatch = outputText.match(/Chip is (.+) \(revision (.+)\)/);
-			if (chipMatch) {
-				revision = chipMatch[2];
+			// Get MAC address using ROM API
+			try {
+				mac = await esploader.chip.readMac(esploader);
+			} catch (error) {
+				console.warn('Failed to get MAC from ROM API:', error);
+				const macMatch = outputText.match(/MAC:\s*([0-9A-Fa-f:]+)/);
+				if (macMatch) mac = macMatch[1];
 			}
 
-			// Extract features
-			const featuresMatch = outputText.match(/Features:\s*(.+)/);
-			if (featuresMatch) features = featuresMatch[1];
+			// Get chip features using ROM API
+			try {
+				features = await esploader.chip.getChipFeatures(esploader);
+			} catch (error) {
+				console.warn('Failed to get features from ROM API:', error);
+				const featuresMatch = outputText.match(/Features:\s*(.+)/);
+				if (featuresMatch) features = featuresMatch[1];
+			}
 
-			// Extract crystal frequency
-			const crystalMatch = outputText.match(/Crystal is (\d+)MHz/);
-			if (crystalMatch) crystal = `${crystalMatch[1]}MHz`;
+			// Get crystal frequency using ROM API
+			try {
+				const crystalFreq = await esploader.chip.getCrystalFreq(esploader);
+				crystal = `${crystalFreq}MHz`;
+			} catch (error) {
+				console.warn('Failed to get crystal from ROM API:', error);
+				const crystalMatch = outputText.match(/Crystal is (\d+)MHz/);
+				if (crystalMatch) crystal = `${crystalMatch[1]}MHz`;
+			}
+
+			// Get chip revision using ROM API
+			try {
+				if (esploader.chip.getChipRevision) {
+					revision = await esploader.chip.getChipRevision(esploader);
+				} else {
+					// Fallback to parsing for chips without getChipRevision
+					const chipMatch = outputText.match(/Chip is (.+) \(revision (.+)\)/);
+					if (chipMatch) {
+						revision = chipMatch[2];
+					}
+				}
+			} catch (error) {
+				console.warn('Failed to get revision from ROM API:', error);
+				const chipMatch = outputText.match(/Chip is (.+) \(revision (.+)\)/);
+				if (chipMatch) {
+					revision = chipMatch[2];
+				}
+			}
 
 			// Detect flash size using esploader's getFlashSize()
 			// This is more reliable than parsing terminal output, especially when PSRAM is present
@@ -627,7 +658,7 @@ export function createESPManager() {
 				console.log('Detected PSRAM size:', psramSize);
 			}
 
-			// Extract flash ID
+			// Get Flash ID - not available via ROM API, parse from terminal output
 			const flashIdMatch = outputText.match(/Flash ID:\s*(.+)/);
 			if (flashIdMatch) {
 				flashId = flashIdMatch[1];

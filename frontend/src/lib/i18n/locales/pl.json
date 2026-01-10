@@ -46,6 +46,7 @@
     "show_pinout": "Pokaż schemat wyprowadzeń",
     "diagram": "Schemat pinów",
     "peripherals": "Urządzenia peryferyjne",
+    "configs": "Konfiguracje",
     "no_data": "Brak danych o schemacie wyprowadzeń dla tego urządzenia",
     "disclaimer": "Informacje na tej stronie mogą być niewiarygodne, sprawdź kod źródłowy.",
     "filter_category": "Filtruj według kategorii",

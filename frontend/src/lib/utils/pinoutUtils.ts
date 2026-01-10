@@ -1,4 +1,4 @@
-import type { PinoutData, PinInfo, PinCategory, BoardVariant, PinDefines } from '$lib/types';
+import type { PinoutData, PinInfo, PinCategory, BoardVariant, PinDefines, ConfigInfo } from '$lib/types';
 import { isNRF52Device } from './deviceTypeUtils';
 import type { DeviceType } from '$lib/types';
 import pinoutJson from '$lib/config/my_pinout.json';
@@ -164,6 +164,24 @@ export function extractPinsFromVariant(variant: BoardVariant, deviceType: Device
     const numB = parseInt(b.pinNumber.replace(/\D/g, '') || b.pinNumber);
     return numA - numB;
   });
+}
+
+// Extract configs from board variant data
+export function extractConfigsFromVariant(variant: BoardVariant): ConfigInfo[] {
+  const configs: ConfigInfo[] = [];
+  const { config } = variant;
+
+  if (!config) return configs;
+
+  for (const [category, categoryConfigs] of Object.entries(config)) {
+    if (!categoryConfigs) continue;
+
+    for (const [name, value] of Object.entries(categoryConfigs)) {
+      configs.push({ name, value: value as string, category });
+    }
+  }
+
+  return configs;
 }
 
 // Get human-readable description for pin

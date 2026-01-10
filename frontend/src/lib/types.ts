@@ -405,3 +405,9 @@ export interface PinInfo {
   category: PinCategory;
   description?: string;
 }
+
+export interface ConfigInfo {
+  name: string;      // Config key, e.g., "HAS_WIFI"
+  value: string;     // Config value, e.g., "1"
+  category: string;  // Category, e.g., "system", "battery"
+}

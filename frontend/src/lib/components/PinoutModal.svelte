@@ -1,14 +1,15 @@
 <script lang="ts">
   import { _ as locales } from 'svelte-i18n';
   import { pinoutStore, deviceDisplayInfo } from '$lib/stores';
-  import { mapDeviceToPinout, extractPinsFromVariant, getCategoryColor } from '$lib/utils/pinoutUtils';
-  import type { PinInfo, PinCategory } from '$lib/types';
+  import { mapDeviceToPinout, extractPinsFromVariant, extractConfigsFromVariant, getCategoryColor } from '$lib/utils/pinoutUtils';
+  import type { PinInfo, PinCategory, ConfigInfo } from '$lib/types';
   import { onMount, onDestroy } from 'svelte';
 
   export let isOpen: boolean = false;
   export let onClose: () => void = () => {};
   export let devicePioTarget: string = '';
 
+  let currentTab: 'pins' | 'configs' = 'pins';
   let selectedPin: PinInfo | null = null;
 
   // Get board variant data
@@ -25,6 +26,9 @@
   // Extract and filter pins
   $: allPins = boardVariant ? extractPinsFromVariant(boardVariant, $deviceDisplayInfo?.deviceType || null) : [];
 
+  // Extract configs
+  $: allConfigs = boardVariant ? extractConfigsFromVariant(boardVariant) : [];
+
   // Group pins by category
   $: pinsByCategory = (() => {
     const grouped: Record<string, PinInfo[]> = {};
@@ -34,6 +38,20 @@
         grouped[pin.category] = [];
       }
       grouped[pin.category].push(pin);
+    }
+
+    return grouped;
+  })();
+
+  // Group configs by category
+  $: configsByCategory = (() => {
+    const grouped: Record<string, ConfigInfo[]> = {};
+
+    for (const config of allConfigs) {
+      if (!grouped[config.category]) {
+        grouped[config.category] = [];
+      }
+      grouped[config.category].push(config);
     }
 
     return grouped;
@@ -398,38 +416,87 @@
 
               <!-- Right Side: Peripherals legend -->
               <div class="space-y-3">
-                <h4 class="text-md font-medium text-orange-300 mb-3">{$locales('pinout.peripherals')}</h4>
+                <!-- Tab navigation -->
+                <div class="flex items-center gap-2 mb-3 border-b border-gray-700">
+                  <button
+                    on:click={() => currentTab = 'pins'}
+                    class="px-3 py-2 text-sm font-medium transition-colors border-b-2 -mb-px"
+                    class:text-orange-300={currentTab === 'pins'}
+                    class:border-orange-500={currentTab === 'pins'}
+                    class:text-gray-400={currentTab !== 'pins'}
+                    class:border-transparent={currentTab !== 'pins'}
+                    class:hover:text-gray-200={currentTab !== 'pins'}
+                  >
+                    {$locales('pinout.peripherals')}
+                  </button>
+                  <button
+                    on:click={() => currentTab = 'configs'}
+                    class="px-3 py-2 text-sm font-medium transition-colors border-b-2 -mb-px"
+                    class:text-orange-300={currentTab === 'configs'}
+                    class:border-orange-500={currentTab === 'configs'}
+                    class:text-gray-400={currentTab !== 'configs'}
+                    class:border-transparent={currentTab !== 'configs'}
+                    class:hover:text-gray-200={currentTab !== 'configs'}
+                  >
+                    {$locales('pinout.configs')}
+                  </button>
+                </div>
 
                 <!-- Peripherals by category -->
-                {#each Object.entries(pinsByCategory) as [category, pins]}
-                  <div class="bg-gray-800 rounded-lg p-3 border border-gray-700">
-                    <div class="flex items-center gap-2 mb-2">
-                      <div
-                        class="w-3 h-3 rounded-full"
-                        style="background-color: {getCategoryColor(category as PinCategory)}"
-                      ></div>
-                      <span class="font-medium text-orange-200 text-sm capitalize">{category}</span>
-                      <span class="text-gray-500 text-xs">({pins.length})</span>
-                    </div>
-
-                    <div class="flex flex-wrap gap-1">
-                      {#each pins as pin}
+                {#if currentTab === 'pins'}
+                  {#each Object.entries(pinsByCategory) as [category, pins]}
+                    <div class="bg-gray-800 rounded-lg p-3 border border-gray-700">
+                      <div class="flex items-center gap-2 mb-2">
                         <div
-                          class="flex items-center gap-1.5 text-xs bg-gray-900 rounded px-2 py-1 cursor-pointer hover:bg-gray-700 transition-colors"
-                          class:bg-orange-900={selectedPin?.pinNumber === pin.pinNumber}
-                          on:click={() => selectedPin = pin}
-                        >
+                          class="w-3 h-3 rounded-full"
+                          style="background-color: {getCategoryColor(category as PinCategory)}"
+                        ></div>
+                        <span class="font-medium text-orange-200 text-sm capitalize">{category}</span>
+                        <span class="text-gray-500 text-xs">({pins.length})</span>
+                      </div>
+
+                      <div class="flex flex-wrap gap-1">
+                        {#each pins as pin}
                           <div
-                            class="w-2 h-2 rounded-full flex-shrink-0"
-                            style="background-color: {getCategoryColor(pin.category)}"
-                          ></div>
-                          <span class="font-medium text-gray-200">{pin.name}</span>
-                          <span class="text-gray-500 ml-0.5">{pin.pinNumber}</span>
-                        </div>
-                      {/each}
+                            class="flex items-center gap-1.5 text-xs bg-gray-900 rounded px-2 py-1 cursor-pointer hover:bg-gray-700 transition-colors"
+                            class:bg-orange-900={selectedPin?.pinNumber === pin.pinNumber}
+                            on:click={() => selectedPin = pin}
+                          >
+                            <div
+                              class="w-2 h-2 rounded-full flex-shrink-0"
+                              style="background-color: {getCategoryColor(pin.category)}"
+                            ></div>
+                            <span class="font-medium text-gray-200">{pin.name}</span>
+                            <span class="text-gray-500 ml-0.5">{pin.pinNumber}</span>
+                          </div>
+                        {/each}
+                      </div>
                     </div>
-                  </div>
-                {/each}
+                  {/each}
+                {:else}
+                  <!-- Configs by category -->
+                  {#each Object.entries(configsByCategory) as [category, configs]}
+                    <div class="bg-gray-800 rounded-lg p-3 border border-gray-700">
+                      <div class="flex items-center gap-2 mb-2">
+                        <div
+                          class="w-3 h-3 rounded-full"
+                          style="background-color: {getCategoryColor(category as PinCategory)}"
+                        ></div>
+                        <span class="font-medium text-orange-200 text-sm capitalize">{category}</span>
+                        <span class="text-gray-500 text-xs">({configs.length})</span>
+                      </div>
+
+                      <div class="space-y-1">
+                        {#each configs as config}
+                          <div class="flex items-center gap-2 text-xs bg-gray-900 rounded px-2 py-1.5">
+                            <span class="font-medium text-gray-300 flex-1">{config.name}</span>
+                            <span class="text-orange-400 font-mono">{config.value}</span>
+                          </div>
+                        {/each}
+                      </div>
+                    </div>
+                  {/each}
+                {/if}
               </div>
             </div>
           </div>
