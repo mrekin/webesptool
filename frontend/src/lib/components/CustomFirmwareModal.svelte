@@ -1021,17 +1021,24 @@
 											<div class="text-xs text-gray-400">
 												<div><strong>Device:</strong> {deviceInfo.chip}</div>
 												{#if deviceInfo.flashSize !== 'Unknown'}
-													<div class="flex items-center justify-between">
-														<span><strong>Flash:</strong> {deviceInfo.flashSize}</span>
+													<div class="flex items-center justify-between gap-2">
+														<div class="flex items-center gap-2">
+															<span><strong>Flash:</strong> {deviceInfo.flashSize}</span>
+															{#if deviceInfo.psramSize}
+																<span><strong>PSRAM:</strong> {deviceInfo.psramSize}</span>
+															{/if}
+														</div>
 														<button
 															on:click={openBackupConfirm}
 															disabled={isFlashing || isBackingUp}
-															class="ml-4 text-lg hover:scale-110 transition-transform disabled:cursor-not-allowed disabled:opacity-50"
+															class="text-lg hover:scale-110 transition-transform disabled:cursor-not-allowed disabled:opacity-50"
 															title="Сохранить дамп памяти устройства"
 														>
 															💾
 														</button>
 													</div>
+												{:else}
+													<div><strong>Flash:</strong> Unknown (using manifest)</div>
 												{/if}
 											</div>
 										{/if}
@@ -1642,6 +1649,9 @@
 						{/if}
 						{#if deviceInfo.flashSize !== 'Unknown'}
 							<div><strong>Flash Size:</strong> {deviceInfo.flashSize}</div>
+						{/if}
+						{#if deviceInfo.psramSize}
+							<div><strong>PSRAM Size:</strong> {deviceInfo.psramSize}</div>
 						{/if}
 						{#if deviceInfo.mac !== 'Unknown'}
 							<div><strong>MAC:</strong> {deviceInfo.mac}</div>

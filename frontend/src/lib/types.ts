@@ -213,6 +213,7 @@ export interface DeviceDisplayInfo {
 export interface ESPDeviceInfo {
   chip: string;
   flashSize: string;
+  psramSize?: string;
   mac: string;
   features: string;
   crystal: string;

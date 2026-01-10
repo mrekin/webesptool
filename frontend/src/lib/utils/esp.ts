@@ -566,6 +566,7 @@ export function createESPManager() {
 
 			// Parse detailed information from terminal output
 			let flashSize = 'Unknown';
+			let psramSize: string | undefined;
 			let mac = 'Unknown';
 			let features = 'Unknown';
 			let crystal = 'Unknown';
@@ -593,14 +594,39 @@ export function createESPManager() {
 			const crystalMatch = outputText.match(/Crystal is (\d+)MHz/);
 			if (crystalMatch) crystal = `${crystalMatch[1]}MHz`;
 
-			// Extract flash size
-			const flashSizeMatch = outputText.match(/Embedded Flash ([0-9]+MB) /);
-			const psramSizeMatch = outputText.match(/Embedded PSRAM ([0-9]+MB) /);
-			if (flashSizeMatch) {
-				flashSize = flashSizeMatch[1];
-			}else if (psramSizeMatch) {
-				flashSize = psramSizeMatch[1];
+			// Detect flash size using esploader's getFlashSize()
+			// This is more reliable than parsing terminal output, especially when PSRAM is present
+			try {
+				const flashSizeNum = await esploader.getFlashSize();
+				// getFlashSize() returns KB, convert to string format (e.g., 4096 -> "4MB", 8192 -> "8MB")
+				if (flashSizeNum && flashSizeNum > 0) {
+					if (flashSizeNum >= 1024) {
+						flashSize = `${flashSizeNum / 1024}MB`;
+					} else {
+						flashSize = `${flashSizeNum}KB`;
+					}
+				} else {
+					flashSize = 'Unknown';
+				}
+				console.log('Detected flash size via getFlashSize():', flashSize);
+			} catch (error) {
+				console.warn('Failed to detect flash size using getFlashSize():', error);
+				// Fallback to parsing terminal output if getFlashSize fails
+				const flashSizeMatch = outputText.match(/Embedded Flash ([0-9]+MB) /);
+				if (flashSizeMatch) {
+					flashSize = flashSizeMatch[1];
+				}
+				// If fallback also didn't work - leave flashSize as 'Unknown'
 			}
+
+			// Detect PSRAM size by parsing terminal output
+			// Note: PSRAM info is only shown in terminal output, not available via ROM API
+			const psramSizeMatch = outputText.match(/Embedded PSRAM ([0-9]+MB) /);
+			if (psramSizeMatch) {
+				psramSize = psramSizeMatch[1];
+				console.log('Detected PSRAM size:', psramSize);
+			}
+
 			// Extract flash ID
 			const flashIdMatch = outputText.match(/Flash ID:\s*(.+)/);
 			if (flashIdMatch) {
@@ -609,7 +635,8 @@ export function createESPManager() {
 
 			const deviceInfo: ESPDeviceInfo = {
 				chip: espChipName, // Use normalized chip name
-				flashSize: flashSize,
+				flashSize: flashSize,  // May be 'Unknown' if detection failed
+				psramSize: psramSize,  // undefined if no PSRAM
 				mac: mac,
 				features: features,
 				crystal: crystal,
