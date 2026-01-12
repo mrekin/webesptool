@@ -33,3 +33,10 @@ export {
 export {
   createFirmwareFileHandler
 } from './fileHandler.js';
+
+// Export Meshtastic utilities
+export * from './meshtastic.js';
+
+export {
+  createMeshtasticManager
+} from './meshtastic.js';

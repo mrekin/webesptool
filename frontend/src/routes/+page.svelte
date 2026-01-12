@@ -13,6 +13,7 @@
   let Notes: any = null;
   let Footer: any = null;
   let MinimalFooter: any = null;
+  let MeshtasticDeviceModal: any = null;
   import { loadingState, availableFirmwares, uiState, deviceSelection } from '$lib/stores.js';
   import { onMount } from 'svelte';
   import { _ as locales, locale } from 'svelte-i18n';
@@ -33,6 +34,20 @@
 
   // Pinout modal state
   let showPinoutModal = false;
+
+  // Meshtastic device modal state
+  let showMeshtasticModal = false;
+
+  async function openMeshtasticModal() {
+    if (!MeshtasticDeviceModal) {
+      MeshtasticDeviceModal = (await import('$lib/components/MeshtasticDeviceModal.svelte')).default;
+    }
+    showMeshtasticModal = true;
+  }
+
+  function closeMeshtasticModal() {
+    showMeshtasticModal = false;
+  }
 
   function openModal(options: {
     preloadedFilesWithOffsets?: any[];
@@ -172,7 +187,10 @@
 
       <!-- Download Options -->
       <div class="bg-gray-800 border border-orange-600 rounded-lg p-6">
-        <DownloadButtons on:openCustomFirmwareModal={(e) => openModal(e.detail)} />
+        <DownloadButtons
+          on:openCustomFirmwareModal={(e) => openModal(e.detail)}
+          on:openMeshtasticDeviceModal={openMeshtasticModal}
+        />
       </div>
 
       <!-- Minimal Footer -->
@@ -279,7 +297,10 @@
 
           <!-- Download Actions -->
           <div class="p-6 bg-gray-800 border border-orange-600 rounded-lg">
-            <DownloadButtons on:openCustomFirmwareModal={(e) => openModal(e.detail)} />
+            <DownloadButtons
+              on:openCustomFirmwareModal={(e) => openModal(e.detail)}
+              on:openMeshtasticDeviceModal={openMeshtasticModal}
+            />
           </div>
         </div>
 
@@ -354,6 +375,13 @@
   isOpen={showPinoutModal}
   onClose={() => showPinoutModal = false}
   devicePioTarget={deviceSelectionStore.devicePioTarget || ''}
+/>
+{/if}
+
+{#if showMeshtasticModal && MeshtasticDeviceModal}
+<svelte:component this={MeshtasticDeviceModal}
+  isOpen={showMeshtasticModal}
+  onClose={closeMeshtasticModal}
 />
 {/if}
 

@@ -10,5 +10,7 @@ export default defineConfig({
 	define: {
 		// Pass VITE_APP_VERSION to build-time constants
 		'import.meta.env.VITE_APP_VERSION': JSON.stringify(process.env.VITE_APP_VERSION || 'dev'),
+		// Polyfill process.env for @meshtastic/core (client-side only)
+		'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
 	},
 });

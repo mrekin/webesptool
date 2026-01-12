@@ -317,14 +317,24 @@
     {$locales('page.download_options')}
   </div>
   {#if !deviceSelectionStore.devicePioTarget}
-    <button
-      on:click={() => dispatch('openCustomFirmwareModal', {})}
-      class="text-orange-200 hover:text-orange-100 transition-colors p-1 rounded"
-      title="{$locales('downloadbuttons.custom_firmware_description')}"
-      aria-label="{$locales('downloadbuttons.custom_firmware_description')}"
-    >
-      <span class="text-xl">🔧</span>
-    </button>
+    <div class="flex items-center space-x-1">
+      <button
+        on:click={() => dispatch('openCustomFirmwareModal', {})}
+        class="text-orange-200 hover:text-orange-100 transition-colors p-1 rounded"
+        title="{$locales('downloadbuttons.custom_firmware_description')}"
+        aria-label="{$locales('downloadbuttons.custom_firmware_description')}"
+      >
+        <span class="text-xl">🔧</span>
+      </button>
+      <button
+        on:click={() => dispatch('openMeshtasticDeviceModal')}
+        class="text-orange-200 hover:text-orange-100 transition-colors p-1 rounded"
+        title="{$locales('downloadbuttons.meshtastic_device_description')}"
+        aria-label="{$locales('downloadbuttons.meshtastic_device_description')}"
+      >
+        <span class="text-xl">❓</span>
+      </button>
+    </div>
   {/if}
 </h2>
 

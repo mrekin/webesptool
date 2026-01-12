@@ -411,3 +411,79 @@ export interface ConfigInfo {
   value: string;     // Config value, e.g., "1"
   category: string;  // Category, e.g., "system", "battery"
 }
+
+// ==================== MESHTASTIC TYPES ====================
+
+export interface MeshtasticDeviceInfo {
+  nodeName: string;
+  nodeNum: number;
+  firmwareVersion: string;
+  hardwareModel: string;
+  pioEnv: string;
+  macAddress?: string;
+}
+
+export type MeshtasticConnectionStatus =
+  | 'disconnected'
+  | 'connecting'
+  | 'connected'
+  | 'configuring'
+  | 'configured'
+  | 'reconnecting'
+  | 'restarting';
+
+export interface MeshtasticConnectionOptions {
+  baudRate?: number;
+  heartbeatInterval?: number;
+  autoConfigure?: boolean;
+}
+
+export interface MeshtasticConfigReadResult<T> {
+  config: T;
+  pending: boolean;
+}
+
+export interface MeshtasticChannelInfo {
+  index: number;
+  config: any;
+  pending: boolean;
+}
+
+export interface MeshtasticOwnerInfo {
+  owner: any;
+  pending: boolean;
+}
+
+export interface MeshtasticEventCallbacks {
+  onDeviceStatus?: (status: MeshtasticConnectionStatus) => void;
+  onMyNodeInfo?: (nodeInfo: MeshtasticDeviceInfo) => void;
+  onConfigPacket?: (config: any) => void;
+  onModuleConfigPacket?: (config: any) => void;
+  onChannelPacket?: (channel: any) => void;
+  onUserPacket?: (user: any) => void;
+  onError?: (error: Error) => void;
+}
+
+export interface MeshtasticFullConfig {
+  version: string;
+  timestamp: string;
+  deviceInfo: MeshtasticDeviceInfo;
+  localConfig: Record<string, any>;
+  moduleConfig: Record<string, any>;
+  channels: MeshtasticChannelInfo[];
+  owner: any;
+}
+
+// Configuration selection for partial upload
+export interface MeshtasticConfigSelection {
+  localConfig: {
+    enabled: boolean;
+    sections: string[];
+  };
+  moduleConfig: {
+    enabled: boolean;
+    sections: string[];
+  };
+  includeChannels: boolean;
+  includeOwner: boolean;
+}
