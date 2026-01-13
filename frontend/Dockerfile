@@ -44,14 +44,21 @@ WORKDIR /app
 # Enable Corepack for pnpm management
 RUN corepack enable pnpm
 
-# Copy package.json, local-packages and build from builder
-COPY --from=builder --chown=svelte:nodejs /app/package.json /app/pnpm-lock.yaml /app/local-packages /app/build ./
+# Copy only necessary files from builder
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/pnpm-lock.yaml ./
+COPY --from=builder /app/build ./build/
+COPY --from=builder /app/.svelte-kit/output/server ./server/
+COPY --from=builder /app/local-packages ./local-packages/
 
 # Install only production dependencies
 RUN pnpm install --frozen-lockfile --prod
 
 # Switch to non-root user
 USER svelte
+
+# Set CI environment variable for pnpm
+ENV CI=true
 
 # Expose the port your Svelte app will listen on (e.g., 3000 for Node.js adapter)
 EXPOSE 3000

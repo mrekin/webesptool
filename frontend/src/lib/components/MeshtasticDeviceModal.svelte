@@ -97,10 +97,11 @@
 	});
 
 	// Load preset configs list
+	const presetConfigModules = import.meta.glob('/src/lib/config/meshtastic_configs/*.json');
+
 	async function loadPresetConfigs() {
 		try {
-			const modules = import.meta.glob('/src/lib/config/meshtastic_configs/*.json');
-			presetConfigs = Object.keys(modules).map(path => {
+			presetConfigs = Object.keys(presetConfigModules).map(path => {
 				return path.split('/').pop() || '';
 			});
 		} catch (error) {
@@ -117,8 +118,8 @@
 		operationError = '';
 
 		try {
-			// @vite-ignore
-			const module = await import(`/src/lib/config/meshtastic_configs/${filename}`);
+			const modulePath = `/src/lib/config/meshtastic_configs/${filename}`;
+			const module = await presetConfigModules[modulePath]();
 			let config: any = module.default || module;
 
 			console.log('[Meshtastic] Loading preset config:', filename, config);

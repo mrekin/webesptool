@@ -4,6 +4,17 @@
 		<meta charset="utf-8" />
 		<link rel="icon" href="%sveltekit.assets%/meshicon.png" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script>
+			// Early polyfill for process and global
+			if (typeof window.process === 'undefined') {
+				window.process = {
+					env: { NODE_ENV: 'production' }
+				};
+			}
+			if (typeof window.global === 'undefined') {
+				window.global = window;
+			}
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
