@@ -10,6 +10,9 @@ RUN corepack enable pnpm
 # Copy package.json and pnpm-lock.yaml to leverage Docker's caching
 COPY package.json pnpm-lock.yaml ./
 
+# Copy local packages directory (required for @meshtastic/* packages)
+COPY local-packages ./local-packages
+
 # Install dependencies using pnpm with optimizations
 RUN pnpm install --frozen-lockfile --prod=false
 
@@ -41,14 +44,11 @@ WORKDIR /app
 # Enable Corepack for pnpm management
 RUN corepack enable pnpm
 
-# Copy package.json for production dependencies
-COPY package.json pnpm-lock.yaml ./
+# Copy package.json, local-packages and build from builder
+COPY --from=builder --chown=svelte:nodejs /app/package.json /app/pnpm-lock.yaml /app/local-packages /app/build ./
 
 # Install only production dependencies
 RUN pnpm install --frozen-lockfile --prod
-
-# Copy the built application from the builder stage
-COPY --from=builder --chown=svelte:nodejs /app/build ./build
 
 # Switch to non-root user
 USER svelte

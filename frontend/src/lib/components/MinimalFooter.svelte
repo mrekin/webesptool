@@ -81,7 +81,7 @@
     }
   }
 
-  .animate-sparkle:hover {
+  :global(.animate-sparkle):hover {
     animation: sparkle 1s ease-in-out infinite;
   }
 </style>

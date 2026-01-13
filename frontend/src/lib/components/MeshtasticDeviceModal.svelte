@@ -117,6 +117,7 @@
 		operationError = '';
 
 		try {
+			// @vite-ignore
 			const module = await import(`/src/lib/config/meshtastic_configs/${filename}`);
 			let config: any = module.default || module;
 
@@ -565,7 +566,6 @@
 {#if isOpen}
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in"
-		on:click={(e) => e.target === e.currentTarget && handleClose()}
 		on:keydown={(e) => e.key === 'Escape' && !isSaving && !isLoading && handleClose()}
 		role="dialog"
 		aria-modal="true"

@@ -70,6 +70,8 @@
 		aria-labelledby="json-preview-title"
 		tabindex="-1"
 	>
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="max-h-[90vh] w-full max-w-6xl overflow-hidden rounded-xl border border-orange-600 bg-gray-800 shadow-2xl shadow-orange-900/50"
 			on:click|stopPropagation

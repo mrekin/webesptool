@@ -24,6 +24,7 @@
 </script>
 
 {#if isOpen}
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<div
 		class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in"
 		on:click={handleClose}

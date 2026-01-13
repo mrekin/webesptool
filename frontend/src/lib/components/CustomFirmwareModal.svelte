@@ -961,14 +961,14 @@
 				<!-- Headers Row -->
 				<div class="mb-4 grid grid-cols-1 gap-6 md:grid-cols-2">
 					<div>
-						<label class="block text-sm font-medium text-orange-300">
+						<div class="block text-sm font-medium text-orange-300">
 							{$locales('customfirmware.select_port')}
-						</label>
+						</div>
 					</div>
 					<div>
-						<label class="block text-sm font-medium text-orange-300">
+						<div class="block text-sm font-medium text-orange-300">
 							{$locales('customfirmware.select_firmware_file')}
-						</label>
+						</div>
 					</div>
 				</div>
 
@@ -1141,7 +1141,7 @@
 										{#if metadataFile}
 											<div>
 												<div class="mb-1 flex items-center justify-between">
-													<label class="text-sm font-medium text-blue-300">{$locales('customfirmware.metadata_file')}</label>
+													<span class="text-sm font-medium text-blue-300">{$locales('customfirmware.metadata_file')}</span>
 												</div>
 												<div
 													class="flex items-center space-x-2 rounded-md border border-blue-600 bg-blue-900/20 p-2"
@@ -1186,9 +1186,9 @@
 										{#if selectedFirmwareFiles.length > 0}
 											<div>
 												<div class="mb-1 flex items-center justify-between">
-													<label class="text-sm font-medium text-gray-300">
+													<span class="text-sm font-medium text-gray-300">
 														{$locales('customfirmware.flash_addresses')}
-													</label>
+													</span>
 													<span class="text-xs text-gray-500">Format: 0x1000 or 4096</span>
 												</div>
 												<div class="max-h-60 overflow-y-auto space-y-2">
@@ -1239,8 +1239,8 @@
 																</div>
 															</div>
 															<div class="flex flex-shrink-0 items-center space-x-2">
-																<label class="text-xs text-gray-400"
-																	>{$locales('customfirmware.address')}:</label
+																<span class="text-xs text-gray-400"
+																	>{$locales('customfirmware.address')}:</span
 																>
 																<input
 																	type="text"
@@ -1274,7 +1274,7 @@
 							{#if metadataFile}
 								<div class="pt-3">
 									<div class="mb-1 flex items-center justify-between">
-										<label class="text-sm font-medium text-blue-300">Metadata File</label>
+										<span class="text-sm font-medium text-blue-300">Metadata File</span>
 									</div>
 									<div
 										class="flex items-center space-x-2 rounded-md border border-blue-600 bg-blue-900/20 p-2"
@@ -1319,9 +1319,9 @@
 							{#if selectedFirmwareFiles.length > 0}
 								<div class="max-h-60 overflow-y-auto pt-3">
 									<div class="mb-1 flex items-center justify-between">
-										<label class="text-sm font-medium text-gray-300">
+										<span class="text-sm font-medium text-gray-300">
 											{$locales('customfirmware.flash_addresses')}
-										</label>
+										</span>
 										<span class="text-xs text-gray-500">Format: 0x1000 or 4096</span>
 									</div>
 									<div class="space-y-2">
@@ -1372,8 +1372,8 @@
 													</div>
 												</div>
 												<div class="flex flex-shrink-0 items-center space-x-2">
-													<label class="text-xs text-gray-400"
-														>{$locales('customfirmware.address')}:</label
+													<span class="text-xs text-gray-400"
+														>{$locales('customfirmware.address')}:</span
 													>
 													<input
 														type="text"

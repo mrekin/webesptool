@@ -245,14 +245,15 @@
                           </div>
                           <div class="flex items-center gap-2">
                             <div class="w-12 h-0.5 {isSelected ? 'bg-orange-500' : 'bg-gray-600'} group-hover:{isSelected ? 'bg-orange-400' : 'bg-gray-500'} transition-colors"></div>
-                            <div
-                              class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-pointer hover:scale-110 transition-transform {isSelected ? 'ring-2 ring-orange-300' : ''}"
+                            <button
+                              class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-pointer hover:scale-110 transition-transform {isSelected ? 'ring-2 ring-orange-300' : ''} border-0 p-0"
                               style="background-color: {getCategoryColor(pinGroup.category)}"
                               on:click={() => selectedPin = pinGroup.pins[0]}
                               title="{pinGroup.name}: {pinGroup.description}"
+                              aria-label="{pinGroup.name}: {pinGroup.description}"
                             >
                               {pinGroup.pinNumber}
-                            </div>
+                            </button>
                           </div>
                         </div>
                       {/each}
@@ -264,14 +265,15 @@
                         {@const isSelected = pinGroup.pins.some(p => p.pinNumber === selectedPin?.pinNumber)}
                         <div class="flex items-center group">
                           <div class="flex items-center gap-2">
-                            <div
-                              class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-pointer hover:scale-110 transition-transform {isSelected ? 'ring-2 ring-orange-300' : ''}"
+                            <button
+                              class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-pointer hover:scale-110 transition-transform {isSelected ? 'ring-2 ring-orange-300' : ''} border-0 p-0"
                               style="background-color: {getCategoryColor(pinGroup.category)}"
                               on:click={() => selectedPin = pinGroup.pins[0]}
                               title="{pinGroup.name}: {pinGroup.description}"
+                              aria-label="{pinGroup.name}: {pinGroup.description}"
                             >
                               {pinGroup.pinNumber}
-                            </div>
+                            </button>
                             <div class="w-12 h-0.5 {isSelected ? 'bg-orange-500' : 'bg-gray-600'} group-hover:{isSelected ? 'bg-orange-400' : 'bg-gray-500'} transition-colors"></div>
                           </div>
                           <div class="w-32 pl-1">
@@ -318,14 +320,15 @@
                           </div>
                           <div class="flex items-center gap-2">
                             <div class="w-12 h-0.5 {isSelected ? 'bg-orange-500' : 'bg-gray-600'} group-hover:{isSelected ? 'bg-orange-400' : 'bg-gray-500'} transition-colors"></div>
-                            <div
-                              class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-pointer hover:scale-110 transition-transform {isSelected ? 'ring-2 ring-orange-300' : ''}"
+                            <button
+                              class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-pointer hover:scale-110 transition-transform {isSelected ? 'ring-2 ring-orange-300' : ''} border-0 p-0"
                               style="background-color: {getCategoryColor(pinGroup.category)}"
                               on:click={() => selectedPin = pinGroup.pins[0]}
                               title="{pinGroup.name}: {pinGroup.description}"
+                              aria-label="{pinGroup.name}: {pinGroup.description}"
                             >
                               {pinGroup.pinNumber}
-                            </div>
+                            </button>
                           </div>
                         </div>
                       {/each}
@@ -337,14 +340,15 @@
                         {@const isSelected = pinGroup.pins.some(p => p.pinNumber === selectedPin?.pinNumber)}
                         <div class="flex items-center group">
                           <div class="flex items-center gap-2">
-                            <div
-                              class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-pointer hover:scale-110 transition-transform {isSelected ? 'ring-2 ring-orange-300' : ''}"
+                            <button
+                              class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-pointer hover:scale-110 transition-transform {isSelected ? 'ring-2 ring-orange-300' : ''} border-0 p-0"
                               style="background-color: {getCategoryColor(pinGroup.category)}"
                               on:click={() => selectedPin = pinGroup.pins[0]}
                               title="{pinGroup.name}: {pinGroup.description}"
+                              aria-label="{pinGroup.name}: {pinGroup.description}"
                             >
                               {pinGroup.pinNumber}
-                            </div>
+                            </button>
                             <div class="w-12 h-0.5 {isSelected ? 'bg-orange-500' : 'bg-gray-600'} group-hover:{isSelected ? 'bg-orange-400' : 'bg-gray-500'} transition-colors"></div>
                           </div>
                           <div class="w-32 pl-1">
@@ -382,14 +386,15 @@
                       {@const isSelected = pinGroup.pins.some(p => p.pinNumber === selectedPin?.pinNumber)}
                       <div class="flex items-center gap-2 group">
                         <!-- Pin circle -->
-                        <div
-                          class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-pointer hover:scale-110 transition-transform flex-shrink-0 {isSelected ? 'ring-2 ring-orange-300' : ''}"
+                        <button
+                          class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-pointer hover:scale-110 transition-transform flex-shrink-0 {isSelected ? 'ring-2 ring-orange-300' : ''} border-0 p-0"
                           style="background-color: {getCategoryColor(pinGroup.category)}"
                           on:click={() => selectedPin = pinGroup.pins[0]}
                           title="{pinGroup.name}: {pinGroup.description}"
+                          aria-label="{pinGroup.name}: {pinGroup.description}"
                         >
                           {pinGroup.pinNumber}
-                        </div>
+                        </button>
 
                         <!-- Connector line -->
                         <div class="w-4 h-0.5 {isSelected ? 'bg-orange-500' : 'bg-gray-600'} group-hover:{isSelected ? 'bg-orange-400' : 'bg-gray-500'} transition-colors"></div>
@@ -457,10 +462,11 @@
 
                       <div class="flex flex-wrap gap-1">
                         {#each pins as pin}
-                          <div
-                            class="flex items-center gap-1.5 text-xs bg-gray-900 rounded px-2 py-1 cursor-pointer hover:bg-gray-700 transition-colors"
+                          <button
+                            class="flex items-center gap-1.5 text-xs bg-gray-900 rounded px-2 py-1 cursor-pointer hover:bg-gray-700 transition-colors border-0 text-left"
                             class:bg-orange-900={selectedPin?.pinNumber === pin.pinNumber}
                             on:click={() => selectedPin = pin}
+                            aria-label="{pin.name} ({pin.pinNumber})"
                           >
                             <div
                               class="w-2 h-2 rounded-full flex-shrink-0"
@@ -468,7 +474,7 @@
                             ></div>
                             <span class="font-medium text-gray-200">{pin.name}</span>
                             <span class="text-gray-500 ml-0.5">{pin.pinNumber}</span>
-                          </div>
+                          </button>
                         {/each}
                       </div>
                     </div>

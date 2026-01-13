@@ -347,9 +347,9 @@
     <!-- Firmware Mode Selector for ESP32 Devices -->
     {#if deviceDisplayInfoStore?.deviceType && isESP32Device(deviceDisplayInfoStore.deviceType)}
     <div class="space-y-2 sm:space-y-3">
-      <label class="block text-sm font-medium text-orange-200 mb-2">
+      <div class="block text-sm font-medium text-orange-200 mb-2">
         {$locales('downloadbuttons.flash_mode')}
-      </label>
+      </div>
       <div class="flex flex-col sm:flex-row sm:space-x-4 space-y-2 sm:space-y-0">
         <label class="flex items-center space-x-2 cursor-pointer" title="{$locales('downloadbuttons.update_existing_firmware')}">
           <input

@@ -398,19 +398,6 @@
     }
   }
 
-  /* Apply fade-in animation to main content */
-  .grid > div {
-    animation: fadeIn 0.6s ease-out forwards;
-  }
-
-  .grid > div:nth-child(1) {
-    animation-delay: 0.1s;
-  }
-
-  .grid > div:nth-child(2) {
-    animation-delay: 0.2s;
-  }
-
   /* Custom scrollbar styling */
   ::-webkit-scrollbar {
     width: 8px;
