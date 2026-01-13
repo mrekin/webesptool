@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { deviceSelection, loadingState, deviceDisplayInfo, currentSource } from '$lib/stores.js';
+  import { deviceSelection, loadingState, deviceDisplayInfo, currentSource, uiState } from '$lib/stores.js';
   import { apiActions } from '$lib/stores.js';
   import { DeviceType, RepositoryType } from '$lib/types.js';
   import { isESP32Device, isNRF52Device, isRP2040Device, supportsUF2 } from '$lib/utils/deviceTypeUtils.js';
@@ -27,6 +27,7 @@
   $: isDownloading = $loadingState.isDownloading;
   $: deviceDisplayInfoStore = $deviceDisplayInfo;
   $: currentSourceStore = $currentSource;
+  $: experimentalFeatures = $uiState.experimentalFeatures;
 
 
   // Available download options based on device type and version
@@ -316,8 +317,8 @@
     <span class="mr-3">⬇️</span>
     {$locales('page.download_options')}
   </div>
-  {#if !deviceSelectionStore.devicePioTarget}
-    <div class="flex items-center space-x-1">
+  <div class="flex items-center space-x-1">
+    {#if !deviceSelectionStore.devicePioTarget}
       <button
         on:click={() => dispatch('openCustomFirmwareModal', {})}
         class="text-orange-200 hover:text-orange-100 transition-colors p-1 rounded"
@@ -326,6 +327,8 @@
       >
         <span class="text-xl">🔧</span>
       </button>
+    {/if}
+    {#if experimentalFeatures && currentSourceStore?.type === RepositoryType.MESHTASTIC}
       <button
         on:click={() => dispatch('openMeshtasticDeviceModal')}
         class="text-orange-200 hover:text-orange-100 transition-colors p-1 rounded"
@@ -334,8 +337,8 @@
       >
         <span class="text-xl">❓</span>
       </button>
-    </div>
-  {/if}
+    {/if}
+  </div>
 </h2>
 
 {#if deviceSelectionStore.devicePioTarget && deviceSelectionStore.version}

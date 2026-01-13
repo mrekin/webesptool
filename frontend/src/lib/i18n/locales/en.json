@@ -306,7 +306,6 @@
     "reading_module_config": "Reading module configuration...",
     "reading_channels": "Reading channels...",
     "reading_owner": "Reading owner information...",
-    "transforming_config": "Transforming configuration to Python client format...",
     "converting_config": "Converting configuration format...",
     "writing_config": "Writing configuration to device...",
     "writing_local_config": "Writing local configuration...",
@@ -334,8 +333,9 @@
     "owner": "Owner",
     "select_all": "Select All",
     "deselect_all": "Deselect All",
-    "upload_selected": "Upload Selected",
-    "no_sections_selected": "Please select at least one section to upload"
+    "upload_selected": "Write to Device",
+    "no_sections_selected": "Please select at least one section to upload",
+    "config_ready": "Configuration loaded. Review and select sections to download."
   },
   "memorymap": {
     "layout": "Memory Layout",
@@ -355,6 +355,12 @@
     "title": "Settings",
     "language": "Language",
     "minimal_interface": "Minimal Interface",
-    "minimal_interface_description": "Show only essential components for device flashing"
+    "minimal_interface_description": "Show only essential components for device flashing",
+    "experimental_features": "Experimental Features",
+    "experimental_features_description": "Enable experimental features that are still in development"
+  },
+  "jsonpreview": {
+    "title": "Configuration JSON Preview",
+    "apply_changes": "Apply Changes"
   }
 }

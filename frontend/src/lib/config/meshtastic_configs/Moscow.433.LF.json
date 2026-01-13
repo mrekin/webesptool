@@ -1,0 +1,15 @@
+{
+  "localConfig": {
+    "device": {
+      "nodeInfoBroadcastSecs": 10800,
+      "tzdef": "MSK-3"
+    },
+    "lora": {
+      "usePreset": true,
+      "modemPreset": "LONG_FAST",
+      "region": 16,
+      "hopLimit": 7,
+      "channelNum": 8
+    }
+  }
+}

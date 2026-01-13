@@ -4,6 +4,7 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build && npm run prepack",
+		"build:meshtastic": "bash scripts/build-meshtastic-packages.sh",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"prepack": "svelte-kit sync && svelte-package && publint",
@@ -62,10 +63,13 @@
 	},
 	"dependencies": {
 		"@humanspeak/svelte-markdown": "^0.8.13",
-		"@meshtastic/core": "^2.6.7",
-		"@meshtastic/transport-web-serial": "^0.2.5",
+		"@meshtastic/core": "file:./local-packages/@meshtastic/core",
+		"@meshtastic/transport-web-serial": "file:./local-packages/@meshtastic/transport-web-serial",
+		"@sveltejs/svelte-json-tree": "^2.2.1",
 		"esptool-js": "^0.5.7",
+		"js-yaml": "^4.1.1",
 		"jszip": "^3.10.1",
-		"svelte-i18n": "^4.0.1"
+		"svelte-i18n": "^4.0.1",
+		"svelte-jsoneditor": "^3.11.0"
 	}
 }

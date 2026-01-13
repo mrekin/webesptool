@@ -1,4 +1,144 @@
 @import "tailwindcss";
+@import "svelte-jsoneditor/themes/jse-theme-dark.css";
+
+/* Custom JSON Editor theme - orange colors to match app */
+.jse-theme-orange {
+	--jse-theme: dark;
+	--jse-theme-color: #f97316;
+	--jse-theme-color-highlight: #fb923c;
+	--jse-background-color: #374151;
+	--jse-text-color: #e5e7eb;
+	--jse-text-color-inverse: #374151;
+
+	/* main, menu, modal */
+	--jse-main-border: 1px solid #4b5563;
+	--jse-menu-color: #fff;
+	--jse-modal-background: #374151;
+	--jse-modal-overlay-background: rgba(0, 0, 0, 0.5);
+	--jse-modal-code-background: #374151;
+
+	/* tooltip in text mode */
+	--jse-tooltip-color: var(--jse-text-color);
+	--jse-tooltip-background: #4b5563;
+	--jse-tooltip-border: 1px solid #6b7280;
+	--jse-tooltip-action-button-color: inherit;
+	--jse-tooltip-action-button-background: #6b7280;
+
+	/* panels: navigation bar, gutter, search box */
+	--jse-panel-background: #1f2937;
+	--jse-panel-background-border: 1px solid #374151;
+	--jse-panel-color: var(--jse-text-color);
+	--jse-panel-color-readonly: #9ca3af;
+	--jse-panel-border: 1px solid #374151;
+	--jse-panel-button-color-highlight: #f3f4f6;
+	--jse-panel-button-background-highlight: #4b5563;
+
+	/* navigation-bar */
+	--jse-navigation-bar-background: #ea580c;
+	--jse-navigation-bar-background-highlight: #f97316;
+	--jse-navigation-bar-dropdown-color: #fff;
+
+	/* context menu */
+	--jse-context-menu-background: #374151;
+	--jse-context-menu-background-highlight: #4b5563;
+	--jse-context-menu-separator-color: #4b5563;
+	--jse-context-menu-color: var(--jse-text-color);
+	--jse-context-menu-pointer-background: #6b7280;
+	--jse-context-menu-pointer-background-highlight: #9ca3af;
+	--jse-context-menu-pointer-color: var(--jse-context-menu-color);
+
+	/* contents: json key and values */
+	--jse-key-color: #fdba74;
+	--jse-value-color: var(--jse-text-color);
+	--jse-value-color-number: #fb923c;
+	--jse-value-color-boolean: #fdba74;
+	--jse-value-color-string: #86efac;
+	--jse-value-color-null: #9ca3af;
+	--jse-value-color-empty: #9ca3af;
+
+	/* section headers */
+	--jse-header-color: #fed7aa;
+	--jse-header-background: #374151;
+	--jse-header-background-highlight: #4b5563;
+
+	/* selection */
+	--jse-selection-background-color: #ea580c;
+	--jse-selection-color: #fff;
+
+	/* hover */
+	--jse-hover-background-color: #374151;
+
+	/* colors in text mode */
+	--jse-text-color-highlight: #fed7aa;
+	--jse-text-color-highlight-2: #86efac;
+	--jse-text-color-highlight-3: #fdba74;
+
+	/* colors in tree mode */
+	--jse-tree-node-color: #e5e7eb;
+	--jse-tree-node-selected-background: #ea580c;
+	--jse-tree-node-selected-color: #fff;
+	--jse-tree-node-focused-background: #f97316;
+	--jse-tree-node-focused-color: #fff;
+	--jse-tree-node-focused-selected-background: #ea580c;
+	--jse-tree-node-focused-selected-color: #fff;
+
+	/* indentation guide in tree mode */
+	--jse-tree-line-color: #374151;
+
+	/* scrollbar in text mode */
+	--jse-text-mode-scrollbar-thumb: #4b5563;
+	--jse-text-mode-scrollbar-thumb-hover: #6b7280;
+
+	/* action buttons */
+	--jse-action-button-color: #e5e7eb;
+	--jse-action-button-background: #374151;
+	--jse-action-button-background-highlight: #4b5563;
+
+	/* links */
+	--jse-link-color: #fb923c;
+	--jse-link-color-highlight: #fdba74;
+
+	/* checkboxes */
+	--jse-checkbox-background: #374151;
+	--jse-checkbox-background-checked: #ea580c;
+	--jse-checkbox-border: #4b5563;
+
+	/* tags */
+	--jse-tag-color: #e5e7eb;
+	--jse-tag-background: #374151;
+
+	/* error */
+	--jse-error-background: #7f1d1d;
+	--jse-error-color: #fecaca;
+
+	/* warning */
+	--jse-warning-background: #78350f;
+	--jse-warning-color: #fed7aa;
+
+	/* info */
+	--jse-info-background: #1e3a8a;
+	--jse-info-color: #bfdbfe;
+
+	/* code editor */
+	--jse-code-background: #1f2937;
+	--jse-code-color: #e5e7eb;
+	--jse-code-linenumber-color: #9ca3af;
+	--jse-code-linenumber-background: #111827;
+	--jse-code-linenumber-selected-background: #374151;
+	--jse-code-selection-background: #ea580c;
+	--jse-code-selection-color: #fff;
+	--jse-code-cursor-color: #f97316;
+	--jse-code-keyword: #fdba74;
+	--jse-code-string: #86efac;
+	--jse-code-number: #fb923c;
+	--jse-code-boolean: #fdba74;
+	--jse-code-null: #9ca3af;
+	--jse-code-comment: #9ca3af;
+	--jse-code-tag: #fb923c;
+	--jse-code-attribute-name: #fdba74;
+	--jse-code-attribute-value: #86efac;
+	--jse-code-cdata-keyword: #fdba74;
+}
 
 /* Define custom color palette for TailwindCSS 4 */
 @theme {

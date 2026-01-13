@@ -145,6 +145,7 @@ export interface UIState {
   selectedDownloadMode: string | null;
   showSecurityWarning: boolean;
   interfaceMode: InterfaceMode;
+  experimentalFeatures: boolean;
 }
 
 // Interface mode enum
@@ -416,11 +417,26 @@ export interface ConfigInfo {
 
 export interface MeshtasticDeviceInfo {
   nodeName: string;
+  longName?: string;
+  shortName?: string;
   nodeNum: number;
   firmwareVersion: string;
   hardwareModel: string;
   pioEnv: string;
   macAddress?: string;
+}
+
+export interface MeshtasticNodeMetrics {
+  batteryLevel?: number;  // 0-100
+  voltage?: number;       // in volts
+  chUtil?: number;        // Channel utilization (0-100)
+  airUtil?: number;       // Air utilization (0-100)
+  time?: number;          // Timestamp
+}
+
+export interface MeshtasticNodeStats {
+  totalNodes: number;
+  onlineNodes: number;
 }
 
 export type MeshtasticConnectionStatus =
@@ -457,6 +473,8 @@ export interface MeshtasticOwnerInfo {
 export interface MeshtasticEventCallbacks {
   onDeviceStatus?: (status: MeshtasticConnectionStatus) => void;
   onMyNodeInfo?: (nodeInfo: MeshtasticDeviceInfo) => void;
+  onNodeStatsUpdate?: (stats: MeshtasticNodeStats) => void;
+  onMetricsUpdate?: (metrics: MeshtasticNodeMetrics) => void;
   onConfigPacket?: (config: any) => void;
   onModuleConfigPacket?: (config: any) => void;
   onChannelPacket?: (channel: any) => void;
@@ -465,13 +483,13 @@ export interface MeshtasticEventCallbacks {
 }
 
 export interface MeshtasticFullConfig {
-  version: string;
-  timestamp: string;
-  deviceInfo: MeshtasticDeviceInfo;
-  localConfig: Record<string, any>;
-  moduleConfig: Record<string, any>;
-  channels: MeshtasticChannelInfo[];
-  owner: any;
+  version?: string;
+  timestamp?: string;
+  deviceInfo?: MeshtasticDeviceInfo;
+  localConfig?: Record<string, any>;
+  moduleConfig?: Record<string, any>;
+  channels?: MeshtasticChannelInfo[];
+  owner?: any;
 }
 
 // Configuration selection for partial upload

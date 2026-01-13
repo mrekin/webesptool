@@ -47,11 +47,21 @@ const getInitialInterfaceMode = (): InterfaceMode => {
   return InterfaceMode.FULL;
 };
 
+// Get experimental features from cookie or default to false
+const getInitialExperimentalFeatures = (): boolean => {
+  if (browser) {
+    const savedValue = getCookie('meshtastic-experimental-features');
+    return savedValue === 'true';
+  }
+  return false;
+};
+
 const initialUIState: UIState = {
   showAdvancedOptions: false,
   selectedDownloadMode: null,
   showSecurityWarning: true,
-  interfaceMode: getInitialInterfaceMode()
+  interfaceMode: getInitialInterfaceMode(),
+  experimentalFeatures: getInitialExperimentalFeatures()
 };
 
 // Device selection store - manages the current device/selection state
@@ -590,6 +600,18 @@ export const uiActions = {
     // Save to cookie for persistence
     if (browser) {
       setCookie('meshtastic-interface-mode', mode, 365);
+    }
+  },
+
+  // Set experimental features
+  setExperimentalFeatures: (enabled: boolean) => {
+    uiState.update(state => ({
+      ...state,
+      experimentalFeatures: enabled
+    }));
+    // Save to cookie for persistence
+    if (browser) {
+      setCookie('meshtastic-experimental-features', String(enabled), 365);
     }
   }
 };

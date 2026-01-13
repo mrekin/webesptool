@@ -306,7 +306,6 @@
     "reading_module_config": "Odczyt konfiguracji modułów...",
     "reading_channels": "Odczyt kanałów...",
     "reading_owner": "Odczyt informacji o właścicielu...",
-    "transforming_config": "Transformowanie konfiguracji do formatu klienta Python...",
     "converting_config": "Konwertowanie formatu konfiguracji...",
     "writing_config": "Zapis konfiguracji na urządzenie...",
     "writing_local_config": "Zapis konfiguracji lokalnej...",
@@ -334,8 +333,9 @@
     "owner": "Właściciel",
     "select_all": "Zaznacz wszystko",
     "deselect_all": "Odznacz wszystko",
-    "upload_selected": "Prześlij wybrane",
-    "no_sections_selected": "Wybierz przynajmniej jedną sekcję do przesłania"
+    "upload_selected": "Zapisz na urządzenie",
+    "no_sections_selected": "Wybierz przynajmniej jedną sekcję do przesłania",
+    "config_ready": "Konfiguracja załadowana. Przeglądnij i wybierz sekcje do pobrania."
   },
   "memorymap": {
     "layout": "Układ pamięci",
@@ -355,6 +355,12 @@
     "title": "Ustawienia",
     "language": "Język",
     "minimal_interface": "Minimalny interfejs",
-    "minimal_interface_description": "Pokaż tylko podstawowe komponenty do flashowania urządzenia"
+    "minimal_interface_description": "Pokaż tylko podstawowe komponenty do flashowania urządzenia",
+    "experimental_features": "Funkcje eksperymentalne",
+    "experimental_features_description": "Włącz funkcje eksperymentalne, które są nadal w trakcie opracowywania"
+  },
+  "jsonpreview": {
+    "title": "Podgląd JSON konfiguracji",
+    "apply_changes": "Zastosuj zmiany"
   }
 }

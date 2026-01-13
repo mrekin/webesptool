@@ -5,7 +5,9 @@ import type {
 	MeshtasticConfigReadResult,
 	MeshtasticChannelInfo,
 	MeshtasticOwnerInfo,
-	MeshtasticEventCallbacks
+	MeshtasticEventCallbacks,
+	MeshtasticNodeMetrics,
+	MeshtasticNodeStats
 } from '$lib/types.js';
 
 import { MeshDevice, Protobuf } from '@meshtastic/core';
@@ -17,6 +19,24 @@ const ConfigType = (Protobuf as any).Admin?.AdminMessage_ConfigType;
 const ModuleConfigType = (Protobuf as any).Admin?.AdminMessage_ModuleConfigType;
 // @ts-ignore - Accessing runtime enum from Protobuf.Mesh
 const HardwareModel = (Protobuf as any).Mesh?.HardwareModel;
+
+// Get enum values dynamically (lazy initialization)
+// @ts-ignore
+let Config_LoRaConfig_RegionCode: any;
+// @ts-ignore
+let Config_DeviceConfig_Role: any;
+// @ts-ignore
+let Config_LoRaConfig_ModemPreset: any;
+
+function getEnums() {
+	if (!Config_LoRaConfig_RegionCode) {
+		const Config = (Protobuf as any).Config;
+		Config_LoRaConfig_RegionCode = Config?.Config_LoRaConfig_RegionCode;
+		Config_DeviceConfig_Role = Config?.Config_DeviceConfig_Role;
+		Config_LoRaConfig_ModemPreset = Config?.Config_LoRaConfig_ModemPreset;
+	}
+	return { Config_LoRaConfig_RegionCode, Config_DeviceConfig_Role, Config_LoRaConfig_ModemPreset };
+}
 
 // Local enum since DeviceStatusEnum is not exported from @meshtastic/core
 enum DeviceStatusEnum {
@@ -423,6 +443,27 @@ export async function withRetry<T>(
 	throw lastError;
 }
 
+/**
+ * Validate Meshtastic configuration
+ * Checks that at least one section has data
+ */
+export function validateMeshtasticConfig(config: any): { valid: boolean; error?: string } {
+	if (!config || typeof config !== 'object') {
+		return { valid: false, error: 'Invalid configuration' };
+	}
+
+	const hasLocalConfig = config.localConfig && Object.keys(config.localConfig).length > 0;
+	const hasModuleConfig = config.moduleConfig && Object.keys(config.moduleConfig).length > 0;
+	const hasChannels = config.channels && config.channels.length > 0;
+	const hasOwner = config.owner;
+
+	if (!hasLocalConfig && !hasModuleConfig && !hasChannels && !hasOwner) {
+		return { valid: false, error: 'Configuration must contain at least one section: localConfig, moduleConfig, channels, or owner' };
+	}
+
+	return { valid: true };
+}
+
 // ==================== Meshtastic Manager ====================
 
 /**
@@ -442,6 +483,8 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 	let cachedNodeInfo: any = null;
 	let cachedDeviceMetadata: any = null;
 	let cachedOwner: any = null;
+	let cachedMetrics: MeshtasticNodeMetrics = {};
+	let networkNodes: Map<number, any> = new Map();  // All nodes in network
 
 	const baudRate = options?.baudRate ?? DEFAULT_BAUDRATE;
 	const heartbeatInterval = options?.heartbeatInterval ?? DEFAULT_HEARTBEAT_INTERVAL;
@@ -595,19 +638,63 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 
 	/**
 	 * Write LocalConfig section to device
+	 * Automatically determines payloadVariant.case from config structure
 	 */
 	async function writeLocalConfig(config: any): Promise<void> {
 		ensureConfigured();
-		(config as any).payloadVariant = { case: 'device' };
-		await device.setConfig(config);
+
+		// Determine which config section this is based on structure
+		// Config should have exactly one top-level key (device, lora, security, etc.)
+		const sectionName = Object.keys(config)[0];
+		if (!sectionName) {
+			throw new Error('Invalid config: no section found');
+		}
+
+		// Extract the actual config data (without the section name wrapper)
+		const configData = config[sectionName];
+
+		// Resolve enum values (e.g., "RU" -> 9, "LONG_FAST" -> 0)
+		// Use path with section name for enum resolution
+		const resolvedConfig = resolveEnumValues(configData, `localConfig.${sectionName}`);
+
+		// Wrap in Config object with payloadVariant
+		// The library expects Config.Config which has a payloadVariant field
+		const configWithVariant = {
+			payloadVariant: { case: sectionName, value: resolvedConfig }
+		};
+
+		console.log(`[Meshtastic] Writing LocalConfig section: ${sectionName}`, configWithVariant);
+		await device.setConfig(configWithVariant);
 	}
 
 	/**
 	 * Write ModuleConfig section to device
+	 * Automatically determines payloadVariant.case from config structure
 	 */
 	async function writeModuleConfig(config: any): Promise<void> {
 		ensureConfigured();
-		await device.setModuleConfig(config);
+
+		// Determine which module config section this is based on structure
+		// Config should have exactly one top-level key (mqtt, serial, etc.)
+		const sectionName = Object.keys(config)[0];
+		if (!sectionName) {
+			throw new Error('Invalid module config: no section found');
+		}
+
+		// Extract the actual config data (without the section name wrapper)
+		const configData = config[sectionName];
+
+		// Resolve enum values if any
+		// Use path with section name for enum resolution
+		const resolvedConfig = resolveEnumValues(configData, `moduleConfig.${sectionName}`);
+
+		// Wrap in ModuleConfig object with payloadVariant
+		const configWithVariant = {
+			payloadVariant: { case: sectionName, value: resolvedConfig }
+		};
+
+		console.log(`[Meshtastic] Writing ModuleConfig section: ${sectionName}`, configWithVariant);
+		await device.setModuleConfig(configWithVariant);
 	}
 
 	/**
@@ -625,6 +712,7 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 	 */
 	async function writeOwner(config: any): Promise<void> {
 		ensureConfigured();
+		console.log('[Meshtastic] Writing owner:', config);
 		await device.setOwner(config);
 	}
 
@@ -633,7 +721,9 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 	 */
 	async function commitSettings(): Promise<void> {
 		ensureConfigured();
+		console.log('[Meshtastic] Committing settings changes...');
 		await device.commitEditSettings();
+		console.log('[Meshtastic] Settings committed successfully');
 	}
 
 	/**
@@ -731,13 +821,28 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 		});
 
 		device.events.onNodeInfoPacket.subscribe((packet: any) => {
-			// NodeInfo for our own node
-			if (packet.data && packet.data.num && cachedMyNodeInfo && packet.data.num === cachedMyNodeInfo.myNodeNum) {
-				cachedNodeInfo = packet.data;
-				console.log('[Meshtastic] Cached own NodeInfo:', cachedNodeInfo);
-				// Notify with updated device info
-				const deviceInfo = extractDeviceInfo();
-				eventCallbacks.onMyNodeInfo?.(deviceInfo);
+			// Collect all nodes in network
+			if (packet.data && packet.data.num) {
+				networkNodes.set(packet.data.num, packet.data);
+				console.log('[Meshtastic] NodeInfo received:', packet.data.num, packet.data.user?.longName);
+				console.log('[Meshtastic] NodeInfo keys:', Object.keys(packet.data));
+				console.log('[Meshtastic] Full NodeInfo:', JSON.stringify(packet.data, null, 2));
+
+				// Update stats
+				updateNodeStats();
+
+				// NodeInfo for our own node
+				if (cachedMyNodeInfo && packet.data.num === cachedMyNodeInfo.myNodeNum) {
+					cachedNodeInfo = packet.data;
+					console.log('[Meshtastic] Cached own NodeInfo:', cachedNodeInfo);
+					// Extract metrics from deviceMetrics
+					if (packet.data.deviceMetrics) {
+						extractMetrics(packet.data.deviceMetrics);
+					}
+					// Notify with updated device info
+					const deviceInfo = extractDeviceInfo();
+					eventCallbacks.onMyNodeInfo?.(deviceInfo);
+				}
 			}
 		});
 
@@ -776,6 +881,35 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 			}
 			eventCallbacks.onUserPacket?.(packet);
 		});
+
+		device.events.onTelemetryPacket.subscribe((packet: any) => {
+			console.log('[Meshtastic] Telemetry packet received:', packet);
+			console.log('[Meshtastic] Telemetry data keys:', packet.data ? Object.keys(packet.data) : 'no data');
+			console.log('[Meshtastic] Telemetry data:', JSON.stringify(packet.data, null, 2));
+
+			// Telemetry for our own node
+			if (packet.data && cachedMyNodeInfo && packet.from === cachedMyNodeInfo.myNodeNum) {
+				// Telemetry can have different variants: deviceMetrics, environmentMetrics, etc.
+				const telemetry = packet.data;
+
+				// Device metrics contain battery, chutil, airutil
+				if (telemetry.deviceMetrics) {
+					console.log('[Meshtastic] Device metrics telemetry:', telemetry.deviceMetrics);
+					extractMetrics(telemetry.deviceMetrics);
+				}
+
+				// Environment metrics (temperature, humidity, etc.)
+				if (telemetry.environmentMetrics) {
+					console.log('[Meshtastic] Environment metrics:', telemetry.environmentMetrics);
+				}
+
+				// Power metrics (voltage, current)
+				if (telemetry.powerMetrics) {
+					console.log('[Meshtastic] Power metrics:', telemetry.powerMetrics);
+					extractMetrics(telemetry.powerMetrics);
+				}
+			}
+		});
 	}
 
 	/**
@@ -802,15 +936,18 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 
 		const myNodeInfo = device.myNodeInfo;
 
-		// Extract node name from Owner packet (has highest priority)
-		let nodeName = 'Unknown';
-		if (cachedOwner?.longName) {
-			nodeName = cachedOwner.longName;
-		} else if (cachedOwner?.shortName) {
-			nodeName = cachedOwner.shortName;
-		} else if (cachedNodeInfo?.user) {
-			nodeName = cachedNodeInfo.user.longName || cachedNodeInfo.user.shortName || 'Unknown';
+		// Extract long and short names from Owner packet (has highest priority)
+		let longName = cachedOwner?.longName;
+		let shortName = cachedOwner?.shortName;
+
+		// Fallback to NodeInfo user if Owner not available
+		if (!longName && !shortName && cachedNodeInfo?.user) {
+			longName = cachedNodeInfo.user.longName;
+			shortName = cachedNodeInfo.user.shortName;
 		}
+
+		// nodeName for backward compatibility - use longName or shortName or 'Unknown'
+		const nodeName = longName || shortName || 'Unknown';
 
 		// Extract firmware version from DeviceMetadata
 		let firmwareVersion = 'Unknown';
@@ -830,6 +967,8 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 
 		return {
 			nodeName,
+			longName,
+			shortName,
 			nodeNum: myNodeInfo.myNodeNum || 0,
 			firmwareVersion,
 			hardwareModel,
@@ -860,6 +999,69 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 
 	function updateConnectionStatus(status: MeshtasticConnectionStatus): void {
 		connectionStatus = status;
+	}
+
+	/**
+	 * Update node statistics (total and online nodes)
+	 * Online = node has been heard from in the last 30 minutes
+	 */
+	function updateNodeStats(): void {
+		const totalNodes = networkNodes.size;
+		const now = Math.floor(Date.now() / 1000); // Current time in seconds
+		const onlineThreshold = 30 * 60; // 30 minutes
+
+		let onlineNodes = 0;
+		for (const [, nodeInfo] of networkNodes.entries()) {
+			if (nodeInfo.lastHeard && (now - nodeInfo.lastHeard) < onlineThreshold) {
+				onlineNodes++;
+			}
+		}
+
+		const stats: MeshtasticNodeStats = {
+			totalNodes,
+			onlineNodes
+		};
+
+		console.log('[Meshtastic] Node stats update:', stats);
+		eventCallbacks.onNodeStatsUpdate?.(stats);
+	}
+
+	/**
+	 * Extract metrics from device metrics data
+	 * Handles both deviceMetrics from NodeInfo and telemetry packets
+	 */
+	function extractMetrics(data: any): void {
+		console.log('[Meshtastic] Extracting metrics from:', data);
+
+		const newMetrics: MeshtasticNodeMetrics = {};
+
+		// Try different possible structures
+		const metrics = data.deviceMetrics || data;
+
+		if (metrics.batteryLevel !== undefined) {
+			newMetrics.batteryLevel = metrics.batteryLevel;
+		}
+		if (metrics.voltage !== undefined) {
+			newMetrics.voltage = metrics.voltage;
+		}
+		if (metrics.channelUtilization !== undefined) {
+			newMetrics.chUtil = metrics.channelUtilization;
+		}
+		if (metrics.airUtilTx !== undefined) {
+			newMetrics.airUtil = metrics.airUtilTx;
+		}
+		if (metrics.time !== undefined) {
+			newMetrics.time = metrics.time;
+		}
+
+		// Log what we found
+		if (Object.keys(newMetrics).length > 0) {
+			console.log('[Meshtastic] Metrics extracted:', newMetrics);
+			cachedMetrics = { ...cachedMetrics, ...newMetrics };
+			eventCallbacks.onMetricsUpdate?.(cachedMetrics);
+		} else {
+			console.log('[Meshtastic] No metrics found in data. Available keys:', Object.keys(data || {}));
+		}
 	}
 
 	async function waitForPendingSettings(): Promise<void> {
@@ -928,7 +1130,9 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 
 			const caseName = result.config?.payloadVariant?.case;
 			if (caseName) {
-				results[caseName] = extractConfigData(result.config);
+				const extractedData = extractConfigData(result.config);
+				// Convert numeric enums to string names for readability
+				results[caseName] = resolveEnumNames(extractedData, `localConfig.${caseName}`);
 			}
 		}
 
@@ -971,7 +1175,9 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 
 			const caseName = result.config?.payloadVariant?.case;
 			if (caseName) {
-				results[caseName] = extractConfigData(result.config);
+				const extractedData = extractConfigData(result.config);
+				// Convert numeric enums to string names for readability
+				results[caseName] = resolveEnumNames(extractedData, `moduleConfig.${caseName}`);
 			}
 		}
 
@@ -1020,4 +1226,108 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 		setEventCallbacks,
 		getConnectionStatus
 	};
+}
+
+// ==================== Enum Resolution Utilities ====================
+
+/**
+ * Known enum paths for config fields
+ * Maps config field paths to enum objects (lazy getter)
+ */
+const ENUM_PATHS: Record<string, () => any> = {
+	'localConfig.lora.region': () => getEnums().Config_LoRaConfig_RegionCode,
+	'localConfig.device.role': () => getEnums().Config_DeviceConfig_Role,
+	'localConfig.lora.modemPreset': () => getEnums().Config_LoRaConfig_ModemPreset,
+	'channels.config.role': () => null  // TODO: add Channel.ChannelRole if needed
+};
+
+/**
+ * Resolve enum string names to numeric values in config object
+ * Recursively processes all fields and converts known enum names to their numeric values
+ *
+ * @param config - The config object to process
+ * @param path - Current path in the config (for tracking nested fields)
+ */
+export function resolveEnumValues(config: any, path: string = ''): any {
+	if (typeof config !== 'object' || config === null) {
+		return config;
+	}
+
+	if (Array.isArray(config)) {
+		return config.map((item, index) => resolveEnumValues(item, `${path}[${index}]`));
+	}
+
+	const result: any = {};
+
+	for (const [key, value] of Object.entries(config)) {
+		const currentPath = path ? `${path}.${key}` : key;
+
+		if (typeof value === 'string') {
+			// Check if this field has an enum mapping
+			const enumGetter = ENUM_PATHS[currentPath];
+			const enumValues = enumGetter ? enumGetter() : undefined;
+			if (enumValues && enumValues[value] !== undefined) {
+				result[key] = enumValues[value];
+				continue;
+			}
+			// Try case-insensitive match
+			const upperKey = value.toUpperCase();
+			if (enumValues && enumValues[upperKey] !== undefined) {
+				result[key] = enumValues[upperKey];
+				continue;
+			}
+			result[key] = value;
+		} else if (typeof value === 'object' && value !== null) {
+			result[key] = resolveEnumValues(value, currentPath);
+		} else {
+			result[key] = value;
+		}
+	}
+
+	return result;
+}
+
+/**
+ * Resolve numeric enum values to string names in config object
+ * Recursively processes all fields and converts known numeric values to their enum names
+ * Used when reading config from device to make it human-readable
+ *
+ * @param config - The config object to process
+ * @param path - Current path in the config (for tracking nested fields)
+ */
+export function resolveEnumNames(config: any, path: string = ''): any {
+	if (typeof config !== 'object' || config === null) {
+		return config;
+	}
+
+	if (Array.isArray(config)) {
+		return config.map((item, index) => resolveEnumNames(item, `${path}[${index}]`));
+	}
+
+	const result: any = {};
+
+	for (const [key, value] of Object.entries(config)) {
+		const currentPath = path ? `${path}.${key}` : key;
+
+		if (typeof value === 'number') {
+			// Check if this field has an enum mapping
+			const enumGetter = ENUM_PATHS[currentPath];
+			const enumValues = enumGetter ? enumGetter() : undefined;
+			if (enumValues) {
+				// Find enum name by numeric value
+				const enumName = Object.keys(enumValues).find(k => enumValues[k] === value);
+				if (enumName) {
+					result[key] = enumName;
+					continue;
+				}
+			}
+			result[key] = value;
+		} else if (typeof value === 'object' && value !== null) {
+			result[key] = resolveEnumNames(value, currentPath);
+		} else {
+			result[key] = value;
+		}
+	}
+
+	return result;
 }

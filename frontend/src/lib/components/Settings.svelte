@@ -12,6 +12,7 @@
   let settingsButton: HTMLButtonElement;
   let settingsDropdown: HTMLDivElement;
   let isMinimalMode = false;
+  let isExperimentalFeatures = false;
 
   // Language options
   const languages = [
@@ -23,12 +24,19 @@
   // Subscribe to stores
   $: currentLanguage = $locale;
   $: currentInterfaceMode = $uiState.interfaceMode;
+  $: currentExperimentalFeatures = $uiState.experimentalFeatures;
 
   // Sync local state with store
   $: if (currentInterfaceMode === InterfaceMode.MINIMAL && !isMinimalMode) {
     isMinimalMode = true;
   } else if (currentInterfaceMode === InterfaceMode.FULL && isMinimalMode) {
     isMinimalMode = false;
+  }
+
+  $: if (currentExperimentalFeatures && !isExperimentalFeatures) {
+    isExperimentalFeatures = true;
+  } else if (!currentExperimentalFeatures && isExperimentalFeatures) {
+    isExperimentalFeatures = false;
   }
 
   // Handle language change
@@ -48,6 +56,12 @@
   function toggleMinimalMode() {
     isMinimalMode = !isMinimalMode;
     handleInterfaceModeChange();
+  }
+
+  // Toggle experimental features
+  function toggleExperimentalFeatures() {
+    isExperimentalFeatures = !isExperimentalFeatures;
+    uiActions.setExperimentalFeatures(isExperimentalFeatures);
   }
 
   // Toggle dropdown
@@ -173,6 +187,36 @@
           </div>
           <p class="text-xs text-orange-400">
             {$locales('settings.minimal_interface_description')}
+          </p>
+        </div>
+
+        <!-- Experimental Features Toggle -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-medium text-orange-300">
+              {$locales('settings.experimental_features')}
+            </span>
+            <!-- Custom Toggle Switch -->
+            <button
+              type="button"
+              on:click={toggleExperimentalFeatures}
+              class="relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+              class:bg-gray-600={!isExperimentalFeatures}
+              class:bg-orange-600={isExperimentalFeatures}
+              role="switch"
+              aria-checked={isExperimentalFeatures}
+              aria-label={$locales('settings.experimental_features')}
+            >
+              <span class="sr-only">{$locales('settings.experimental_features')}</span>
+              <span
+                class="inline-block h-6 w-6 transform rounded-full bg-white transition-transform duration-200 ease-in-out"
+                class:translate-x-6={isExperimentalFeatures}
+                class:translate-x-1={!isExperimentalFeatures}
+              ></span>
+            </button>
+          </div>
+          <p class="text-xs text-orange-400">
+            {$locales('settings.experimental_features_description')}
           </p>
         </div>
       </div>

@@ -3,16 +3,21 @@
 		createMeshtasticManager,
 		restoreUint8Arrays,
 		meshtasticJsonReplacer,
-		withRetry
+		withRetry,
+		resolveEnumValues,
+		validateMeshtasticConfig
 	} from '$lib/utils/meshtastic.js';
 	import type {
 		MeshtasticDeviceInfo,
 		MeshtasticFullConfig,
 		MeshtasticConnectionStatus,
-		MeshtasticConfigSelection
+		MeshtasticConfigSelection,
+		MeshtasticNodeMetrics,
+		MeshtasticNodeStats
 	} from '$lib/types.js';
 	import { onMount, onDestroy } from 'svelte';
 	import { _ as locales } from 'svelte-i18n';
+	import JsonPreviewModal from './JsonPreviewModal.svelte';
 
 	// Props
 	export let isOpen = false;
@@ -37,9 +42,19 @@
 
 	// UI state
 	let showInstructions = false;
+	let showPresetConfigs = false;
+	let showJsonPreviewModal = false;
+
+	// Network metrics
+	let nodeStats: MeshtasticNodeStats = { totalNodes: 0, onlineNodes: 0 };
+	let deviceMetrics: MeshtasticNodeMetrics = {};
+
+	// Preset configs
+	let presetConfigs: string[] = [];
 
 	// Config file and selection state
 	let parsedConfig: MeshtasticFullConfig | null = null;
+	let configFromDevice = false; // Track if config is from device (not from file)
 	let configSelection: MeshtasticConfigSelection = {
 		localConfig: { enabled: true, sections: [] },
 		moduleConfig: { enabled: true, sections: [] },
@@ -59,10 +74,18 @@
 				if (status === 'disconnected') {
 					isPortSelected = false;
 					deviceInfo = null;
+					nodeStats = { totalNodes: 0, onlineNodes: 0 };
+					deviceMetrics = {};
 				}
 			},
 			onMyNodeInfo: (info: MeshtasticDeviceInfo) => {
 				deviceInfo = info;
+			},
+			onNodeStatsUpdate: (stats: MeshtasticNodeStats) => {
+				nodeStats = stats;
+			},
+			onMetricsUpdate: (metrics: MeshtasticNodeMetrics) => {
+				deviceMetrics = metrics;
 			}
 		});
 	});
@@ -72,6 +95,86 @@
 			await meshtasticManager.disconnect();
 		}
 	});
+
+	// Load preset configs list
+	async function loadPresetConfigs() {
+		try {
+			const modules = import.meta.glob('/src/lib/config/meshtastic_configs/*.json');
+			presetConfigs = Object.keys(modules).map(path => {
+				return path.split('/').pop() || '';
+			});
+		} catch (error) {
+			console.error('Failed to load preset configs:', error);
+			presetConfigs = [];
+		}
+	}
+
+	// Load preset config by filename
+	async function loadPresetConfig(filename: string) {
+		showPresetConfigs = false;
+		isLoading = true;
+		operationStatus = $locales('meshtasticdevice.reading_config');
+		operationError = '';
+
+		try {
+			const module = await import(`/src/lib/config/meshtastic_configs/${filename}`);
+			let config: any = module.default || module;
+
+			console.log('[Meshtastic] Loading preset config:', filename, config);
+
+			// Validate config has at least some data
+			const validation = validateMeshtasticConfig(config);
+			if (!validation.valid) {
+				throw new Error($locales('meshtasticdevice.invalid_config_file'));
+			}
+
+			// Don't modify original config - use it as-is
+			// Use JSON serialization to handle Uint8Array correctly (keep base64 strings)
+			const normalizedConfig: MeshtasticFullConfig = JSON.parse(
+				JSON.stringify(config, meshtasticJsonReplacer)
+			);
+
+			console.log('[Meshtastic] Normalized config:', normalizedConfig);
+
+			// Check what sections are present
+			const hasLocalConfig = normalizedConfig.localConfig && Object.keys(normalizedConfig.localConfig).length > 0;
+			const hasModuleConfig = normalizedConfig.moduleConfig && Object.keys(normalizedConfig.moduleConfig).length > 0;
+			const hasChannels = normalizedConfig.channels && normalizedConfig.channels.length > 0;
+			const hasOwner = normalizedConfig.owner;
+
+			// Store parsed config
+			parsedConfig = normalizedConfig;
+			configFromDevice = false; // Config from file
+
+			// Initialize selection with all sections
+			configSelection = {
+				localConfig: {
+					enabled: hasLocalConfig,
+					sections: hasLocalConfig ? Object.keys(normalizedConfig.localConfig) : []
+				},
+				moduleConfig: {
+					enabled: hasModuleConfig,
+					sections: hasModuleConfig ? Object.keys(normalizedConfig.moduleConfig) : []
+				},
+				includeChannels: hasChannels,
+				includeOwner: hasOwner
+			};
+
+			operationStatus = $locales('meshtasticdevice.select_sections');
+		} catch (error) {
+			operationError = $locales('meshtasticdevice.load_error', {
+				values: { error: error instanceof Error ? error.message : String(error) }
+			});
+			parsedConfig = null;
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	// Load preset configs when modal opens
+	$: if (isOpen) {
+		loadPresetConfigs();
+	}
 
 	async function selectPort() {
 		isConnecting = true;
@@ -153,11 +256,31 @@
 				owner: ownerResult.owner
 			};
 
-			// Download JSON config
-			const filename = `meshtastic_config_${deviceInfo!.nodeName}_${Date.now()}.json`;
-			downloadJsonFile(fullConfig, filename);
+			// Serialize to JSON with proper handling of Uint8Array, then parse back
+			// This ensures Uint8Array is stored as base64 strings for display/download
+			const serializedConfig = JSON.parse(
+				JSON.stringify(fullConfig, meshtasticJsonReplacer)
+			);
 
-			operationStatus = $locales('meshtasticdevice.config_saved');
+			// Store config in parsedConfig to reuse existing UI
+			parsedConfig = serializedConfig;
+			configFromDevice = true; // Config from device
+
+			// Initialize selection with all sections
+			configSelection = {
+				localConfig: {
+					enabled: Object.keys(fullConfig.localConfig).length > 0,
+					sections: Object.keys(fullConfig.localConfig)
+				},
+				moduleConfig: {
+					enabled: Object.keys(fullConfig.moduleConfig).length > 0,
+					sections: Object.keys(fullConfig.moduleConfig)
+				},
+				includeChannels: fullConfig.channels.length > 0,
+				includeOwner: !!fullConfig.owner
+			};
+
+			operationStatus = $locales('meshtasticdevice.config_ready');
 		} catch (error) {
 			operationError = $locales('meshtasticdevice.save_error', {
 				values: { error: error instanceof Error ? error.message : String(error) }
@@ -180,6 +303,25 @@
 		a.click();
 		document.body.removeChild(a);
 		URL.revokeObjectURL(url);
+	}
+
+	async function downloadDeviceConfig() {
+		if (!parsedConfig) return;
+
+		// Filter config based on current selection
+		const filteredConfig = filterConfigBySelection(parsedConfig, configSelection);
+
+		// Generate filename - use deviceInfo from config or fallback
+		const nodeName = parsedConfig.deviceInfo?.nodeName || deviceInfo?.nodeName || 'device';
+		const now = new Date();
+		const dateStr = now.toISOString().replace(/[:.]/g, '-').split('T')[0]; // YYYY-MM-DD
+		const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-'); // HH-MM-SS
+		const filename = `meshtastic_config_${nodeName}_${dateStr}_${timeStr}.json`;
+
+		// Download
+		downloadJsonFile(filteredConfig, filename);
+
+		operationStatus = $locales('meshtasticdevice.config_saved');
 	}
 
 	function selectConfigFile() {
@@ -209,31 +351,30 @@
 			}
 
 			// Restore Uint8Array from base64 (security keys)
+			// Don't convert enum strings to numbers - keep as-is for display
 			const restoredConfig = restoreUint8Arrays(config);
 
 			// Validate config has at least some data
-			const hasLocalConfig = restoredConfig.localConfig && Object.keys(restoredConfig.localConfig).length > 0;
-			const hasModuleConfig = restoredConfig.moduleConfig && Object.keys(restoredConfig.moduleConfig).length > 0;
-			const hasChannels = restoredConfig.channels && restoredConfig.channels.length > 0;
-			const hasOwner = restoredConfig.owner;
-
-			if (!hasLocalConfig && !hasModuleConfig && !hasChannels && !hasOwner) {
+			const validation = validateMeshtasticConfig(restoredConfig);
+			if (!validation.valid) {
 				throw new Error($locales('meshtasticdevice.invalid_config_file'));
 			}
 
-			// Normalize config structure - ensure all required fields exist
-			const normalizedConfig: MeshtasticFullConfig = {
-				version: restoredConfig.version || '1.0',
-				timestamp: restoredConfig.timestamp || new Date().toISOString(),
-				deviceInfo: restoredConfig.deviceInfo || { nodeName: 'Unknown', nodeNum: 0, firmwareVersion: 'Unknown', hardwareModel: 'Unknown', pioEnv: 'Unknown' },
-				localConfig: restoredConfig.localConfig || {},
-				moduleConfig: restoredConfig.moduleConfig || {},
-				channels: restoredConfig.channels || [],
-				owner: restoredConfig.owner || null
-			};
+			// Don't modify original config - use it as-is
+			// Use JSON serialization to handle Uint8Array correctly
+			const normalizedConfig: MeshtasticFullConfig = JSON.parse(
+				JSON.stringify(restoredConfig, meshtasticJsonReplacer)
+			);
+
+			// Check what sections are present
+			const hasLocalConfig = normalizedConfig.localConfig && Object.keys(normalizedConfig.localConfig).length > 0;
+			const hasModuleConfig = normalizedConfig.moduleConfig && Object.keys(normalizedConfig.moduleConfig).length > 0;
+			const hasChannels = normalizedConfig.channels && normalizedConfig.channels.length > 0;
+			const hasOwner = normalizedConfig.owner;
 
 			// Store parsed config
 			parsedConfig = normalizedConfig;
+			configFromDevice = false; // Config from file
 
 			// Initialize selection with all sections
 			configSelection = {
@@ -266,27 +407,34 @@
 			throw new Error($locales('meshtasticdevice.not_connected'));
 		}
 
+		// Restore Uint8Array from base64 strings before writing to device
+		const configForDevice = restoreUint8Arrays(config);
+
 		// Write LocalConfig sections
 		operationStatus = $locales('meshtasticdevice.writing_local_config');
-		for (const [, configData] of Object.entries(config.localConfig)) {
-			await meshtasticManager.writeLocalConfig(configData);
+		for (const [sectionName, configData] of Object.entries(configForDevice.localConfig)) {
+			// Wrap configData with section name so writeLocalConfig can determine payloadVariant.case
+			await meshtasticManager.writeLocalConfig({ [sectionName]: configData });
 		}
 
 		// Write ModuleConfig sections
 		operationStatus = $locales('meshtasticdevice.writing_module_config');
-		for (const [, moduleData] of Object.entries(config.moduleConfig)) {
-			await meshtasticManager.writeModuleConfig(moduleData);
+		for (const [sectionName, moduleData] of Object.entries(configForDevice.moduleConfig)) {
+			// Wrap moduleData with section name so writeModuleConfig can determine payloadVariant.case
+			await meshtasticManager.writeModuleConfig({ [sectionName]: moduleData });
 		}
 
 		// Write channels
 		operationStatus = $locales('meshtasticdevice.writing_channels');
-		for (const channel of config.channels) {
+		for (const channel of configForDevice.channels) {
 			await meshtasticManager.writeChannel(channel.config);
 		}
 
-		// Write owner
-		operationStatus = $locales('meshtasticdevice.writing_owner');
-		await meshtasticManager.writeOwner(config.owner);
+		// Write owner (if present)
+		if (configForDevice.owner) {
+			operationStatus = $locales('meshtasticdevice.writing_owner');
+			await meshtasticManager.writeOwner(configForDevice.owner);
+		}
 
 		// Commit all changes
 		operationStatus = 'Committing changes...';
@@ -388,43 +536,28 @@
 	}
 
 	function toggleAllLocalConfig(select: boolean) {
-		if (!parsedConfig) return;
+		if (!parsedConfig?.localConfig) return;
 		configSelection.localConfig.sections = select
 			? Object.keys(parsedConfig.localConfig)
 			: [];
 	}
 
 	function toggleAllModuleConfig(select: boolean) {
-		if (!parsedConfig) return;
+		if (!parsedConfig?.moduleConfig) return;
 		configSelection.moduleConfig.sections = select
 			? Object.keys(parsedConfig.moduleConfig)
 			: [];
 	}
 
-	async function testSetOwner() {
-		if (!meshtasticManager || !isPortSelected) {
-			operationError = 'Not connected';
-			return;
-		}
-
-		isLoading = true;
-		operationStatus = 'Setting owner name...';
-		operationError = '';
-
-		try {
-			await meshtasticManager.setOwnerName('Test Device', 'TEST');
-			operationStatus = 'Owner name set successfully!';
-		} catch (error) {
-			operationError = `Failed: ${error instanceof Error ? error.message : String(error)}`;
-		} finally {
-			isLoading = false;
-		}
+	// Handle config save from JSON preview modal
+	function handleJsonPreviewSave(updatedConfig: MeshtasticFullConfig) {
+		parsedConfig = updatedConfig;
 	}
 
 	async function handleClose() {
 		if (isSaving || isLoading) return;
 		await disconnectDevice();
-		parsedConfig = null; // Clear parsed config on close
+		// Don't clear parsedConfig - keep it for user to review/download
 		onClose();
 	}
 </script>
@@ -532,7 +665,10 @@
 											<div class="text-xs text-gray-400">
 												<div>
 													<strong>{$locales('meshtasticdevice.node_name')}:</strong>
-													{deviceInfo.nodeName}
+													{deviceInfo.longName || deviceInfo.nodeName}
+													{deviceInfo.shortName && deviceInfo.longName !== deviceInfo.shortName
+														? ` (${deviceInfo.shortName})`
+														: ''}
 												</div>
 												<div>
 													<strong>{$locales('meshtasticdevice.firmware_version')}:</strong>
@@ -575,29 +711,48 @@
 							{/if}
 						</button>
 
-						<button
-							on:click={selectConfigFile}
-							disabled={!isPortSelected || isSaving || isLoading}
-							class="flex w-full items-center justify-center space-x-2 rounded-md bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-						>
-							<span>📤</span>
-							<span>{$locales('meshtasticdevice.load_button')}</span>
-							{#if isLoading}
-								<span class="animate-spin">⏳</span>
+						<div class="relative">
+							<!-- Preset configs dropdown -->
+							{#if showPresetConfigs && presetConfigs.length > 0}
+								<div class="absolute bottom-full right-0 mb-2 w-64 rounded-lg border border-orange-600 bg-gray-800 shadow-2xl z-10">
+									<div class="max-h-60 overflow-y-auto">
+										{#each presetConfigs as config}
+											<button
+												on:click={() => loadPresetConfig(config)}
+												disabled={isLoading}
+												class="w-full px-4 py-2 text-left text-sm text-gray-300 transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+											>
+												{config.replace('.json', '')}
+											</button>
+										{/each}
+									</div>
+								</div>
 							{/if}
-						</button>
 
-						<!-- Test button -->
-						<button
-							on:click={testSetOwner}
-							disabled={!isPortSelected || isSaving || isLoading}
-							class="flex w-full items-center justify-center space-x-2 rounded-md bg-green-600 px-4 py-2 text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-						>
-							<span>🧪</span>
-							<span>Test: Set Owner</span>
-						</button>
+							<div class="flex space-x-2">
+								<button
+									on:click={selectConfigFile}
+									disabled={isSaving || isLoading}
+									class="flex-1 flex items-center justify-center space-x-2 rounded-md bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+								>
+									<span>📤</span>
+									<span>{$locales('meshtasticdevice.load_button')}</span>
+									{#if isLoading}
+										<span class="animate-spin">⏳</span>
+									{/if}
+								</button>
 
-						<!-- Hidden file input -->
+								<button
+									on:click={() => showPresetConfigs = !showPresetConfigs}
+									disabled={isSaving || isLoading || presetConfigs.length === 0}
+									class="flex items-center justify-center rounded-md bg-gray-700 px-3 py-2 text-orange-300 transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+									title="Preset configs"
+								>
+									🗺️
+								</button>
+							</div>
+
+							<!-- Hidden file input -->
 						<input
 							bind:this={fileInput}
 							type="file"
@@ -605,18 +760,46 @@
 							on:change={handleFileSelect}
 							class="hidden"
 						/>
+						</div>
 					</div>
 				</div>
 
 				<!-- Config Selection Section (shown after file is parsed) -->
 				{#if parsedConfig}
 					<div class="space-y-4 rounded-md border border-gray-600 bg-gray-900 p-4">
-						<h3 class="text-sm font-medium text-orange-300">
-							{$locales('meshtasticdevice.select_sections')}
-						</h3>
+						<div class="flex items-center justify-between">
+							<h3 class="text-sm font-medium text-orange-300">
+								{$locales('meshtasticdevice.select_sections')}
+							</h3>
+							<div class="flex items-center gap-2">
+								<!-- Preview icon -->
+								<button
+									on:click={() => showJsonPreviewModal = true}
+									class="text-gray-400 transition-colors hover:text-blue-400"
+									aria-label="Preview configuration as JSON"
+									title="Preview"
+								>
+									<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+									</svg>
+								</button>
+								<!-- Save icon - download config to file -->
+								<button
+									on:click={downloadDeviceConfig}
+									class="text-gray-400 transition-colors hover:text-green-400"
+									aria-label="Download configuration file"
+									title="Download"
+								>
+									<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+									</svg>
+								</button>
+							</div>
+						</div>
 
 						<!-- LocalConfig Section -->
-						{#if Object.keys(parsedConfig.localConfig).length > 0}
+						{#if parsedConfig?.localConfig && Object.keys(parsedConfig.localConfig).length > 0}
 						<div class="space-y-2">
 							<label class="flex cursor-pointer items-center space-x-2">
 								<input
@@ -640,7 +823,7 @@
 											value={section}
 											class="h-3 w-3 rounded border-gray-600 bg-gray-700 text-orange-600 focus:ring-orange-500"
 										/>
-										<span>{section}</span>
+										<span>{section} ({Object.keys(parsedConfig.localConfig[section]).length})</span>
 									</label>
 								{/each}
 							</div>
@@ -648,7 +831,7 @@
 						{/if}
 
 						<!-- ModuleConfig Section -->
-						{#if Object.keys(parsedConfig.moduleConfig).length > 0}
+						{#if parsedConfig.moduleConfig && Object.keys(parsedConfig.moduleConfig).length > 0}
 						<div class="space-y-2">
 							<label class="flex cursor-pointer items-center space-x-2">
 								<input
@@ -672,7 +855,7 @@
 											value={section}
 											class="h-3 w-3 rounded border-gray-600 bg-gray-700 text-orange-600 focus:ring-orange-500"
 										/>
-										<span>{section}</span>
+										<span>{section} ({Object.keys(parsedConfig.moduleConfig[section]).length})</span>
 									</label>
 								{/each}
 							</div>
@@ -749,16 +932,65 @@
 				</div>
 			</div>
 
-			<!-- Footer -->
-			<div class="flex justify-end space-x-3 border-t border-gray-700 p-6">
-				<button
-					on:click={handleClose}
-					disabled={isSaving || isLoading}
-					class="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
-				>
-					{$locales('common.close')}
-				</button>
+			<!-- Footer with metrics and close button -->
+			<div class="flex flex-col gap-4 border-t border-gray-700 p-6">
+				<!-- Metrics row -->
+				{#if isPortSelected}
+					<div class="grid grid-cols-4 gap-4 text-center">
+						<div class="space-y-1">
+							<div class="text-xs text-gray-400">Nodes</div>
+							<div class="text-sm font-medium text-orange-300">
+								{nodeStats.onlineNodes}/{nodeStats.totalNodes}
+							</div>
+						</div>
+						<div class="space-y-1">
+							<div class="text-xs text-gray-400">Battery</div>
+							<div class="text-sm font-medium text-orange-300">
+								{deviceMetrics.batteryLevel !== undefined
+									? `${deviceMetrics.batteryLevel}%`
+									: deviceMetrics.voltage !== undefined
+									? `${deviceMetrics.voltage.toFixed(2)}V`
+									: 'N/A'}
+							</div>
+						</div>
+						<div class="space-y-1">
+							<div class="text-xs text-gray-400">ChUtil</div>
+							<div class="text-sm font-medium text-orange-300">
+								{deviceMetrics.chUtil !== undefined
+									? `${deviceMetrics.chUtil.toFixed(1)}%`
+									: 'N/A'}
+							</div>
+						</div>
+						<div class="space-y-1">
+							<div class="text-xs text-gray-400">AirUtil</div>
+							<div class="text-sm font-medium text-orange-300">
+								{deviceMetrics.airUtil !== undefined
+									? `${deviceMetrics.airUtil.toFixed(1)}%`
+									: 'N/A'}
+							</div>
+						</div>
+					</div>
+				{/if}
+
+				<!-- Close button -->
+				<div class="flex justify-end">
+					<button
+						on:click={handleClose}
+						disabled={isSaving || isLoading}
+						class="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+					>
+						{$locales('common.close')}
+					</button>
+				</div>
 			</div>
 		</div>
 	</div>
+
+	<!-- JSON Preview Modal -->
+	<JsonPreviewModal
+		isOpen={showJsonPreviewModal}
+		onClose={() => showJsonPreviewModal = false}
+		config={parsedConfig}
+		onSave={handleJsonPreviewSave}
+	/>
 {/if}
