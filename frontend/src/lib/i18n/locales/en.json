@@ -271,7 +271,15 @@
     "device_information": "Device Information",
     "flash_firmware_with_count": "{count} {count, plural, one {file} other {files}}",
     "backup_cancelled": "Backup cancelled",
-    "backup_status": "Creating memory dump..."
+    "backup_status": "Creating memory dump...",
+    "terminal": "Terminal",
+    "terminal_connected": "Terminal Connected",
+    "terminal_disconnected": "Terminal Disconnected",
+    "terminal_autoscroll": "Auto-scroll",
+    "terminal_copy": "Copy Selection",
+    "terminal_opening": "Opening Terminal...",
+    "terminal_error": "Terminal Error",
+    "terminal_no_port": "No active port available. Please connect to a device first."
   },
   "backupconfirm": {
     "title": "Save Device Flash Dump?",

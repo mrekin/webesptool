@@ -271,7 +271,15 @@
     "device_information": "Informacje o urządzeniu",
     "flash_firmware_with_count": "{count} {count, plural, one {plik} few {pliki} many {plików} other {plików}}",
     "backup_cancelled": "Tworzenie zrzutu anulowane",
-    "backup_status": "Tworzenie zrzutu pamięci..."
+    "backup_status": "Tworzenie zrzutu pamięci...",
+    "terminal": "Terminal",
+    "terminal_connected": "Terminal podłączony",
+    "terminal_disconnected": "Terminal rozłączony",
+    "terminal_autoscroll": "Auto-przewijanie",
+    "terminal_copy": "Kopiuj zaznaczenie",
+    "terminal_opening": "Otwieranie terminala...",
+    "terminal_error": "Błąд terminala",
+    "terminal_no_port": "Brak aktywnego portu. Najpierw połącz się z urządzeniem."
   },
   "backupconfirm": {
     "title": "Zapisać zrzut pamięci urządzenia?",

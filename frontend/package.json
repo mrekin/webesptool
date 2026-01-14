@@ -1,6 +1,6 @@
 {
 	"name": "frontend",
-	"version": "0.10.2",
+	"version": "0.10.3",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
@@ -48,7 +48,7 @@
 		"prettier-plugin-svelte": "^3.3.3",
 		"prettier-plugin-tailwindcss": "^0.6.11",
 		"publint": "^0.3.2",
-		"svelte": "^5.0.0",
+		"svelte": "^5.46.3",
 		"svelte-check": "^4.0.0",
 		"tailwindcss": "^4.1.17",
 		"typescript": "^5.0.0",
@@ -66,10 +66,13 @@
 		]
 	},
 	"dependencies": {
+		"@battlefieldduck/xterm-svelte": "^2.2.0",
 		"@humanspeak/svelte-markdown": "^0.8.13",
 		"@meshtastic/core": "file:./local-packages/@meshtastic/core",
 		"@meshtastic/transport-web-serial": "file:./local-packages/@meshtastic/transport-web-serial",
 		"@sveltejs/svelte-json-tree": "^2.2.1",
+		"@xterm/addon-fit": "^0.11.0",
+		"@xterm/addon-search": "^0.16.0",
 		"buffer": "^6.0.3",
 		"esptool-js": "^0.5.7",
 		"js-yaml": "^4.1.1",

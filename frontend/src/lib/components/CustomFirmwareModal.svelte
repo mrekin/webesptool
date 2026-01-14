@@ -13,6 +13,8 @@
 	import { ValidationErrors } from '$lib/types.js';
 	import MemoryMap from '$lib/components/MemoryMap.svelte';
 	import BackupConfirmModal from '$lib/components/BackupConfirmModal.svelte';
+	import TerminalModal from '$lib/components/TerminalModal.svelte';
+	import { uiState } from '$lib/stores.js';
 
 	export let isOpen = false;
 	export let onClose = () => {};
@@ -89,9 +91,13 @@
 	let showInstructions = false; // Control instructions spoiler
 	let showFileDetails = false; // Control file details spoiler in AutoSelect mode
 	let autoPortSelectionTriggered = false; // Flag for tracking automatic port selection
+	let showTerminalModal = false; // Terminal modal state
 
 	// Reference to file input to replace document.getElementById
 	let fileInput: HTMLInputElement;
+
+	// Experimental features flag
+	$: experimentalFeatures = $uiState.experimentalFeatures;
 
 	// Get baudrate options from utility
 	const baudrateOptions = espManager.getBaudrateOptions().map((opt) => ({
@@ -1627,6 +1633,29 @@
 						{/if}
 					</button>
 				{/if}
+
+				{#if experimentalFeatures}
+					<!-- Terminal button - experimental feature -->
+					<button
+						on:click={async () => {
+							// Close the current connection properly
+							await espManager.resetPort();
+
+							// Reset flags to reflect that we're no longer connected in this component
+							isPortSelected = false;
+							deviceInfo = null;
+
+							// Open terminal modal (it will request its own port)
+							showTerminalModal = true;
+						}}
+						class="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
+						title={$locales('customfirmware.terminal')}
+					>
+						<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+						</svg>
+					</button>
+				{/if}
 			</div>
 			{#if isPortSelected && deviceInfo}
 				<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-4">
@@ -1669,5 +1698,11 @@
 		flashSizeBytes={deviceInfo ? parseFlashSize(deviceInfo.flashSize) : 0}
 		onConfirm={backupMemory}
 		onCancel={() => (showBackupConfirm = false)}
+	/>
+
+	<!-- Terminal Modal -->
+	<TerminalModal
+		isOpen={showTerminalModal}
+		onClose={() => showTerminalModal = false}
 	/>
 {/if}

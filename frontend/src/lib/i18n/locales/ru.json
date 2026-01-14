@@ -271,7 +271,15 @@
     "device_information": "Информация об устройстве",
     "flash_firmware_with_count": "{count} {count, plural, one {файл} few {файла} many {файлов} other {файлов}}",
     "backup_cancelled": "Создание дампа отменено",
-    "backup_status": "Создание дампа памяти..."
+    "backup_status": "Создание дампа памяти...",
+    "terminal": "Терминал",
+    "terminal_connected": "Терминал подключен",
+    "terminal_disconnected": "Терминал отключен",
+    "terminal_autoscroll": "Автопрокрутка",
+    "terminal_copy": "Копировать выделение",
+    "terminal_opening": "Открытие терминала...",
+    "terminal_error": "Ошибка терминала",
+    "terminal_no_port": "Нет активного порта. Сначала подключитесь к устройству."
   },
   "backupconfirm": {
     "title": "Сохранить дамп памяти устройства?",

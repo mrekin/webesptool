@@ -96,6 +96,12 @@ compare_versions() {
 
 # Version prompt function with default from package.json
 prompt_version() {
+    # Skip if already set (e.g., by -b flag)
+    if [ -n "$APP_VERSION" ]; then
+        success "Using version: $APP_VERSION"
+        return
+    fi
+
     local pkg_version=""
     local latest_version=""
     local suggested_version=""
@@ -368,6 +374,11 @@ show_image_info() {
 
 # Function to prompt for latest tag
 prompt_latest_tag() {
+    # Skip if already set
+    if [ -n "$SHOULD_TAG_LATEST" ]; then
+        return
+    fi
+
     echo
     while true; do
         read -p "Tag this version as latest? (Y/n): " latest_confirm
@@ -390,6 +401,11 @@ prompt_latest_tag() {
 
 # Function to prompt for registry push
 prompt_push_to_registry() {
+    # Skip if already set
+    if [ -n "$SHOULD_PUSH" ]; then
+        return
+    fi
+
     echo
     while true; do
         read -p "Push image to registry after build? (Y/n): " push_confirm
@@ -410,8 +426,47 @@ prompt_push_to_registry() {
     fi
 }
 
+# Function to parse command line arguments
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -b)
+                # Build-only mode: use package.json version, no latest tag, no push
+                local pkg_version=$(get_package_version)
+                if [ $? -ne 0 ] || [ -z "$pkg_version" ]; then
+                    error "Failed to get version from package.json in build-only mode"
+                    exit 1
+                fi
+                APP_VERSION="$pkg_version"
+                SHOULD_TAG_LATEST="no"
+                SHOULD_PUSH="no"
+                info "Build-only mode enabled: version=$APP_VERSION, no latest tag, no registry push"
+                shift
+                ;;
+            -h|--help)
+                echo "Usage: $0 [-b]"
+                echo
+                echo "Options:"
+                echo "  -b    Build-only mode: use version from package.json, don't tag as latest, don't push to registry"
+                echo "  -h    Show this help message"
+                echo
+                echo "Without options, the script runs in interactive mode"
+                exit 0
+                ;;
+            *)
+                error "Unknown option: $1"
+                echo "Use -h for help"
+                exit 1
+                ;;
+        esac
+    done
+}
+
 # Main function
 main() {
+    # Parse command line arguments first
+    parse_arguments "$@"
+
     echo -e "${BLUE}================================${NC}"
     echo -e "${BLUE}Frontend Docker Image Build${NC}"
     echo -e "${BLUE}================================${NC}"
@@ -421,33 +476,44 @@ main() {
     check_docker
     check_frontend_dir
 
-    # Show existing versions first
-    show_existing_versions
+    # Show existing versions first (skip in build-only mode)
+    if [ "$SHOULD_PUSH" != "no" ] || [ -z "$APP_VERSION" ]; then
+        show_existing_versions
+    fi
 
-    # Version prompt
+    # Version prompt (skipped if already set by -b)
     prompt_version
 
-    # Ask about latest tag
+    # Ask about latest tag (skipped if already set by -b)
     prompt_latest_tag
 
-    # Ask about registry push
+    # Ask about registry push (skipped if already set by -b)
     prompt_push_to_registry
 
-    # Build confirmation
-    echo
-    echo -e "${BLUE}Build configuration:${NC}"
-    echo -e "  Version:   ${GREEN}$APP_VERSION${NC}"
-    echo -e "  Latest:    ${GREEN}$SHOULD_TAG_LATEST${NC}"
-    echo -e "  Push:      ${GREEN}$SHOULD_PUSH${NC}"
-    echo -e "  Base Path: ${YELLOW}Can be set at runtime with -e VITE_BASE_PATH=/path${NC}"
-    echo
+    # Build confirmation (skip in build-only mode)
+    if [ -z "$SHOULD_PUSH" ] || [ "$SHOULD_PUSH" = "yes" ]; then
+        echo
+        echo -e "${BLUE}Build configuration:${NC}"
+        echo -e "  Version:   ${GREEN}$APP_VERSION${NC}"
+        echo -e "  Latest:    ${GREEN}$SHOULD_TAG_LATEST${NC}"
+        echo -e "  Push:      ${GREEN}$SHOULD_PUSH${NC}"
+        echo -e "  Base Path: ${YELLOW}Can be set at runtime with -e VITE_BASE_PATH=/path${NC}"
+        echo
 
-    warning "Start building image $REGISTRY/$IMAGE_NAME:$APP_VERSION ?"
-    read -p "Continue? (Y/n): " confirm
+        warning "Start building image $REGISTRY/$IMAGE_NAME:$APP_VERSION ?"
+        read -p "Continue? (Y/n): " confirm
 
-    if [[ $confirm =~ ^[Nn]$ ]]; then
-        warning "Build cancelled"
-        exit 0
+        if [[ $confirm =~ ^[Nn]$ ]]; then
+            warning "Build cancelled"
+            exit 0
+        fi
+    else
+        echo
+        echo -e "${BLUE}Build configuration:${NC}"
+        echo -e "  Version:   ${GREEN}$APP_VERSION${NC}"
+        echo -e "  Latest:    ${GREEN}$SHOULD_TAG_LATEST${NC}"
+        echo -e "  Push:      ${GREEN}$SHOULD_PUSH${NC}"
+        echo
     fi
 
     echo
