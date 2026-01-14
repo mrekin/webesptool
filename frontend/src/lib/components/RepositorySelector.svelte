@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { deviceSelection, availableFirmwares } from '$lib/stores.js';
+  import { deviceSelection, availableSources } from '$lib/stores.js';
   import { deviceActions } from '$lib/stores.js';
 
   // Subscribe to stores
   $: deviceSelectionStore = $deviceSelection;
-  $: availableFirmwaresStore = $availableFirmwares;
+  $: availableSourcesStore = $availableSources;
 
   // Get current repository description
-  $: currentRepoDesc = (availableFirmwaresStore.srcs as any[])?.find((s: any) => s.src === deviceSelectionStore.source)?.desc || '';
+  $: currentRepoDesc = availableSourcesStore.find((s: any) => s.src === deviceSelectionStore.source)?.desc || '';
 
   // Handle source repository change
   function handleSourceChange(source: string) {
@@ -18,7 +18,7 @@
 <!-- Compact Source Repository Selection -->
   <div class="space-y-2">
     <div class="flex flex-wrap gap-2">
-      {#each availableFirmwaresStore.srcs as source}
+      {#each availableSourcesStore as source}
         <button
           type="button"
           on:click={() => handleSourceChange((source as any).src)}

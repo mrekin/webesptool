@@ -922,11 +922,26 @@ async function initializeFromDeviceParam(devicePioTarget: string) {
 
     // If backend returned src, device was found
     if (versions.src) {
-      // Load available firmwares for the discovered source
-      await apiActions.loadAvailableFirmwares(versions.src);
+      // Load available sources list (without selecting any)
+      const sources = await apiService.getSrcs();
+      availableSources.set(sources);
 
-      // Update the source in device selection
-      deviceActions.updateSourceOnly(versions.src);
+      // Find the correct source from loaded list
+      const matchedSource = sources.find(s => s.src === versions.src);
+
+      if (matchedSource) {
+        // Update selection state without triggering setSource (which would reset device)
+        selectionActions.updateRepositoryOnly(matchedSource.src);
+
+        // Update deviceSelection source directly without reset
+        deviceSelection.update(selection => ({
+          ...selection,
+          source: matchedSource.src
+        }));
+
+        // Load available firmwares for the discovered source (ONE call only)
+        await apiActions.loadAvailableFirmwares(matchedSource.src);
+      }
 
       // Update versions data with the response we already have
       versionsData.set(versions);
@@ -934,9 +949,10 @@ async function initializeFromDeviceParam(devicePioTarget: string) {
       // Set device selection after data is loaded
       deviceActions.setDeviceDirectly(devicePioTarget);
 
-      // FIX: Update unified selection state repository FIRST, then device
-      // This ensures availableDevicesForSelection validation passes
-      selectionActions.updateRepositoryOnly(versions.src);
+      // Set previousDevice BEFORE calling setDevice to prevent duplicate loadVersions call
+      previousDevice = devicePioTarget;
+
+      // Update unified selection state device
       selectionActions.setDevice(devicePioTarget);
     } else {
       // No src returned - device not found, load default repositories
