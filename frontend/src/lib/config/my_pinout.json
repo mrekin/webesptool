@@ -1,10 +1,10 @@
 {
   "metadata": {
-    "total_variants": 183,
-    "generated_date": "2025-12-27T12:20:00.527748",
+    "total_variants": 186,
+    "generated_date": "2026-01-15T11:45:56.541214",
     "format_version": "2.0",
     "source_dir": "variants/",
-    "total_variants_including_aliases": 197
+    "total_variants_including_aliases": 198
   },
   "variants": {
     "rpipico2w": {
@@ -12,6 +12,9 @@
       "board": "rpipico2w",
       "family": "rp2350",
       "pins": {
+        "expansion": {
+          "EXT_NOTIFY_OUT": "22"
+        },
         "button": {
           "BUTTON_PIN": "17"
         },
@@ -46,15 +49,16 @@
           "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
         }
       },
-      "other": {
-        "EXT_NOTIFY_OUT": "22"
-      }
+      "other": {}
     },
     "rpipico2": {
       "file": "rp2350/rpipico2/variant.h",
       "board": "rpipico2",
       "family": "rp2350",
       "pins": {
+        "expansion": {
+          "EXT_NOTIFY_OUT": "22"
+        },
         "button": {
           "BUTTON_PIN": "17"
         },
@@ -89,9 +93,7 @@
           "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
         }
       },
-      "other": {
-        "EXT_NOTIFY_OUT": "22"
-      }
+      "other": {}
     },
     "EBYTE_ESP32-S3": {
       "file": "esp32s3/EBYTE_ESP32-S3/variant.h",
@@ -113,6 +115,9 @@
         },
         "led": {
           "LED_PIN": "1"
+        },
+        "expansion": {
+          "EXT_NOTIFY_OUT": "2"
         },
         "audio": {
           "PIN_BUZZER": "11"
@@ -152,9 +157,7 @@
           "GPS_EN_ACTIVE": "1"
         }
       },
-      "other": {
-        "EXT_NOTIFY_OUT": "2"
-      }
+      "other": {}
     },
     "t-eth-elite": {
       "file": "esp32s3/t-eth-elite/variant.h",
@@ -472,7 +475,6 @@
           "GPS_BAUDRATE": "38400"
         },
         "rtc": {
-          "PCF8563_RTC": "0x51",
           "HAS_RTC": "1"
         },
         "lora": {
@@ -480,7 +482,11 @@
           "LR11X0_DIO3_TCXO_VOLTAGE": "3.0"
         }
       },
-      "other": {}
+      "other": {
+        "HAS_PHYSICAL_KEYBOARD": "1",
+        "HAS_DRV2605": "1",
+        "PCF85063_RTC": "0x51"
+      }
     },
     "nugget_s3_lora": {
       "file": "esp32s3/nugget_s3_lora/variant.h",
@@ -493,6 +499,9 @@
         },
         "led": {
           "LED_PIN": "15"
+        },
+        "neopixel": {
+          "NEOPIXEL_DATA": "10"
         },
         "button": {
           "BUTTON_PIN": "44"
@@ -511,11 +520,12 @@
       "config": {
         "other": {
           "HAS_NEOPIXEL": ""
+        },
+        "neopixel": {
+          "NEOPIXEL_COUNT": "3"
         }
       },
       "other": {
-        "NEOPIXEL_COUNT": "3",
-        "NEOPIXEL_DATA": "10",
         "NEOPIXEL_TYPE": "(NEO_GRB + NEO_KHZ800)"
       }
     },
@@ -603,12 +613,18 @@
       "board": "heltec_sensor_hub",
       "family": "esp32s3",
       "pins": {
+        "expansion": {
+          "EXT_PWR_DETECT": "20"
+        },
         "button": {
           "BUTTON_PIN": "17"
         },
         "analog": {
           "BATTERY_PIN": "7",
           "ADC_CTRL": "34"
+        },
+        "neopixel": {
+          "NEOPIXEL_DATA": "18"
         },
         "lora": {
           "LORA_DIO0": "RADIOLIB_NC",
@@ -646,6 +662,9 @@
         "other": {
           "HAS_NEOPIXEL": ""
         },
+        "neopixel": {
+          "NEOPIXEL_COUNT": "1"
+        },
         "lora": {
           "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
         },
@@ -662,9 +681,6 @@
         }
       },
       "other": {
-        "EXT_PWR_DETECT": "20",
-        "NEOPIXEL_COUNT": "1",
-        "NEOPIXEL_DATA": "18",
         "NEOPIXEL_TYPE": "(NEO_GRB + NEO_KHZ800)"
       }
     },
@@ -675,7 +691,9 @@
       "pins": {
         "i2c": {
           "I2C_SDA": "9",
-          "I2C_SCL": "40"
+          "I2C_SCL": "40",
+          "I2C_SDA1": "PIN_WIRE1_SDA",
+          "I2C_SCL1": "PIN_WIRE1_SCL"
         },
         "lora": {
           "LORA_SCK": "5",
@@ -688,10 +706,6 @@
           "SX126X_BUSY": "48",
           "SX126X_RESET": "LORA_RESET"
         },
-        "power": {
-          "PIN_POWER_EN": "PIN_3V3_EN",
-          "PIN_3V3_EN": "(14)"
-        },
         "led": {
           "LED_GREEN": "46",
           "LED_BLUE": "45",
@@ -699,12 +713,19 @@
           "PIN_LED2": "LED_BLUE",
           "LED_PIN": "LED_GREEN"
         },
+        "analog": {
+          "BATTERY_PIN": "1"
+        },
+        "sdcard": {
+          "SDCARD_CS": "SPI_CS"
+        },
+        "power": {
+          "PIN_POWER_EN": "PIN_3V3_EN",
+          "PIN_3V3_EN": "(14)"
+        },
         "gps": {
           "GPS_TX_PIN": "43",
           "GPS_RX_PIN": "44"
-        },
-        "analog": {
-          "BATTERY_PIN": "1"
         }
       },
       "config": {
@@ -716,12 +737,12 @@
           "LED_CONN": "LED_BLUE",
           "LED_STATE_ON": "1"
         },
-        "gps": {
-          "HAS_GPS": "1"
-        },
         "battery": {
           "ADC_CHANNEL": "ADC1_GPIO1_CHANNEL",
           "ADC_MULTIPLIER": "1.667"
+        },
+        "gps": {
+          "HAS_GPS": "1"
         }
       },
       "other": {}
@@ -1028,8 +1049,14 @@
       "board": "esp32-s3-pico",
       "family": "esp32s3",
       "pins": {
+        "expansion": {
+          "EXT_NOTIFY_OUT": "22"
+        },
         "button": {
           "BUTTON_PIN": "0"
+        },
+        "neopixel": {
+          "NEOPIXEL_DATA": "21"
         },
         "analog": {
           "BATTERY_PIN": "7"
@@ -1073,6 +1100,9 @@
         "other": {
           "HAS_NEOPIXEL": ""
         },
+        "neopixel": {
+          "NEOPIXEL_COUNT": "1"
+        },
         "battery": {
           "ADC_CHANNEL": "ADC1_GPIO7_CHANNEL",
           "ADC_MULTIPLIER": "3.1"
@@ -1082,9 +1112,6 @@
         }
       },
       "other": {
-        "EXT_NOTIFY_OUT": "22",
-        "NEOPIXEL_COUNT": "1",
-        "NEOPIXEL_DATA": "21",
         "NEOPIXEL_TYPE": "(NEO_GRB + NEO_KHZ800)"
       }
     },
@@ -1118,6 +1145,10 @@
         },
         "sensor": {
           "BMA4XX_INT": "14"
+        },
+        "gps": {
+          "GPS_RX_PIN": "42",
+          "GPS_TX_PIN": "41"
         },
         "lora": {
           "LORA_SCK": "3",
@@ -1154,21 +1185,27 @@
           "SLEEP_TIME": "180",
           "USE_VIRTUAL_KEYBOARD": "1"
         },
+        "touch": {
+          "HAS_TOUCHSCREEN": "1",
+          "TOUCH_SLAVE_ADDRESS": "0x38"
+        },
         "rtc": {
+          "PCF8563_RTC": "0x51",
           "HAS_RTC": "1"
         },
         "gps": {
-          "HAS_GPS": "0"
+          "GPS_BAUDRATE": "38400"
         },
         "lora": {
           "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
         }
       },
       "other": {
-        "HAS_TOUCHSCREEN": "1",
+        "HAS_DRV2605": "1",
         "SCREEN_TOUCH_INT": "16",
         "TOUCH_I2C_PORT": "1",
-        "TOUCH_SLAVE_ADDRESS": "0x38",
+        "HAS_BMA423": "1",
+        "GPS_DEFAULT_NOT_PRESENT": "1",
         "DISPLAY_CLOCK_FRAME": "1"
       }
     },
@@ -1341,6 +1378,9 @@
         "led": {
           "LED_PIN": "33"
         },
+        "expansion": {
+          "EXT_PWR_DETECT": "35"
+        },
         "button": {
           "BUTTON_PIN": "18"
         },
@@ -1408,7 +1448,6 @@
       },
       "other": {
         "LED_PIN2": "34",
-        "EXT_PWR_DETECT": "35",
         "GPS_RESET_MODE": "LOW"
       }
     },
@@ -1440,6 +1479,87 @@
       },
       "config": {},
       "other": {}
+    },
+    "t-beam-1w": {
+      "file": "esp32s3/t-beam-1w/variant.h",
+      "board": "t-beam-1w",
+      "family": "esp32s3",
+      "pins": {
+        "i2c": {
+          "I2C_SDA": "8",
+          "I2C_SCL": "9"
+        },
+        "gps": {
+          "GPS_RX_PIN": "5",
+          "GPS_TX_PIN": "6",
+          "GPS_1PPS_PIN": "7",
+          "GPS_WAKEUP_PIN": "16"
+        },
+        "button": {
+          "BUTTON_PIN": "0",
+          "ALT_BUTTON_PIN": "17"
+        },
+        "spi": {
+          "SPI_MOSI": "11",
+          "SPI_SCK": "13",
+          "SPI_MISO": "12",
+          "SPI_CS": "10"
+        },
+        "sdcard": {
+          "SDCARD_CS": "SPI_CS"
+        },
+        "lora": {
+          "LORA_SCK": "SPI_SCK",
+          "LORA_MISO": "SPI_MISO",
+          "LORA_MOSI": "SPI_MOSI",
+          "LORA_CS": "15",
+          "LORA_RESET": "3",
+          "LORA_DIO1": "1",
+          "LORA_BUSY": "38",
+          "SX126X_CS": "LORA_CS",
+          "SX126X_DIO1": "LORA_DIO1",
+          "SX126X_BUSY": "LORA_BUSY",
+          "SX126X_RESET": "LORA_RESET",
+          "SX126X_RXEN": "21",
+          "RF95_FAN_EN": "FAN_CTRL_PIN"
+        },
+        "led": {
+          "LED_PIN": "18"
+        },
+        "analog": {
+          "BATTERY_PIN": "4"
+        }
+      },
+      "config": {
+        "gps": {
+          "HAS_GPS": "1",
+          "GPS_BAUDRATE": "9600"
+        },
+        "lora": {
+          "SX126X_POWER_EN": "40",
+          "SX126X_DIO3_TCXO_VOLTAGE": "1.8",
+          "SX126X_MAX_POWER": "22"
+        },
+        "led": {
+          "LED_STATE_ON": "1"
+        },
+        "battery": {
+          "ADC_CHANNEL": "ADC1_GPIO4_CHANNEL",
+          "ADC_MULTIPLIER": "2.9333"
+        },
+        "display": {
+          "OLED_WIDTH": "128",
+          "OLED_HEIGHT": "64"
+        }
+      },
+      "other": {
+        "TX_GAIN_LORA": "10",
+        "BATTERY_SENSE_SAMPLES": "30",
+        "NTC_PIN": "14",
+        "FAN_CTRL_PIN": "41",
+        "SX126X_PA_RAMP_US": "0x05",
+        "HAS_32768HZ": "1"
+      }
     },
     "heltec_wireless_paper_ru": {
       "file": "esp32s3/heltec_wireless_paper_ru/variant.h",
@@ -1757,6 +1877,7 @@
           "BOARD_1V8_EN": "38"
         },
         "lora": {
+          "LORA_EN": "46",
           "LORA_SCK": "36",
           "LORA_MISO": "47",
           "LORA_MOSI": "33",
@@ -1782,6 +1903,9 @@
         }
       },
       "config": {
+        "touch": {
+          "HAS_TOUCHSCREEN": "1"
+        },
         "other": {
           "SLEEP_TIME": "120",
           "CANNED_MESSAGE_MODULE_ENABLE": "1",
@@ -1802,8 +1926,7 @@
         }
       },
       "other": {
-        "HAS_TOUCHSCREEN": "1",
-        "LORA_EN": "46"
+        "HAS_PHYSICAL_KEYBOARD": "1"
       }
     },
     "m5stack_cardputer_adv": {
@@ -1818,6 +1941,9 @@
         "led": {
           "G1": "1",
           "G2": "2"
+        },
+        "neopixel": {
+          "NEOPIXEL_DATA": "21"
         },
         "button": {
           "BUTTON_PIN": "0"
@@ -1884,6 +2010,9 @@
           "CANNED_MESSAGE_MODULE_ENABLE": "1",
           "SCREEN_TRANSITION_FRAMERATE": "5"
         },
+        "neopixel": {
+          "NEOPIXEL_COUNT": "1"
+        },
         "battery": {
           "ADC_CHANNEL": "ADC1_GPIO10_CHANNEL"
         },
@@ -1912,8 +2041,6 @@
         }
       },
       "other": {
-        "NEOPIXEL_COUNT": "1",
-        "NEOPIXEL_DATA": "21",
         "NEOPIXEL_TYPE": "(NEO_GRB + NEO_KHZ800)",
         "USE_BMI270": "",
         "VTFT_CTRL": "38",
@@ -1942,6 +2069,9 @@
           "AREF_VOLTAGE": "3.0",
           "VBAT_AR_INTERNAL": "AR_INTERNAL_3_0"
         },
+        "expansion": {
+          "EXT_PWR_DETECT": "7"
+        },
         "audio": {
           "PIN_BUZZER": "5"
         },
@@ -1969,6 +2099,9 @@
         }
       },
       "config": {
+        "touch": {
+          "ALT_BUTTON_ACTIVE_LOW": "false"
+        },
         "power": {
           "VEXT_ON_VALUE": "HIGH"
         },
@@ -1986,17 +2119,12 @@
         "display": {
           "HAS_SCREEN": "1"
         },
-        "rtc": {
-          "HAS_RTC": "0"
-        },
         "gps": {
           "HAS_GPS": "0"
         }
       },
       "other": {
-        "ALT_BUTTON_ACTIVE_LOW": "false",
         "ALT_BUTTON_ACTIVE_PULLUP": "false",
-        "EXT_PWR_DETECT": "7",
         "BATTERY_SENSE_RESOLUTION": "4096.0",
         "USE_SH1106": "1"
       }
@@ -2017,6 +2145,10 @@
           "ST7789_BUSY": "-1",
           "ST7789_BL": "42",
           "TFT_BL": "42"
+        },
+        "button": {
+          "TB_PRESS": "0",
+          "TB_UP": "3"
         },
         "gps": {
           "GPS_RX_PIN": "44",
@@ -2089,6 +2221,10 @@
           "SLEEP_TIME": "120",
           "CANNED_MESSAGE_MODULE_ENABLE": "1"
         },
+        "touch": {
+          "HAS_TOUCHSCREEN": "1",
+          "TOUCH_SLAVE_ADDRESS": "0x5D"
+        },
         "button": {
           "BUTTON_ACTIVE_LOW": "true",
           "BUTTON_ACTIVE_PULLUP": "true"
@@ -2102,15 +2238,12 @@
         }
       },
       "other": {
-        "HAS_TOUCHSCREEN": "1",
+        "HAS_PHYSICAL_KEYBOARD": "1",
         "SCREEN_TOUCH_INT": "16",
         "TOUCH_I2C_PORT": "0",
-        "TOUCH_SLAVE_ADDRESS": "0x5D",
-        "TB_PRESS": "0",
         "GPS_DEFAULT_NOT_PRESENT": "1",
         "KB_SLAVE_ADDRESS": "TDECK_KB_ADDR",
         "HAS_TRACKBALL": "1",
-        "TB_UP": "3",
         "TB_DOWN": "15",
         "TB_LEFT": "1",
         "TB_RIGHT": "2",
@@ -2209,8 +2342,7 @@
         "ST7735_SPI_HOST": "SPI3_HOST",
         "TFT_INVERT": "false",
         "ADC_USE_PULLUP": "",
-        "GPS_RESET_MODE": "LOW",
-        "USE_GC1109_PA": ""
+        "GPS_RESET_MODE": "LOW"
       }
     },
     "seeed-sensecap-indicator": {
@@ -2275,10 +2407,15 @@
           "USE_TFTDISPLAY": "1",
           "USE_VIRTUAL_KEYBOARD": "1"
         },
+        "touch": {
+          "HAS_TOUCHSCREEN": "1",
+          "TOUCH_SLAVE_ADDRESS": "0x48"
+        },
         "gps": {
           "HAS_GPS": "1"
         },
         "lora": {
+          "TCXO_OPTIONAL": "",
           "SX126X_DIO3_TCXO_VOLTAGE": "2.4"
         }
       },
@@ -2289,13 +2426,10 @@
         "SENSOR_BAUD_RATE": "115200",
         "ST7701_SPI_HOST": "SPI2_HOST",
         "ST7701_BACKLIGHT_EN": "45",
-        "HAS_TOUCHSCREEN": "1",
         "SCREEN_TOUCH_INT": "(6 | IO_EXPANDER)",
         "SCREEN_TOUCH_RST": "(7 | IO_EXPANDER)",
         "TOUCH_I2C_PORT": "0",
-        "TOUCH_SLAVE_ADDRESS": "0x48",
         "GPS_DEFAULT_NOT_PRESENT": "1",
-        "TCXO_OPTIONAL": "",
         "DISPLAY_CLOCK_FRAME": "1"
       }
     },
@@ -2441,17 +2575,21 @@
         }
       },
       "config": {
+        "touch": {
+          "HAS_TOUCHSCREEN": "1"
+        },
         "other": {
           "SLEEP_TIME": "180"
         },
         "battery": {
           "ADC_MULTIPLIER": "1.6",
           "ADC_CHANNEL": "ADC1_GPIO4_CHANNEL"
+        },
+        "lora": {
+          "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
         }
       },
-      "other": {
-        "HAS_TOUCHSCREEN": "1"
-      }
+      "other": {}
     },
     "tlora_t3s3_v1": {
       "file": "esp32s3/tlora_t3s3_v1/variant.h",
@@ -2586,7 +2724,6 @@
         }
       },
       "other": {
-        "USE_GC1109_PA": "",
         "GPS_RESET_MODE": "LOW"
       }
     },
@@ -2642,6 +2779,7 @@
           "LR11X0_DIO3_TCXO_VOLTAGE": "3.0"
         },
         "rtc": {
+          "PCF8563_RTC": "0x51",
           "HAS_RTC": "1"
         },
         "system": {
@@ -2790,6 +2928,11 @@
           "USE_TFTDISPLAY": "1",
           "SLEEP_TIME": "180"
         },
+        "touch": {
+          "HAS_TOUCHSCREEN": "1",
+          "CANCEL_BUTTON_ACTIVE_LOW": "true",
+          "CANCEL_BUTTON_ACTIVE_PULLUP": "true"
+        },
         "gps": {
           "HAS_GPS": "\\"
         },
@@ -2803,10 +2946,7 @@
       "other": {
         "HX8357_MOSI": "SPI_MOSI",
         "TFT_INVERT": "false",
-        "HAS_TOUCHSCREEN": "1",
         "USE_XPT2046": "1",
-        "CANCEL_BUTTON_ACTIVE_LOW": "true",
-        "CANCEL_BUTTON_ACTIVE_PULLUP": "true",
         "LSM6DS3_WAKE_THRESH": "5"
       }
     },
@@ -3039,6 +3179,7 @@
           "LORA_CS": "14",
           "LORA_DIO9": "4",
           "LORA_DIO2": "47",
+          "LR1120_IRQ_PIN": "LORA_DIO9",
           "LR1121_IRQ_PIN": "LORA_DIO9",
           "LR1121_NRESET_PIN": "LORA_RESET",
           "LR1121_BUSY_PIN": "LORA_DIO2",
@@ -3071,7 +3212,6 @@
         "VTFT_CTRL": "5",
         "TPS_EXTM": "45",
         "BIAS_T_VALUE": "0",
-        "LR1120_IRQ_PIN": "LORA_DIO9",
         "LR1120_NRESET_PIN": "LORA_RESET",
         "LR1120_BUSY_PIN": "LORA_DIO2",
         "LR1120_SPI_NSS_PIN": "LORA_CS",
@@ -3096,6 +3236,9 @@
         "led": {
           "PCA_LED_USER": "1",
           "PCA_LED_POWER": "3"
+        },
+        "expansion": {
+          "EXT_PWR_DETECT": "12"
         },
         "analog": {
           "BATTERY_PIN": "8"
@@ -3157,9 +3300,6 @@
           "HAS_GPS": "1",
           "GPS_THREAD_INTERVAL": "50"
         },
-        "rtc": {
-          "PCF8563_RTC": "0x51"
-        },
         "lora": {
           "SX126X_DIO3_TCXO_VOLTAGE": "3.3",
           "SX126X_POWER_EN": "46",
@@ -3167,7 +3307,6 @@
         }
       },
       "other": {
-        "EXT_PWR_DETECT": "12",
         "GPS_SWITH": "10",
         "PCA_PIN_EINK_EN": "5"
       }
@@ -3473,6 +3612,9 @@
           "BUTTON_PIN": "0",
           "CANCEL_BUTTON_PIN": "36"
         },
+        "neopixel": {
+          "NEOPIXEL_DATA": "35"
+        },
         "i2c": {
           "I2C_SDA": "47",
           "I2C_SCL": "48"
@@ -3498,8 +3640,15 @@
           "BAT_MEASURE_ADC_UNIT": "2",
           "ADC_MULTIPLIER": "2"
         },
+        "touch": {
+          "CANCEL_BUTTON_ACTIVE_LOW": "true",
+          "CANCEL_BUTTON_ACTIVE_PULLUP": "true"
+        },
         "other": {
           "HAS_NEOPIXEL": ""
+        },
+        "neopixel": {
+          "NEOPIXEL_COUNT": "1"
         },
         "lora": {
           "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
@@ -3507,10 +3656,6 @@
       },
       "other": {
         "BATTERY_SENSE_SAMPLES": "30",
-        "CANCEL_BUTTON_ACTIVE_LOW": "true",
-        "CANCEL_BUTTON_ACTIVE_PULLUP": "true",
-        "NEOPIXEL_DATA": "35",
-        "NEOPIXEL_COUNT": "1",
         "NEOPIXEL_TYPE": "(NEO_GRB + NEO_KHZ800)",
         "LORA_TCXO_GPIO": "17"
       }
@@ -3696,6 +3841,9 @@
         "button": {
           "BUTTON_PIN": "0"
         },
+        "neopixel": {
+          "NEOPIXEL_DATA": "21"
+        },
         "lora": {
           "SX126X_CS": "7",
           "SX126X_SCK": "8",
@@ -3717,14 +3865,15 @@
         "other": {
           "HAS_NEOPIXEL": ""
         },
+        "neopixel": {
+          "NEOPIXEL_COUNT": "1"
+        },
         "lora": {
           "SX126X_DIO3_TCXO_VOLTAGE": "1.8",
           "SX126X_MAX_POWER": "22"
         }
       },
       "other": {
-        "NEOPIXEL_COUNT": "1",
-        "NEOPIXEL_DATA": "21",
         "NEOPIXEL_TYPE": "(NEO_GRB + NEO_KHZ800)",
         "ENABLE_AMBIENTLIGHTING": ""
       }
@@ -3737,6 +3886,9 @@
         "i2c": {
           "I2C_SDA": "18",
           "I2C_SCL": "17"
+        },
+        "neopixel": {
+          "NEOPIXEL_DATA": "38"
         },
         "button": {
           "BUTTON_PIN": "0"
@@ -3774,11 +3926,12 @@
         },
         "other": {
           "HAS_NEOPIXEL": ""
+        },
+        "neopixel": {
+          "NEOPIXEL_COUNT": "1"
         }
       },
       "other": {
-        "NEOPIXEL_COUNT": "1",
-        "NEOPIXEL_DATA": "38",
         "NEOPIXEL_TYPE": "(NEO_GRB + NEO_KHZ800)"
       }
     },
@@ -3836,6 +3989,9 @@
           "I2C_SDA": "18",
           "I2C_SCL": "17"
         },
+        "neopixel": {
+          "NEOPIXEL_DATA": "38"
+        },
         "button": {
           "BUTTON_PIN": "0"
         },
@@ -3864,11 +4020,12 @@
         },
         "other": {
           "HAS_NEOPIXEL": ""
+        },
+        "neopixel": {
+          "NEOPIXEL_COUNT": "1"
         }
       },
       "other": {
-        "NEOPIXEL_COUNT": "1",
-        "NEOPIXEL_DATA": "38",
         "NEOPIXEL_TYPE": "(NEO_GRB + NEO_KHZ800)"
       }
     },
@@ -3883,6 +4040,9 @@
         },
         "button": {
           "BUTTON_PIN": "0"
+        },
+        "neopixel": {
+          "NEOPIXEL_DATA": "21"
         },
         "lora": {
           "SX126X_CS": "2",
@@ -3905,14 +4065,15 @@
         "other": {
           "HAS_NEOPIXEL": ""
         },
+        "neopixel": {
+          "NEOPIXEL_COUNT": "1"
+        },
         "lora": {
           "SX126X_MAX_POWER": "22",
           "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
         }
       },
       "other": {
-        "NEOPIXEL_COUNT": "1",
-        "NEOPIXEL_DATA": "21",
         "NEOPIXEL_TYPE": "(NEO_GRB + NEO_KHZ800)",
         "ENABLE_AMBIENTLIGHTING": ""
       }
@@ -3925,6 +4086,9 @@
         "i2c": {
           "I2C_SDA": "8",
           "I2C_SCL": "9"
+        },
+        "neopixel": {
+          "NEOPIXEL_DATA": "48"
         },
         "analog": {
           "BATTERY_PIN": "1"
@@ -3953,6 +4117,9 @@
         "other": {
           "HAS_NEOPIXEL": ""
         },
+        "neopixel": {
+          "NEOPIXEL_COUNT": "1"
+        },
         "battery": {
           "ADC_CHANNEL": "ADC1_GPIO1_CHANNEL",
           "ADC_ATTENUATION": "ADC_ATTEN_DB_2_5",
@@ -3965,8 +4132,6 @@
         }
       },
       "other": {
-        "NEOPIXEL_COUNT": "1",
-        "NEOPIXEL_DATA": "48",
         "NEOPIXEL_TYPE": "(NEO_GRB + NEO_KHZ800)"
       }
     },
@@ -3978,6 +4143,9 @@
         "i2c": {
           "I2C_SDA": "5",
           "I2C_SCL": "4"
+        },
+        "neopixel": {
+          "NEOPIXEL_DATA": "48"
         },
         "analog": {
           "BATTERY_PIN": "1"
@@ -4006,6 +4174,9 @@
         "other": {
           "HAS_NEOPIXEL": ""
         },
+        "neopixel": {
+          "NEOPIXEL_COUNT": "1"
+        },
         "battery": {
           "ADC_CHANNEL": "ADC1_GPIO1_CHANNEL",
           "ADC_ATTENUATION": "ADC_ATTEN_DB_2_5",
@@ -4017,8 +4188,6 @@
         }
       },
       "other": {
-        "NEOPIXEL_COUNT": "1",
-        "NEOPIXEL_DATA": "48",
         "NEOPIXEL_TYPE": "(NEO_GRB + NEO_KHZ800)"
       }
     },
@@ -4043,6 +4212,12 @@
         },
         "analog": {
           "BATTERY_PIN": "1"
+        },
+        "expansion": {
+          "EXT_PWR_DETECT": "2"
+        },
+        "neopixel": {
+          "NEOPIXEL_DATA": "48"
         },
         "gps": {
           "PIN_GPS_EN": "11",
@@ -4078,6 +4253,9 @@
         "other": {
           "HAS_NEOPIXEL": "1"
         },
+        "neopixel": {
+          "NEOPIXEL_COUNT": "6"
+        },
         "gps": {
           "HAS_GPS": "1",
           "GPS_EN_ACTIVE": "1",
@@ -4089,9 +4267,6 @@
         }
       },
       "other": {
-        "EXT_PWR_DETECT": "2",
-        "NEOPIXEL_COUNT": "6",
-        "NEOPIXEL_DATA": "48",
         "NEOPIXEL_TYPE": "(NEO_GRB + NEO_KHZ800)",
         "ENABLE_AMBIENTLIGHTING": ""
       }
@@ -4145,6 +4320,9 @@
         }
       },
       "config": {
+        "touch": {
+          "HAS_TOUCHSCREEN": "1"
+        },
         "other": {
           "SLEEP_TIME": "180"
         },
@@ -4153,9 +4331,7 @@
           "ADC_CHANNEL": "ADC1_GPIO4_CHANNEL"
         }
       },
-      "other": {
-        "HAS_TOUCHSCREEN": "1"
-      }
+      "other": {}
     },
     "oled": {
       "file": "esp32s3/tracksenger/oled/variant.h",
@@ -4452,6 +4628,9 @@
         "led": {
           "LED_PIN": "15"
         },
+        "neopixel": {
+          "NEOPIXEL_DATA": "12"
+        },
         "button": {
           "BUTTON_PIN": "0"
         },
@@ -4469,11 +4648,12 @@
       "config": {
         "other": {
           "HAS_NEOPIXEL": ""
+        },
+        "neopixel": {
+          "NEOPIXEL_COUNT": "3"
         }
       },
       "other": {
-        "NEOPIXEL_COUNT": "3",
-        "NEOPIXEL_DATA": "12",
         "NEOPIXEL_TYPE": "(NEO_GRB + NEO_KHZ800)"
       }
     },
@@ -4507,6 +4687,9 @@
           "RF95_PA_EN": "26",
           "RF95_PA_LEVEL": "110"
         },
+        "neopixel": {
+          "NEOPIXEL_DATA": "15"
+        },
         "joystick": {
           "PIN_JOYSTICK": "39",
           "JOYSTICK_ADC_VALS": "/*UP*/ 3227, /*DOWN*/ 0, /*LEFT*/ 1961, /*RIGHT*/ 2668, /*OK*/ 1290, /*IDLE*/ 4095"
@@ -4521,11 +4704,12 @@
         },
         "other": {
           "HAS_NEOPIXEL": ""
+        },
+        "neopixel": {
+          "NEOPIXEL_COUNT": "6"
         }
       },
       "other": {
-        "NEOPIXEL_COUNT": "6",
-        "NEOPIXEL_DATA": "15",
         "NEOPIXEL_TYPE": "(NEO_GRB + NEO_KHZ800)",
         "ENABLE_AMBIENTLIGHTING": ""
       }
@@ -4955,6 +5139,9 @@
         "button": {
           "BUTTON_PIN": "36"
         },
+        "expansion": {
+          "EXT_NOTIFY_OUT": "13"
+        },
         "lora": {
           "LORA_DIO0": "26",
           "LORA_RESET": "23",
@@ -4985,7 +5172,6 @@
         }
       },
       "other": {
-        "EXT_NOTIFY_OUT": "13",
         "BATTERY_SENSE_SAMPLES": "30",
         "CELL_TYPE_LION": "",
         "NUM_CELLS": "3"
@@ -5014,6 +5200,9 @@
           "SX128X_RXEN": "27",
           "SX128X_RESET": "LORA_RESET"
         },
+        "neopixel": {
+          "NEOPIXEL_DATA": "16"
+        },
         "button": {
           "BUTTON_PIN": "25"
         }
@@ -5022,13 +5211,14 @@
         "other": {
           "HAS_NEOPIXEL": ""
         },
+        "neopixel": {
+          "NEOPIXEL_COUNT": "1"
+        },
         "lora": {
           "SX128X_MAX_POWER": "3"
         }
       },
       "other": {
-        "NEOPIXEL_COUNT": "1",
-        "NEOPIXEL_DATA": "16",
         "NEOPIXEL_TYPE": "(NEO_GRB + NEO_KHZ800)"
       }
     },
@@ -5043,6 +5233,9 @@
         },
         "button": {
           "BUTTON_PIN": "36"
+        },
+        "expansion": {
+          "EXT_NOTIFY_OUT": "13"
         },
         "gps": {
           "GPS_RX_PIN": "34",
@@ -5073,7 +5266,6 @@
         }
       },
       "other": {
-        "EXT_NOTIFY_OUT": "13",
         "BATTERY_SENSE_SAMPLES": "15"
       }
     },
@@ -5088,6 +5280,9 @@
         },
         "button": {
           "BUTTON_PIN": "38"
+        },
+        "expansion": {
+          "EXT_NOTIFY_OUT": "13"
         },
         "led": {
           "LED_PIN": "4"
@@ -5132,6 +5327,9 @@
           "USE_RF95": "",
           "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
         },
+        "touch": {
+          "HAS_TOUCHSCREEN": "1"
+        },
         "other": {
           "CANNED_MESSAGE_MODULE_ENABLE": "1",
           "USE_VIRTUAL_KEYBOARD": "1",
@@ -5144,9 +5342,7 @@
         }
       },
       "other": {
-        "EXT_NOTIFY_OUT": "13",
         "HAS_CST226SE": "1",
-        "HAS_TOUCHSCREEN": "1",
         "VTFT_LEDA": "4",
         "TFT_SPI_FREQUENCY": "60000000"
       }
@@ -5296,6 +5492,9 @@
         "button": {
           "BUTTON_PIN": "0"
         },
+        "expansion": {
+          "EXT_NOTIFY_OUT": "13"
+        },
         "lora": {
           "LORA_DIO0": "26",
           "LORA_RESET": "14",
@@ -5309,8 +5508,7 @@
         }
       },
       "other": {
-        "RESET_OLED": "16",
-        "EXT_NOTIFY_OUT": "13"
+        "RESET_OLED": "16"
       }
     },
     "hackerboxes_esp32_io": {
@@ -5567,6 +5765,9 @@
         },
         "analog": {
           "BATTERY_PIN": "37"
+        },
+        "expansion": {
+          "EXT_NOTIFY_OUT": "13"
         }
       },
       "config": {
@@ -5576,8 +5777,7 @@
         }
       },
       "other": {
-        "RESET_OLED": "16",
-        "EXT_NOTIFY_OUT": "13"
+        "RESET_OLED": "16"
       }
     },
     "radiomaster_900_bandit_nano": {
@@ -5630,6 +5830,9 @@
         "button": {
           "BUTTON_PIN": "36"
         },
+        "expansion": {
+          "EXT_NOTIFY_OUT": "13"
+        },
         "gps": {
           "GPS_RX_PIN": "34",
           "GPS_TX_PIN": "12"
@@ -5651,9 +5854,7 @@
           "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
         }
       },
-      "other": {
-        "EXT_NOTIFY_OUT": "13"
-      }
+      "other": {}
     },
     "tbeam_v07": {
       "file": "esp32/tbeam_v07/variant.h",
@@ -5669,6 +5870,9 @@
         },
         "analog": {
           "BATTERY_PIN": "35"
+        },
+        "expansion": {
+          "EXT_NOTIFY_OUT": "13"
         },
         "lora": {
           "LORA_DIO0": "26",
@@ -5689,9 +5893,7 @@
           "USE_RF95": ""
         }
       },
-      "other": {
-        "EXT_NOTIFY_OUT": "13"
-      }
+      "other": {}
     },
     "heltec_v2": {
       "file": "esp32/heltec_v2/variant.h",
@@ -5754,6 +5956,9 @@
         "button": {
           "BUTTON_PIN": "13"
         },
+        "expansion": {
+          "EXT_NOTIFY_OUT": "12"
+        },
         "lora": {
           "LORA_DIO0": "NOT_A_PIN",
           "LORA_RESET": "NOT_A_PIN",
@@ -5788,9 +5993,7 @@
           "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
         }
       },
-      "other": {
-        "EXT_NOTIFY_OUT": "12"
-      }
+      "other": {}
     },
     "hydra": {
       "file": "esp32/diy/hydra/variant.h",
@@ -5811,6 +6014,10 @@
         },
         "analog": {
           "BATTERY_PIN": "35"
+        },
+        "expansion": {
+          "EXT_PWR_DETECT": "4",
+          "EXT_NOTIFY_OUT": "12"
         },
         "led": {
           "LED_PIN": "2"
@@ -5848,10 +6055,7 @@
           "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
         }
       },
-      "other": {
-        "EXT_PWR_DETECT": "4",
-        "EXT_NOTIFY_OUT": "12"
-      }
+      "other": {}
     },
     "v1_1": {
       "file": "esp32/diy/v1_1/variant.h",
@@ -5867,6 +6071,9 @@
         },
         "button": {
           "BUTTON_PIN": "2"
+        },
+        "expansion": {
+          "EXT_NOTIFY_OUT": "12"
         },
         "lora": {
           "LORA_DIO0": "26",
@@ -5893,13 +6100,11 @@
       "config": {
         "lora": {
           "USE_RF95": "",
-          "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
+          "SX126X_DIO3_TCXO_VOLTAGE": "1.8",
+          "TCXO_OPTIONAL": ""
         }
       },
-      "other": {
-        "EXT_NOTIFY_OUT": "12",
-        "TCXO_OPTIONAL": ""
-      }
+      "other": {}
     },
     "v1": {
       "file": "esp32/diy/v1/variant.h",
@@ -5919,6 +6124,10 @@
         },
         "analog": {
           "BATTERY_PIN": "35"
+        },
+        "expansion": {
+          "EXT_PWR_DETECT": "4",
+          "EXT_NOTIFY_OUT": "12"
         },
         "led": {
           "LED_PIN": "2"
@@ -5951,14 +6160,11 @@
         "lora": {
           "USE_RF95": "",
           "SX126X_MAX_POWER": "22",
-          "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
+          "SX126X_DIO3_TCXO_VOLTAGE": "1.8",
+          "TCXO_OPTIONAL": ""
         }
       },
-      "other": {
-        "EXT_PWR_DETECT": "4",
-        "EXT_NOTIFY_OUT": "12",
-        "TCXO_OPTIONAL": ""
-      }
+      "other": {}
     },
     "v2_RZ6AT": {
       "file": "esp32/diy/v2_RZ6AT/variant.h",
@@ -5978,6 +6184,9 @@
         },
         "analog": {
           "BATTERY_PIN": "39"
+        },
+        "expansion": {
+          "EXT_PWR_DETECT": "34"
         },
         "lora": {
           "LORA_DIO0": "26",
@@ -6009,9 +6218,7 @@
           "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
         }
       },
-      "other": {
-        "EXT_PWR_DETECT": "34"
-      }
+      "other": {}
     },
     "v1_violet": {
       "file": "esp32/diy/v1_violet/variant.h",
@@ -6031,6 +6238,10 @@
         },
         "analog": {
           "BATTERY_PIN": "35"
+        },
+        "expansion": {
+          "EXT_PWR_DETECT": "4",
+          "EXT_NOTIFY_OUT": "12"
         },
         "led": {
           "LED_PIN": "2"
@@ -6065,10 +6276,7 @@
           "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
         }
       },
-      "other": {
-        "EXT_PWR_DETECT": "4",
-        "EXT_NOTIFY_OUT": "12"
-      }
+      "other": {}
     },
     "9m2ibr_aprs_lora_tracker": {
       "file": "esp32/diy/9m2ibr_aprs_lora_tracker/variant.h",
@@ -6129,12 +6337,11 @@
         },
         "lora": {
           "USE_RF95": "",
-          "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
+          "SX126X_DIO3_TCXO_VOLTAGE": "1.8",
+          "TCXO_OPTIONAL": ""
         }
       },
-      "other": {
-        "TCXO_OPTIONAL": ""
-      }
+      "other": {}
     },
     "v1_rxtx": {
       "file": "esp32/diy/v1_rxtx/variant.h",
@@ -6154,6 +6361,10 @@
         },
         "analog": {
           "BATTERY_PIN": "35"
+        },
+        "expansion": {
+          "EXT_PWR_DETECT": "4",
+          "EXT_NOTIFY_OUT": "12"
         },
         "led": {
           "LED_PIN": "2"
@@ -6189,10 +6400,7 @@
           "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
         }
       },
-      "other": {
-        "EXT_PWR_DETECT": "4",
-        "EXT_NOTIFY_OUT": "12"
-      }
+      "other": {}
     },
     "heltec_esp32c3": {
       "file": "esp32c3/heltec_esp32c3/variant.h",
@@ -6300,6 +6508,9 @@
         "i2c": {
           "I2C_SDA": "21",
           "I2C_SCL": "20"
+        },
+        "neopixel": {
+          "NEOPIXEL_DATA": "2"
         }
       },
       "config": {
@@ -6314,11 +6525,12 @@
         },
         "other": {
           "HAS_NEOPIXEL": ""
+        },
+        "neopixel": {
+          "NEOPIXEL_COUNT": "1"
         }
       },
       "other": {
-        "NEOPIXEL_COUNT": "1",
-        "NEOPIXEL_DATA": "2",
         "NEOPIXEL_TYPE": "(NEO_GRB + NEO_KHZ800)"
       }
     },
@@ -6445,12 +6657,11 @@
           "WIRE_INTERFACES_COUNT": "(1)"
         },
         "lora": {
-          "SX126X_DIO3_TCXO_VOLTAGE": "(1.8)"
+          "SX126X_DIO3_TCXO_VOLTAGE": "(1.8)",
+          "TCXO_OPTIONAL": ""
         }
       },
-      "other": {
-        "TCXO_OPTIONAL": ""
-      }
+      "other": {}
     },
     "diy-heltec-ct62-tiny-1.02": {
       "file": "esp32c3/diy/diy-heltec-ct62-tiny-1.02/variant.h",
@@ -6466,6 +6677,9 @@
         },
         "analog": {
           "BATTERY_PIN": "2"
+        },
+        "expansion": {
+          "EXT_PWR_DETECT": "1"
         },
         "lora": {
           "LORA_DIO0": "RADIOLIB_NC",
@@ -6497,9 +6711,7 @@
           "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
         }
       },
-      "other": {
-        "EXT_PWR_DETECT": "1"
-      }
+      "other": {}
     },
     "diy_c3_ra-01s-p": {
       "file": "esp32c3/diy/diy_c3_ra-01s-p/variant.h",
@@ -6588,6 +6800,9 @@
           "I2C_SDA": "0",
           "I2C_SCL": "9"
         },
+        "neopixel": {
+          "NEOPIXEL_DATA": "8"
+        },
         "lora": {
           "LORA_DIO0": "RADIOLIB_NC",
           "LORA_RESET": "3",
@@ -6613,13 +6828,14 @@
         "other": {
           "HAS_NEOPIXEL": ""
         },
+        "neopixel": {
+          "NEOPIXEL_COUNT": "1"
+        },
         "lora": {
           "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
         }
       },
       "other": {
-        "NEOPIXEL_COUNT": "1",
-        "NEOPIXEL_DATA": "8",
         "NEOPIXEL_TYPE": "(NEO_GRB + NEO_KHZ800)",
         "ENABLE_AMBIENTLIGHTING": ""
       }
@@ -6674,6 +6890,9 @@
         "i2c": {
           "I2C_SDA": "8",
           "I2C_SCL": "9"
+        },
+        "button": {
+          "BUTTON_PIN": "2"
         },
         "lora": {
           "LORA_DIO0": "RADIOLIB_NC",
@@ -6810,6 +7029,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "i2c": {
@@ -6830,7 +7050,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)"
@@ -6929,6 +7148,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -6955,7 +7175,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -7052,6 +7271,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -7084,7 +7304,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(1)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -7166,6 +7385,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -7185,12 +7405,105 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
         "ADC_RESOLUTION": "14",
         "RV3028_RTC": "(uint8_t)0b1010010"
+      }
+    },
+    "keepteen_lt1": {
+      "file": "nrf52840/keepteen_lt1/variant.h",
+      "board": "keepteen_lt1",
+      "family": "nrf52840",
+      "pins": {
+        "led": {
+          "LED_PIN": "15",
+          "LED_BUILTIN": "LED_PIN",
+          "LED_BLUE": "-1"
+        },
+        "i2c": {
+          "SDA_OLED": "34",
+          "SCL_OLED": "36",
+          "PIN_WIRE_SDA": "SDA_OLED",
+          "PIN_WIRE_SCL": "SCL_OLED"
+        },
+        "button": {
+          "BUTTON_PIN": "32"
+        },
+        "analog": {
+          "BATTERY_PIN": "31",
+          "AREF_VOLTAGE": "3.6F"
+        },
+        "uart": {
+          "PIN_SERIAL1_RX": "22",
+          "PIN_SERIAL1_TX": "20",
+          "PIN_SERIAL2_RX": "-1",
+          "PIN_SERIAL2_TX": "-1"
+        },
+        "gps": {
+          "GPS_RX_PIN": "PIN_SERIAL1_RX",
+          "GPS_TX_PIN": "PIN_SERIAL1_TX",
+          "PIN_GPS_EN": "24"
+        },
+        "lora": {
+          "LORA_DIO0": "-1",
+          "LORA_RESET": "9",
+          "LORA_DIO1": "10",
+          "LORA_DIO2": "29",
+          "LORA_NSS": "45",
+          "LORA_SCK": "43",
+          "LORA_MISO": "2",
+          "LORA_MOSI": "38",
+          "LORA_CS": "8",
+          "SX126X_CS": "LORA_NSS",
+          "SX126X_DIO1": "LORA_DIO1",
+          "SX126X_BUSY": "LORA_DIO2",
+          "SX126X_RESET": "LORA_RESET",
+          "SX126X_RXEN": "RADIOLIB_NC",
+          "SX126X_TXEN": "RADIOLIB_NC"
+        },
+        "spi": {
+          "PIN_SPI_MISO": "LORA_MISO",
+          "PIN_SPI_MOSI": "LORA_MOSI",
+          "PIN_SPI_SCK": "LORA_SCK"
+        }
+      },
+      "config": {
+        "system": {
+          "PINS_COUNT": "48"
+        },
+        "led": {
+          "LED_STATE_ON": "1"
+        },
+        "i2c": {
+          "WIRE_INTERFACES_COUNT": "1"
+        },
+        "display": {
+          "HAS_SCREEN": "1"
+        },
+        "battery": {
+          "ADC_MULTIPLIER": "1.73F",
+          "BATTERY_SENSE_RESOLUTION_BITS": "12"
+        },
+        "gps": {
+          "GPS_BAUDRATE": "9600"
+        },
+        "spi": {
+          "SPI_INTERFACES_COUNT": "1"
+        },
+        "lora": {
+          "SX126X_DIO2_AS_RF_SWITCH": "true",
+          "SX126X_DIO3_TCXO_VOLTAGE": "1.8f"
+        }
+      },
+      "other": {
+        "VARIANT_MCK": "(64000000ul)",
+        "NUM_DIGITAL_PINS": "48",
+        "NUM_ANALOG_INPUTS": "1",
+        "NUM_ANALOG_OUTPUTS": "0",
+        "RST_OLED": "-1",
+        "RESET_OLED": "RST_OLED"
       }
     },
     "rak4631_nomadstar_meteor_pro": {
@@ -7288,6 +7601,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)",
           "HAS_ETHERNET": "0"
         },
@@ -7315,7 +7629,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -7429,6 +7742,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -7463,11 +7777,13 @@
           "SLEEP_TIME": "120",
           "CANNED_MESSAGE_MODULE_ENABLE": "1",
           "USE_VIRTUAL_KEYBOARD": "1"
+        },
+        "touch": {
+          "HAS_TOUCHSCREEN": "1"
         }
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -7485,7 +7801,6 @@
         "LOAD_GFXFF": "1",
         "TFT_RGB_ORDER": "0",
         "TFT_SPI_PORT": "SPI1",
-        "HAS_TOUCHSCREEN": "1",
         "SCREEN_TOUCH_INT": "WB_IO6"
       }
     },
@@ -7554,7 +7869,9 @@
       },
       "config": {
         "system": {
-          "PINS_COUNT": "(48)"
+          "USE_LFXO": "",
+          "PINS_COUNT": "(48)",
+          "PERIPHERAL_WARMUP_MS": "100"
         },
         "led": {
           "LED_CONN": "PIN_LED3",
@@ -7581,7 +7898,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "GPIO_PORT0": "0",
         "GPIO_PORT1": "32",
         "NUM_DIGITAL_PINS": "(48)",
@@ -7589,7 +7905,6 @@
         "NUM_ANALOG_OUTPUTS": "(0)",
         "ADC_RESOLUTION": "14",
         "EXTERNAL_FLASH_DEVICES": "MX25R1635F",
-        "PIN_PWR_DELAY_MS": "100",
         "RADIOLIB_DEBUG": "1",
         "USE_SEGGER": "1",
         "BATTERY_SENSE_RESOLUTION": "4096.0"
@@ -7614,6 +7929,9 @@
           "LED_BLUE": "PIN_LED1",
           "LED_GREEN": "PIN_LED1",
           "LED_BUILTIN": "LED_GREEN"
+        },
+        "neopixel": {
+          "NEOPIXEL_DATA": "14"
         },
         "button": {
           "PIN_BUTTON1": "(32 + 10)"
@@ -7670,6 +7988,11 @@
         }
       },
       "config": {
+        "system": {
+          "USE_LFXO": "",
+          "PINS_COUNT": "(48)",
+          "PERIPHERAL_WARMUP_MS": "1000"
+        },
         "display": {
           "ST7789_SPI_HOST": "SPI1_HOST",
           "TFT_HEIGHT": "135",
@@ -7683,15 +8006,14 @@
           "SPI_READ_FREQUENCY": "16000000",
           "SPI_INTERFACES_COUNT": "2"
         },
-        "system": {
-          "PINS_COUNT": "(48)",
-          "PERIPHERAL_WARMUP_MS": "1000"
-        },
         "led": {
           "LED_STATE_ON": "0"
         },
         "other": {
           "HAS_NEOPIXEL": ""
+        },
+        "neopixel": {
+          "NEOPIXEL_COUNT": "2"
         },
         "i2c": {
           "WIRE_INTERFACES_COUNT": "2"
@@ -7705,27 +8027,23 @@
         "gps": {
           "GPS_THREAD_INTERVAL": "50"
         },
-        "rtc": {
-          "PCF8563_RTC": "0x51",
-          "HAS_RTC": "0"
-        },
         "battery": {
           "ADC_CTRL_ENABLED": "HIGH",
           "BATTERY_SENSE_RESOLUTION_BITS": "12",
           "ADC_MULTIPLIER": "(4.916F)"
+        },
+        "rtc": {
+          "HAS_RTC": "0"
         }
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "VTFT_CTRL": "3",
         "VTFT_LEDA": "15",
         "TFT_BACKLIGHT_ON": "LOW",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(1)",
         "NUM_ANALOG_OUTPUTS": "(0)",
-        "NEOPIXEL_COUNT": "2",
-        "NEOPIXEL_DATA": "14",
         "NEOPIXEL_TYPE": "(NEO_GRB + NEO_KHZ800)",
         "EXTERNAL_FLASH_DEVICES": "MX25R1635F",
         "GPS_RESET_MODE": "LOW",
@@ -7824,6 +8142,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -7850,7 +8169,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -7859,6 +8177,144 @@
         "RV3028_RTC": "(uint8_t)0b1010010",
         "BATTERY_SENSE_RESOLUTION": "4096.0",
         "RAK_4631": "1"
+      }
+    },
+    "t-echo-plus": {
+      "file": "nrf52840/t-echo-plus/variant.h",
+      "board": "t-echo-plus",
+      "family": "nrf52840",
+      "pins": {
+        "led": {
+          "PIN_LED1": "(0 + 14)",
+          "PIN_LED2": "(0 + 15)",
+          "PIN_LED3": "(0 + 13)",
+          "LED_RED": "PIN_LED3",
+          "LED_BLUE": "PIN_LED1",
+          "LED_GREEN": "PIN_LED2",
+          "LED_BUILTIN": "LED_BLUE"
+        },
+        "button": {
+          "PIN_BUTTON1": "(32 + 10)",
+          "PIN_BUTTON2": "(0 + 18)",
+          "PIN_BUTTON_TOUCH": "(0 + 11)"
+        },
+        "analog": {
+          "PIN_A0": "(4)",
+          "BATTERY_PIN": "PIN_A0",
+          "AREF_VOLTAGE": "3.0",
+          "VBAT_AR_INTERNAL": "AR_INTERNAL_3_0"
+        },
+        "nfc": {
+          "PIN_NFC1": "(9)",
+          "PIN_NFC2": "(10)"
+        },
+        "i2c": {
+          "PIN_WIRE_SDA": "(0 + 26)",
+          "PIN_WIRE_SCL": "(0 + 27)"
+        },
+        "rtc": {
+          "PIN_RTC_INT": "(0 + 16)"
+        },
+        "qspi": {
+          "PIN_QSPI_SCK": "(32 + 14)",
+          "PIN_QSPI_CS": "(32 + 15)",
+          "PIN_QSPI_IO0": "(32 + 12)",
+          "PIN_QSPI_IO1": "(32 + 13)",
+          "PIN_QSPI_IO2": "(0 + 7)",
+          "PIN_QSPI_IO3": "(0 + 5)"
+        },
+        "lora": {
+          "SX126X_CS": "(0 + 24)",
+          "SX126X_DIO1": "(0 + 20)",
+          "SX1262_DIO3": "(0 + 21)",
+          "SX126X_BUSY": "(0 + 17)",
+          "SX126X_RESET": "(0 + 25)"
+        },
+        "spi": {
+          "PIN_SPI_MISO": "(0 + 23)",
+          "PIN_SPI_MOSI": "(0 + 22)",
+          "PIN_SPI_SCK": "(0 + 19)",
+          "PIN_SPI1_MISO": "(32 + 7)",
+          "PIN_SPI1_MOSI": "PIN_EINK_MOSI",
+          "PIN_SPI1_SCK": "PIN_EINK_SCLK"
+        },
+        "eink": {
+          "PIN_EINK_EN": "PIN_EINK_BL",
+          "PIN_EINK_CS": "(0 + 30)",
+          "PIN_EINK_BUSY": "(0 + 3)",
+          "PIN_EINK_DC": "(0 + 28)",
+          "PIN_EINK_RES": "(0 + 2)",
+          "PIN_EINK_SCLK": "(0 + 31)",
+          "PIN_EINK_MOSI": "(0 + 29)"
+        },
+        "power": {
+          "PIN_POWER_EN": "(0 + 12)"
+        },
+        "gps": {
+          "PIN_GPS_REINIT": "(32 + 5)",
+          "PIN_GPS_STANDBY": "(32 + 2)",
+          "PIN_GPS_PPS": "(32 + 4)",
+          "GPS_TX_PIN": "(32 + 8)",
+          "GPS_RX_PIN": "(32 + 9)"
+        },
+        "uart": {
+          "PIN_SERIAL1_RX": "GPS_RX_PIN",
+          "PIN_SERIAL1_TX": "GPS_TX_PIN"
+        },
+        "audio": {
+          "PIN_BUZZER": "(0 + 6)"
+        }
+      },
+      "config": {
+        "system": {
+          "PINS_COUNT": "(48)"
+        },
+        "led": {
+          "LED_CONN": "LED_GREEN",
+          "LED_STATE_ON": "0"
+        },
+        "button": {
+          "BUTTON_ACTIVE_LOW": "true",
+          "BUTTON_ACTIVE_PULLUP": "true"
+        },
+        "touch": {
+          "BUTTON_TOUCH_ACTIVE_LOW": "true"
+        },
+        "battery": {
+          "BATTERY_SENSE_RESOLUTION_BITS": "12",
+          "ADC_MULTIPLIER": "(2.0F)"
+        },
+        "i2c": {
+          "WIRE_INTERFACES_COUNT": "1"
+        },
+        "lora": {
+          "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
+        },
+        "spi": {
+          "SPI_INTERFACES_COUNT": "2"
+        },
+        "gps": {
+          "GPS_THREAD_INTERVAL": "50"
+        },
+        "rtc": {
+          "HAS_RTC": "1"
+        }
+      },
+      "other": {
+        "VARIANT_MCK": "(64000000ul)",
+        "NUM_DIGITAL_PINS": "(48)",
+        "NUM_ANALOG_INPUTS": "(1)",
+        "NUM_ANALOG_OUTPUTS": "(0)",
+        "BUTTON_TOUCH_ACTIVE_PULLUP": "true",
+        "BUTTON_CLICK_MS": "400",
+        "BUTTON_TOUCH_MS": "200",
+        "ADC_RESOLUTION": "14",
+        "BATTERY_SENSE_RESOLUTION": "4096.0",
+        "TP_SER_IO": "(0 + 11)",
+        "EXTERNAL_FLASH_DEVICES": "MX25R1635F",
+        "PIN_EINK_BL": "(32 + 11)",
+        "PIN_DRV_EN": "(0 + 8)",
+        "HAS_DRV2605": "1"
       }
     },
     "wio-sdk-wm1110": {
@@ -7915,6 +8371,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "i2c": {
@@ -7932,7 +8389,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "Serial": "Serial1",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
@@ -7992,6 +8448,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -8014,7 +8471,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -8129,6 +8585,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)",
           "HAS_ETHERNET": "1"
         },
@@ -8156,7 +8613,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -8180,6 +8636,9 @@
           "LED_BLUE": "PIN_LED1",
           "LED_GREEN": "PIN_LED1",
           "LED_BUILTIN": "LED_GREEN"
+        },
+        "neopixel": {
+          "NEOPIXEL_DATA": "14"
         },
         "button": {
           "PIN_BUTTON1": "(32 + 10)"
@@ -8237,6 +8696,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)",
           "PERIPHERAL_WARMUP_MS": "1000"
         },
@@ -8245,6 +8705,9 @@
         },
         "other": {
           "HAS_NEOPIXEL": ""
+        },
+        "neopixel": {
+          "NEOPIXEL_COUNT": "2"
         },
         "i2c": {
           "WIRE_INTERFACES_COUNT": "2"
@@ -8258,10 +8721,6 @@
         "gps": {
           "GPS_THREAD_INTERVAL": "50"
         },
-        "rtc": {
-          "PCF8563_RTC": "0x51",
-          "HAS_RTC": "0"
-        },
         "spi": {
           "SPI_INTERFACES_COUNT": "2"
         },
@@ -8273,12 +8732,9 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(1)",
         "NUM_ANALOG_OUTPUTS": "(0)",
-        "NEOPIXEL_COUNT": "2",
-        "NEOPIXEL_DATA": "14",
         "NEOPIXEL_TYPE": "(NEO_GRB + NEO_KHZ800)",
         "GPS_RESET_MODE": "LOW",
         "ADC_RESOLUTION": "14",
@@ -8296,6 +8752,9 @@
           "LED_CHARGE": "(12)",
           "LED_PAIRING": "(7)",
           "PIN_LED2": "LED_PAIRING"
+        },
+        "expansion": {
+          "EXT_PWR_DETECT": "(13)"
         },
         "button": {
           "PIN_BUTTON1": "(17)"
@@ -8375,9 +8834,6 @@
           "GPS_BAUDRATE": "9600",
           "GPS_THREAD_INTERVAL": "50"
         },
-        "rtc": {
-          "PCF8563_RTC": "0x51"
-        },
         "spi": {
           "SPI_INTERFACES_COUNT": "1"
         }
@@ -8388,7 +8844,6 @@
         "NUM_ANALOG_INPUTS": "(1)",
         "NUM_ANALOG_OUTPUTS": "(0)",
         "LED_STATE_OFF": "LOW",
-        "EXT_PWR_DETECT": "(13)",
         "ADC_RESOLUTION": "14",
         "BATTERY_SENSE_SAMPLES": "30",
         "EXT_CHRG_DETECT": "(15)",
@@ -8491,6 +8946,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -8510,11 +8966,13 @@
         "battery": {
           "BATTERY_SENSE_RESOLUTION_BITS": "12",
           "ADC_MULTIPLIER": "1.73"
+        },
+        "display": {
+          "HAS_SCREEN": "0"
         }
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -8535,6 +8993,9 @@
           "PIN_POWER_CHRG": "32",
           "PIN_EN1": "36",
           "PIN_EN2": "34"
+        },
+        "expansion": {
+          "EXT_PWR_DETECT": "PIN_POWER_USB"
         },
         "led": {
           "red_LED_PIN": "33",
@@ -8590,6 +9051,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -8612,20 +9074,15 @@
         },
         "lora": {
           "LR11X0_DIO3_TCXO_VOLTAGE": "3.3"
-        },
-        "rtc": {
-          "PCF8563_RTC": "0x51"
         }
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "ELECROW_ThinkNode_M3": "1",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(1)",
         "NUM_ANALOG_OUTPUTS": "(0)",
         "GPS_POWER": "14",
-        "EXT_PWR_DETECT": "PIN_POWER_USB",
         "KEY_POWER": "16",
         "ACC_POWER": "2",
         "DHT_POWER": "3",
@@ -8648,6 +9105,9 @@
           "LED_GREEN": "PIN_LED1",
           "LED_BUILTIN": "LED_GREEN"
         },
+        "neopixel": {
+          "NEOPIXEL_DATA": "(32 + 15)"
+        },
         "button": {
           "PIN_BUTTON1": "(32 + 10)"
         },
@@ -8661,7 +9121,9 @@
           "PIN_WIRE_SDA": "(0 + 6)",
           "PIN_WIRE_SCL": "(0 + 26)",
           "PIN_WIRE1_SDA": "(0 + 30)",
-          "PIN_WIRE1_SCL": "(0 + 5)"
+          "PIN_WIRE1_SCL": "(0 + 5)",
+          "BQ4050_SDA_PIN": "(32 + 1)",
+          "BQ4050_SCL_PIN": "(32 + 0)"
         },
         "lora": {
           "SX126X_CS": "(0 + 24)",
@@ -8684,6 +9146,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)",
           "PERIPHERAL_WARMUP_MS": "1000"
         },
@@ -8692,6 +9155,9 @@
         },
         "other": {
           "HAS_NEOPIXEL": ""
+        },
+        "neopixel": {
+          "NEOPIXEL_COUNT": "1"
         },
         "i2c": {
           "WIRE_INTERFACES_COUNT": "2"
@@ -8704,22 +9170,14 @@
         },
         "gps": {
           "GPS_THREAD_INTERVAL": "50"
-        },
-        "rtc": {
-          "HAS_RTC": "0"
         }
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(1)",
         "NUM_ANALOG_OUTPUTS": "(0)",
-        "NEOPIXEL_COUNT": "1",
-        "NEOPIXEL_DATA": "(32 + 15)",
         "NEOPIXEL_TYPE": "(NEO_GRB + NEO_KHZ800)",
-        "BQ4050_SDA_PIN": "(32 + 1)",
-        "BQ4050_SCL_PIN": "(32 + 0)",
         "BQ4050_EMERGENCY_SHUTDOWN_PIN": "(32 + 3)"
       }
     },
@@ -8795,6 +9253,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -8817,7 +9276,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -8910,6 +9368,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -8919,6 +9378,9 @@
         "button": {
           "BUTTON_ACTIVE_LOW": "true",
           "BUTTON_ACTIVE_PULLUP": "true"
+        },
+        "touch": {
+          "BUTTON_TOUCH_ACTIVE_LOW": "true"
         },
         "i2c": {
           "WIRE_INTERFACES_COUNT": "1"
@@ -8943,11 +9405,9 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(1)",
         "NUM_ANALOG_OUTPUTS": "(0)",
-        "BUTTON_TOUCH_ACTIVE_LOW": "true",
         "BUTTON_TOUCH_ACTIVE_PULLUP": "true",
         "BUTTON_CLICK_MS": "400",
         "BUTTON_TOUCH_MS": "200",
@@ -9022,6 +9482,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -9047,7 +9508,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -9118,6 +9578,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -9127,6 +9588,9 @@
         "button": {
           "BUTTON_ACTIVE_LOW": "0",
           "BUTTON_ACTIVE_PULLUP": "0"
+        },
+        "touch": {
+          "BUTTON_SENSE_TYPE": "INPUT_SENSE_HIGH"
         },
         "spi": {
           "SPI_INTERFACES_COUNT": "1"
@@ -9151,11 +9615,9 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(1)",
         "NUM_ANALOG_OUTPUTS": "(0)",
-        "BUTTON_SENSE_TYPE": "INPUT_SENSE_HIGH",
         "ADC_RESOLUTION": "14",
         "NRF_ON": "(29)",
         "BATTERY_SENSE_RESOLUTION": "4096.0",
@@ -9262,6 +9724,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)",
           "HAS_ETHERNET": "1"
         },
@@ -9289,7 +9752,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -9374,6 +9836,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -9382,6 +9845,9 @@
         "button": {
           "BUTTON_ACTIVE_LOW": "false",
           "BUTTON_ACTIVE_PULLUP": "false"
+        },
+        "touch": {
+          "BUTTON_SENSE_TYPE": "INPUT_SENSE_HIGH"
         },
         "i2c": {
           "WIRE_INTERFACES_COUNT": "1"
@@ -9404,12 +9870,10 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "BLE_DFU_SECURE": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
-        "BUTTON_SENSE_TYPE": "INPUT_SENSE_HIGH",
         "HAS_WIRE": "0",
         "USER_DEBUG_PORT": "Serial2",
         "GPS_RESET_MODE": "HIGH",
@@ -9571,13 +10035,13 @@
           "SX126X_TXEN": "RADIOLIB_NC"
         },
         "gps": {
-          "PIN_GPS_TX": "D6",
-          "PIN_GPS_RX": "D7",
+          "GPS_TX_PIN": "D6",
+          "GPS_RX_PIN": "D7",
           "PIN_GPS_STANDBY": "D0"
         },
         "uart": {
-          "PIN_SERIAL1_TX": "PIN_GPS_TX",
-          "PIN_SERIAL1_RX": "PIN_GPS_RX",
+          "PIN_SERIAL1_TX": "GPS_TX_PIN",
+          "PIN_SERIAL1_RX": "GPS_RX_PIN",
           "PIN_SERIAL2_RX": "(-1)",
           "PIN_SERIAL2_TX": "(-1)"
         },
@@ -9592,6 +10056,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(33u)"
         },
         "led": {
@@ -9624,7 +10089,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(33u)",
         "NUM_ANALOG_INPUTS": "(8u)",
         "NUM_ANALOG_OUTPUTS": "(0u)",
@@ -9674,6 +10138,8 @@
           "LED_BLUE": "PIN_LED2"
         },
         "button": {
+          "TB_UP": "(0 + 21)",
+          "TB_PRESS": "(0 + 10)",
           "CANCEL_BUTTON_PIN": "(0 + 15)"
         },
         "gps": {
@@ -9725,6 +10191,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "i2c": {
@@ -9735,6 +10202,10 @@
         },
         "led": {
           "LED_STATE_ON": "0"
+        },
+        "touch": {
+          "CANCEL_BUTTON_ACTIVE_LOW": "true",
+          "CANCEL_BUTTON_ACTIVE_PULLUP": "false"
         },
         "spi": {
           "SPI_INTERFACES_COUNT": "1"
@@ -9753,21 +10224,16 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
         "COMPASS_ORIENTATION": "meshtastic_Config_DisplayConfig_CompassOrientation_DEGREES_270",
         "HAS_ICM20948": "",
         "HAS_TRACKBALL": "1",
-        "TB_UP": "(0 + 21)",
         "TB_DOWN": "(0 + 17)",
         "TB_LEFT": "(32 + 05)",
         "TB_RIGHT": "(0 + 16)",
-        "TB_PRESS": "(0 + 10)",
         "TB_DIRECTION": "FALLING",
-        "CANCEL_BUTTON_ACTIVE_LOW": "true",
-        "CANCEL_BUTTON_ACTIVE_PULLUP": "false",
         "SWITCH_MODE1": "(32 + 9)",
         "SWITCH_MODE2": "(0 + 12)",
         "BATTERY_CHARGING_INV": "(32 + 02)",
@@ -9835,6 +10301,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "i2c": {
@@ -9852,7 +10319,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -9891,9 +10357,6 @@
         "i2c": {
           "PIN_WIRE_SDA": "(26)",
           "PIN_WIRE_SCL": "(27)"
-        },
-        "rtc": {
-          "PIN_RTC_INT": "(0 + 16)"
         },
         "qspi": {
           "PIN_QSPI_SCK": "(32 + 14)",
@@ -9940,10 +10403,14 @@
         "uart": {
           "PIN_SERIAL1_RX": "GPS_RX_PIN",
           "PIN_SERIAL1_TX": "GPS_TX_PIN"
+        },
+        "rtc": {
+          "PIN_RTC_INT": "(0 + 16)"
         }
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -9953,6 +10420,9 @@
         "button": {
           "BUTTON_ACTIVE_LOW": "true",
           "BUTTON_ACTIVE_PULLUP": "true"
+        },
+        "touch": {
+          "BUTTON_TOUCH_ACTIVE_LOW": "true"
         },
         "i2c": {
           "WIRE_INTERFACES_COUNT": "1"
@@ -9977,11 +10447,9 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(1)",
         "NUM_ANALOG_OUTPUTS": "(0)",
-        "BUTTON_TOUCH_ACTIVE_LOW": "true",
         "BUTTON_TOUCH_ACTIVE_PULLUP": "true",
         "BUTTON_CLICK_MS": "400",
         "BUTTON_TOUCH_MS": "200",
@@ -10070,6 +10538,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -10099,7 +10568,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -10175,6 +10643,9 @@
           "AREF_VOLTAGE": "3.0",
           "VBAT_AR_INTERNAL": "AR_INTERNAL_3_0"
         },
+        "expansion": {
+          "EXT_PWR_DETECT": "(0 + 5)"
+        },
         "audio": {
           "BUZZER_EN_PIN": "(32 + 5)",
           "PIN_BUZZER": "(0 + 25)"
@@ -10182,6 +10653,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -10190,6 +10662,9 @@
         "button": {
           "BUTTON_ACTIVE_LOW": "false",
           "BUTTON_ACTIVE_PULLUP": "false"
+        },
+        "touch": {
+          "BUTTON_SENSE_TYPE": "0x5"
         },
         "i2c": {
           "WIRE_INTERFACES_COUNT": "1"
@@ -10215,11 +10690,9 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
-        "BUTTON_SENSE_TYPE": "0x5",
         "HAS_WIRE": "1",
         "I2C_NO_RESCAN": "",
         "HAS_QMA6100P": "",
@@ -10231,7 +10704,6 @@
         "GPS_RESETB_OUT": "(32 + 14)",
         "EXT_CHRG_DETECT": "(32 + 3)",
         "EXT_CHRG_DETECT_VALUE": "LOW",
-        "EXT_PWR_DETECT": "(0 + 5)",
         "ADC_RESOLUTION": "14",
         "OCV_ARRAY": "4190, 4042, 3957, 3885, 3820, 3776, 3746, 3725, 3696, 3644, 3100"
       }
@@ -10249,7 +10721,9 @@
           "LED_BLUE": "PIN_LED2"
         },
         "button": {
-          "CANCEL_BUTTON_PIN": "D13"
+          "CANCEL_BUTTON_PIN": "D13",
+          "TB_UP": "25",
+          "TB_PRESS": "29"
         },
         "analog": {
           "PIN_A0": "0",
@@ -10293,15 +10767,13 @@
           "PIN_EINK_EN": "14"
         },
         "gps": {
-          "PIN_GPS_RX": "D6",
-          "PIN_GPS_TX": "D7",
-          "GPS_RX_PIN": "PIN_GPS_TX",
-          "GPS_TX_PIN": "PIN_GPS_RX",
+          "GPS_TX_PIN": "D6",
+          "GPS_RX_PIN": "D7",
           "PIN_GPS_STANDBY": "D0"
         },
         "uart": {
-          "PIN_SERIAL1_RX": "PIN_GPS_TX",
-          "PIN_SERIAL1_TX": "PIN_GPS_RX",
+          "PIN_SERIAL1_RX": "GPS_RX_PIN",
+          "PIN_SERIAL1_TX": "GPS_TX_PIN",
           "PIN_SERIAL2_RX": "(-1)",
           "PIN_SERIAL2_TX": "(-1)"
         },
@@ -10319,11 +10791,16 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(38u)"
         },
         "led": {
           "LED_CONN": "PIN_LED2",
           "LED_STATE_ON": "1"
+        },
+        "touch": {
+          "CANCEL_BUTTON_ACTIVE_LOW": "true",
+          "CANCEL_BUTTON_ACTIVE_PULLUP": "false"
         },
         "i2c": {
           "WIRE_INTERFACES_COUNT": "1"
@@ -10350,12 +10827,9 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(38u)",
         "NUM_ANALOG_INPUTS": "(8u)",
         "NUM_ANALOG_OUTPUTS": "(0u)",
-        "CANCEL_BUTTON_ACTIVE_LOW": "true",
-        "CANCEL_BUTTON_ACTIVE_PULLUP": "false",
         "D0": "0",
         "D1": "1",
         "D2": "2",
@@ -10378,11 +10852,9 @@
         "OCV_ARRAY": "4200, 3876, 3826, 3763, 3713, 3660, 3573, 3485, 3422, 3359, 3300",
         "EXTERNAL_FLASH_DEVICES": "P25Q16H",
         "HAS_TRACKBALL": "1",
-        "TB_UP": "25",
         "TB_DOWN": "26",
         "TB_LEFT": "27",
         "TB_RIGHT": "28",
-        "TB_PRESS": "29",
         "TB_DIRECTION": "FALLING",
         "CANNED_MESSAGE_ADD_CONFIRMATION": "1"
       }
@@ -10439,6 +10911,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -10461,7 +10934,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -10482,7 +10954,9 @@
           "LED_BLUE": "PIN_LED2"
         },
         "button": {
-          "CANCEL_BUTTON_PIN": "D13"
+          "CANCEL_BUTTON_PIN": "D13",
+          "TB_UP": "25",
+          "TB_PRESS": "29"
         },
         "analog": {
           "PIN_A0": "0",
@@ -10516,15 +10990,13 @@
           "SX126X_TXEN": "RADIOLIB_NC"
         },
         "gps": {
-          "PIN_GPS_RX": "D6",
-          "PIN_GPS_TX": "D7",
-          "GPS_RX_PIN": "PIN_GPS_TX",
-          "GPS_TX_PIN": "PIN_GPS_RX",
+          "GPS_TX_PIN": "D6",
+          "GPS_RX_PIN": "D7",
           "PIN_GPS_STANDBY": "D0"
         },
         "uart": {
-          "PIN_SERIAL1_RX": "PIN_GPS_TX",
-          "PIN_SERIAL1_TX": "PIN_GPS_RX",
+          "PIN_SERIAL1_RX": "GPS_RX_PIN",
+          "PIN_SERIAL1_TX": "GPS_TX_PIN",
           "PIN_SERIAL2_RX": "(-1)",
           "PIN_SERIAL2_TX": "(-1)"
         },
@@ -10542,11 +11014,16 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(33u)"
         },
         "led": {
           "LED_CONN": "PIN_LED2",
           "LED_STATE_ON": "1"
+        },
+        "touch": {
+          "CANCEL_BUTTON_ACTIVE_LOW": "true",
+          "CANCEL_BUTTON_ACTIVE_PULLUP": "false"
         },
         "i2c": {
           "WIRE_INTERFACES_COUNT": "2"
@@ -10576,12 +11053,9 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(33u)",
         "NUM_ANALOG_INPUTS": "(8u)",
         "NUM_ANALOG_OUTPUTS": "(0u)",
-        "CANCEL_BUTTON_ACTIVE_LOW": "true",
-        "CANCEL_BUTTON_ACTIVE_PULLUP": "false",
         "D0": "0",
         "D1": "1",
         "D2": "2",
@@ -10604,11 +11078,9 @@
         "EXTERNAL_FLASH_DEVICES": "P25Q16H",
         "CANNED_MESSAGE_ADD_CONFIRMATION": "1",
         "HAS_TRACKBALL": "1",
-        "TB_UP": "25",
         "TB_DOWN": "26",
         "TB_LEFT": "27",
         "TB_RIGHT": "28",
-        "TB_PRESS": "29",
         "TB_DIRECTION": "FALLING"
       }
     },
@@ -10694,6 +11166,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)",
           "HAS_ETHERNET": "1"
         },
@@ -10719,7 +11192,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -10786,6 +11258,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -10815,7 +11288,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(1)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -10899,6 +11371,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -10924,7 +11397,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -11000,6 +11472,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -11019,7 +11492,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -11043,6 +11515,9 @@
           "LED_GREEN": "PIN_LED2",
           "LED_BUILTIN": "LED_BLUE"
         },
+        "expansion": {
+          "EXT_PWR_DETECT": "(32 + 3)"
+        },
         "analog": {
           "ADC_V": "(0 + 8)",
           "PIN_A0": "(4)",
@@ -11065,9 +11540,6 @@
         "i2c": {
           "PIN_WIRE_SDA": "(26)",
           "PIN_WIRE_SCL": "(27)"
-        },
-        "rtc": {
-          "PIN_RTC_INT": "(0 + 16)"
         },
         "qspi": {
           "PIN_QSPI_SCK": "(32 + 14)",
@@ -11118,11 +11590,15 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
           "LED_CONN": "PIN_GREEN",
           "LED_STATE_ON": "0"
+        },
+        "touch": {
+          "ALT_BUTTON_ACTIVE_LOW": "true"
         },
         "i2c": {
           "WIRE_INTERFACES_COUNT": "1"
@@ -11135,9 +11611,6 @@
           "GPS_BAUDRATE": "9600",
           "GPS_THREAD_INTERVAL": "50"
         },
-        "rtc": {
-          "PCF8563_RTC": "0x51"
-        },
         "spi": {
           "SPI_INTERFACES_COUNT": "2"
         },
@@ -11148,12 +11621,9 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(1)",
         "NUM_ANALOG_OUTPUTS": "(0)",
-        "EXT_PWR_DETECT": "(32 + 3)",
-        "ALT_BUTTON_ACTIVE_LOW": "true",
         "ALT_BUTTON_ACTIVE_PULLUP": "true",
         "ADC_RESOLUTION": "14",
         "BATTERY_SENSE_SAMPLES": "30",
@@ -11179,6 +11649,9 @@
         "button": {
           "PIN_BUTTON1": "(32 + 6)"
         },
+        "expansion": {
+          "EXT_NOTIFY_OUT": "(0 + 4)"
+        },
         "analog": {
           "PIN_A4": "(0 + 2)",
           "BATTERY_PIN": "PIN_A4",
@@ -11188,15 +11661,12 @@
         "uart": {
           "PIN_SERIAL2_RX": "(0 + 22)",
           "PIN_SERIAL2_TX": "(0 + 20)",
-          "PIN_SERIAL1_TX": "PIN_GPS_TX",
-          "PIN_SERIAL1_RX": "PIN_GPS_RX"
+          "PIN_SERIAL1_TX": "GPS_TX_PIN",
+          "PIN_SERIAL1_RX": "GPS_RX_PIN"
         },
         "i2c": {
           "PIN_WIRE_SDA": "(0 + 17)",
           "PIN_WIRE_SCL": "(0 + 15)"
-        },
-        "rtc": {
-          "PIN_RTC_INT": "(0 + 14)"
         },
         "qspi": {
           "PIN_QSPI_SCK": "(0 + 8)",
@@ -11214,8 +11684,11 @@
         },
         "gps": {
           "PIN_GPS_STANDBY": "(0 + 13)",
-          "PIN_GPS_TX": "(0 + 10)",
-          "PIN_GPS_RX": "(0 + 9)"
+          "GPS_TX_PIN": "(0 + 10)",
+          "GPS_RX_PIN": "(0 + 9)"
+        },
+        "rtc": {
+          "PIN_RTC_INT": "(0 + 14)"
         },
         "spi": {
           "PIN_SPI_MISO": "(32 + 9)",
@@ -11225,6 +11698,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -11251,11 +11725,9 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(1)",
         "NUM_ANALOG_OUTPUTS": "(0)",
-        "EXT_NOTIFY_OUT": "(0 + 4)",
         "ADC_RESOLUTION": "14",
         "EXTERNAL_FLASH_DEVICES": "W25Q16JV_IQ",
         "BATTERY_SENSE_RESOLUTION": "4096.0"
@@ -11353,6 +11825,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -11379,7 +11852,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -11406,6 +11878,9 @@
           "LED_BLUE": "PIN_LED1",
           "LED_GREEN": "PIN_LED2",
           "LED_BUILTIN": "LED_BLUE"
+        },
+        "expansion": {
+          "EXT_PWR_DETECT": "(32 + 3)"
         },
         "analog": {
           "ADC_V": "(0 + 8)",
@@ -11482,11 +11957,15 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
           "LED_CONN": "PIN_GREEN",
           "LED_STATE_ON": "0"
+        },
+        "touch": {
+          "ALT_BUTTON_ACTIVE_LOW": "true"
         },
         "i2c": {
           "WIRE_INTERFACES_COUNT": "1"
@@ -11512,12 +11991,9 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(1)",
         "NUM_ANALOG_OUTPUTS": "(0)",
-        "EXT_PWR_DETECT": "(32 + 3)",
-        "ALT_BUTTON_ACTIVE_LOW": "true",
         "ALT_BUTTON_ACTIVE_PULLUP": "true",
         "ADC_RESOLUTION": "14",
         "BATTERY_SENSE_SAMPLES": "30",
@@ -11574,8 +12050,8 @@
           "PIN_SPI_SCK": "D8"
         },
         "gps": {
-          "PIN_GPS_TX": "D6",
-          "PIN_GPS_RX": "D7",
+          "GPS_TX_PIN": "D6",
+          "GPS_RX_PIN": "D7",
           "PIN_GPS_STANDBY": "D0"
         },
         "i2c": {
@@ -11588,6 +12064,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(33)"
         },
         "led": {
@@ -11615,7 +12092,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(33)",
         "NUM_ANALOG_INPUTS": "(8)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -11694,6 +12170,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -11716,14 +12193,10 @@
         },
         "gps": {
           "HAS_GPS": "0"
-        },
-        "rtc": {
-          "HAS_RTC": "0"
         }
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(1)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -11812,14 +12285,22 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
           "LED_CONN": "PIN_LED2",
           "LED_STATE_ON": "1"
         },
+        "button": {
+          "UPDOWN_LONG_PRESS_REPEAT_INTERVAL": "150"
+        },
         "other": {
           "CANNED_MESSAGE_MODULE_ENABLE": "1"
+        },
+        "touch": {
+          "CANCEL_BUTTON_ACTIVE_LOW": "true",
+          "CANCEL_BUTTON_ACTIVE_PULLUP": "false"
         },
         "spi": {
           "SPI_INTERFACES_COUNT": "2"
@@ -11841,13 +12322,9 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
-        "UPDOWN_LONG_PRESS_REPEAT_INTERVAL": "150",
-        "CANCEL_BUTTON_ACTIVE_LOW": "true",
-        "CANCEL_BUTTON_ACTIVE_PULLUP": "false",
         "ADC_RESOLUTION": "14",
         "EXTERNAL_FLASH_DEVICES": "IS25LP080D",
         "BATTERY_SENSE_RESOLUTION": "4096.0"
@@ -11906,6 +12383,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "led": {
@@ -11925,7 +12403,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(6)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -11993,6 +12470,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(33)"
         },
         "led": {
@@ -12020,7 +12498,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(33)",
         "NUM_ANALOG_INPUTS": "(8)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -12208,6 +12685,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(33)"
         },
         "led": {
@@ -12230,7 +12708,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(33)",
         "NUM_ANALOG_INPUTS": "(8)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -12304,6 +12781,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "battery": {
@@ -12329,7 +12807,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(1)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -12479,6 +12956,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(48)"
         },
         "battery": {
@@ -12505,7 +12983,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(48)",
         "NUM_ANALOG_INPUTS": "(1)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -12542,13 +13019,13 @@
           "BUTTON_PIN": "(32 + 0)"
         },
         "gps": {
-          "PIN_GPS_TX": "(0 + 20)",
-          "PIN_GPS_RX": "(0 + 22)",
+          "GPS_TX_PIN": "(0 + 20)",
+          "GPS_RX_PIN": "(0 + 22)",
           "PIN_GPS_EN": "(0 + 24)"
         },
         "uart": {
-          "PIN_SERIAL1_TX": "PIN_GPS_TX",
-          "PIN_SERIAL1_RX": "PIN_GPS_RX",
+          "PIN_SERIAL1_TX": "GPS_TX_PIN",
+          "PIN_SERIAL1_RX": "GPS_RX_PIN",
           "PIN_SERIAL2_RX": "(0 + 6)",
           "PIN_SERIAL2_TX": "(0 + 8)"
         },
@@ -12612,7 +13089,8 @@
         "lora": {
           "SX126X_DIO2_AS_RF_SWITCH": "",
           "LR11X0_DIO3_TCXO_VOLTAGE": "1.8",
-          "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
+          "SX126X_DIO3_TCXO_VOLTAGE": "1.8",
+          "TCXO_OPTIONAL": ""
         }
       },
       "other": {
@@ -12622,8 +13100,7 @@
         "NUM_ANALOG_INPUTS": "(1)",
         "NUM_ANALOG_OUTPUTS": "(0)",
         "ADC_RESOLUTION": "14",
-        "BATTERY_SENSE_RESOLUTION": "4096.0",
-        "TCXO_OPTIONAL": ""
+        "BATTERY_SENSE_RESOLUTION": "4096.0"
       }
     },
     "xiao_ble_gps": {
@@ -12701,6 +13178,7 @@
       },
       "config": {
         "system": {
+          "USE_LFXO": "",
           "PINS_COUNT": "(33)"
         },
         "led": {
@@ -12723,7 +13201,6 @@
       },
       "other": {
         "VARIANT_MCK": "(64000000ul)",
-        "USE_LFXO": "",
         "NUM_DIGITAL_PINS": "(33)",
         "NUM_ANALOG_INPUTS": "(8)",
         "NUM_ANALOG_OUTPUTS": "(0)",
@@ -12797,6 +13274,9 @@
         "audio": {
           "PIN_BUZZER": "11"
         },
+        "neopixel": {
+          "NEOPIXEL_DATA": "2"
+        },
         "lora": {
           "LORA_MISO": "22",
           "LORA_SCK": "20",
@@ -12824,6 +13304,9 @@
           "HAS_NEOPIXEL": "",
           "SCREEN_TRANSITION_FRAMERATE": "10"
         },
+        "neopixel": {
+          "NEOPIXEL_COUNT": "1"
+        },
         "lora": {
           "SX126X_DIO3_TCXO_VOLTAGE": "3.0"
         },
@@ -12832,8 +13315,6 @@
         }
       },
       "other": {
-        "NEOPIXEL_COUNT": "1",
-        "NEOPIXEL_DATA": "2",
         "NEOPIXEL_TYPE": "(NEO_GRB + NEO_KHZ800)",
         "ENABLE_AMBIENTLIGHTING": ""
       }
@@ -12903,6 +13384,9 @@
         "button": {
           "BUTTON_PIN": "18"
         },
+        "expansion": {
+          "EXT_NOTIFY_OUT": "22"
+        },
         "led": {
           "LED_PIN": "PIN_LED"
         },
@@ -12947,8 +13431,7 @@
       "other": {
         "USE_SH1106": "1",
         "RESET_OLED": "13",
-        "INA219_MULTIPLIER": "10.0f",
-        "EXT_NOTIFY_OUT": "22"
+        "INA219_MULTIPLIER": "10.0f"
       }
     },
     "rp2040-lora": {
@@ -12956,6 +13439,9 @@
       "board": "rp2040-lora",
       "family": "rp2040",
       "pins": {
+        "expansion": {
+          "EXT_NOTIFY_OUT": "22"
+        },
         "button": {
           "BUTTON_PIN": "-1"
         },
@@ -12987,7 +13473,6 @@
         }
       },
       "other": {
-        "EXT_NOTIFY_OUT": "22",
         "HAS_CPU_SHUTDOWN": "1"
       }
     },
@@ -13023,6 +13508,9 @@
       "board": "challenger_2040_lora",
       "family": "rp2040",
       "pins": {
+        "expansion": {
+          "EXT_NOTIFY_OUT": "0xFFFFFFFF"
+        },
         "button": {
           "BUTTON_PIN": "0xFFFFFFFF"
         },
@@ -13052,15 +13540,16 @@
           "USE_RF95": ""
         }
       },
-      "other": {
-        "EXT_NOTIFY_OUT": "0xFFFFFFFF"
-      }
+      "other": {}
     },
     "rpipico": {
       "file": "rp2040/rpipico/variant.h",
       "board": "rpipico",
       "family": "rp2040",
       "pins": {
+        "expansion": {
+          "EXT_NOTIFY_OUT": "22"
+        },
         "button": {
           "BUTTON_PIN": "17"
         },
@@ -13095,15 +13584,16 @@
           "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
         }
       },
-      "other": {
-        "EXT_NOTIFY_OUT": "22"
-      }
+      "other": {}
     },
     "rpipicow": {
       "file": "rp2040/rpipicow/variant.h",
       "board": "rpipicow",
       "family": "rp2040",
       "pins": {
+        "expansion": {
+          "EXT_NOTIFY_OUT": "22"
+        },
         "button": {
           "BUTTON_PIN": "17"
         },
@@ -13141,15 +13631,16 @@
           "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
         }
       },
-      "other": {
-        "EXT_NOTIFY_OUT": "22"
-      }
+      "other": {}
     },
     "rp2040-lora-slowclock": {
       "file": "rp2040/rp2040-lora-slowclock/variant.h",
       "board": "rp2040-lora-slowclock",
       "family": "rp2040",
       "pins": {
+        "expansion": {
+          "EXT_NOTIFY_OUT": "22"
+        },
         "led": {
           "LED_PIN": "PIN_LED"
         },
@@ -13181,9 +13672,7 @@
           "SX126X_DIO2_AS_RF_SWITCH": ""
         }
       },
-      "other": {
-        "EXT_NOTIFY_OUT": "22"
-      }
+      "other": {}
     },
     "ec_catsniffer": {
       "file": "rp2040/ec_catsniffer/variant.h",
@@ -13258,6 +13747,9 @@
       "board": "feather_rp2040_rfm95",
       "family": "rp2040",
       "pins": {
+        "expansion": {
+          "EXT_NOTIFY_OUT": "22"
+        },
         "button": {
           "BUTTON_PIN": "7"
         },
@@ -13287,9 +13779,7 @@
           "USE_RF95": ""
         }
       },
-      "other": {
-        "EXT_NOTIFY_OUT": "22"
-      }
+      "other": {}
     },
     "rak11310": {
       "file": "rp2040/rak11310/variant.h",
@@ -13484,145 +13974,6 @@
         },
         "system": {
           "PERIPHERAL_WARMUP_MS": "1000"
-        }
-      }
-    },
-    "tlora-pager_ru": {
-      "file": "esp32s3/tlora-pager/variant.h",
-      "board": "esp32s3/tlora-pager_ru",
-      "family": "esp32s3",
-      "is_alias": true,
-      "alias_of": "tlora-pager",
-      "pins": {
-        "display": {
-          "TFT_CS": "38",
-          "ST7796_CS": "TFT_CS",
-          "ST7796_RS": "37",
-          "ST7796_SDA": "34",
-          "ST7796_SCK": "35",
-          "ST7796_RESET": "-1",
-          "ST7796_MISO": "33",
-          "ST7796_BUSY": "-1",
-          "ST7796_BL": "42",
-          "TFT_BL": "42"
-        },
-        "i2c": {
-          "I2C_SDA": "3",
-          "I2C_SCL": "2",
-          "BQ27220_I2C_SDA": "3",
-          "BQ27220_I2C_SCL": "2"
-        },
-        "gps": {
-          "GPS_RX_PIN": "4",
-          "GPS_TX_PIN": "12",
-          "PIN_GPS_PPS": "13"
-        },
-        "rotary": {
-          "ROTARY_A": "(40)",
-          "ROTARY_B": "(41)",
-          "ROTARY_PRESS": "(7)"
-        },
-        "button": {
-          "BUTTON_PIN": "0"
-        },
-        "spi": {
-          "SPI_MOSI": "34",
-          "SPI_SCK": "35",
-          "SPI_MISO": "33",
-          "SPI_CS": "21"
-        },
-        "sdcard": {
-          "SDCARD_CS": "SPI_CS"
-        },
-        "keyboard": {
-          "KB_BL_PIN": "46",
-          "KB_INT": "6"
-        },
-        "audio": {
-          "DAC_I2S_BCK": "11",
-          "DAC_I2S_WS": "18",
-          "DAC_I2S_DOUT": "45",
-          "DAC_I2S_DIN": "17",
-          "DAC_I2S_MCLK": "10"
-        },
-        "nfc": {
-          "NFC_INT": "5",
-          "NFC_CS": "39"
-        },
-        "lora": {
-          "LORA_SCK": "35",
-          "LORA_MISO": "33",
-          "LORA_MOSI": "34",
-          "LORA_CS": "36",
-          "LORA_RESET": "47",
-          "LORA_DIO0": "-1",
-          "LORA_DIO1": "14",
-          "LORA_DIO2": "48",
-          "LORA_DIO3": "",
-          "SX126X_CS": "LORA_CS",
-          "SX126X_DIO1": "LORA_DIO1",
-          "SX126X_BUSY": "LORA_DIO2",
-          "SX126X_RESET": "LORA_RESET",
-          "SX128X_CS": "LORA_CS",
-          "SX128X_DIO1": "LORA_DIO1",
-          "SX128X_BUSY": "LORA_DIO2",
-          "SX128X_RESET": "LORA_RESET",
-          "LR1121_IRQ_PIN": "LORA_DIO1",
-          "LR1121_NRESET_PIN": "LORA_RESET",
-          "LR1121_BUSY_PIN": "LORA_DIO2",
-          "LR1121_SPI_NSS_PIN": "LORA_CS",
-          "LR1121_SPI_SCK_PIN": "LORA_SCK",
-          "LR1121_SPI_MOSI_PIN": "LORA_MOSI",
-          "LR1121_SPI_MISO_PIN": "LORA_MISO"
-        }
-      },
-      "config": {
-        "display": {
-          "ST7796_SPI_HOST": "SPI2_HOST",
-          "TFT_HEIGHT": "480",
-          "TFT_WIDTH": "222",
-          "TFT_OFFSET_X": "49",
-          "TFT_OFFSET_Y": "0",
-          "TFT_OFFSET_ROTATION": "3",
-          "BRIGHTNESS_DEFAULT": "130"
-        },
-        "spi": {
-          "SPI_FREQUENCY": "75000000",
-          "SPI_READ_FREQUENCY": "16000000",
-          "SD_SPI_FREQUENCY": "75000000U"
-        },
-        "other": {
-          "SCREEN_TRANSITION_FRAMERATE": "5",
-          "USE_TFTDISPLAY": "1",
-          "SLEEP_TIME": "120",
-          "CANNED_MESSAGE_MODULE_ENABLE": "1",
-          "HAS_PPM": "1",
-          "HAS_BQ27220": "1",
-          "BQ27220_DESIGN_CAPACITY": "1500",
-          "EXPANDS_DRV_EN": "(0)",
-          "EXPANDS_AMP_EN": "(1)",
-          "EXPANDS_KB_RST": "(2)",
-          "EXPANDS_LORA_EN": "(3)",
-          "EXPANDS_GPS_EN": "(4)",
-          "EXPANDS_NFC_EN": "(5)",
-          "EXPANDS_GPS_RST": "(7)",
-          "EXPANDS_KB_EN": "(8)",
-          "EXPANDS_GPIO_EN": "(9)",
-          "EXPANDS_SD_DET": "(10)",
-          "EXPANDS_SD_PULLEN": "(11)",
-          "EXPANDS_SD_EN": "(12)"
-        },
-        "gps": {
-          "HAS_GPS": "1",
-          "GPS_BAUDRATE": "38400"
-        },
-        "rtc": {
-          "PCF8563_RTC": "0x51",
-          "HAS_RTC": "1"
-        },
-        "lora": {
-          "SX126X_DIO3_TCXO_VOLTAGE": "3.0",
-          "LR11X0_DIO3_TCXO_VOLTAGE": "3.0"
         }
       }
     },
@@ -13956,6 +14307,9 @@
         "button": {
           "BUTTON_PIN": "38"
         },
+        "expansion": {
+          "EXT_NOTIFY_OUT": "13"
+        },
         "led": {
           "LED_PIN": "4"
         },
@@ -13998,6 +14352,9 @@
         "lora": {
           "USE_RF95": "",
           "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
+        },
+        "touch": {
+          "HAS_TOUCHSCREEN": "1"
         },
         "other": {
           "CANNED_MESSAGE_MODULE_ENABLE": "1",
@@ -14072,6 +14429,10 @@
         "analog": {
           "BATTERY_PIN": "35"
         },
+        "expansion": {
+          "EXT_PWR_DETECT": "4",
+          "EXT_NOTIFY_OUT": "12"
+        },
         "led": {
           "LED_PIN": "2"
         },
@@ -14109,111 +14470,6 @@
         }
       }
     },
-    "nrf52_promicro_diy_tcxo_ru": {
-      "file": "nrf52840/diy/nrf52_promicro_diy_tcxo/variant.h",
-      "board": "nrf52840/diy/nrf52_promicro_diy_tcxo_ru",
-      "family": "nrf52840",
-      "is_alias": true,
-      "alias_of": "nrf52_promicro_diy_tcxo",
-      "pins": {
-        "power": {
-          "PIN_3V3_EN": "(0 + 13)"
-        },
-        "analog": {
-          "BATTERY_PIN": "(0 + 31)",
-          "VBAT_MV_PER_LSB": "(0.73242188F)",
-          "VBAT_DIVIDER": "(0.6F)",
-          "VBAT_DIVIDER_COMP": "(1.73)",
-          "AREF_VOLTAGE": "3.0",
-          "VBAT_AR_INTERNAL": "AR_INTERNAL_3_0"
-        },
-        "i2c": {
-          "PIN_WIRE_SDA": "(32 + 4)",
-          "PIN_WIRE_SCL": "(0 + 11)"
-        },
-        "led": {
-          "PIN_LED1": "(0 + 15)",
-          "LED_BUILTIN": "PIN_LED1",
-          "LED_BLUE": "PIN_LED1"
-        },
-        "button": {
-          "BUTTON_PIN": "(32 + 0)"
-        },
-        "gps": {
-          "PIN_GPS_TX": "(0 + 20)",
-          "PIN_GPS_RX": "(0 + 22)",
-          "PIN_GPS_EN": "(0 + 24)"
-        },
-        "uart": {
-          "PIN_SERIAL1_TX": "PIN_GPS_TX",
-          "PIN_SERIAL1_RX": "PIN_GPS_RX",
-          "PIN_SERIAL2_RX": "(0 + 6)",
-          "PIN_SERIAL2_TX": "(0 + 8)"
-        },
-        "spi": {
-          "PIN_SPI_MISO": "(0 + 2)",
-          "PIN_SPI_MOSI": "(32 + 15)",
-          "PIN_SPI_SCK": "(32 + 11)"
-        },
-        "lora": {
-          "LORA_MISO": "PIN_SPI_MISO",
-          "LORA_MOSI": "PIN_SPI_MOSI",
-          "LORA_SCK": "PIN_SPI_SCK",
-          "LORA_CS": "(32 + 13)",
-          "LORA_DIO0": "(0 + 29)",
-          "LORA_DIO1": "(0 + 10)",
-          "LORA_RESET": "(0 + 9)",
-          "RF95_RXEN": "(0 + 17)",
-          "RF95_TXEN": "RADIOLIB_NC",
-          "SX126X_CS": "(32 + 13)",
-          "SX126X_DIO1": "(0 + 10)",
-          "SX126X_BUSY": "(0 + 29)",
-          "SX126X_RESET": "(0 + 9)",
-          "SX126X_RXEN": "(0 + 17)",
-          "SX126X_TXEN": "RADIOLIB_NC",
-          "LR1121_IRQ_PIN": "(0 + 10)",
-          "LR1121_NRESET_PIN": "LORA_RESET",
-          "LR1121_BUSY_PIN": "(0 + 29)",
-          "LR1121_SPI_NSS_PIN": "LORA_CS",
-          "LR1121_SPI_SCK_PIN": "LORA_SCK",
-          "LR1121_SPI_MOSI_PIN": "LORA_MOSI",
-          "LR1121_SPI_MISO_PIN": "LORA_MISO"
-        },
-        "eink": {
-          "PIN_EINK_CS": "(32 + 7)",
-          "PIN_EINK_DC": "(32 + 2)",
-          "PIN_EINK_RES": "(32 + 1)",
-          "PIN_EINK_BUSY": "(32 + 6)"
-        }
-      },
-      "config": {
-        "system": {
-          "PINS_COUNT": "(48)"
-        },
-        "battery": {
-          "ADC_CHANNEL": "ADC1_GPIO4_CHANNEL",
-          "BATTERY_SENSE_RESOLUTION_BITS": "12",
-          "ADC_MULTIPLIER": "VBAT_DIVIDER_COMP"
-        },
-        "analog": {
-          "REAL_VBAT_MV_PER_LSB": "(VBAT_DIVIDER_COMP * VBAT_MV_PER_LSB)"
-        },
-        "i2c": {
-          "WIRE_INTERFACES_COUNT": "1"
-        },
-        "led": {
-          "LED_STATE_ON": "1"
-        },
-        "spi": {
-          "SPI_INTERFACES_COUNT": "1"
-        },
-        "lora": {
-          "SX126X_DIO2_AS_RF_SWITCH": "",
-          "LR11X0_DIO3_TCXO_VOLTAGE": "1.8",
-          "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
-        }
-      }
-    },
     "WashTastic": {
       "file": "nrf52840/diy/nrf52_promicro_diy_tcxo/variant.h",
       "board": "nrf52840/diy/WashTastic",
@@ -14245,13 +14501,13 @@
           "BUTTON_PIN": "(32 + 0)"
         },
         "gps": {
-          "PIN_GPS_TX": "(0 + 20)",
-          "PIN_GPS_RX": "(0 + 22)",
+          "GPS_TX_PIN": "(0 + 20)",
+          "GPS_RX_PIN": "(0 + 22)",
           "PIN_GPS_EN": "(0 + 24)"
         },
         "uart": {
-          "PIN_SERIAL1_TX": "PIN_GPS_TX",
-          "PIN_SERIAL1_RX": "PIN_GPS_RX",
+          "PIN_SERIAL1_TX": "GPS_TX_PIN",
+          "PIN_SERIAL1_RX": "GPS_RX_PIN",
           "PIN_SERIAL2_RX": "(0 + 6)",
           "PIN_SERIAL2_TX": "(0 + 8)"
         },
@@ -14315,7 +14571,8 @@
         "lora": {
           "SX126X_DIO2_AS_RF_SWITCH": "",
           "LR11X0_DIO3_TCXO_VOLTAGE": "1.8",
-          "SX126X_DIO3_TCXO_VOLTAGE": "1.8"
+          "SX126X_DIO3_TCXO_VOLTAGE": "1.8",
+          "TCXO_OPTIONAL": ""
         }
       }
     }
