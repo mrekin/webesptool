@@ -543,6 +543,8 @@ async def buildManifest(t:str = None, v:str = None, u:str = "1", src:str = None)
         bleotav = 'bleota-s3'
     elif ("c3" in t or devinfo.get("chip", None) == 'esp32c3'):
         chip_family = "ESP32-C3"
+    elif ("c6" in t or devinfo.get("chip", None) == 'esp32c6'):
+        chip_family = "ESP32-C6"        
     else:  # Need to check nrf52/rp2040 somehow, but this method in most cases no need to invoke for nrf/rp2040
         data = await getAvailableFirmwares()
         if t in data.get('uf2devices'):
