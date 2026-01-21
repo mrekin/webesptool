@@ -223,21 +223,19 @@
 		let metadataFileCount = 0;
 		let partitionsFileCount = 0;
 
+		// Collect all metadata files to prioritize manifest.json over .mt.json
+		let metadataFiles: File[] = [];
+
 		// First pass: count metadata and partitions files from all files (including extracted)
 		for (let i = 0; i < allFiles.length; i++) {
 			const file = allFiles[i];
 			if (fileHandler.isMetadataFile(file)) {
 				metadataFileCount++;
+				metadataFiles.push(file);
 			}
 			if (classifyFile(file.name) === FirmwareFileType.PARTITIONS) {
 				partitionsFileCount++;
 			}
-		}
-
-		// Check for multiple metadata files
-		if (metadataFileCount > 1) {
-			flashError = 'Only one metadata file (.mt.json or manifest.json) is allowed';
-			return;
 		}
 
 		// Check for multiple partitions.bin files
@@ -246,25 +244,46 @@
 			return;
 		}
 
-		// Second pass: process all files
-		for (let i = 0; i < allFiles.length; i++) {
-			const file = allFiles[i];
-			if (fileHandler.isMetadataFile(file)) {
-				// Handle metadata file (both .mt.json and manifest.json)
-				metadataFile = fileHandler.createFirmwareFile(file);
+		// Select metadata file: prioritize ManifestMetadata (manifest.json) over FirmwareMetadata (.mt.json)
+		if (metadataFiles.length > 0) {
+			// Parse all metadata files to determine type
+			// ManifestMetadata (manifest.json) has priority over FirmwareMetadata (.mt.json)
+			for (const file of metadataFiles) {
 				try {
-					const content = await fileHandler.readFileContent(metadataFile);
-					// Try parse as unified metadata (supports both formats)
-					metadata = parseFirmwareMetadata(content);
-					if (!metadata) {
-						flashError = 'Failed to parse metadata file';
-						return;
+					const tempFile = fileHandler.createFirmwareFile(file);
+					const content = await fileHandler.readFileContent(tempFile);
+					const parsedMetadata = parseFirmwareMetadata(content);
+
+					if (!parsedMetadata) {
+						continue;
+					}
+
+					if ('builds' in parsedMetadata) {
+						// This is ManifestMetadata (manifest.json) - highest priority
+						metadataFile = tempFile;
+						metadata = parsedMetadata;
+						break;  // Stop searching, found highest priority
+					} else if (!metadata) {
+						// This is FirmwareMetadata (.mt.json) - use as fallback
+						metadataFile = tempFile;
+						metadata = parsedMetadata;
 					}
 				} catch (error) {
-					flashError = `Error reading metadata file: ${error}`;
-					return;
+					// Skip invalid metadata files
+					console.error(`Failed to parse metadata file ${file.name}:`, error);
 				}
-			} else if (classifyFile(file.name) === FirmwareFileType.PARTITIONS) {
+			}
+		}
+
+		// Second pass: process all files except metadata (handled separately)
+		for (let i = 0; i < allFiles.length; i++) {
+			const file = allFiles[i];
+			// Skip metadata files in the loop - handle selected metadata file separately
+			if (fileHandler.isMetadataFile(file)) {
+				continue;
+			}
+
+			if (classifyFile(file.name) === FirmwareFileType.PARTITIONS) {
 				// Handle partitions.bin file - parse for address determination AND add to flash list
 				try {
 					// Read and parse partitions.bin
