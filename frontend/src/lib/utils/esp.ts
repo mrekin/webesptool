@@ -1,5 +1,6 @@
 import type { ESPDeviceInfo, FlashProgress, FlashOptions, FirmwareFile, FirmwareMetadata, FirmwareMetadataExtended, FlashAddressResult, ValidationError } from '$lib/types.js';
 import { ValidationErrors } from '$lib/types.js';
+import type { PartitionTable } from '$lib/utils/partitionParser.js';
 
 // Constants for flash addresses
 const FIRMWARE_OFFSET = '0x0';
@@ -85,92 +86,109 @@ function findManifestPart(filename: string, manifest: any) {
 	return null;
 }
 
+// ======== Partition-based Address Determination ========
+
 /**
- * Determine flash address for firmware file based on filename, metadata, and chip name
- * Works even without metadata by using filename patterns and chip detection
+ * Firmware file type enum for classification
  */
-export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMetadataExtended | null, chipName?: string): FlashAddressResult | null {
-	if (!filename) return null;
+export enum FirmwareFileType {
+	FULL_FIRMWARE,      // factory.bin, merged.bin, dump_*.bin
+	UPDATE_FIRMWARE,    // firmware*.bin (не factory/merged)
+	OTA_FIRMWARE,       // bleota*.bin
+	FILESYSTEM,         // littlefs*.bin, spiffs*.bin
+	BOOTLOADER,         // bootloader.bin
+	PARTITIONS,         // partitions.bin
+	NVS_DATA,           // nvs.bin
+	OTADATA_DATA,       // otadata.bin
+	PHY_DATA,           // phy_init.bin
+	UNKNOWN             // неизвестный тип
+}
 
-	const basename = filename.toLowerCase();
+/**
+ * Classify firmware file type by filename patterns
+ */
+export function classifyFile(filename: string): FirmwareFileType {
+	const lowerName = filename.toLowerCase();
 
-	// Rule 0: Dump files - address 0x0
-	if (basename.startsWith('dump_') && basename.endsWith('.bin')) {
+	// Special files (exact match required)
+	if (lowerName === 'nvs.bin') return FirmwareFileType.NVS_DATA;
+	if (lowerName === 'otadata.bin') return FirmwareFileType.OTADATA_DATA;
+	if (lowerName === 'phy_init.bin') return FirmwareFileType.PHY_DATA;
+
+	// Bootloader and partitions (should NOT be matched)
+	if (lowerName.includes('bootloader.bin')) return FirmwareFileType.BOOTLOADER;
+	if (lowerName.includes('partitions.bin')) return FirmwareFileType.PARTITIONS;
+
+	// Full firmware: factory, merged, dump files (complete flash restore)
+	if (lowerName.includes('factory.bin') ||
+		lowerName.includes('merged.bin') ||
+		(lowerName.startsWith('dump_') && lowerName.endsWith('.bin'))) {
+		return FirmwareFileType.FULL_FIRMWARE;
+	}
+
+	// Regular firmware (update files)
+	if (/^firmware.*\.bin$/i.test(filename)) return FirmwareFileType.UPDATE_FIRMWARE;
+
+	// OTA firmware
+	if (lowerName.includes('ota')) return FirmwareFileType.OTA_FIRMWARE;
+
+	// Filesystem
+	if (lowerName.includes('littlefs') || lowerName.includes('spiffs')) {
+		return FirmwareFileType.FILESYSTEM;
+	}
+
+	return FirmwareFileType.UNKNOWN;
+}
+
+/**
+ * Get address from metadata (manifest.json or .mt.json)
+ * Returns null if no metadata or file not found in metadata
+ */
+function getAddressFromMetadata(
+	filename: string,
+	metadata: FirmwareMetadataExtended | null
+): FlashAddressResult | null {
+	if (!metadata) return null;
+
+	const format = detectMetadataFormat(metadata);
+	if (format === 'unknown') return null;
+
+	if (format === 'manifest') {
+		const manifestPart = findManifestPart(filename, metadata);
+		if (!manifestPart) return null;
+
 		return {
-			address: '0x0',
-			type: 'firmware',
-			description: 'Memory dump file - restores complete flash memory'
+			address: `0x${manifestPart.offset.toString(16).toUpperCase()}`,
+			type: manifestPart.partType,
+			description: getDescriptionFromManifestPart(manifestPart, metadata)
 		};
 	}
 
-	// Rule 1: Factory firmware files - address 0x0
-	if (FULL_FIRMWARE_FILE_TYPES.some(type => basename.includes(type))) {
-		// Check manifest first for factory firmware
-		if (metadata && detectMetadataFormat(metadata) === 'manifest') {
-			const manifestPart = findManifestPart(filename, metadata);
-			if (manifestPart?.partType === 'firmware' && manifestPart.offset === 0) {
-				return {
-					address: `0x${manifestPart.offset.toString(16).toUpperCase()}`,
-					type: 'firmware',
-					description: `Factory firmware for ${(metadata as any).name || 'device'}. Contains bootloader, partitions, application`
-				};
-			}
+	if (format === 'legacy') {
+		const lowerFilename = filename.toLowerCase();
+
+		// Legacy metadata logic for OTA files
+		if (lowerFilename.includes('bleota')) {
+			const otaOffset = getOtaOffsetFromMetadata(metadata as any);
+			return {
+				address: otaOffset,
+				type: 'ota',
+				description: `OTA firmware for ${(metadata as any).mcu}`
+			};
 		}
 
-		return {
-			address: FIRMWARE_OFFSET,
-			type: 'firmware',
-			description: 'Factory firmware - full installation'
-		};
-	}
-
-	// Rule 1.1: Bootloader files - address 0x0
-	if (basename.includes('bootloader.bin')) {
-		// Check manifest first for factory firmware
-		if (metadata && detectMetadataFormat(metadata) === 'manifest') {
-			const manifestPart = findManifestPart(filename, metadata);
-			if (manifestPart?.partType === 'firmware' && manifestPart.offset === 0) {
-				return {
-					address: `0x${manifestPart.offset.toString(16).toUpperCase()}`,
-					type: 'firmware',
-					description: `Bootloader for ${(metadata as any).name || 'device'}`
-				};
-			}
+		// Legacy metadata logic for SPIFFS files
+		if (lowerFilename.includes('littlefs') || lowerFilename.includes('spiffs')) {
+			const spiffsOffset = getSpiffsOffsetFromMetadata(metadata);
+			return {
+				address: spiffsOffset,
+				type: 'filesystem',
+				description: 'File system (LittleFS/SPIFFS)'
+			};
 		}
 
-		return {
-			address: BOOTLOADER_OFFSET,
-			type: 'firmware',
-			description: 'Bootloader file'
-		};
-	}
-	// Rule 1.2: Partition files - address 0x8000
-	if (basename.includes('partitions.bin')) {
-		// Check manifest first for factory firmware
-		if (metadata && detectMetadataFormat(metadata) === 'manifest') {
-			const manifestPart = findManifestPart(filename, metadata);
-			if (manifestPart?.partType === 'firmware' && manifestPart.offset === 0) {
-				return {
-					address: `0x${manifestPart.offset.toString(16).toUpperCase()}`,
-					type: 'firmware',
-					description: `Partitions for ${(metadata as any).name || 'device'}`
-				};
-			}
-		}
-
-		return {
-			address: PARTITIONS_OFFSET,
-			type: 'firmware',
-			description: 'Partitions file'
-		};
-	}
-
-	// Rule 2: Update files (non-factory .bin) - address from app partition in metadata
-	if (basename.endsWith('.bin') && !isFullFirmwareFile(filename) &&
-		!basename.includes('bleota') && !basename.includes('littlefs') && !basename.includes('spiffs')) {
-
-		// Use legacy metadata to get app partition address if available
-		if (metadata && detectMetadataFormat(metadata) === 'legacy') {
+		// Legacy metadata logic for firmware files
+		if (/^firmware.*\.bin$/i.test(filename)) {
 			const appPartition = (metadata as any).part.find((p: any) =>
 				p.subtype === 'ota_0' && p.type === 'app'
 			);
@@ -182,147 +200,259 @@ export function getMeshtasticFlashAddress(filename: string, metadata: FirmwareMe
 				};
 			}
 		}
-
-		// For manifest with multiple parts: don't use manifest for update firmware
-		// Manifest with multiple parts is only for factory installation
-		// For single-part manifest: check if it's an update manifest
-		if (metadata && detectMetadataFormat(metadata) === 'manifest') {
-			// Only use manifest for update firmware if it has exactly one part
-			// and that part is not at offset 0 (factory)
-			if ((metadata as any).builds?.[0]?.parts?.length === 1) {
-				const singlePart = (metadata as any).builds[0].parts[0];
-				if (singlePart.offset !== 0 && classifyManifestPart(singlePart.path) === 'firmware') {
-					return {
-						address: `0x${singlePart.offset.toString(16).toUpperCase()}`,
-						type: 'firmware',
-						description: `Update firmware for ${(metadata as any).name || 'device'}`
-					};
-				}
-			}
-		}
-
-		// Fallback to default UPDATE_OFFSET if no metadata or app partition found
-		return {
-			address: UPDATE_OFFSET,
-			type: 'firmware',
-			description: 'Update firmware - partial installation'
-		};
-	}
-
-	// Rule 3: OTA files - enhanced logic with chip detection
-	if (basename.includes('bleota')) {
-		let otaOffset = DEFAULT_OTA_OFFSET;
-		let description = 'OTA firmware';
-
-		// Priority order: manifest > legacy metadata > chipName > filename > default
-
-		// 1. Check manifest first (highest priority)
-		if (metadata && detectMetadataFormat(metadata) === 'manifest') {
-			const manifestPart = findManifestPart(filename, metadata);
-			if (manifestPart?.partType === 'ota') {
-				return {
-					address: `0x${manifestPart.offset.toString(16).toUpperCase()}`,
-					type: 'ota',
-					description: `OTA firmware for ${(metadata as any).name || 'device'}`
-				};
-			}
-		}
-
-		// 2. Use legacy metadata if available
-		if (metadata && detectMetadataFormat(metadata) === 'legacy') {
-			description = `OTA firmware for ${(metadata as any).mcu}`;
-			otaOffset = getOtaOffsetFromMetadata(metadata as any);
-		}
-		// 3. Use detected chip name if no metadata
-		else if (chipName) {
-			const detectedChip = chipName.toLowerCase();
-			if (detectedChip.includes('esp32-s3') || detectedChip === 'esp32s3') {
-				description = 'OTA firmware for ESP32-S3';
-			} else if (detectedChip.includes('esp32-c3') || detectedChip === 'esp32c3') {
-				description = 'OTA firmware for ESP32-C3';
-			} else if (detectedChip.includes('esp32-c2') || detectedChip === 'esp32c2') {
-				description = 'OTA firmware for ESP32-C2';
-			} else if (detectedChip.includes('esp32-c5') || detectedChip === 'esp32c5') {
-				description = 'OTA firmware for ESP32-C5';
-			} else if (detectedChip.includes('esp32-c6') || detectedChip === 'esp32c6') {
-				description = 'OTA firmware for ESP32-C6';
-			} else if (detectedChip.includes('esp32-s2') || detectedChip === 'esp32s2') {
-				description = 'OTA firmware for ESP32-S2';
-			} else if (detectedChip.includes('esp32-h2') || detectedChip === 'esp32h2') {
-				description = 'OTA firmware for ESP32-H2';
-			} else if (detectedChip.includes('esp32-p4') || detectedChip === 'esp32p4') {
-				description = 'OTA firmware for ESP32-P4';
-			} else if (detectedChip.includes('esp8266')) {
-				description = 'OTA firmware for ESP8266';
-			} else if (detectedChip.includes('esp32') && !detectedChip.includes('c') && !detectedChip.includes('s') && !detectedChip.includes('h') && !detectedChip.includes('p')) {
-				description = 'OTA firmware for ESP32';
-			} else {
-				description = `OTA firmware for ${chipName}`;
-			}
-		}
-		// 4. Try to determine MCU type from filename (lower priority)
-		else if (basename.includes('s3') || basename.includes('esp32s3')) {
-			description = 'OTA firmware for ESP32-S3';
-		} else if (basename.includes('c3') || basename.includes('esp32c3')) {
-			description = 'OTA firmware for ESP32-C3';
-		} else if (basename.includes('c2') || basename.includes('esp32c2')) {
-			description = 'OTA firmware for ESP32-C2';
-		} else if (basename.includes('c5') || basename.includes('esp32c5')) {
-			description = 'OTA firmware for ESP32-C5';
-		} else if (basename.includes('c6') || basename.includes('esp32c6')) {
-			description = 'OTA firmware for ESP32-C6';
-		} else if (basename.includes('s2') || basename.includes('esp32s2')) {
-			description = 'OTA firmware for ESP32-S2';
-		} else if (basename.includes('h2') || basename.includes('esp32h2')) {
-			description = 'OTA firmware for ESP32-H2';
-		} else if (basename.includes('p4') || basename.includes('esp32p4')) {
-			description = 'OTA firmware for ESP32-P4';
-		} else if (basename.includes('8266')) {
-			description = 'OTA firmware for ESP8266';
-		} else {
-			description = 'OTA firmware for ESP32';
-		}
-
-		return {
-			address: otaOffset,
-			type: 'ota',
-			description: description
-		};
-	}
-
-	// Rule 4: LittleFS/SPIFFS files - enhanced logic
-	if (basename.includes('littlefs') || basename.includes('spiffs')) {
-		let spiffsOffset = DEFAULT_SPIFFS_OFFSET;
-		let description = 'File system (LittleFS/SPIFFS)';
-
-		// Check manifest first for filesystem
-		if (metadata && detectMetadataFormat(metadata) === 'manifest') {
-			const manifestPart = findManifestPart(filename, metadata);
-			if (manifestPart?.partType === 'filesystem') {
-				return {
-					address: `0x${manifestPart.offset.toString(16).toUpperCase()}`,
-					type: 'filesystem',
-					description: `File system for ${(metadata as any).name || 'device'}`
-				};
-			}
-		}
-
-		// Use legacy metadata if available for precise info
-		if (metadata && detectMetadataFormat(metadata) === 'legacy') {
-			spiffsOffset = getSpiffsOffsetFromMetadata(metadata);
-			description = 'File system (LittleFS/SPIFFS)';
-		} else {
-			description = 'File system (LittleFS/SPIFFS) - default offset';
-		}
-
-		return {
-			address: spiffsOffset,
-			type: 'filesystem',
-			description: description
-		};
 	}
 
 	return null;
+}
+
+/**
+ * Get description from manifest part
+ */
+function getDescriptionFromManifestPart(manifestPart: any, metadata: any): string {
+	const deviceName = metadata.name || 'device';
+
+	if (manifestPart.partType === 'firmware') {
+		if (manifestPart.offset === 0) {
+			return `Factory firmware for ${deviceName}. Contains bootloader, partitions, application`;
+		}
+		return `Update firmware for ${deviceName}`;
+	}
+
+	if (manifestPart.partType === 'ota') {
+		return `OTA firmware for ${deviceName}`;
+	}
+
+	if (manifestPart.partType === 'filesystem') {
+		return `File system for ${deviceName}`;
+	}
+
+	return 'Firmware file';
+}
+
+/**
+ * Find best matching partition by subtype priority
+ * Returns offset of first matching partition or null
+ */
+function findBestMatch(
+	type_val: number,
+	subtypes: number[],
+	table: PartitionTable
+): number | null {
+	const matches = table.entries.filter(entry =>
+		entry.type_val === type_val && subtypes.includes(entry.subtype)
+	);
+
+	if (matches.length === 0) return null;
+
+	// Sort by subtype priority, then by minimal offset
+	const prioritized = matches.sort((a, b) => {
+		const priorityA = subtypes.indexOf(a.subtype);
+		const priorityB = subtypes.indexOf(b.subtype);
+		if (priorityA !== priorityB) return priorityA - priorityB;
+		return a.offset - b.offset;
+	});
+
+	return prioritized[0].offset;
+}
+
+/**
+ * Get address from partitions table
+ * Returns null if:
+ * - partitionsTable is null
+ * - file type should NOT be matched (bootloader, partitions)
+ * - no matching partition found
+ */
+function getAddressFromPartitions(
+	fileType: FirmwareFileType,
+	filename: string,
+	table: PartitionTable
+): number | null {
+	// These file types should NOT be matched (per PRD requirements)
+	if (fileType === FirmwareFileType.BOOTLOADER ||
+		fileType === FirmwareFileType.PARTITIONS) {
+		return null;
+	}
+
+	// For FULL_FIRMWARE, no matching partition (contains multiple partitions)
+	if (fileType === FirmwareFileType.FULL_FIRMWARE) {
+		return null; // Will use 0x0 from fallback
+	}
+
+	switch (fileType) {
+		case FirmwareFileType.UPDATE_FIRMWARE:
+			// firmware.bin → ota_0 (0x10) or factory (0x00) in APP partitions (type=0x00)
+			return findBestMatch(0x00, [0x10, 0x00], table);
+
+		case FirmwareFileType.OTA_FIRMWARE:
+			// bleota.bin → ota_1 (0x11) → ota_0 (0x10) → factory (0x00) in APP partitions
+			return findBestMatch(0x00, [0x11, 0x10, 0x00], table);
+
+		case FirmwareFileType.FILESYSTEM:
+			// littlefs/spiffs → corresponding DATA partition (type=0x01)
+			const isLittlefs = filename.toLowerCase().includes('littlefs');
+			// littlefs (0x09) → spiffs (0x08) → custom spiffs (0x82)
+			const subtypes = isLittlefs ? [0x09, 0x08, 0x82] : [0x08, 0x09, 0x82];
+			return findBestMatch(0x01, subtypes, table);
+
+		case FirmwareFileType.NVS_DATA:
+			// nvs.bin → nvs (subtype=0x02) in DATA partitions
+			return findBestMatch(0x01, [0x02], table);
+
+		case FirmwareFileType.OTADATA_DATA:
+			// otadata.bin → otadata (subtype=0x00) in DATA partitions
+			return findBestMatch(0x01, [0x00], table);
+
+		case FirmwareFileType.PHY_DATA:
+			// phy_init.bin → phy (subtype=0x01) in DATA partitions
+			return findBestMatch(0x01, [0x01], table);
+
+		default:
+			return null;
+	}
+}
+
+/**
+ * Get address from class-based filename patterns
+ * Returns default address for each file type
+ */
+function getAddressFromClassPatterns(
+	fileType: FirmwareFileType
+): { address: number; description: string } | null {
+	switch (fileType) {
+		case FirmwareFileType.BOOTLOADER:
+			return { address: 0x0, description: 'Bootloader file' };
+
+		case FirmwareFileType.PARTITIONS:
+			return { address: 0x8000, description: 'Partitions file' };
+
+		case FirmwareFileType.FULL_FIRMWARE:
+			return { address: 0x0, description: 'Factory firmware - full installation' };
+
+		case FirmwareFileType.UPDATE_FIRMWARE:
+			return { address: 0x10000, description: 'Update firmware - partial installation' };
+
+		case FirmwareFileType.OTA_FIRMWARE:
+			return { address: 0x260000, description: 'OTA firmware' };
+
+		case FirmwareFileType.FILESYSTEM:
+			return { address: 0x300000, description: 'File system (LittleFS/SPIFFS)' };
+
+		case FirmwareFileType.NVS_DATA:
+			return { address: 0x9000, description: 'NVS data file' };
+
+		case FirmwareFileType.OTADATA_DATA:
+			return { address: 0xF000, description: 'OTA data file' };
+
+		case FirmwareFileType.PHY_DATA:
+			return { address: 0x11000, description: 'PHY init data file' };
+
+		default:
+			return null;
+	}
+}
+
+/**
+ * Log address determination method
+ */
+function logAddressDetermination(filename: string, method: string, details?: string): void {
+	if (details) {
+		console.log(`[Address determination] ${filename}: ${method} (${details})`);
+	} else {
+		console.log(`[Address determination] ${filename}: ${method}`);
+	}
+}
+
+/**
+ * Determine flash address for firmware file
+ * Priority: metadata > partitions.bin > filename patterns
+ *
+ * @param filename - Firmware filename
+ * @param metadata - Firmware metadata (manifest.json or .mt.json)
+ * @param partitionsTable - Optional partition table from partitions.bin
+ * @returns Flash address result or null if not determined
+ */
+export function getMeshtasticFlashAddress(
+	filename: string,
+	metadata: FirmwareMetadataExtended | null,
+	partitionsTable?: PartitionTable | null
+): FlashAddressResult | null {
+	if (!filename) return null;
+
+	// Step 1: Try metadata (highest priority)
+	const metadataResult = getAddressFromMetadata(filename, metadata);
+	if (metadataResult) {
+		logAddressDetermination(filename, 'metadata (manifest.json)');
+		return metadataResult;
+	}
+
+	// Step 2: Classify file (only if no metadata)
+	const fileType = classifyFile(filename);
+
+	// Step 3: Try partitions.bin
+	if (partitionsTable) {
+		const partitionResult = getAddressFromPartitions(fileType, filename, partitionsTable);
+		if (partitionResult !== null) {
+			logAddressDetermination(filename, 'partitions.bin');
+			return {
+				address: `0x${partitionResult.toString(16).toUpperCase()}`,
+				type: getTypeFromFileType(fileType),
+				description: getDescriptionForFileType(fileType)
+			};
+		}
+		console.log(`[Address determination] ${filename}: partitions.bin - no match (fileType=${FirmwareFileType[fileType]})`);
+	}
+
+	// Step 4: Fallback to filename patterns
+	const patternResult = getAddressFromClassPatterns(fileType);
+	if (patternResult !== null) {
+		logAddressDetermination(filename, 'filename pattern');
+		return {
+			address: `0x${patternResult.address.toString(16).toUpperCase()}`,
+			type: getTypeFromFileType(fileType),
+			description: patternResult.description
+		};
+	}
+
+	// Not determined
+	logAddressDetermination(filename, 'not determined');
+	return null;
+}
+
+/**
+ * Get flash address type from file type
+ */
+function getTypeFromFileType(fileType: FirmwareFileType): 'firmware' | 'ota' | 'filesystem' {
+	if (fileType === FirmwareFileType.OTA_FIRMWARE) return 'ota';
+	if (fileType === FirmwareFileType.FILESYSTEM) return 'filesystem';
+	return 'firmware';
+}
+
+/**
+ * Get description for file type
+ */
+function getDescriptionForFileType(fileType: FirmwareFileType): string {
+	switch (fileType) {
+		case FirmwareFileType.BOOTLOADER:
+			return 'Bootloader file';
+		case FirmwareFileType.PARTITIONS:
+			return 'Partitions file';
+		case FirmwareFileType.FULL_FIRMWARE:
+			return 'Factory firmware - full installation';
+		case FirmwareFileType.UPDATE_FIRMWARE:
+			return 'Update firmware - partial installation';
+		case FirmwareFileType.OTA_FIRMWARE:
+			return 'OTA firmware';
+		case FirmwareFileType.FILESYSTEM:
+			return 'File system (LittleFS/SPIFFS)';
+		case FirmwareFileType.NVS_DATA:
+			return 'NVS data file';
+		case FirmwareFileType.OTADATA_DATA:
+			return 'OTA data file';
+		case FirmwareFileType.PHY_DATA:
+			return 'PHY init data file';
+		default:
+			return 'Firmware file';
+	}
 }
 
 /**

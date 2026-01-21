@@ -5,12 +5,15 @@
 		createESPManager,
 		getMeshtasticFlashAddress,
 		validateFirmwareSelection,
-		parseFirmwareMetadata
+		parseFirmwareMetadata,
+		classifyFile,
+		FirmwareFileType
 	} from '$lib/utils/esp.js';
 	import { createFirmwareFileHandler } from '$lib/utils/fileHandler.js';
 	import { apiService } from '$lib/api.js';
 	import type { FirmwareFile, FirmwareMetadata, FirmwareMetadataExtended, MemorySegment, SelectedFirmwareFile } from '$lib/types.js';
 	import { ValidationErrors } from '$lib/types.js';
+	import { parsePartitionsWithValidation, type PartitionTable } from '$lib/utils/partitionParser.js';
 	import MemoryMap from '$lib/components/MemoryMap.svelte';
 	import BackupConfirmModal from '$lib/components/BackupConfirmModal.svelte';
 	import TerminalModal from '$lib/components/TerminalModal.svelte';
@@ -83,6 +86,9 @@
 	// Metadata state
 	let metadataFile: FirmwareFile | null = null;
 	let metadata: FirmwareMetadataExtended | null = null; // Support both .mt.json and manifest.json
+
+	// Partitions table state
+	let partitionsTable: PartitionTable | null = null;
 
 	// New variables for new logic
 	let isPortSelected = false;
@@ -171,6 +177,7 @@
 		selectedFirmwareFiles = [];
 		metadataFile = null;
 		metadata = null;
+		partitionsTable = null;
 		flashError = '';
 		zipExtractionError = '';
 		validationResult = { isValid: true };
@@ -208,18 +215,28 @@
 		}
 
 		let metadataFileCount = 0;
+		let partitionsFileCount = 0;
 
-		// First pass: count metadata files from all files (including extracted)
+		// First pass: count metadata and partitions files from all files (including extracted)
 		for (let i = 0; i < allFiles.length; i++) {
 			const file = allFiles[i];
 			if (fileHandler.isMetadataFile(file)) {
 				metadataFileCount++;
+			}
+			if (classifyFile(file.name) === FirmwareFileType.PARTITIONS) {
+				partitionsFileCount++;
 			}
 		}
 
 		// Check for multiple metadata files
 		if (metadataFileCount > 1) {
 			flashError = 'Only one metadata file (.mt.json or manifest.json) is allowed';
+			return;
+		}
+
+		// Check for multiple partitions.bin files
+		if (partitionsFileCount > 1) {
+			flashError = 'Only one partitions.bin file is allowed';
 			return;
 		}
 
@@ -241,6 +258,37 @@
 					flashError = `Error reading metadata file: ${error}`;
 					return;
 				}
+			} else if (classifyFile(file.name) === FirmwareFileType.PARTITIONS) {
+				// Handle partitions.bin file - parse for address determination AND add to flash list
+				try {
+					// Read and parse partitions.bin
+					const arrayBuffer = await fileHandler.readFileAsArrayBuffer(fileHandler.createFirmwareFile(file));
+					partitionsTable = parsePartitionsWithValidation(arrayBuffer);
+					console.log(`[Partitions.bin] Parsed successfully: ${partitionsTable.entries.length} entries`);
+
+					// Debug: log all partitions
+					console.log('[Partitions.bin] All entries:');
+					partitionsTable.entries.forEach(entry => {
+						const typeName = entry.type_val === 0x00 ? 'APP' : 'DATA';
+						console.log(`  - offset=0x${entry.offset.toString(16).toUpperCase()}, type=${typeName} (0x${entry.type_val.toString(16)}), subtype=0x${entry.subtype.toString(16)}, size=${entry.size}, name=${entry.name}`);
+					});
+				} catch (error) {
+					// Graceful degradation on parse error
+					console.error(`[Partitions.bin] Failed to parse:`, error);
+					flashError = `⚠️ Failed to parse partitions.bin: ${error instanceof Error ? error.message : String(error)}. Using filename patterns.`;
+					partitionsTable = null;
+					// Continue processing - will fall back to filename patterns
+				}
+
+				// Add partitions.bin to the flash list (it should be flashed to 0x8000)
+				selectedFirmwareFiles.push({
+					filename: file.name,
+					address: '0x8000', // Default partitions offset
+					file: fileHandler.createFirmwareFile(file),
+					hasError: false,
+					errorMessage: '',
+					isEnabled: true
+				});
 			} else if (fileHandler.isFirmwareFile(file)) {
 				// Handle firmware file
 				selectedFirmwareFiles.push({
@@ -295,6 +343,9 @@
 		metadataFile = null;
 		metadata = null;
 		flashError = '';
+
+		// Note: partitions table is preserved when removing metadata
+		// This allows switching between metadata and partitions.bin sources
 
 		// Update flash addresses after removing metadata
 		if (selectedFirmwareFiles.length > 0) {
@@ -371,7 +422,8 @@
 			selectedFirmwareFiles = [];
 			metadataFile = null;
 			metadata = null;
-			flashProgress = 0;
+			partitionsTable = null;
+				flashProgress = 0;
 			flashStatus = '';
 			flashError = '';
 			zipExtractionProgress = 0;
@@ -393,6 +445,7 @@
 		eraseBeforeFlash = false;
 		metadataFile = null;
 		metadata = null;
+		partitionsTable = null;
 		zipExtractionProgress = 0;
 		zipExtractionError = '';
 		isExtractingZip = false;
@@ -742,15 +795,21 @@
 		}
 	}
 
-	// Update flash addresses using metadata
+	// Update flash addresses using metadata and/or partition table
 	function updateFlashAddresses() {
 		if (selectedFirmwareFiles.length === 0) return;
+
+		// Get partitions table from enabled partitions.bin file (no hardcoded filename)
+		const partitionsBin = selectedFirmwareFiles.find(f =>
+			classifyFile(f.filename) === FirmwareFileType.PARTITIONS &&
+			f.isEnabled !== false
+		);
 
 		selectedFirmwareFiles = selectedFirmwareFiles.map((fileItem) => {
 			const addressResult = getMeshtasticFlashAddress(
 				fileItem.filename,
 				metadata,
-				deviceInfo?.chip
+				partitionsBin ? partitionsTable : null
 			);
 			if (addressResult) {
 				return {
@@ -931,6 +990,9 @@
 				errorMessage
 			};
 		});
+
+		// Update flash addresses when file enable/disable changes
+		updateFlashAddresses();
 	}
 </script>
 

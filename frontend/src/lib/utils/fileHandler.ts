@@ -75,6 +75,26 @@ export function createFirmwareFileHandler() {
 		});
 	}
 
+	// Read file as ArrayBuffer (for binary files like partitions.bin)
+	async function readFileAsArrayBuffer(firmwareFile: FirmwareFile): Promise<ArrayBuffer> {
+		return new Promise<ArrayBuffer>((resolve, reject) => {
+			const reader = new FileReader();
+			reader.onload = (event) => {
+				const result = event.target?.result;
+				if (result instanceof ArrayBuffer) {
+					resolve(result);
+				} else {
+					reject(new Error('Failed to read file as ArrayBuffer'));
+				}
+			};
+			reader.onerror = () => {
+				reject(new Error('Failed to read file'));
+			};
+
+			reader.readAsArrayBuffer(firmwareFile.file);
+		});
+	}
+
 	// Validate file
 	function validateFile(file: File): boolean {
 		const validExtensions = ['.bin', '.mt.json', 'manifest.json', '.zip'];
@@ -264,6 +284,7 @@ export function createFirmwareFileHandler() {
 		handleDrop,
 		handleDropMultiple,
 		readFileContent,
+		readFileAsArrayBuffer,
 		validateFile,
 		isValidFile,
 		isMetadataFile,
