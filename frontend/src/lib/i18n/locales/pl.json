@@ -279,7 +279,8 @@
     "terminal_copy": "Kopiuj zaznaczenie",
     "terminal_opening": "Otwieranie terminala...",
     "terminal_error": "Błąд terminala",
-    "terminal_no_port": "Brak aktywnego portu. Najpierw połącz się z urządzeniem."
+    "terminal_no_port": "Brak aktywnego portu. Najpierw połącz się z urządzeniem.",
+    "partitions_incompatible_warning": "Plik partitions.bin jest przeznaczony dla urządzenia z większą pamięcią flash ({partitionsMB}MB). Podłączone urządzenie ma {deviceMB}MB."
   },
   "backupconfirm": {
     "title": "Zapisać zrzut pamięci urządzenia?",

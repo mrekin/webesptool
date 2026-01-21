@@ -13,7 +13,7 @@
 	import { apiService } from '$lib/api.js';
 	import type { FirmwareFile, FirmwareMetadata, FirmwareMetadataExtended, MemorySegment, SelectedFirmwareFile } from '$lib/types.js';
 	import { ValidationErrors } from '$lib/types.js';
-	import { parsePartitionsWithValidation, type PartitionTable } from '$lib/utils/partitionParser.js';
+	import { parsePartitionsWithValidation, formatAnalysis, type PartitionTable, type PartitionAnalysis } from '$lib/utils/partitionParser.js';
 	import MemoryMap from '$lib/components/MemoryMap.svelte';
 	import BackupConfirmModal from '$lib/components/BackupConfirmModal.svelte';
 	import TerminalModal from '$lib/components/TerminalModal.svelte';
@@ -89,6 +89,12 @@
 
 	// Partitions table state
 	let partitionsTable: PartitionTable | null = null;
+
+	// Flash size calculated from partitions.bin
+	let flashSizeFromPartitions: number | null = null;
+
+	// Partitions compatibility warning (non-blocking)
+	let partitionsCompatibilityWarning: string | null = null;
 
 	// New variables for new logic
 	let isPortSelected = false;
@@ -944,8 +950,48 @@
 	}
 
 	// Reactive data for MemoryMap
-	$: totalMemorySize = deviceInfo ? parseFlashSize(deviceInfo.flashSize) : (metadata as any)?.builds ? parseFlashSize((metadata as any)?.builds[0]?.flashsize) : 4 *1024 * 1024;
+	$: totalMemorySize = deviceInfo
+		? parseFlashSize(deviceInfo.flashSize)
+		: (metadata as any)?.builds
+			? parseFlashSize((metadata as any)?.builds[0]?.flashsize)
+			: flashSizeFromPartitions || 4 * 1024 * 1024;
 	$: memorySegments = prepareMemorySegments(selectedFirmwareFiles.filter(f => f.isEnabled !== false));
+
+	// Calculate flash size from partitions.bin (reactive)
+	// Only use partitionsTable if there's an enabled partitions.bin file in the list
+	$: {
+		const enabledPartitionsBin = selectedFirmwareFiles.find(f =>
+			classifyFile(f.filename) === FirmwareFileType.PARTITIONS &&
+			f.isEnabled !== false
+		);
+		if (enabledPartitionsBin && partitionsTable) {
+			try {
+				const analysis = formatAnalysis(partitionsTable, false) as PartitionAnalysis;
+				flashSizeFromPartitions = analysis.flash_size_bytes;
+			} catch (error) {
+				console.error('[Flash size] Failed to calculate from partitions:', error);
+				flashSizeFromPartitions = null;
+			}
+		} else {
+			flashSizeFromPartitions = null;
+		}
+	}
+
+	// Check partitions compatibility with device (reactive)
+	$: if (flashSizeFromPartitions && deviceInfo?.flashSize) {
+		const deviceFlashSize = parseFlashSize(deviceInfo.flashSize);
+		if (flashSizeFromPartitions > deviceFlashSize) {
+			const partitionsMB = Math.round(flashSizeFromPartitions / (1024 * 1024));
+			const deviceMB = Math.round(deviceFlashSize / (1024 * 1024));
+			partitionsCompatibilityWarning = $locales('customfirmware.partitions_incompatible_warning', {
+				values: { partitionsMB, deviceMB }
+			});
+		} else {
+			partitionsCompatibilityWarning = null;
+		}
+	} else {
+		partitionsCompatibilityWarning = null;
+	}
 
 	// Calculate file count for File Details display
 	$: fileCount = selectedFirmwareFiles.length;
@@ -1561,6 +1607,19 @@
 					>
 						<div class="text-sm text-red-200">
 							{validationResult.errorMessage || getErrorMessage(validationResult.errorCode)}
+						</div>
+					</div>
+				{/if}
+
+				<!-- Partitions Compatibility Warning (Non-blocking) -->
+				{#if partitionsCompatibilityWarning}
+					<div
+						role="alert"
+						aria-live="polite"
+						class="rounded-md border border-orange-700 bg-orange-900 p-3"
+					>
+						<div class="text-sm text-orange-200">
+							{partitionsCompatibilityWarning}
 						</div>
 					</div>
 				{/if}

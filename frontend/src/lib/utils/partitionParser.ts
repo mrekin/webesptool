@@ -76,6 +76,13 @@ export interface PartitionTable {
     entries: PartitionEntry[];
 }
 
+export interface PartitionAnalysis {
+    flash_size_mb: string;
+    flash_size_bytes: number;
+    partition_count: number;
+    partitions: Record<string, string>;
+}
+
 // ======== Error Classes ========
 export class ParseError extends Error {
     constructor(message: string) {
@@ -390,22 +397,30 @@ export function formatText(table: PartitionTable, verbose: boolean = false): str
 }
 
 /**
- * Format partition table analysis as JSON string.
+ * Format partition table analysis as object or JSON string.
  *
  * Provides summary information about the partition table including
  * flash size, partition count, and partition list with offsets.
  *
  * @param table - PartitionTable to analyze
  * @param indent - JSON indentation level (default: 2)
- * @returns JSON formatted string with analysis data
+ * @param returnAsString - If true, return JSON string; if false, return object (default: true for backward compatibility)
+ * @returns PartitionAnalysis object or JSON formatted string
  */
-export function formatAnalysis(table: PartitionTable, indent: number = 2): string {
+export function formatAnalysis(
+    table: PartitionTable,
+    returnAsString: boolean = true,
+    indent: number = 2
+): PartitionAnalysis | string {
     let flashSizeBytes = 0;
 
     if (table.entries.length > 0) {
         const lastEntry = table.entries[table.entries.length - 1];
         flashSizeBytes = lastEntry.offset + lastEntry.size;
     }
+
+    // Round up to nearest power of 2 MB
+    flashSizeBytes = ceilingToPowerOf2(flashSizeBytes);
 
     const flashSizeMb = Math.floor(flashSizeBytes / (1024 * 1024));
     const flashSizeStr = `${flashSizeMb}MB`;
@@ -415,13 +430,36 @@ export function formatAnalysis(table: PartitionTable, indent: number = 2): strin
         partitions[entry.name] = getOffsetHex(entry.offset);
     }
 
-    const analysis = {
+    const analysis: PartitionAnalysis = {
         flash_size_mb: flashSizeStr,
+        flash_size_bytes: flashSizeBytes,
         partition_count: table.entries.length,
         partitions,
     };
 
-    return JSON.stringify(analysis, null, indent);
+    // Backward compatibility: return JSON string if requested (default)
+    if (returnAsString) {
+        return JSON.stringify(analysis, null, indent);
+    }
+
+    return analysis;
+}
+
+/**
+ * Round bytes up to nearest power of 2 megabytes.
+ *
+ * @param bytes - Size in bytes
+ * @returns Size rounded up to nearest power of 2 MB
+ */
+function ceilingToPowerOf2(bytes: number): number {
+    if (bytes === 0) return 0;
+
+    const mb = bytes / (1024 * 1024);
+
+    // Find next power of 2
+    const powerOf2 = Math.pow(2, Math.ceil(Math.log2(mb)));
+
+    return Math.round(powerOf2 * 1024 * 1024);
 }
 
 // ======== Convenience Function ========

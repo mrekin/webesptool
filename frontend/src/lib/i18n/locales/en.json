@@ -279,7 +279,8 @@
     "terminal_copy": "Copy Selection",
     "terminal_opening": "Opening Terminal...",
     "terminal_error": "Terminal Error",
-    "terminal_no_port": "No active port available. Please connect to a device first."
+    "terminal_no_port": "No active port available. Please connect to a device first.",
+    "partitions_incompatible_warning": "File partitions.bin is for a device with larger flash size ({partitionsMB}MB). Connected device has {deviceMB}MB."
   },
   "backupconfirm": {
     "title": "Save Device Flash Dump?",
