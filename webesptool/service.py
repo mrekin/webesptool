@@ -1,12 +1,10 @@
 import json
-import yaml
 from enum import Enum
 
 class FirmwareType(Enum):
     MESHTASTIC = "meshtastic"
     MESHCORE = "meshcore"
 
-from jsonmerge import merge
 import utils.logger
 
 from fastapi import FastAPI, Request
@@ -19,9 +17,15 @@ from fastapi import APIRouter
 from fastapi import Request
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles 
+from fastapi.staticfiles import StaticFiles
 
 import aiofiles
+import yaml
+from jsonmerge import merge
+
+# News module
+from apps.news.routes import router as news_router
+
 import aiofiles.ospath
 import aiofiles.os
 import os
@@ -145,27 +149,32 @@ fwfiles = None
 log = utils.logger.getLogger()
 DEBUG2 =5
 
-config={}
+config = {}
 
 aiofiles.os.walk = aiofiles.os.wrap(os.walk)
 
 def loadConfig():
-
     global config
     with open('config/config.yml', 'r') as f:
-        cfg = yaml.safe_load(f)
-        
-        base = cfg['base']
-        diff = cfg['enviroments'][cfg['enviroment']]
+        cfg_data = yaml.safe_load(f)
+
+        base = cfg_data['base']
+        diff = cfg_data['enviroments'][cfg_data['enviroment']]
         base = base if base else {}
         diff = diff if diff else {}
         config = merge(base, diff)
 
 
-
-
 def init():
-    pass
+    """Initialize services"""
+    # Initialize news database
+    try:
+        import asyncio
+        from apps.news.database import init_db
+        asyncio.run(init_db())
+        log.info("News database initialized successfully")
+    except Exception as e:
+        log.warning(f"Failed to initialize news database: {e}")
 
 hidden_regex = re.compile(r"^_.*")  
 
@@ -637,9 +646,18 @@ app = FastAPI()
 
 #app.include_router(router)
 app.mount("/static", StaticFiles(directory="static"), name="static")
+# Include news router
+app.include_router(news_router, tags=["news"])
 
 templates = Jinja2Templates(directory="templates")
 general_pages_router = APIRouter()
+
+
+# Favicon handler - returns 204 No Content to prevent 404 errors
+@app.get("/favicon.ico", status_code=204)
+async def favicon():
+    """Handle favicon requests - return no content"""
+    return None
 
 
 # Page with script
@@ -785,9 +803,16 @@ def unirun():
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info", root_path="/")
 
 
-#Loading config
-loadConfig()
+# Initialize services
 init()
+
+# Loading config AFTER app creation
+loadConfig()
+
+# Update app.state with loaded config and logger
+app.state.config = config
+app.state.log = log
+app.state.templates = templates
 
 
 

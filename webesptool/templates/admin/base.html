@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}News Admin{% endblock %}</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+    <!-- Custom Styles -->
+    <style>
+        :root {
+            --orange-primary: #f97316;
+            --orange-secondary: #ea580c;
+            --orange-light: #fed7aa;
+            --bg-dark: #1f2937;
+            --bg-darker: #111827;
+            --border-orange: #f97316;
+        }
+
+        body {
+            background-color: var(--bg-darker);
+            color: #e5e7eb;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .navbar {
+            background-color: var(--bg-dark) !important;
+            border-bottom: 2px solid var(--border-orange);
+        }
+
+        .navbar-brand {
+            color: var(--orange-primary) !important;
+            font-weight: bold;
+        }
+
+        .nav-link {
+            color: #d1d5db !important;
+        }
+
+        .nav-link:hover {
+            color: var(--orange-primary) !important;
+        }
+
+        /* Main layout */
+        .admin-container {
+            height: calc(100vh - 56px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .admin-toolbar {
+            flex: 0 0 auto;
+            padding: 0.75rem 1rem;
+            background-color: var(--bg-dark);
+            border-bottom: 1px solid var(--border-orange);
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .admin-content {
+            flex: 1 1 auto;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Columns */
+        .col-news-list {
+            flex: 0 0 364px;
+            overflow-y: auto;
+            border-right: 1px solid var(--border-orange);
+            background-color: var(--bg-dark);
+            min-width: 280px;
+            max-width: 700px;
+        }
+
+        .col-editor {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            background-color: var(--bg-darker);
+            min-width: 300px;
+        }
+
+        .col-preview {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            border-left: 1px solid var(--border-orange);
+            background-color: var(--bg-dark);
+            min-width: 300px;
+        }
+
+        /* Resizer handles */
+        .resizer {
+            flex: 0 0 6px;
+            background-color: var(--border-orange);
+            cursor: col-resize;
+            transition: background-color 0.2s;
+            position: relative;
+            z-index: 10;
+        }
+
+        .resizer:hover,
+        .resizer.active {
+            background-color: var(--orange-primary);
+        }
+
+        .resizer::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 4px;
+            height: 30px;
+            background-color: rgba(249, 115, 22, 0.5);
+            border-radius: 2px;
+        }
+
+        .resizer:hover::after,
+        .resizer.active::after {
+            background-color: rgba(249, 115, 22, 0.8);
+        }
+
+        /* Prevent text selection during drag */
+        .admin-content.resizing {
+            user-select: none;
+        }
+
+        .admin-content.resizing * {
+            user-select: none;
+        }
+
+        /* News list items */
+        .news-list-item {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid rgba(249, 115, 22, 0.2);
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .news-list-item:hover {
+            background-color: rgba(249, 115, 22, 0.1);
+        }
+
+        .news-list-item.active {
+            background-color: rgba(249, 115, 22, 0.2);
+            border-left: 3px solid var(--orange-primary);
+        }
+
+        .news-list-item.inactive {
+            opacity: 0.5;
+        }
+
+        .news-list-item.inactive:hover {
+            opacity: 0.7;
+        }
+
+        .news-list-item-id {
+            font-size: 0.7rem;
+            color: var(--orange-light);
+            flex-shrink: 0;
+        }
+
+        /* News ID color indicators */
+        .news-list-item-id.id-inactive {
+            color: #6b7280;  /* gray-500 */
+        }
+
+        .news-list-item-id.id-pending {
+            color: var(--orange-light);  /* orange (default) */
+        }
+
+        .news-list-item-id.id-active {
+            color: #22c55e;  /* green-500 */
+        }
+
+        .news-list-item-title {
+            font-size: 0.8rem;
+            color: #e5e7eb;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .news-list-item-meta {
+            font-size: 0.7rem;
+            color: #9ca3af;
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+
+        /* Editor styles */
+        .editor-section {
+            padding: 1.5rem;
+        }
+
+        .editor-section-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--orange-light);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(249, 115, 22, 0.3);
+        }
+
+        /* Preview styles */
+        .preview-section {
+            padding: 1.5rem;
+        }
+
+        .preview-card {
+            background-color: var(--bg-dark);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            border-radius: 0.375rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Form controls */
+        .form-control {
+            background-color: #2d3748;
+            border-color: rgba(249, 115, 22, 0.3);
+            color: #e5e7eb;
+        }
+
+        .form-control:focus {
+            background-color: #374151;
+            border-color: var(--orange-primary);
+            color: #e5e7eb;
+            box-shadow: 0 0 0 0.25rem rgba(249, 115, 22, 0.25);
+        }
+
+        .form-label {
+            color: var(--orange-light);
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .form-text {
+            color: #9ca3af;
+            font-size: 0.75rem;
+        }
+
+        /* Buttons */
+        .btn-primary {
+            background-color: var(--orange-primary);
+            border-color: var(--orange-primary);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--orange-secondary);
+            border-color: var(--orange-secondary);
+        }
+
+        .btn-outline-primary {
+            color: var(--orange-primary);
+            border-color: var(--orange-primary);
+        }
+
+        .btn-outline-primary:hover {
+            background-color: var(--orange-primary);
+            border-color: var(--orange-primary);
+        }
+
+        /* JSON editor */
+        .json-editor {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.875rem;
+            min-height: 100px;
+            overflow-y: hidden;
+        }
+
+        /* Markdown preview */
+        .markdown-preview {
+            background-color: var(--bg-darker);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            border-radius: 0.375rem;
+            padding: 1rem;
+            min-height: 100px;
+        }
+
+        .markdown-preview h1, .markdown-preview h2, .markdown-preview h3 {
+            color: var(--orange-light);
+            margin-top: 0.5rem;
+        }
+
+        .markdown-preview a {
+            color: var(--orange-primary);
+        }
+
+        .markdown-preview code {
+            background-color: rgba(249, 115, 22, 0.1);
+            padding: 0.125rem 0.25rem;
+            border-radius: 0.25rem;
+        }
+
+        /* Badges */
+        .badge-pinned {
+            background-color: var(--orange-primary);
+        }
+
+        .badge-visible {
+            background-color: #22c55e;
+        }
+
+        .badge-hidden {
+            background-color: #ef4444;
+        }
+
+        /* Alert */
+        .alert-message {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 1050;
+            max-width: 400px;
+        }
+
+        /* Language tabs */
+        .lang-tab {
+            padding: 0.375rem 0.75rem;
+            background-color: transparent;
+            border: none;
+            color: #9ca3af;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+        }
+
+        .lang-tab:hover {
+            color: var(--orange-primary);
+        }
+
+        .lang-tab.active {
+            color: var(--orange-primary);
+            border-bottom: 2px solid var(--orange-primary);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-darker);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(249, 115, 22, 0.3);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(249, 115, 22, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/admin/news">
+                📰 News Admin
+            </a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/admin/news">
+                    News List
+                </a>
+                <a class="nav-link" href="/admin/news/new">
+                    Create News
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Alert Messages Container -->
+    <div id="alert-container"></div>
+
+    <!-- Main Content -->
+    <div class="admin-container">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+            crossorigin="anonymous"></script>
+
+    <!-- Custom Scripts -->
+    <script>
+        // Show alert message
+        function showAlert(message, type = 'info') {
+            const container = document.getElementById('alert-container');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} alert-dismissible fade show alert-message`;
+            alert.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            container.appendChild(alert);
+
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        // Handle HTMX events for showing messages
+        document.body.addEventListener('htmx:afterRequest', function(evt) {
+            const detail = evt.detail.xhr;
+            const responseText = detail.responseText;
+
+            if (responseText) {
+                try {
+                    const data = JSON.parse(responseText);
+                    if (data.message) {
+                        showAlert(data.message, 'warning');
+                    }
+                } catch (e) {
+                    // Not JSON, ignore
+                }
+            }
+        });
+
+        // Simple markdown preview (basic rendering)
+        function updateMarkdownPreview(text, previewId) {
+            const preview = document.getElementById(previewId);
+            if (!preview) return;
+
+            let html = text
+                // Headers
+                .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+                .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+                .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+                // Bold
+                .replace(/\*\*(.*)\*\*/gim, '<b>$1</b>')
+                // Italic
+                .replace(/\*(.*)\*/gim, '<i>$1</i>')
+                // Links
+                .replace(/\[([^\]]+)\]\(([^\)]+)\)/gim, '<a href="$2" target="_blank">$1</a>')
+                // Code blocks
+                .replace(/`([^`]+)`/gim, '<code>$1</code>')
+                // Line breaks
+                .replace(/\n/gim, '<br>');
+
+            preview.innerHTML = html;
+        }
+
+        // Auto-hide alert on close
+        document.body.addEventListener('click', function(evt) {
+            if (evt.target.classList.contains('btn-close')) {
+                const alert = evt.target.closest('.alert');
+                if (alert) {
+                    alert.remove();
+                }
+            }
+        });
+
+        // Column resizer functionality
+        function initResizers() {
+            const containers = document.querySelectorAll('.admin-content');
+            containers.forEach(container => {
+                const resizers = container.querySelectorAll('.resizer');
+                const columns = container.querySelectorAll('.col-news-list, .col-editor, .col-preview');
+
+                resizers.forEach((resizer, index) => {
+                    let startX, startWidth, nextWidth, prevColumn, nextColumn;
+
+                    const onMouseDown = (e) => {
+                        prevColumn = columns[index];
+                        nextColumn = columns[index + 1];
+
+                        startX = e.clientX;
+                        startWidth = prevColumn.offsetWidth;
+                        if (nextColumn) {
+                            nextWidth = nextColumn.offsetWidth;
+                        }
+
+                        resizer.classList.add('active');
+                        container.classList.add('resizing');
+
+                        document.addEventListener('mousemove', onMouseMove);
+                        document.addEventListener('mouseup', onMouseUp);
+                    };
+
+                    const onMouseMove = (e) => {
+                        const dx = e.clientX - startX;
+                        const newPrevWidth = startWidth + dx;
+
+                        // Determine constraints based on column type
+                        let minPrev = 300, maxPrev = 9999;  // default for editor/preview
+                        let minNext = 300, maxNext = 9999;  // default for editor/preview
+
+                        // Left column has specific constraints
+                        if (prevColumn.classList.contains('col-news-list')) {
+                            minPrev = 200;
+                            maxPrev = 600;
+                        }
+
+                        const clampedPrev = Math.max(minPrev, Math.min(maxPrev, newPrevWidth));
+
+                        // Calculate flex-basis change
+                        const delta = clampedPrev - startWidth;
+
+                        // Adjust prev column width
+                        prevColumn.style.flexBasis = clampedPrev + 'px';
+                        prevColumn.style.flexGrow = '0';
+                        prevColumn.style.width = '';  // Clear fixed width
+
+                        // Adjust next column if exists
+                        if (nextColumn) {
+                            const newNextWidth = nextWidth - delta;
+                            const clampedNext = Math.max(minNext, Math.min(maxNext, newNextWidth));
+                            nextColumn.style.flexBasis = clampedNext + 'px';
+                            nextColumn.style.flexGrow = '0';
+                            nextColumn.style.width = '';  // Clear fixed width
+                        }
+
+                        // Update resizer position through flex
+                        e.preventDefault();
+                    };
+
+                    const onMouseUp = () => {
+                        resizer.classList.remove('active');
+                        container.classList.remove('resizing');
+
+                        // Restore flex-grow for columns that should be flexible
+                        if (prevColumn.classList.contains('col-editor') ||
+                            prevColumn.classList.contains('col-preview')) {
+                            prevColumn.style.flexGrow = '1';
+                        }
+                        if (nextColumn && (nextColumn.classList.contains('col-editor') ||
+                            nextColumn.classList.contains('col-preview'))) {
+                            nextColumn.style.flexGrow = '1';
+                        }
+
+                        document.removeEventListener('mousemove', onMouseMove);
+                        document.removeEventListener('mouseup', onMouseUp);
+                    };
+
+                    resizer.addEventListener('mousedown', onMouseDown);
+                });
+            });
+        }
+
+        // Initialize resizers when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initResizers);
+        } else {
+            initResizers();
+        }
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

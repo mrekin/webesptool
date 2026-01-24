@@ -1,0 +1,757 @@
+{% extends "admin/base.html" %}
+
+{% block title %}News Admin{% endblock %}
+
+{% block content %}
+<!-- Toolbar -->
+<div class="admin-toolbar">
+    <button id="btn-create" class="btn btn-primary btn-sm" onclick="createNew()">
+        ➕ New
+    </button>
+    <div class="vr mx-2"></div>
+    <button id="btn-save" class="btn btn-success btn-sm" onclick="saveNews()" disabled>
+        💾 Save
+    </button>
+    <button id="btn-delete" class="btn btn-danger btn-sm" onclick="deleteNews()" disabled>
+        🗑️ Delete
+    </button>
+    <div class="vr mx-2"></div>
+    <button id="btn-toggle" class="btn btn-warning btn-sm" onclick="toggleStatus()" disabled>
+        👁️ Toggle
+    </button>
+    <button id="btn-pin" class="btn btn-info btn-sm" onclick="togglePin()" disabled>
+        📌 Pin/Unpin
+    </button>
+    <div class="vr mx-2"></div>
+    <button id="btn-preview" class="btn btn-secondary btn-sm" onclick="updateFullPreview()">
+        👁️ Update Preview
+    </button>
+    <div class="vr mx-2"></div>
+    <div class="form-check form-switch ms-2">
+        <input class="form-check-input" type="checkbox" id="editJsonToggle">
+        <label class="form-check-label" for="editJsonToggle">
+            Edit as JSON
+        </label>
+    </div>
+</div>
+
+<!-- Content: 3 Columns -->
+<div class="admin-content">
+    <!-- Left Column: News List -->
+<div class="col-news-list">
+    {% if news_list %}
+        {% for item in news_list %}
+        <div class="news-list-item {% if selected_id == item.id %}active{% endif %} {% if item.status == 'hide' %}inactive{% endif %}"
+             onclick="selectNews({{ item.id }})"
+             data-id="{{ item.id }}"
+             data-status="{{ item.status }}"
+             data-start-date="{{ item.start_date }}"
+             data-is-active="{{ item.is_active | lower }}">
+            <div class="news-list-item-id {% if item.status == 'hide' %}id-inactive{% elif item.is_active %}id-active{% else %}id-pending{% endif %}">#{{ item.id }}</div>
+            <div class="news-list-item-title">
+                {% set ns = namespace(found=false) %}
+                {% for lang in languages %}
+                    {% if not ns.found %}
+                        {% set lang_content = item.content.get(lang.code, {}) %}
+                        {% if lang_content.get('title') %}
+                            {% set ns.found = true %}
+                            {{ lang.flag }} {{ lang_content.title | truncate(40) }}
+                        {% endif %}
+                    {% endif %}
+                {% endfor %}
+                {% if not ns.found %}
+                    <em class="text-muted">(No title)</em>
+                {% endif %}
+            </div>
+            <div class="news-list-item-meta">
+                {% if item.is_pinned %}📌 {% endif %}
+                {{ item.status }}
+                {% if item.end_date %}
+                <span class="text-muted ms-1">→ {{ item.end_date[:10] }}</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="p-3 text-center text-muted">
+            <small>No news yet.<br>Click "New" to create.</small>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Resizer: between list and editor -->
+<div class="resizer"></div>
+
+<!-- Center Column: Editor -->
+<div class="col-editor">
+    <div id="editor-form">
+        <!-- Language Fields Mode -->
+        <div id="lang-editor-mode">
+            <div class="editor-section">
+                <div class="editor-section-title">⚙️ Settings</div>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label">Start Date *</label>
+                        <input type="date" class="form-control form-control-sm" id="start_date">
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check form-check-inline mt-4">
+                            <input class="form-check-input" type="radio" name="endDateMode" id="modeDuration" value="duration" checked>
+                            <label class="form-check-label" for="modeDuration">
+                                Duration
+                            </label>
+                        </div>
+                        <div class="form-check form-check-inline mt-4">
+                            <input class="form-check-input" type="radio" name="endDateMode" id="modeEndDate" value="enddate">
+                            <label class="form-check-label" for="modeEndDate">
+                                End Date
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-2 mt-2">
+                    <div class="col-md-6" id="durationField">
+                        <label class="form-label">Duration (days)</label>
+                        <input type="number" class="form-control form-control-sm" id="duration_days"
+                               min="0" placeholder="Empty = unlimited">
+                    </div>
+                    <div class="col-md-6" id="endDateField" style="display: none;">
+                        <label class="form-label">End Date</label>
+                        <input type="date" class="form-control form-control-sm" id="end_date">
+                    </div>
+                </div>
+                <div class="row g-2 mt-2">
+                    <div class="col-md-6">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="is_pinned">
+                            <label class="form-check-label" for="is_pinned">
+                                📌 Pinned
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <select class="form-select form-select-sm" id="status">
+                            <option value="show">✅ Visible</option>
+                            <option value="hide">❌ Hidden</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            {% for lang in languages %}
+            <div class="editor-section" data-lang="{{ lang.code }}">
+                <div class="editor-section-title">{{ lang.flag }} {{ lang.name }}</div>
+                <div class="mb-2">
+                    <label class="form-label">Title (max 30)</label>
+                    <input type="text" class="form-control form-control-sm"
+                           id="title_{{ lang.code }}"
+                           maxlength="30"
+                           oninput="updatePreview('{{ lang.code }}')">
+                    <div class="form-text">
+                        <span id="char_count_title_{{ lang.code }}">0</span>/30
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Body (max 300)</label>
+                    <textarea class="form-control form-control-sm"
+                              id="body_{{ lang.code }}"
+                              rows="5"
+                              maxlength="300"
+                              oninput="updatePreview('{{ lang.code }}')"></textarea>
+                    <div class="form-text">
+                        <span id="char_count_body_{{ lang.code }}">0</span>/300
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- JSON Editor Mode (hidden by default) -->
+        <div id="json-editor-mode" style="display: none;">
+            <div class="editor-section">
+                <div class="editor-section-title">📝 JSON Editor</div>
+                <textarea class="form-control json-editor" id="json-editor"></textarea>
+                <div class="form-text mt-2">
+                    Edit the full news JSON structure. Must contain valid content fields.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Resizer: between editor and preview -->
+<div class="resizer"></div>
+
+<!-- Right Column: Preview -->
+<div class="col-preview">
+    <div class="preview-section">
+        <div class="preview-card">
+            <h6 class="text-orange-200 mb-3">📋 Preview</h6>
+            <div id="preview-content">
+                <p class="text-muted">Select a news item to preview</p>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Store data
+    let newsData = {{ news_list | tojson if news_list else '[]' }};
+    let currentNewsId = {{ 'null' if selected_id is none else selected_id }};
+    let isJsonMode = false;
+    const languages = {{ languages | tojson }};
+
+    // Get current news object
+    function getCurrentNews() {
+        if (currentNewsId === null) {
+            // New item template
+            return {
+                id: null,
+                start_date: new Date().toISOString().split('T')[0],
+                duration_days: null,
+                status: 'show',
+                is_pinned: false,
+                content: {}
+            };
+        }
+        return newsData.find(n => n.id === currentNewsId) || null;
+    }
+
+    // Select news from list
+    function selectNews(id) {
+        currentNewsId = id;
+
+        // Update active class
+        document.querySelectorAll('.news-list-item').forEach(el => {
+            el.classList.remove('active');
+            if (parseInt(el.dataset.id) === id) {
+                el.classList.add('active');
+            }
+        });
+
+        // Enable buttons
+        document.getElementById('btn-save').disabled = false;
+        document.getElementById('btn-delete').disabled = false;
+        document.getElementById('btn-toggle').disabled = false;
+        document.getElementById('btn-pin').disabled = false;
+
+        // Load data into form
+        loadFormData(id);
+
+        // Update preview
+        updateFullPreview();
+    }
+
+    // Create new news
+    function createNew() {
+        currentNewsId = null;
+
+        // Clear active class
+        document.querySelectorAll('.news-list-item').forEach(el => {
+            el.classList.remove('active');
+        });
+
+        // Enable save button only
+        document.getElementById('btn-save').disabled = false;
+        document.getElementById('btn-delete').disabled = true;
+        document.getElementById('btn-toggle').disabled = true;
+        document.getElementById('btn-pin').disabled = true;
+
+        // Load empty form
+        loadFormData(null);
+
+        // Clear preview
+        document.getElementById('preview-content').innerHTML =
+            '<p class="text-muted">Creating new news item</p>';
+    }
+
+    // Toggle between duration and end date mode
+    function toggleEndDateMode(mode) {
+        const durationField = document.getElementById('durationField');
+        const endDateField = document.getElementById('endDateField');
+
+        if (mode === 'duration') {
+            durationField.style.display = 'block';
+            endDateField.style.display = 'none';
+        } else {
+            durationField.style.display = 'none';
+            endDateField.style.display = 'block';
+        }
+    }
+
+    // Add event listeners for radio buttons
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('modeDuration').addEventListener('change', function() {
+            if (this.checked) toggleEndDateMode('duration');
+        });
+        document.getElementById('modeEndDate').addEventListener('change', function() {
+            if (this.checked) toggleEndDateMode('enddate');
+        });
+    });
+
+    // Load data into form
+    function loadFormData(id) {
+        const news = getCurrentNews();
+
+        // Settings
+        document.getElementById('start_date').value = news.start_date || '';
+        document.getElementById('duration_days').value = news.duration_days || '';
+        document.getElementById('end_date').value = news.end_date || '';
+        document.getElementById('is_pinned').checked = news.is_pinned || false;
+        document.getElementById('status').value = news.status || 'show';
+
+        // Determine mode based on which field has value
+        if (news.end_date && !news.duration_days) {
+            document.getElementById('modeEndDate').checked = true;
+            toggleEndDateMode('enddate');
+        } else {
+            document.getElementById('modeDuration').checked = true;
+            toggleEndDateMode('duration');
+        }
+
+        // Language fields
+        languages.forEach(lang => {
+            const content = news.content[lang.code] || {title: '', body: ''};
+            document.getElementById(`title_${lang.code}`).value = content.title || '';
+            document.getElementById(`body_${lang.code}`).value = content.body || '';
+            updateCharCount(lang.code);
+        });
+
+        // JSON editor
+        updateJsonEditor();
+    }
+
+    // Update character count
+    function updateCharCount(langCode) {
+        const title = document.getElementById(`title_${langCode}`).value;
+        const body = document.getElementById(`body_${langCode}`).value;
+        document.getElementById(`char_count_title_${langCode}`).textContent = title.length;
+        document.getElementById(`char_count_body_${langCode}`).textContent = body.length;
+    }
+
+    // Update preview for single language (no longer auto-updates full preview)
+    function updatePreview(langCode) {
+        updateCharCount(langCode);
+    }
+
+    // Update full preview
+    function updateFullPreview() {
+        const preview = document.getElementById('preview-content');
+
+        // Get current data from form (works for both new and existing news)
+        const news = gatherFormData();
+
+        let html = '';
+
+        // Add metadata
+        html += `<div class="mb-3 text-sm text-gray-400">`;
+        html += `<div><strong>Start:</strong> ${news.start_date || 'Not set'}</div>`;
+        if (news.duration_days) {
+            html += `<div><strong>Duration:</strong> ${news.duration_days} days</div>`;
+        }
+        if (news.end_date && !news.duration_days) {
+            html += `<div><strong>End:</strong> ${news.end_date}</div>`;
+        }
+        html += `<div><strong>Status:</strong> ${news.status === 'show' ? '✅ Visible' : '❌ Hidden'}</div>`;
+        if (news.is_pinned) {
+            html += `<div><strong>📌 Pinned</strong></div>`;
+        }
+        html += `</div>`;
+
+        // Add language previews
+        languages.forEach(lang => {
+            const content = news.content[lang.code];
+            if (content && (content.title || content.body)) {
+                html += `<div class="preview-card">`;
+                html += `<h6 class="text-orange-200 mb-2">${lang.flag} ${lang.name}</h6>`;
+                if (content.title) {
+                    html += `<div class="mb-2"><strong>Title:</strong><div class="markdown-preview mb-2">${renderMarkdown(content.title)}</div></div>`;
+                }
+                if (content.body) {
+                    html += `<div><strong>Body:</strong><div class="markdown-preview">${renderMarkdown(content.body)}</div></div>`;
+                }
+                if (!content.title && !content.body) {
+                    html += `<em class="text-muted">Empty</em>`;
+                }
+                html += `</div>`;
+            }
+        });
+
+        // Check if at least one language has content
+        const hasContent = languages.some(lang => {
+            const content = news.content[lang.code];
+            return content && (content.title || content.body);
+        });
+
+        if (!hasContent) {
+            html += `<div class="text-center text-muted py-3">`;
+            html += `<small>⚠️ No content yet. Fill in at least one language.</small>`;
+            html += `</div>`;
+        }
+
+        preview.innerHTML = html;
+    }
+
+    // Simple markdown render
+    function renderMarkdown(text) {
+        if (!text) return '';
+        return text
+            .replace(/^### (.*$)/gim, '<h6>$1</h6>')
+            .replace(/^## (.*$)/gim, '<h5>$1</h5>')
+            .replace(/^# (.*$)/gim, '<h4>$1</h4>')
+            .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
+            .replace(/\*(.*)\*/gim, '<em>$1</em>')
+            .replace(/\[([^\]]+)\]\(([^\)]+)\)/gim, '<a href="$2" target="_blank">$1</a>')
+            .replace(/`([^`]+)`/gim, '<code>$1</code>')
+            .replace(/\n/gim, '<br>');
+    }
+
+    // Gather form data
+    function gatherFormData() {
+        const news = getCurrentNews();
+
+        news.start_date = document.getElementById('start_date').value;
+        news.is_pinned = document.getElementById('is_pinned').checked;
+        news.status = document.getElementById('status').value;
+
+        // Handle duration_days OR end_date based on mode
+        const isDurationMode = document.getElementById('modeDuration').checked;
+
+        if (isDurationMode) {
+            news.duration_days = document.getElementById('duration_days').value || null;
+            news.end_date = null;  // Backend will calculate it
+        } else {
+            news.end_date = document.getElementById('end_date').value || null;
+            news.duration_days = null;  // Not used when end_date is set
+        }
+
+        // Build content object
+        news.content = {};
+        languages.forEach(lang => {
+            const title = document.getElementById(`title_${lang.code}`).value;
+            const body = document.getElementById(`body_${lang.code}`).value;
+            if (title || body) {
+                news.content[lang.code] = { title, body };
+            }
+        });
+
+        return news;
+    }
+
+    // Update JSON editor from form data
+    function updateJsonEditor() {
+        const news = gatherFormData();
+        const jsonStr = JSON.stringify(news, null, 2);
+        document.getElementById('json-editor').value = jsonStr;
+    }
+
+    // Load form data from JSON editor
+    function loadFromJson() {
+        try {
+            const jsonStr = document.getElementById('json-editor').value;
+            const data = JSON.parse(jsonStr);
+
+            // Validate structure
+            if (!data.content || typeof data.content !== 'object') {
+                throw new Error('Invalid structure: missing or invalid "content" field');
+            }
+
+            // Load into form
+            document.getElementById('start_date').value = data.start_date || '';
+            document.getElementById('duration_days').value = data.duration_days || '';
+            document.getElementById('end_date').value = data.end_date || '';
+            document.getElementById('is_pinned').checked = data.is_pinned || false;
+            document.getElementById('status').value = data.status || 'show';
+
+            // Set mode based on which field is present
+            if (data.end_date && !data.duration_days) {
+                document.getElementById('modeEndDate').checked = true;
+                toggleEndDateMode('enddate');
+            } else {
+                document.getElementById('modeDuration').checked = true;
+                toggleEndDateMode('duration');
+            }
+
+            languages.forEach(lang => {
+                const content = data.content[lang.code] || {title: '', body: ''};
+                document.getElementById(`title_${lang.code}`).value = content.title || '';
+                document.getElementById(`body_${lang.code}`).value = content.body || '';
+                updateCharCount(lang.code);
+            });
+
+            updateFullPreview();
+            return true;
+        } catch (e) {
+            showAlert('Invalid JSON: ' + e.message, 'danger');
+            return false;
+        }
+    }
+
+    // Toggle edit mode
+    document.getElementById('editJsonToggle').addEventListener('change', function() {
+        isJsonMode = this.checked;
+
+        if (isJsonMode) {
+            // Switch to JSON mode
+            updateJsonEditor();
+            document.getElementById('lang-editor-mode').style.display = 'none';
+            document.getElementById('json-editor-mode').style.display = 'block';
+            updateFullPreview();
+            // Resize textarea to fit content
+            const jsonEditor = document.getElementById('json-editor');
+            if (jsonEditor) {
+                jsonEditor.style.height = 'auto';
+                jsonEditor.style.height = jsonEditor.scrollHeight + 'px';
+            }
+        } else {
+            // Switch to form mode and validate
+            if (!loadFromJson()) {
+                this.checked = true;  // Stay in JSON mode if invalid
+                return;
+            }
+            document.getElementById('lang-editor-mode').style.display = 'block';
+            document.getElementById('json-editor-mode').style.display = 'none';
+            updateFullPreview();
+        }
+    });
+
+    // Save news
+    async function saveNews() {
+        let data;
+
+        if (isJsonMode) {
+            try {
+                data = JSON.parse(document.getElementById('json-editor').value);
+            } catch (e) {
+                showAlert('Invalid JSON: ' + e.message, 'danger');
+                return;
+            }
+        } else {
+            data = gatherFormData();
+        }
+
+        // Validate: at least one language must have title
+        const hasContent = languages.some(lang => {
+            const title = data.content?.[lang.code]?.title;
+            return title && title.trim();
+        });
+        if (!hasContent) {
+            showAlert('Please fill in at least one language title', 'danger');
+            return;
+        }
+
+        // Backend handles both cases:
+        // - duration_days: calculates end_date = start_date + duration_days
+        // - end_date: uses directly
+
+        try {
+            const isNew = currentNewsId === null;
+            const url = isNew ? '/api/admin/news' : `/api/admin/news/${currentNewsId}`;
+            const method = isNew ? 'POST' : 'PUT';
+
+            const response = await fetch(url, {
+                method: method,
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                showAlert(isNew ? 'News created!' : 'News updated!', 'success');
+
+                if (isNew && result.id) {
+                    currentNewsId = result.id;
+                }
+
+                // Refresh news list from server using admin API
+                await refreshNewsList();
+            } else {
+                const error = await response.json();
+                showAlert('Error: ' + (error.detail || 'Unknown error'), 'danger');
+            }
+        } catch (e) {
+            showAlert('Error: ' + e.message, 'danger');
+        }
+    }
+
+    // Refresh news list from server
+    async function refreshNewsList() {
+        try {
+            // Fetch all news using the admin list endpoint
+            const response = await fetch('/api/admin/all-news');
+            if (response.ok) {
+                const result = await response.json();
+                newsData = result.news || result || [];
+                console.log('Loaded news:', newsData.length, 'items');
+                renderNewsList();
+            } else {
+                // Fallback to page reload
+                location.reload();
+            }
+        } catch (e) {
+            console.error('Failed to refresh news list:', e);
+            // Fallback to page reload
+            location.reload();
+        }
+    }
+
+    // Render news list from newsData
+    function renderNewsList() {
+        const container = document.querySelector('.col-news-list');
+        if (!container) return;
+
+        container.innerHTML = generateNewsListHTML();
+    }
+
+    // Generate HTML for news list
+    function generateNewsListHTML() {
+        if (!newsData || newsData.length === 0) {
+            return `
+                <div class="p-3 text-center text-muted">
+                    <small>No news yet.<br>Click "New" to create.</small>
+                </div>
+            `;
+        }
+
+        const itemsHTML = newsData.map(item => {
+            // Find first language with title
+            let titleHtml = '<em class="text-muted">(No title)</em>';
+            for (const lang of languages) {
+                const lang_content = item.content?.[lang.code];
+                if (lang_content?.title) {
+                    titleHtml = `${lang.flag} ${lang_content.title.substring(0, 40)}${lang_content.title.length > 40 ? '...' : ''}`;
+                    break;
+                }
+            }
+
+            const isActive = item.id === currentNewsId ? 'active' : '';
+            const isInactive = item.status === 'hide' ? 'inactive' : '';
+
+            // Determine ID color class
+            let idClass = 'id-pending';  // default (orange) - not active yet
+            if (item.status === 'hide') {
+                idClass = 'id-inactive';  // gray - hidden
+            } else if (item.is_active) {
+                idClass = 'id-active';  // green - active
+            }
+
+            // End date display
+            const endDateDisplay = item.end_date ? `<span class="text-muted ms-1">→ ${item.end_date.substring(0, 10)}</span>` : '';
+
+            return `
+                <div class="news-list-item ${isActive} ${isInactive}"
+                     onclick="selectNews(${item.id})"
+                     data-id="${item.id}"
+                     data-status="${item.status}"
+                     data-start-date="${item.start_date}"
+                     data-is-active="${item.is_active}">
+                    <div class="news-list-item-id ${idClass}">#${item.id}</div>
+                    <div class="news-list-item-title">${titleHtml}</div>
+                    <div class="news-list-item-meta">
+                        ${item.is_pinned ? '📌 ' : ''}${item.status}${endDateDisplay}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Wrap in container div
+        return `<div>${itemsHTML}</div>`;
+    }
+
+    // Delete news
+    async function deleteNews() {
+        if (!currentNewsId) return;
+
+        if (!confirm('Are you sure you want to delete this news?')) return;
+
+        try {
+            const response = await fetch(`/api/admin/news/${currentNewsId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                showAlert('News deleted!', 'success');
+                // Clear selection and refresh list
+                currentNewsId = null;
+                await refreshNewsList();
+                // Clear form
+                createNew();
+            } else {
+                showAlert('Error deleting news', 'danger');
+            }
+        } catch (e) {
+            showAlert('Error: ' + e.message, 'danger');
+        }
+    }
+
+    // Toggle status
+    async function toggleStatus() {
+        if (!currentNewsId) return;
+
+        try {
+            const response = await fetch(`/api/admin/news/${currentNewsId}/toggle`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                showAlert(`Status: ${result.status}`, 'success');
+                // Update local data and refresh list
+                await refreshNewsList();
+            }
+        } catch (e) {
+            showAlert('Error: ' + e.message, 'danger');
+        }
+    }
+
+    // Toggle pin
+    async function togglePin() {
+        if (!currentNewsId) return;
+
+        const news = getCurrentNews();
+        const newPinnedState = !news.is_pinned;
+
+        try {
+            const response = await fetch(`/api/admin/news/${currentNewsId}/pin?is_pinned=${newPinnedState}`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                showAlert(result.message || (newPinnedState ? 'News pinned!' : 'News unpinned!'), 'success');
+                // Update local data and refresh list
+                await refreshNewsList();
+            }
+        } catch (e) {
+            showAlert('Error: ' + e.message, 'danger');
+        }
+    }
+
+    // Initialize on load
+    document.addEventListener('DOMContentLoaded', function() {
+        if (currentNewsId !== null) {
+            selectNews(currentNewsId);
+        }
+
+        // Set default start date
+        if (!currentNewsId) {
+            document.getElementById('start_date').value = new Date().toISOString().split('T')[0];
+        }
+
+        // Auto-resize JSON editor on input
+        const jsonEditor = document.getElementById('json-editor');
+        if (jsonEditor) {
+            function autoResize() {
+                jsonEditor.style.height = 'auto';
+                jsonEditor.style.height = jsonEditor.scrollHeight + 'px';
+            }
+
+            // Resize on input
+            jsonEditor.addEventListener('input', autoResize);
+        }
+    });
+</script>
+{% endblock %}
