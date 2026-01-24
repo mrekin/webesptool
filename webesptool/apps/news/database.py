@@ -3,6 +3,9 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 # DB path and languages from config, with default fallback
 try:
@@ -157,6 +160,7 @@ async def get_active_news(lang: str, limit: int = 5) -> List[Dict]:
     """
     # Use only date part (YYYY-MM-DD) for proper comparison with stored dates
     now = datetime.utcnow().date().isoformat()
+    logger.info(f"[get_active_news] lang={lang}, now={now}, limit={limit}")
 
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
@@ -171,11 +175,13 @@ async def get_active_news(lang: str, limit: int = 5) -> List[Dict]:
         """, (now, now, limit))
 
         rows = await cursor.fetchall()
+        logger.info(f"[get_active_news] Found {len(rows)} raw rows from DB")
 
         # Filter by language and extract content
         result = []
         for row in rows:
             content = json.loads(row["content"])
+            logger.info(f"[get_active_news] Row id={row['id']}, content keys={list(content.keys())}, has lang={lang in content}")
 
             # Only include news that has content for requested language
             if lang in content and content[lang].get("title"):
@@ -190,6 +196,7 @@ async def get_active_news(lang: str, limit: int = 5) -> List[Dict]:
                     "pin_order": row["pin_order"]
                 })
 
+        logger.info(f"[get_active_news] Returning {len(result)} news for lang={lang}")
         return result
 
 

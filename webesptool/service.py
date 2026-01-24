@@ -634,8 +634,13 @@ async def getIpInfo(ip: str):
 # Lifespan context manager for startup/shutdown events
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global config
     # Startup: Load config and initialize database
     loadConfig()
+    # Set app.state after config is loaded
+    app.state.config = config
+    app.state.log = log
+    app.state.templates = templates
     # Initialize news database
     try:
         from apps.news.database import init_db
@@ -809,16 +814,8 @@ def unirun():
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info", root_path="/")
 
 
-# Note: Config loading and initialization moved to lifespan() function
-# to work correctly with uvicorn's event loop
-app.state.config = config
-app.state.log = log
-app.state.templates = templates
-
-
-
 if __name__ == "__main__":
-    
+
 
     t2 = Thread(target=unirun)
     t2.daemon = True

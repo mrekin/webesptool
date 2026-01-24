@@ -54,7 +54,9 @@ async def api_get_news(request: Request, lang: str, limit: int = None):
         if limit is None:
             limit = cfg['news']['max_items_on_main']
 
+        get_log(request).info(f"[API /api/news] lang={lang}, limit={limit}")
         news = await get_active_news(lang, limit)
+        get_log(request).info(f"[API /api/news] returning {len(news)} news")
         return {"news": news}
     except Exception as e:
         # If DB doesn't exist, return empty list
@@ -266,15 +268,3 @@ async def admin_news_list(request: Request, news_id: Optional[int] = None):
     })
 
 
-@router.get("/admin/news/new", response_class=HTMLResponse)
-async def admin_news_new(request: Request):
-    """Redirect to main admin page for creating new news"""
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/admin/news", status_code=302)
-
-
-@router.get("/admin/news/{news_id}/edit", response_class=HTMLResponse)
-async def admin_news_edit(request: Request, news_id: int):
-    """Redirect to main admin page with specific news selected"""
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url=f"/admin/news?news_id={news_id}", status_code=302)
