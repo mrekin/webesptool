@@ -155,7 +155,8 @@ async def get_active_news(lang: str, limit: int = 5) -> List[Dict]:
         - If news doesn't have content for requested lang, it's not returned
         - Server time is used (datetime('now')), independent of client
     """
-    now = datetime.utcnow().isoformat()
+    # Use only date part (YYYY-MM-DD) for proper comparison with stored dates
+    now = datetime.utcnow().date().isoformat()
 
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
