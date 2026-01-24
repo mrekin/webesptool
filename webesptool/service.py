@@ -803,11 +803,11 @@ def unirun():
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info", root_path="/")
 
 
-# Initialize services
-init()
-
 # Loading config AFTER app creation
 loadConfig()
+
+# Initialize services (AFTER config is loaded)
+init()
 
 # Update app.state with loaded config and logger
 app.state.config = config
