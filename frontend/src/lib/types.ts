@@ -246,6 +246,7 @@ export interface SelectedFirmwareFile {
   downloadProgress?: number;
   fileSize?: number;
   isEnabled?: boolean; // If false, file is ignored during flashing and validation
+  userEdited?: boolean; // If true, address was manually edited and should not be auto-recalculated
 }
 
 export interface ZipExtractionResult {
@@ -504,4 +505,21 @@ export interface MeshtasticConfigSelection {
   };
   includeChannels: boolean;
   includeOwner: boolean;
+}
+
+// ==================== NEWS FEED TYPES ====================
+
+export interface NewsItem {
+  id: number;
+  start_date: string;
+  seq_id: number;
+  end_date: string | null;
+  title_markdown: string;
+  body_markdown: string;
+  is_pinned: boolean;
+  pin_order: number;
+}
+
+export interface NewsResponse {
+  news: NewsItem[];
 }

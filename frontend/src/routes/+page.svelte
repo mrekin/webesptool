@@ -14,6 +14,7 @@
   let Footer: any = null;
   let MinimalFooter: any = null;
   let MeshtasticDeviceModal: any = null;
+  let NewsFeed: any = null;
   import { loadingState, availableFirmwares, uiState, deviceSelection } from '$lib/stores.js';
   import { onMount } from 'svelte';
   import { _ as locales, locale } from 'svelte-i18n';
@@ -93,15 +94,17 @@
 
   async function loadFullModeComponents() {
     if (!FirmwareInfo) {
-      const [FWInfo, NotesComp, FooterComp] = await Promise.all([
+      const [FWInfo, NotesComp, FooterComp, NewsFeedComp] = await Promise.all([
         import('$lib/components/FirmwareInfo.svelte'),
         import('$lib/components/Notes.svelte'),
-        import('$lib/components/Footer.svelte')
+        import('$lib/components/Footer.svelte'),
+        import('$lib/components/NewsFeed.svelte')
       ]);
 
       FirmwareInfo = FWInfo.default;
       Notes = NotesComp.default;
       Footer = FooterComp.default;
+      NewsFeed = NewsFeedComp.default;
     }
   }
 
@@ -319,6 +322,11 @@
             <div class="h-64 bg-gray-700 rounded animate-pulse"></div>
           {/if}
           </div>
+
+          <!-- News Feed -->
+          {#if NewsFeed}
+            <svelte:component this={NewsFeed} />
+          {/if}
         </div>
       </div>
   

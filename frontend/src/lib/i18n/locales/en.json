@@ -191,7 +191,7 @@
     "github_name": "Meshtastic GitHub",
     "github_desc": "Official repository",
     "mrekin_github_name": "This project GitHub",
-    "mrekin_github_desc": "Custom variants repository",    
+    "mrekin_github_desc": "Custom variants repository",
     "meshtastic_flasher_name": "Meshtastic Flasher",
     "meshtastic_flasher_desc": "Web-based firmware flashing tool",
     "esp_web_tools_name": "Esptool-js",
@@ -259,6 +259,7 @@
     "select_different_device": "Select Different Device",
     "flash_addresses": "Flash Address",
     "address": "Address",
+    "auto_detect_address": "Auto-detect",
     "file_details": "File Details",
     "file_details_count": "{count} {count, plural, one {file} other {files}}",
     "file_conflict_error": "Cannot flash firmware and factory firmware simultaneously. Use only one file type. Factory firmware contains bootloader, partitions, firmware.",
@@ -371,5 +372,12 @@
   "jsonpreview": {
     "title": "Configuration JSON Preview",
     "apply_changes": "Apply Changes"
+  },
+  "news": {
+    "title": "News",
+    "view_all": "View all news",
+    "archive_title": "News Archive",
+    "no_news": "No news available",
+    "expired": "Expired"
   }
 }

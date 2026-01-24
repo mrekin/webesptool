@@ -259,6 +259,7 @@
     "select_different_device": "Выбрать другое устройство",
     "flash_addresses": "Адрес прошивки",
     "address": "Адрес",
+    "auto_detect_address": "Автоопределение",
     "file_details": "Детали файлов",
     "file_details_count": "{count} {count, plural, one {файл} few {файла} many {файлов} other {файлов}}",
     "file_conflict_error": "Невозможно прошить firmware и factory firmware одновременно. Используйте только один тип файлов. Factory- сборный файл из bootloader, partitions, firmware.",
@@ -371,5 +372,12 @@
   "jsonpreview": {
     "title": "Предпросмотр JSON конфигурации",
     "apply_changes": "Применить"
+  },
+  "news": {
+    "title": "Новости",
+    "view_all": "Все новости",
+    "archive_title": "Архив новостей",
+    "no_news": "Нет доступных новостей",
+    "expired": "Истекло"
   }
 }

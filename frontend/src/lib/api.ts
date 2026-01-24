@@ -8,7 +8,8 @@ import type {
   SourceInfo,
   APIError,
   AppConfig,
-  UpdateMode
+  UpdateMode,
+  NewsResponse
 } from './types.ts';
 
 class APIService {
@@ -478,6 +479,28 @@ class APIService {
     }
 
     return filename;
+  }
+
+  // Get active news for language
+  async getNews(lang: string, limit?: number): Promise<NewsResponse> {
+    // lang is REQUIRED, no default value
+    // limit is optional - backend uses config default if not provided
+    const params = new URLSearchParams({ lang });
+    if (limit !== undefined) {
+      params.append('limit', limit.toString());
+    }
+    return this.request<NewsResponse>(`/news?${params}`);
+  }
+
+  // Get all news for archive
+  async getNewsArchive(lang: string, offset: number = 0, limit?: number): Promise<NewsResponse> {
+    // lang is REQUIRED, no default value
+    // limit is optional - backend uses config default if not provided
+    const params = new URLSearchParams({ lang, offset: offset.toString() });
+    if (limit !== undefined) {
+      params.append('limit', limit.toString());
+    }
+    return this.request<NewsResponse>(`/news/archive?${params}`);
   }
 
   // Clear cache

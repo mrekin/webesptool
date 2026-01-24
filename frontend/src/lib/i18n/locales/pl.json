@@ -259,6 +259,7 @@
     "select_different_device": "Wybierz inne urządzenie",
     "flash_addresses": "Adres flashowania",
     "address": "Adres",
+    "auto_detect_address": "Automatyczne wykrywanie",
     "file_details": "Szczegóły pliku",
     "file_details_count": "{count} {count, plural, one {plik} few {pliki} many {plików} other {plików}}",
     "file_conflict_error": "Nie można flashować firmware i factory firmware jednocześnie. Użyj tylko jednego typu plików. Factory firmware zawiera bootloader, partycje, firmware.",
@@ -278,7 +279,7 @@
     "terminal_autoscroll": "Auto-przewijanie",
     "terminal_copy": "Kopiuj zaznaczenie",
     "terminal_opening": "Otwieranie terminala...",
-    "terminal_error": "Błąд terminala",
+    "terminal_error": "Błąd terminala",
     "terminal_no_port": "Brak aktywnego portu. Najpierw połącz się z urządzeniem.",
     "partitions_incompatible_warning": "Plik partitions.bin jest przeznaczony dla urządzenia z większą pamięcią flash ({partitionsMB}MB). Podłączone urządzenie ma {deviceMB}MB."
   },
@@ -371,5 +372,12 @@
   "jsonpreview": {
     "title": "Podgląd JSON konfiguracji",
     "apply_changes": "Zastosuj zmiany"
+  },
+  "news": {
+    "title": "Wiadomości",
+    "view_all": "Wszystkie wiadomości",
+    "archive_title": "Archiwum wiadomości",
+    "no_news": "Brak dostępnych wiadomości",
+    "expired": "Wygasło"
   }
 }

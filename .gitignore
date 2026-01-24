@@ -10,3 +10,8 @@ webesptool/static/radio2.webp
 docker-compose_fr_dev.yml
 plans/
 temp/
+docs/
+docs/tasks/
+# News database
+webesptool/db/news.db*
+webesptool/db/

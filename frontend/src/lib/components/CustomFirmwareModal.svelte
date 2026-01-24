@@ -117,7 +117,7 @@
 		label: $locales(opt.labelKey)
 	}));
 
-	
+
 	// Handle manifest data in AutoSelect mode
 	$: if (isAutoSelectMode && manifestData && !metadataFile) {
 		// Create a virtual metadata file from manifest data
@@ -138,7 +138,8 @@
 				file: item.file, // File object
 				hasError: false,
 				errorMessage: '',
-				isEnabled: true // File is enabled by default
+				isEnabled: true, // File is enabled by default
+				userEdited: false
 			}));
 		}
 	});
@@ -312,7 +313,8 @@
 					file: fileHandler.createFirmwareFile(file),
 					hasError: false,
 					errorMessage: '',
-					isEnabled: true
+					isEnabled: true,
+					userEdited: false
 				});
 			} else if (fileHandler.isFirmwareFile(file)) {
 				// Handle firmware file
@@ -322,7 +324,8 @@
 					file: fileHandler.createFirmwareFile(file),
 					hasError: false,
 					errorMessage: '',
-					isEnabled: true // File is enabled by default
+					isEnabled: true, // File is enabled by default
+					userEdited: false
 				});
 			}
 		}
@@ -744,7 +747,8 @@
 					isDownloading: true,
 					downloadProgress: 0,
 					fileSize: 0,
-					isEnabled: true // File is enabled by default
+					isEnabled: true, // File is enabled by default
+					userEdited: false
 				};
 			});
 
@@ -831,6 +835,11 @@
 		);
 
 		selectedFirmwareFiles = selectedFirmwareFiles.map((fileItem) => {
+			// Skip address update if user manually edited this address
+			if (fileItem.userEdited) {
+				return fileItem;
+			}
+
 			const addressResult = getMeshtasticFlashAddress(
 				fileItem.filename,
 				metadata,
@@ -1375,23 +1384,47 @@
 																<span class="text-xs text-gray-400"
 																	>{$locales('customfirmware.address')}:</span
 																>
-																<input
-																	type="text"
-																	bind:value={fileItem.address}
-																	placeholder="0x0"
-																	disabled={isFlashing || isAutoSelectMode || fileItem.isEnabled === false}
-																	class="w-24 rounded-md {espManager.isValidFlashAddress(fileItem.address)
-																		? 'border-gray-600'
-																		: 'border-red-500'} bg-gray-700 px-2 py-1 text-xs text-gray-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
-																	on:change={(e) => {
-																		if (!isAutoSelectMode && fileItem.isEnabled !== false) {
-																			const input = e.target as HTMLInputElement;
-																			const sanitized = espManager.sanitizeAddress(input.value);
-																			fileItem.address = sanitized;
-																		}
-																	}}
-																	title="{isAutoSelectMode || fileItem.isEnabled === false ? 'Address locked' : 'Enter address in hex (0x...) or decimal format'}"
-																/>
+																<div class="relative flex items-center">
+																	<input
+																		type="text"
+																		value={fileItem.address}
+																		placeholder="0x0"
+																		disabled={isFlashing || isAutoSelectMode || fileItem.isEnabled === false}
+																		class="w-24 rounded-md {fileItem.userEdited ? 'pr-8 ' : ''}{espManager.isValidFlashAddress(fileItem.address)
+																			? 'border-gray-600'
+																			: 'border-red-500'} bg-gray-700 px-2 py-1 text-xs text-gray-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
+																		on:input={(e) => {
+																			if (!isAutoSelectMode && fileItem.isEnabled !== false) {
+																				const input = e.target as HTMLInputElement;
+																				fileItem.address = input.value;
+																			}
+																		}}
+																		on:change={(e) => {
+																			if (!isAutoSelectMode && fileItem.isEnabled !== false) {
+																				const input = e.target as HTMLInputElement;
+																				const sanitized = espManager.sanitizeAddress(input.value);
+																				// Only mark as userEdited if value actually changed
+																				if (sanitized !== fileItem.address) {
+																					fileItem.address = sanitized;
+																					fileItem.userEdited = true;
+																				}
+																			}
+																		}}
+																		title="{isAutoSelectMode || fileItem.isEnabled === false ? 'Address locked' : 'Enter address in hex (0x...) or decimal format'}"
+																	/>
+																	{#if fileItem.userEdited && !isAutoSelectMode && fileItem.isEnabled !== false}
+																		<button
+																			on:click={() => {
+																				fileItem.userEdited = false;
+																				updateFlashAddresses();
+																			}}
+																			class="absolute right-1 text-gray-400 hover:text-orange-400 transition-colors"
+																			title={$locales('customfirmware.auto_detect_address')}
+																		>
+																			↻
+																		</button>
+																	{/if}
+																</div>
 															</div>
 														</div>
 													{/each}
@@ -1508,23 +1541,47 @@
 													<span class="text-xs text-gray-400"
 														>{$locales('customfirmware.address')}:</span
 													>
-													<input
-														type="text"
-														bind:value={fileItem.address}
-														placeholder="0x0"
-														disabled={isFlashing || isAutoSelectMode || fileItem.isEnabled === false}
-														class="w-24 rounded-md {espManager.isValidFlashAddress(fileItem.address)
-															? 'border-gray-600'
-															: 'border-red-500'} bg-gray-700 px-2 py-1 text-xs text-gray-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
-														on:change={(e) => {
-															if (!isAutoSelectMode && fileItem.isEnabled !== false) {
-																const input = e.target as HTMLInputElement;
-																const sanitized = espManager.sanitizeAddress(input.value);
-																fileItem.address = sanitized;
-															}
-														}}
-														title="{isAutoSelectMode || fileItem.isEnabled === false ? 'Address locked' : 'Enter address in hex (0x...) or decimal format'}"
-													/>
+													<div class="relative flex items-center">
+														<input
+															type="text"
+															value={fileItem.address}
+															placeholder="0x0"
+															disabled={isFlashing || isAutoSelectMode || fileItem.isEnabled === false}
+															class="w-24 rounded-md {fileItem.userEdited ? 'pr-8 ' : ''}{espManager.isValidFlashAddress(fileItem.address)
+																? 'border-gray-600'
+																: 'border-red-500'} bg-gray-700 px-2 py-1 text-xs text-gray-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
+															on:input={(e) => {
+																if (!isAutoSelectMode && fileItem.isEnabled !== false) {
+																	const input = e.target as HTMLInputElement;
+																	fileItem.address = input.value;
+																}
+															}}
+															on:change={(e) => {
+																if (!isAutoSelectMode && fileItem.isEnabled !== false) {
+																	const input = e.target as HTMLInputElement;
+																	const sanitized = espManager.sanitizeAddress(input.value);
+																	// Only mark as userEdited if value actually changed
+																	if (sanitized !== fileItem.address) {
+																		fileItem.address = sanitized;
+																		fileItem.userEdited = true;
+																	}
+																}
+															}}
+															title="{isAutoSelectMode || fileItem.isEnabled === false ? 'Address locked' : 'Enter address in hex (0x...) or decimal format'}"
+														/>
+														{#if fileItem.userEdited && !isAutoSelectMode && fileItem.isEnabled !== false}
+															<button
+																on:click={() => {
+																	fileItem.userEdited = false;
+																	updateFlashAddresses();
+																}}
+																class="absolute right-1 text-gray-400 hover:text-orange-400 transition-colors"
+																title={$locales('customfirmware.auto_detect_address')}
+															>
+																↻
+															</button>
+														{/if}
+													</div>
 												</div>
 											</div>
 										{/each}
