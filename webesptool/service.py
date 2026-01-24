@@ -8,6 +8,7 @@ class FirmwareType(Enum):
 import utils.logger
 
 from fastapi import FastAPI, Request
+from contextlib import asynccontextmanager
 from fastapi.responses import JSONResponse
 
 import uvicorn
@@ -164,17 +165,6 @@ def loadConfig():
         diff = diff if diff else {}
         config = merge(base, diff)
 
-
-def init():
-    """Initialize services"""
-    # Initialize news database
-    try:
-        import asyncio
-        from apps.news.database import init_db
-        asyncio.run(init_db())
-        log.info("News database initialized successfully")
-    except Exception as e:
-        log.warning(f"Failed to initialize news database: {e}")
 
 hidden_regex = re.compile(r"^_.*")  
 
@@ -641,7 +631,23 @@ async def getIpInfo(ip: str):
     return None
 
 
-app = FastAPI()
+# Lifespan context manager for startup/shutdown events
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Load config and initialize database
+    loadConfig()
+    # Initialize news database
+    try:
+        from apps.news.database import init_db
+        await init_db()
+        log.info("News database initialized successfully")
+    except Exception as e:
+        log.warning(f"Failed to initialize news database: {e}")
+    yield
+    # Shutdown: cleanup if needed
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 #app.include_router(router)
@@ -803,13 +809,8 @@ def unirun():
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info", root_path="/")
 
 
-# Loading config AFTER app creation
-loadConfig()
-
-# Initialize services (AFTER config is loaded)
-init()
-
-# Update app.state with loaded config and logger
+# Note: Config loading and initialization moved to lifespan() function
+# to work correctly with uvicorn's event loop
 app.state.config = config
 app.state.log = log
 app.state.templates = templates
