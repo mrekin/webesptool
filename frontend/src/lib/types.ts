@@ -523,3 +523,6 @@ export interface NewsItem {
 export interface NewsResponse {
   news: NewsItem[];
 }
+
+// News pagination configuration (must match backend config.yml: news.max_items_on_main)
+export const NEWS_PAGE_SIZE = 5;

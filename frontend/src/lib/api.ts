@@ -492,6 +492,21 @@ class APIService {
     return this.request<NewsResponse>(`/news?${params}`);
   }
 
+  // Get paginated active news with offset-based pagination
+  async getPaginatedNews(lang: string, offset: number = 0, limit?: number): Promise<NewsResponse> {
+    // lang is REQUIRED, no default value
+    // offset: page offset for pagination (0 = first page, 5 = second page, etc.)
+    // limit is optional - backend uses config default (NEWS_PAGE_SIZE) if not provided
+    const params = new URLSearchParams({ lang });
+    if (offset > 0) {
+      params.append('offset', offset.toString());
+    }
+    if (limit !== undefined) {
+      params.append('limit', limit.toString());
+    }
+    return this.request<NewsResponse>(`/news?${params}`);
+  }
+
   // Get all news for archive
   async getNewsArchive(lang: string, after_id: number | null = null, limit?: number): Promise<NewsResponse> {
     // lang is REQUIRED, no default value

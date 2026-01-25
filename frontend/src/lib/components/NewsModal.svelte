@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import { apiService } from '$lib/api.js';
 	import type { NewsItem } from '$lib/types.js';
+	import { NEWS_PAGE_SIZE } from '$lib/types.js';
 	import MarkdownRenderer from '$lib/components/MarkdownRenderer.svelte';
 
 	export let isOpen: boolean = false;
@@ -11,7 +12,7 @@
 
 	let newsList: NewsItem[] = [];
 	let loading = false;
-	let lastId: number | null = null;
+	let offset = 0;
 	let hasMore = true;
 
 	async function loadNews(loadMore = false) {
@@ -24,14 +25,19 @@
 			if (!currentLocale) {
 				return;
 			}
-			const response = await apiService.getNewsArchive(currentLocale, lastId ?? 0);
+
+			console.log('[NewsModal] loadNews called:', { loadMore, offset, currentLocale });
+			const response = await apiService.getPaginatedNews(currentLocale, offset);
 			const newItems = response.news || [];
+
+			console.log('[NewsModal] Received items:', newItems.length, newItems.map((i: NewsItem) => i.id));
 
 			if (newItems.length > 0) {
 				newsList = [...newsList, ...newItems];
-				// Update cursor to last item's id for next page
-				lastId = newItems[newItems.length - 1].id;
-				hasMore = newItems.length >= 50;
+				// Increment offset for next page
+				offset += newItems.length;
+				hasMore = newItems.length >= NEWS_PAGE_SIZE;
+				console.log('[NewsModal] Updated state:', { offset, hasMore, newsListLength: newsList.length });
 			} else {
 				hasMore = false;
 			}
@@ -47,18 +53,12 @@
 	}
 
 	onMount(() => {
-		if (isOpen) {
-			newsList = [];
-			lastId = null;
-			hasMore = true;
-			loadNews();
-		}
+		// Initial setup - news will load when modal opens via reactive statement below
 	});
 
-	$: if (isOpen) {
-		newsList = [];
-		lastId = null;
-		hasMore = true;
+	$: if (isOpen && newsList.length === 0) {
+		// Reset offset when modal opens
+		offset = 0;
 		loadNews();
 	}
 
@@ -67,9 +67,17 @@
 		return new Date(item.end_date) < new Date();
 	}
 
+	function handleClose() {
+		// Reset state when modal closes
+		newsList = [];
+		offset = 0;
+		hasMore = true;
+		onClose();
+	}
+
 	function closeOnEscape(e: KeyboardEvent) {
 		if (e.key === 'Escape' && isOpen) {
-			onClose();
+			handleClose();
 		}
 	}
 
@@ -96,12 +104,12 @@
 					<h2 class="text-xl font-semibold text-orange-200">
 						{$locales('news.latest_title')}
 					</h2>
-					<button onclick={onClose} class="text-gray-400 hover:text-gray-200 text-2xl">✕</button>
+					<button onclick={handleClose} class="text-gray-400 hover:text-gray-200 text-2xl">✕</button>
 				</div>
 
 				<!-- Content -->
 				<div class="p-6">
-					{#if loading}
+					{#if newsList.length === 0 && loading}
 						<div class="text-center text-gray-400 py-12">
 							<span class="inline-block animate-spin">⏳</span>
 						</div>
@@ -136,6 +144,21 @@
 								</div>
 							{/each}
 						</div>
+
+						{#if hasMore && newsList.length > 0}
+							<div class="flex justify-end mt-4">
+								{#if loading}
+									<span class="text-orange-400 text-sm inline-block animate-spin">⏳</span>
+								{:else}
+									<button
+										onclick={handleLoadMore}
+										class="text-orange-400 hover:text-orange-300 hover:underline text-sm"
+									>
+										{$locales('news.more')}
+									</button>
+								{/if}
+							</div>
+						{/if}
 					{:else}
 						<div class="text-center text-gray-400 py-12">
 							{$locales('news.no_news')}
@@ -146,20 +169,11 @@
 				<!-- Footer -->
 				<div class="flex justify-end space-x-3 border-t border-gray-700 p-6">
 					<button
-						onclick={onClose}
+						onclick={handleClose}
 						class="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-600"
 					>
 						{$locales('common.close')}
 					</button>
-					{#if hasMore && newsList.length > 0}
-						<button
-							onclick={handleLoadMore}
-							disabled={loading}
-							class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
-						>
-							{$locales('news.more')}
-						</button>
-					{/if}
 				</div>
 			</div>
 		</div>

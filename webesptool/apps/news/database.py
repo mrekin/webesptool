@@ -176,7 +176,7 @@ async def get_active_news(lang: str, limit: int = 5, offset: int = 0) -> List[Di
             WHERE status = 'show'
               AND start_date <= ?
               AND (end_date IS NULL OR end_date >= ?)
-            ORDER BY is_pinned DESC, pin_order ASC, start_date DESC, seq_id ASC
+            ORDER BY is_pinned DESC, pin_order ASC, start_date DESC, seq_id DESC
             LIMIT 1000
         """, (now, now))
 
