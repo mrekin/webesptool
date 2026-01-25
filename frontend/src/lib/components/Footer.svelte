@@ -57,6 +57,10 @@
       name: $locales('footer.primary_mirror_name'),
       href: 'https://mrekin.duckdns.org/flasher/',
       description: $locales('footer.primary_mirror_desc')
+    },    {
+      name: $locales('footer.primary_mirror_name'),
+      href: 'https://flashmesh.ru',
+      description: $locales('footer.primary_mirror_desc')
     },
     {
       name: $locales('footer.european_mirror_name'),
