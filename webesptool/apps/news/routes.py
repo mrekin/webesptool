@@ -31,13 +31,13 @@ MAX_PINNED_NEWS = 2  # Maximum number of news that can be pinned at the same tim
 
 
 @router.get("/api/news")
-async def api_get_news(request: Request, lang: str, limit: int = None, after_id: int = None):
+async def api_get_news(request: Request, lang: str, limit: int = None, offset: int = 0):
     """Get active news for user
 
     Args:
         lang: Language code (any string, e.g., "en", "ru", "pl", "de", etc.) - REQUIRED
         limit: Maximum number of news to return (optional, uses config default if not provided)
-        after_id: Optional cursor for pagination - returns news with id > after_id
+        offset: Page offset for pagination (0 = first page, 5 = second page, etc.)
 
     Returns:
         JSON with news list
@@ -48,6 +48,7 @@ async def api_get_news(request: Request, lang: str, limit: int = None, after_id:
         - Server time is used
         - Backend doesn't validate or hardcode language list - it's content-driven
         - lang is REQUIRED parameter - no default value
+        - offset-based pagination for stable results with sorting by pinned+date
     """
     try:
         cfg = get_cfg(request)
@@ -55,8 +56,8 @@ async def api_get_news(request: Request, lang: str, limit: int = None, after_id:
         if limit is None:
             limit = cfg['news']['max_items_on_main']
 
-        get_log(request).info(f"[API /api/news] lang={lang}, limit={limit}, after_id={after_id}")
-        news = await get_active_news(lang, limit, after_id)
+        get_log(request).info(f"[API /api/news] lang={lang}, limit={limit}, offset={offset}")
+        news = await get_active_news(lang, limit, offset)
         get_log(request).info(f"[API /api/news] returning {len(news)} news")
         return {"news": news}
     except Exception as e:

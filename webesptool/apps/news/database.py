@@ -143,13 +143,13 @@ async def create_news(data: Dict[str, Any]) -> int:
         return cursor.lastrowid
 
 
-async def get_active_news(lang: str, limit: int = 5, after_id: Optional[int] = None) -> List[Dict]:
+async def get_active_news(lang: str, limit: int = 5, offset: int = 0) -> List[Dict]:
     """Get active news for language
 
     Args:
         lang: Language code (en, ru, pl)
         limit: Maximum number of news to return
-        after_id: Optional cursor for pagination - returns news with id > after_id (from filtered results)
+        offset: Number of items to skip for pagination
 
     Returns:
         List of news items with translated content
@@ -158,11 +158,13 @@ async def get_active_news(lang: str, limit: int = 5, after_id: Optional[int] = N
         - NO fallback to English if lang not found
         - If news doesn't have content for requested lang, it's not returned
         - Server time is used (datetime('now')), independent of client
-        - Language filtering happens first: loads all active news, filters by lang, then applies after_id and limit
+        - Language filtering happens first: loads all active news, filters by lang, then applies offset and limit
+        - Sorting: pinned first (by pin_order), then by date (newest first), then by seq_id
+        - Offset-based pagination used because IDs are not monotonic in the sorted order
     """
     # Use only date part (YYYY-MM-DD) for proper comparison with stored dates
     now = datetime.utcnow().date().isoformat()
-    logger.info(f"[get_active_news] lang={lang}, now={now}, limit={limit}, after_id={after_id}")
+    logger.info(f"[get_active_news] lang={lang}, now={now}, limit={limit}, offset={offset}")
 
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
@@ -201,14 +203,10 @@ async def get_active_news(lang: str, limit: int = 5, after_id: Optional[int] = N
 
         logger.info(f"[get_active_news] After lang filter: {len(filtered_result)} news")
 
-        # Apply after_id cursor (skip items with id <= after_id)
-        if after_id is not None:
-            filtered_result = [item for item in filtered_result if item["id"] > after_id]
+        # Apply offset and limit (offset-based pagination)
+        result = filtered_result[offset:offset + limit]
 
-        # Apply limit
-        result = filtered_result[:limit]
-
-        logger.info(f"[get_active_news] Returning {len(result)} news for lang={lang}")
+        logger.info(f"[get_active_news] Returning {len(result)} news for lang={lang} (offset={offset})")
         return result
 
 
