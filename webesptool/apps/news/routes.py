@@ -31,12 +31,13 @@ MAX_PINNED_NEWS = 2  # Maximum number of news that can be pinned at the same tim
 
 
 @router.get("/api/news")
-async def api_get_news(request: Request, lang: str, limit: int = None):
+async def api_get_news(request: Request, lang: str, limit: int = None, after_id: int = None):
     """Get active news for user
 
     Args:
         lang: Language code (any string, e.g., "en", "ru", "pl", "de", etc.) - REQUIRED
         limit: Maximum number of news to return (optional, uses config default if not provided)
+        after_id: Optional cursor for pagination - returns news with id > after_id
 
     Returns:
         JSON with news list
@@ -54,8 +55,8 @@ async def api_get_news(request: Request, lang: str, limit: int = None):
         if limit is None:
             limit = cfg['news']['max_items_on_main']
 
-        get_log(request).info(f"[API /api/news] lang={lang}, limit={limit}")
-        news = await get_active_news(lang, limit)
+        get_log(request).info(f"[API /api/news] lang={lang}, limit={limit}, after_id={after_id}")
+        news = await get_active_news(lang, limit, after_id)
         get_log(request).info(f"[API /api/news] returning {len(news)} news")
         return {"news": news}
     except Exception as e:
@@ -65,13 +66,14 @@ async def api_get_news(request: Request, lang: str, limit: int = None):
 
 
 @router.get("/api/news/archive")
-async def api_get_news_archive(request: Request, lang: str, offset: int = 0, limit: int = None):
+async def api_get_news_archive(request: Request, lang: str, offset: int = 0, limit: int = None, after_id: int = None):
     """Get all news for archive modal
 
     Args:
         lang: Language code (any string, REQUIRED)
-        offset: Pagination offset
+        offset: Pagination offset (deprecated, use after_id instead)
         limit: Maximum number of news to return (optional, uses config default if not provided)
+        after_id: Optional cursor for pagination - returns news with id > after_id
 
     Note:
         - No fallback: only returns news that have content for requested language
@@ -84,7 +86,7 @@ async def api_get_news_archive(request: Request, lang: str, offset: int = 0, lim
         if limit is None:
             limit = cfg['news']['archive_page_size']
 
-        news = await get_all_news(lang, offset, limit)
+        news = await get_all_news(lang, offset, limit, after_id)
         return {"news": news}
     except Exception as e:
         get_log(request).warning(f"Failed to get news archive: {e}")

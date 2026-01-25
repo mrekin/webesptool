@@ -143,12 +143,13 @@ async def create_news(data: Dict[str, Any]) -> int:
         return cursor.lastrowid
 
 
-async def get_active_news(lang: str, limit: int = 5) -> List[Dict]:
+async def get_active_news(lang: str, limit: int = 5, after_id: Optional[int] = None) -> List[Dict]:
     """Get active news for language
 
     Args:
         lang: Language code (en, ru, pl)
         limit: Maximum number of news to return
+        after_id: Optional cursor for pagination - returns news with id > after_id (from filtered results)
 
     Returns:
         List of news items with translated content
@@ -157,13 +158,16 @@ async def get_active_news(lang: str, limit: int = 5) -> List[Dict]:
         - NO fallback to English if lang not found
         - If news doesn't have content for requested lang, it's not returned
         - Server time is used (datetime('now')), independent of client
+        - Language filtering happens first: loads all active news, filters by lang, then applies after_id and limit
     """
     # Use only date part (YYYY-MM-DD) for proper comparison with stored dates
     now = datetime.utcnow().date().isoformat()
-    logger.info(f"[get_active_news] lang={lang}, now={now}, limit={limit}")
+    logger.info(f"[get_active_news] lang={lang}, now={now}, limit={limit}, after_id={after_id}")
 
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
+
+        # Load all active news (reasonable limit for performance)
         cursor = await db.execute("""
             SELECT id, start_date, seq_id, end_date, content, is_pinned, pin_order
             FROM news
@@ -171,21 +175,20 @@ async def get_active_news(lang: str, limit: int = 5) -> List[Dict]:
               AND start_date <= ?
               AND (end_date IS NULL OR end_date >= ?)
             ORDER BY is_pinned DESC, pin_order ASC, start_date DESC, seq_id ASC
-            LIMIT ?
-        """, (now, now, limit))
+            LIMIT 1000
+        """, (now, now))
 
         rows = await cursor.fetchall()
         logger.info(f"[get_active_news] Found {len(rows)} raw rows from DB")
 
         # Filter by language and extract content
-        result = []
+        filtered_result = []
         for row in rows:
             content = json.loads(row["content"])
-            logger.info(f"[get_active_news] Row id={row['id']}, content keys={list(content.keys())}, has lang={lang in content}")
 
             # Only include news that has content for requested language
             if lang in content and content[lang].get("title"):
-                result.append({
+                filtered_result.append({
                     "id": row["id"],
                     "start_date": row["start_date"],
                     "seq_id": row["seq_id"],
@@ -196,41 +199,56 @@ async def get_active_news(lang: str, limit: int = 5) -> List[Dict]:
                     "pin_order": row["pin_order"]
                 })
 
+        logger.info(f"[get_active_news] After lang filter: {len(filtered_result)} news")
+
+        # Apply after_id cursor (skip items with id <= after_id)
+        if after_id is not None:
+            filtered_result = [item for item in filtered_result if item["id"] > after_id]
+
+        # Apply limit
+        result = filtered_result[:limit]
+
         logger.info(f"[get_active_news] Returning {len(result)} news for lang={lang}")
         return result
 
 
-async def get_all_news(lang: str, offset: int = 0, limit: int = 50) -> List[Dict]:
+async def get_all_news(lang: str, offset: int = 0, limit: int = 50, after_id: Optional[int] = None) -> List[Dict]:
     """Get all news for archive (including disabled)
 
     Args:
         lang: Language code (en, ru, pl)
-        offset: Pagination offset
+        offset: Pagination offset (deprecated, use after_id instead)
         limit: Maximum number of news to return
+        after_id: Optional cursor for pagination - returns news with id > after_id (from filtered results)
 
     Returns:
         List of all news items with translated content
+
+    Important:
+        - Language filtering happens first: loads all news, filters by lang, then applies after_id/offset and limit
     """
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
+
+        # Load all news (reasonable limit for performance)
         cursor = await db.execute("""
             SELECT id, start_date, seq_id, end_date, status, content, is_pinned, pin_order, created_at
             FROM news
             WHERE status = 'show'
             ORDER BY start_date DESC, seq_id DESC
-            LIMIT ? OFFSET ?
-        """, (limit, offset))
+            LIMIT 1000
+        """)
 
         rows = await cursor.fetchall()
 
         # Filter by language and extract content
-        result = []
+        filtered_result = []
         for row in rows:
             content = json.loads(row["content"])
 
             # Only include news that has content for requested language
             if lang in content and content[lang].get("title"):
-                result.append({
+                filtered_result.append({
                     "id": row["id"],
                     "start_date": row["start_date"],
                     "seq_id": row["seq_id"],
@@ -242,6 +260,14 @@ async def get_all_news(lang: str, offset: int = 0, limit: int = 50) -> List[Dict
                     "pin_order": row["pin_order"],
                     "created_at": row["created_at"]
                 })
+
+        # Apply after_id cursor (preferred over offset)
+        if after_id is not None:
+            filtered_result = [item for item in filtered_result if item["id"] > after_id]
+            result = filtered_result[:limit]
+        else:
+            # Fall back to offset for backward compatibility
+            result = filtered_result[offset:offset + limit]
 
         return result
 
