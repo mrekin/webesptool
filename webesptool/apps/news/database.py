@@ -235,7 +235,7 @@ async def get_all_news(lang: str, offset: int = 0, limit: int = 50, after_id: Op
             SELECT id, start_date, seq_id, end_date, status, content, is_pinned, pin_order, created_at
             FROM news
             WHERE status = 'show'
-            ORDER BY start_date DESC, seq_id DESC
+            ORDER BY is_pinned DESC, start_date DESC, seq_id DESC
             LIMIT 1000
         """)
 
