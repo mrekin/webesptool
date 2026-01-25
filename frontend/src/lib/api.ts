@@ -493,10 +493,14 @@ class APIService {
   }
 
   // Get all news for archive
-  async getNewsArchive(lang: string, offset: number = 0, limit?: number): Promise<NewsResponse> {
+  async getNewsArchive(lang: string, after_id: number | null = null, limit?: number): Promise<NewsResponse> {
     // lang is REQUIRED, no default value
+    // after_id: cursor for pagination - returns news with id > after_id (null = first page)
     // limit is optional - backend uses config default if not provided
-    const params = new URLSearchParams({ lang, offset: offset.toString() });
+    const params = new URLSearchParams({ lang });
+    if (after_id !== null) {
+      params.append('after_id', after_id.toString());
+    }
     if (limit !== undefined) {
       params.append('limit', limit.toString());
     }

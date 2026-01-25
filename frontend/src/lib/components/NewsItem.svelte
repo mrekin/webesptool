@@ -1,6 +1,6 @@
 <script lang="ts">
   import { locale } from 'svelte-i18n';
-  import Markdown from '@humanspeak/svelte-markdown';
+  import MarkdownRenderer from '$lib/components/MarkdownRenderer.svelte';
   import type { NewsItem } from '$lib/types.js';
 
   export let item: NewsItem;
@@ -19,13 +19,6 @@
       day: 'numeric'
     });
   }
-
-  // Custom renderer for links (same as in MarkdownRenderer)
-  const renderer = {
-    link: (href: string, title: string | null, text: string) => {
-      return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="text-orange-400 hover:text-orange-300 underline">${text}</a>`;
-    },
-  };
 </script>
 
 <div class="border border-gray-700 rounded-lg overflow-hidden">
@@ -39,13 +32,8 @@
       {#if item.is_pinned}
         <span class="text-orange-300 flex-shrink-0">📌</span>
       {/if}
-      <div class="text-sm text-orange-100 font-medium prose prose-invert prose-sm max-w-none">
-        <Markdown
-          source={item.title_markdown}
-          {renderer}
-          breaks={true}
-          linkify={true}
-        />
+      <div class="text-sm text-orange-100 font-medium">
+        <MarkdownRenderer source={item.title_markdown} unwrap={true} />
       </div>
     </div>
     <div class="flex items-center space-x-2 flex-shrink-0 ml-2">
@@ -61,14 +49,10 @@
 
   {#if expanded}
     <div class="p-3 bg-gray-900 border-t border-gray-700 animate-fade-in">
-      <div class="prose prose-invert prose-sm max-w-none">
-        <Markdown
-          source={item.body_markdown}
-          {renderer}
-          breaks={true}
-          linkify={true}
-        />
-      </div>
+      <MarkdownRenderer
+        source={item.body_markdown}
+        wrapperClass="prose prose-invert prose-sm max-w-none"
+      />
     </div>
   {/if}
 </div>

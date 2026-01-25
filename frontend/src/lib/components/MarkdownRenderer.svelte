@@ -7,17 +7,21 @@
 
   // Props
   interface Props {
-    filename: string;
+    filename?: string;  // Optional - for loading from file
+    source?: string;    // Optional - for string content
     class?: string;
     wrapperClass?: string;
     hide?: boolean;
+    unwrap?: boolean;  // If true, render without wrapper div (inline mode)
   }
 
   let {
     filename,
+    source,
     class: className = '',
     wrapperClass = 'prose prose-invert max-w-none',
-    hide = false
+    hide = false,
+    unwrap = false
   }: Props = $props();
 
   // State
@@ -44,7 +48,7 @@
     if (h3Match) return h3Match[1];
 
     // If no heading found, use formatted filename without extension
-    const cleanFilename = filename.replace(/\.md$/, '').replace(/.*[\/\\]/, '');
+    const cleanFilename = filename ? filename.replace(/\.md$/, '').replace(/.*[\/\\]/, '') : 'Content';
     // Convert filename to readable format (replace underscores/hyphens with spaces, capitalize first letter)
     return cleanFilename.replace(/[-_]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
   }
@@ -55,19 +59,30 @@
       loading = true;
       error = null;
 
-      if (!filename) {
-        throw new Error('Filename is required');
+      // Use source if provided
+      if (source && source.trim().length > 0) {
+        content = source;
+        spoilerTitle = extractFirstHeading(source);
+        console.info(`[MarkdownRenderer] Rendering from source`);
+        return;
       }
 
-      const markdownContent = await insertDoc(filename);
+      // Load from file if filename provided
+      if (filename) {
+        const markdownContent = await insertDoc(filename);
 
-      if (!markdownContent) {
-        throw new Error(`Content not found for file: ${filename}`);
+        if (!markdownContent) {
+          throw new Error(`Content not found for file: ${filename}`);
+        }
+
+        content = markdownContent;
+        spoilerTitle = extractFirstHeading(markdownContent);
+        console.info(`[MarkdownRenderer] Successfully loaded: ${filename} for locale: ${currentLocale}`);
+        return;
       }
 
-      content = markdownContent;
-      spoilerTitle = extractFirstHeading(markdownContent);
-      console.info(`[MarkdownRenderer] Successfully loaded: ${filename} for locale: ${currentLocale}`);
+      // Neither source nor filename provided
+      throw new Error('Either filename or source must be provided');
     } catch (err) {
       console.error('Failed to load markdown content:', err);
       error = err instanceof Error ? err.message : 'Failed to load content';
@@ -77,19 +92,30 @@
     }
   }
 
-  // Subscribe to locale changes and reload content when locale changes
+  // Subscribe to locale changes ONLY for filename mode
   let unsubscribe: (() => void) | null = null;
 
   onMount(() => {
     loadContent();
 
-    // Subscribe to locale changes
-    unsubscribe = locale.subscribe((newLocale) => {
-      if (newLocale !== currentLocale) {
-        currentLocale = newLocale;
-        loadContent();
-      }
-    });
+    // Subscribe to locale changes only when using filename
+    if (filename && !source) {
+      unsubscribe = locale.subscribe((newLocale) => {
+        if (newLocale !== currentLocale) {
+          currentLocale = newLocale;
+          loadContent();
+        }
+      });
+    }
+  });
+
+  // Reload content when source prop changes
+  $effect(() => {
+    if (source !== undefined) {
+      content = source;
+      spoilerTitle = extractFirstHeading(source);
+      loading = false;
+    }
   });
 
   // Add link click handler when content is available
@@ -131,57 +157,75 @@
   };
 </script>
 
-<div bind:this={markdownContainer} class="{wrapperClass} {className} markdown-container">
-  {#if loading}
-    <div class="flex items-center justify-center py-8">
-      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-      <span class="ml-3 text-gray-400">Loading content...</span>
-    </div>
+{#if unwrap}
+  <!-- Unwrap mode: render markdown without wrapper div -->
+  {#if content}
+    <Markdown
+      source={content}
+      {renderer}
+      breaks={true}
+      linkify={true}
+      class={className}
+    />
+  {:else if loading}
+    <span class="text-gray-400">Loading...</span>
   {:else if error}
-    <div class="bg-red-900 bg-opacity-20 border border-red-600 rounded-lg p-4">
-      <h3 class="text-red-400 font-semibold mb-2">Error loading content</h3>
-      <p class="text-red-300">{error}</p>
-    </div>
-  {:else if content}
-    {#if hide}
-      <!-- Spoiler mode -->
-      <div class="border border-orange-600 rounded-lg overflow-hidden ml-4">
-        <button
-          onclick={() => isSpoilerOpen = !isSpoilerOpen}
-          class="w-full flex items-center justify-between p-3 transition-all duration-300 text-left bg-orange-900/30 hover:bg-orange-900/50 hover:border-orange-500"
-          aria-expanded={isSpoilerOpen}
-        >
-          <h4 class="text-lg font-semibold text-orange-200">{spoilerTitle}</h4>
-          <span class="text-orange-300 transform transition-transform duration-300" style="transform: {isSpoilerOpen ? 'rotate(180deg)' : 'rotate(0deg)'}">
-            ▼
-          </span>
-        </button>
-        {#if isSpoilerOpen}
-          <div class="p-4 border-t border-orange-600 animate-fade-in">
-            <Markdown
-              source={content}
-              {renderer}
-              breaks={true}
-              linkify={true}
-            />
-          </div>
-        {/if}
-      </div>
-    {:else}
-      <!-- Normal mode -->
-      <Markdown
-        source={content}
-        {renderer}
-        breaks={true}
-        linkify={true}
-      />
-    {/if}
-  {:else}
-    <div class="bg-gray-800 border border-gray-600 rounded-lg p-4">
-      <p class="text-gray-400">No content available.</p>
-    </div>
+    <span class="text-red-400">{error}</span>
   {/if}
-</div>
+{:else}
+  <!-- Wrapped mode: render with wrapper div -->
+  <div bind:this={markdownContainer} class="{wrapperClass} {className} markdown-container">
+    {#if loading}
+      <div class="flex items-center justify-center py-8">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+        <span class="ml-3 text-gray-400">Loading content...</span>
+      </div>
+    {:else if error}
+      <div class="bg-red-900 bg-opacity-20 border border-red-600 rounded-lg p-4">
+        <h3 class="text-red-400 font-semibold mb-2">Error loading content</h3>
+        <p class="text-red-300">{error}</p>
+      </div>
+    {:else if content}
+      {#if hide}
+        <!-- Spoiler mode -->
+        <div class="border border-orange-600 rounded-lg overflow-hidden ml-4">
+          <button
+            onclick={() => isSpoilerOpen = !isSpoilerOpen}
+            class="w-full flex items-center justify-between p-3 transition-all duration-300 text-left bg-orange-900/30 hover:bg-orange-900/50 hover:border-orange-500"
+            aria-expanded={isSpoilerOpen}
+          >
+            <h4 class="text-lg font-semibold text-orange-200">{spoilerTitle}</h4>
+            <span class="text-orange-300 transform transition-transform duration-300" style="transform: {isSpoilerOpen ? 'rotate(180deg)' : 'rotate(0deg)'}">
+              ▼
+            </span>
+          </button>
+          {#if isSpoilerOpen}
+            <div class="p-4 border-t border-orange-600 animate-fade-in">
+              <Markdown
+                source={content}
+                {renderer}
+                breaks={true}
+                linkify={true}
+              />
+            </div>
+          {/if}
+        </div>
+      {:else}
+        <!-- Normal mode -->
+        <Markdown
+          source={content}
+          {renderer}
+          breaks={true}
+          linkify={true}
+        />
+      {/if}
+    {:else}
+      <div class="bg-gray-800 border border-gray-600 rounded-lg p-4">
+        <p class="text-gray-400">No content available.</p>
+      </div>
+    {/if}
+  </div>
+{/if}
 
 <style>
   /* Ensure prose styling works well with dark theme */

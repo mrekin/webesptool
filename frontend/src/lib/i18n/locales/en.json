@@ -375,7 +375,9 @@
   },
   "news": {
     "title": "News",
-    "view_all": "View all news",
+    "more": "More...",
+    "show_less": "Show less",
+    "latest_title": "Latest News",
     "archive_title": "News Archive",
     "no_news": "No news available",
     "expired": "Expired"

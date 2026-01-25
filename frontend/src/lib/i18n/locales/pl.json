@@ -375,7 +375,9 @@
   },
   "news": {
     "title": "Wiadomości",
-    "view_all": "Wszystkie wiadomości",
+    "more": "Więcej...",
+    "show_less": "Pokaż mniej",
+    "latest_title": "Ostatnie wiadomości",
     "archive_title": "Archiwum wiadomości",
     "no_news": "Brak dostępnych wiadomości",
     "expired": "Wygasło"
