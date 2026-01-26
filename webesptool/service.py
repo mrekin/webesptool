@@ -518,15 +518,15 @@ async def buildManifest(t:str = None, v:str = None, u:str = "1", src:str = None)
     rootFolder, src, fw_type = await getRootFolder(t,v,src)
     devinfo = await loadInfo(t,v, rootFolder)
 
-    update_offset = 65536
+    update_offset = 0x10000
     install_fw_offset = 0
-    install_bleota_offset = 2490368
-    install_littlefs_offset = 3145728
+    install_bleota_offset = 0x260000
+    install_littlefs_offset = 0x300000
     flashsize = '4MB'
 
     if t in BIGDB_8MB or devinfo.get("flashSize", None) == '8MB':
         install_littlefs_offset=0x670000
-        install_bleota_offset=0x340000
+        install_bleota_offset=0x5D0000
         flashsize = '8MB'
     elif t in BIGDB_16MB or devinfo.get("flashSize", None) == '16MB':
         install_littlefs_offset=0xc90000
@@ -534,16 +534,18 @@ async def buildManifest(t:str = None, v:str = None, u:str = "1", src:str = None)
         flashsize = '16MB'
 
     #s3 -v3 t-deck wireless-paper wireless-tracker 
-    bleotav = 'bleota'
+    bleotav = 'mt-esp32-ota'
     
     chip_family = "ESP32"
     if ("s3" in t) or ("-v3" in t) or ("t-deck" in t) or ("wireless-paper" in t) or ("wireless-tracker" in t) or devinfo.get("chip", None) == 'esp32s3':
         chip_family = "ESP32-S3"
-        bleotav = 'bleota-s3'
+        bleotav = 'mt-esp32s3-ota'
     elif ("c3" in t or devinfo.get("chip", None) == 'esp32c3'):
         chip_family = "ESP32-C3"
+        bleotav = 'bleota-c3'
     elif ("c6" in t or devinfo.get("chip", None) == 'esp32c6'):
-        chip_family = "ESP32-C6"        
+        chip_family = "ESP32-C6"
+        bleotav = 'bleota-c3'
     else:  # Need to check nrf52/rp2040 somehow, but this method in most cases no need to invoke for nrf/rp2040
         data = await getAvailableFirmwares()
         if t in data.get('uf2devices'):
