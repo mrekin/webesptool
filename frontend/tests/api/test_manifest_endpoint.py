@@ -189,11 +189,43 @@ class ManifestTester:
                 differences.extend(self.compare_dicts(dict1[key], dict2[key], current_path))
             elif isinstance(dict1[key], list) and isinstance(dict2[key], list):
                 if dict1[key] != dict2[key]:
-                    differences.append(f"Array differs: {current_path}")
+                    # Detailed array comparison
+                    differences.extend(self._compare_lists(dict1[key], dict2[key], current_path))
             elif dict1[key] != dict2[key]:
                 differences.append(f"Value differs: {current_path} (baseline: {dict2[key]}, current: {dict1[key]})")
 
         return differences
+
+    def _compare_lists(self, list1: List, list2: List, path: str) -> List[str]:
+        """Compare two lists and return detailed differences."""
+        differences = []
+
+        if len(list1) != len(list2):
+            differences.append(f"List length differs: {path} (baseline: {len(list2)}, current: {len(list1)})")
+
+        # Compare element by element
+        max_len = max(len(list1), len(list2))
+        for i in range(max_len):
+            elem_path = f"{path}[{i}]"
+
+            if i >= len(list1):
+                differences.append(f"Missing in current: {elem_path} = {self._truncate(str(list2[i]), 100)}")
+            elif i >= len(list2):
+                differences.append(f"Added in current: {elem_path} = {self._truncate(str(list1[i]), 100)}")
+            elif isinstance(list1[i], dict) and isinstance(list2[i], dict):
+                differences.extend(self.compare_dicts(list1[i], list2[i], elem_path))
+            elif isinstance(list1[i], list) and isinstance(list2[i], list):
+                differences.extend(self._compare_lists(list1[i], list2[i], elem_path))
+            elif list1[i] != list2[i]:
+                differences.append(f"Element differs: {elem_path} (baseline: {self._truncate(str(list2[i]), 100)}, current: {self._truncate(str(list1[i]), 100)})")
+
+        return differences
+
+    def _truncate(self, s: str, max_len: int) -> str:
+        """Truncate string if too long."""
+        if len(s) > max_len:
+            return s[:max_len] + "..."
+        return s
 
     async def run_tests(self):
         """Run tests against existing baseline."""

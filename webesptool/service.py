@@ -601,14 +601,9 @@ async def buildManifest(t:str = None, v:str = None, u:str = "1", src:str = None)
     # === DETERMINE OFFSETS ===
     # Priority: partitions.bin > hardcoded fallback values
 
-    # install_fw_offset: partitions.bin > 0 (default)
-    if partitions_offsets and partitions_offsets.get('fw_offset') is not None:
-        install_fw_offset = partitions_offsets['fw_offset']
-        log.debug(f"Using fw_offset from partitions.bin: 0x{install_fw_offset:x}")
-    else:
-        install_fw_offset = 0
-        if partitions_offsets:  # Parsing was done but fw_offset not found
-            log.debug("fw_offset not found in partitions.bin, using default: 0x0")
+    # install_fw_offset: ALWAYS 0 for factory install (u=2)
+    # partitions.bin fw_offset is for OTA updates, not factory install
+    install_fw_offset = 0
 
     # install_bleota_offset: partitions.bin > hardcoded by flash size
     if partitions_offsets and partitions_offsets.get('bleota_offset') is not None:
