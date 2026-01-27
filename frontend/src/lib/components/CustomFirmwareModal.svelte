@@ -11,7 +11,7 @@
 	} from '$lib/utils/esp.js';
 	import { createFirmwareFileHandler } from '$lib/utils/fileHandler.js';
 	import { apiService } from '$lib/api.js';
-	import type { FirmwareFile, FirmwareMetadata, FirmwareMetadataExtended, MemorySegment, SelectedFirmwareFile } from '$lib/types.js';
+	import type { FirmwareFile, FirmwareMetadataExtended, MemorySegment, SelectedFirmwareFile } from '$lib/types.js';
 	import { ValidationErrors } from '$lib/types.js';
 	import { parsePartitionsWithValidation, formatAnalysis, type PartitionTable, type PartitionAnalysis } from '$lib/utils/partitionParser.js';
 	import MemoryMap from '$lib/components/MemoryMap.svelte';

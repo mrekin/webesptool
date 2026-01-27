@@ -1,5 +1,6 @@
 import json
 from enum import Enum
+from typing import Optional
 
 class FirmwareType(Enum):
     MESHTASTIC = "meshtastic"
@@ -39,6 +40,14 @@ import io
 import mimetypes
 import aiohttp
 
+# Partition parser import with graceful degradation
+from utils.partition_parser import (
+        parse_partitions_file,
+        format_analysis,
+        find_partition_by_type,
+    )
+
+
 
 
 class CustomLooseVersion(LooseVersion):
@@ -77,7 +86,7 @@ class CustomLooseVersion(LooseVersion):
                     other.version[i] = str(other.version[i])
             except Exception as e:
                 pass
-        
+
         if "daily" in self.vstring and "daily" not in other.vstring and self.version[:len(self.version)-1] == other.version[:len(other.version)-1]:
             return 1
         if "daily" not in self.vstring and "daily" in other.vstring and self.version[:len(self.version)-1] == other.version[:len(other.version)-1]:
@@ -166,7 +175,8 @@ def loadConfig():
         config = merge(base, diff)
 
 
-hidden_regex = re.compile(r"^_.*")  
+hidden_regex = re.compile(r"^_.*")
+
 
 async def getAvailableFirmwares(src = None, rootFolder = None, t:str = None):
     data = {"espdevices":[], "uf2devices":[], "rp2040devices":[], "versions":[], "device_names":[]}
@@ -174,7 +184,7 @@ async def getAvailableFirmwares(src = None, rootFolder = None, t:str = None):
     uf2files_pattern = re.compile(r".*\.uf2")
     otafiles_pattern = re.compile(r".*\.zip")
 
-    
+
     # Builds output folders with pattern 'device'/'version'
     #rootFolder = None
 
@@ -194,21 +204,21 @@ async def getAvailableFirmwares(src = None, rootFolder = None, t:str = None):
             if isinstance(rf,dict) and src == rf.get('src', None) and rf.get('path', None):
                 rootFolder = rf.get('path')
                 break
-    
+
     # Get devices and versions at first path if not provided
     if not rootFolder and paths:
         rootFolder = paths[0]
     if rootFolder:
-        address_pattern = re.compile("^"+rootFolder+"[^/]+$")  
+        address_pattern = re.compile("^"+rootFolder+"[^/]+$")
         for address, dirs, files in await aiofiles.os.walk(rootFolder, topdown=True, onerror=None, followlinks=False):
             if address == rootFolder:
-                pass            
+                pass
             if bool(address_pattern.match(address)):
                 if bool(hidden_regex.match(Path(address).name)):
                     log.info(f"Skipping device {Path(address).name} - marked as hidden")
                     continue
-                
-                # Find device.info file and read it as json if exists   
+
+                # Find device.info file and read it as json if exists
                 content = None
                 jdev = None
                 for file in files:
@@ -227,7 +237,7 @@ async def getAvailableFirmwares(src = None, rootFolder = None, t:str = None):
                                         rp2040devices.add(Path(address).name)
                                     device_names[Path(address).name] = jdev.get('name')
                             break
-                                
+
                 # Remove hidden versions
                 if (t and address.endswith(t)) or (not t):
                     versions = versions.union(set([d for d in dirs if not bool(hidden_regex.match(d))]))
@@ -240,19 +250,19 @@ async def getAvailableFirmwares(src = None, rootFolder = None, t:str = None):
                             if uf2files_pattern.match(f.name):
                                 #uf2devices.add(Path(address).name)
                                 uf2find = True
-                                #break        
+                                #break
                             if otafiles_pattern.match(f.name):
                                 #uf2devices.add(Path(address).name)
                                 otafind = True
-                                #break                                
+                                #break
                         if not uf2find:
                             espdevices.add(Path(address).name)
                         if uf2find and otafind: #nrf devices
                             uf2devices.add(Path(address).name)
                         if uf2find and not otafind: #rp2040 devices
-                            rp2040devices.add(Path(address).name)                                        
+                            rp2040devices.add(Path(address).name)
 
-        
+
     data["espdevices"] = list(set(data["espdevices"]).union(espdevices))
     data["uf2devices"] = list(set(data["uf2devices"]).union(uf2devices))
     data["rp2040devices"] = list(set(data["rp2040devices"]).union(rp2040devices))
@@ -263,7 +273,7 @@ async def getAvailableFirmwares(src = None, rootFolder = None, t:str = None):
     data["uf2devices"].sort()
     data["rp2040devices"].sort()
     data["srcs"] = srcs
-    
+
 
     data["versions"].sort(reverse=True, key=CustomLooseVersion)
 
@@ -273,11 +283,11 @@ async def getAvailableFirmwares(src = None, rootFolder = None, t:str = None):
 async def buildInfoblock(t:str = None, v:str = None, src:str = None):
     infoblock={'info':""}
     rmfile = "readme.md"
-    
+
     rootFolder, src, fw_type = await getRootFolder(t,v,src)
     if rootFolder:
         rmfile = os.path.join(rootFolder,t,rmfile)
-    
+
     try:
         async with aiofiles.open(rmfile,'r') as file:
             content = await file.read()
@@ -322,7 +332,7 @@ async def buildVersions(t:str = None, src:str = None):
                             continue
                         files = await aiofiles.os.scandir(os.path.join(address,d))
                         info_find = False
-                        
+
                         for file in files:
                             if "ver.info" == file.name:
                                 info_find = True
@@ -333,7 +343,7 @@ async def buildVersions(t:str = None, src:str = None):
                                 content = await f.read()
                             if content:
                                 jver = json.loads(content)
-                                        
+
                                 matches= re.search(reg, jver.get('version'))
 
                                 # Assume that `latestTag`` exist only for daily versions
@@ -353,7 +363,7 @@ async def buildVersions(t:str = None, src:str = None):
                                 versions_map[sver] = jver.get('version')
                                 dates_map[jver.get('version')] = jver.get('date')
                                 notes_map[jver.get('version')] = jver.get('notes')
-                                #data.get('versions',[]).append(sver) 
+                                #data.get('versions',[]).append(sver)
                         else:
                                     #reg = r"^(?P<mver>([\w\d]+\.){2}([\w\d]+))\.(?P<n>[\w\d]+)\.*(?P<daily>daily)*$"
                             matches= re.search(reg, d)
@@ -368,7 +378,7 @@ async def buildVersions(t:str = None, src:str = None):
                                 # Fallback for versions without regex match
                                 sver = f"{d} 00:00:00 "
                             versions_map[sver] = d
-                                    #data.get('versions',[]).append(sver)    
+                                    #data.get('versions',[]).append(sver)
 
     versorted = list(versions_map.keys())
     versorted.sort(reverse=True, key=CustomLooseVersion)
@@ -390,7 +400,7 @@ async def loadInfo(t = None, v = None, rootFolder = None):
     #rootFolder = None
     if rootFolder:
         if not (await aiofiles.os.path.isdir(os.path.join(rootFolder,t,v))):
-                rootFolder = None        
+                rootFolder = None
     if not rootFolder:
         for rf in config['fwDirs']:
             if(await aiofiles.os.path.isdir(os.path.join(rf,t,v))):
@@ -399,7 +409,7 @@ async def loadInfo(t = None, v = None, rootFolder = None):
         if not rootFolder:
             return {}
 
-    
+
     ipath = os.path.join(rootFolder,t,"device.info")
 
     if(not await aiofiles.os.path.isfile(ipath)):
@@ -409,7 +419,7 @@ async def loadInfo(t = None, v = None, rootFolder = None):
             content = await f.read()
     if content:
         jver = json.loads(content)
-    
+
     return jver
 
 async def generate_zip(folder_path, json_data:str = None):
@@ -419,14 +429,14 @@ async def generate_zip(folder_path, json_data:str = None):
         if json_data:
             json_str = json.dumps(json_data, ensure_ascii=False, indent=2)
             zipf.writestr("manifest.json", json_str)
-        
+
         # Добавляем файлы из папки
         for root, dirs, files in await aiofiles.os.walk(folder_path):
             for file in files:
                 file_path = os.path.join(root, file)
                 arcname = os.path.relpath(file_path, folder_path)
                 zipf.write(file_path, arcname)
-    
+
     zip_buffer.seek(0)
     return zip_buffer
 
@@ -453,7 +463,7 @@ async def getSrcs():
 async def getFileByMask(path, mask):
     fullFileName = None
     fileName = None
-    regexp = re.compile(mask) 
+    regexp = re.compile(mask)
     #Assume that no need to recurcieve search
     for address, dirs, files in await aiofiles.os.walk(path, topdown=True, onerror=None, followlinks=False):
         for file in files:
@@ -476,12 +486,12 @@ async def getRootFolder(t = None, v = None, src:str = None):
                 rootFolder = rf.get('path')
                 fw_type = FirmwareType(rf.get('type', 'meshtastic'))  # get type from config
                 return rootFolder, src, fw_type
-    
+
     # Get devices and versions at first path if not provided
     if not rootFolder and paths:
         try:
             for rf in paths:
-                if v: 
+                if v:
                     path = os.path.join(rf,t,v)
                 elif t:
                     path = os.path.join(rf,t)
@@ -494,7 +504,7 @@ async def getRootFolder(t = None, v = None, src:str = None):
                             fw_type = FirmwareType(s.get('type', 'meshtastic'))  # get type from config
                             break
                     return rf, src, fw_type
-                    
+
         except Exception:
             rootFolder = None
     return rootFolder, src, fw_type
@@ -518,24 +528,126 @@ async def buildManifest(t:str = None, v:str = None, u:str = "1", src:str = None)
     rootFolder, src, fw_type = await getRootFolder(t,v,src)
     devinfo = await loadInfo(t,v, rootFolder)
 
-    update_offset = 0x10000
-    install_fw_offset = 0
-    install_bleota_offset = 0x260000
-    install_littlefs_offset = 0x300000
+    # === PARSE PARTITIONS.BIN IF AVAILABLE ===
+    partitions_offsets = None
+    if rootFolder:
+        partitions_path = os.path.join(rootFolder, t, v, "partitions.bin")
+        if await aiofiles.os.path.isfile(partitions_path):
+            log.debug(f"Parsing partitions.bin: {partitions_path}")
+            try:
+                table = await parse_partitions_file(partitions_path)
+
+                # Get flash size from format_analysis
+                analysis_json = format_analysis(table)
+                analysis = json.loads(analysis_json)
+                flashsize_from_partitions = analysis.get('flash_size_mb')
+
+                # Find partitions by type/subtype (analog findBestMatch from frontend)
+                # install_fw_offset: APP type, ota_0 (0x10) or factory (0x00)
+                fw_offset = find_partition_by_type(table, 0x00, [0x10, 0x00])
+
+                # install_bleota_offset: APP type, ota_1 (0x11) or ota_0 (0x10) or factory (0x00)
+                bleota_offset = find_partition_by_type(table, 0x00, [0x11, 0x10, 0x00])
+
+                # install_littlefs_offset: DATA type, littlefs (0x09) or spiffs (0x08) or custom (0x82)
+                littlefs_offset = find_partition_by_type(table, 0x01, [0x09, 0x08, 0x82])
+
+                partitions_offsets = {
+                    'flash_size': flashsize_from_partitions,
+                    'fw_offset': fw_offset,
+                    'bleota_offset': bleota_offset,
+                    'littlefs_offset': littlefs_offset
+                }
+
+                # Check how many offsets were found
+                found_count = sum(1 for k in ['fw_offset', 'bleota_offset', 'littlefs_offset']
+                                if partitions_offsets.get(k) is not None)
+
+                if found_count == 3:
+                    log.debug(
+                        f"Partitions parsed successfully: "
+                        f"flash={partitions_offsets.get('flash_size')}, "
+                        f"fw=0x{partitions_offsets.get('fw_offset'):x}, "
+                        f"bleota=0x{partitions_offsets.get('bleota_offset'):x}, "
+                        f"littlefs=0x{partitions_offsets.get('littlefs_offset'):x}"
+                    )
+                else:
+                    log.warning(
+                        f"Partitions partially parsed: {found_count}/3 offsets found. "
+                        f"fw={partitions_offsets.get('fw_offset')}, "
+                        f"bleota={partitions_offsets.get('bleota_offset')}, "
+                        f"littlefs={partitions_offsets.get('littlefs_offset')}"
+                    )
+            except (FileNotFoundError, Exception) as e:
+                log.debug(f"Failed to parse partitions.bin: {e}")
+                partitions_offsets = None
+
+    # === DETERMINE FLASH SIZE ===
+    # Priority: partitions.bin > device.info > BIGDB lists
     flashsize = '4MB'
-
-    if t in BIGDB_8MB or devinfo.get("flashSize", None) == '8MB':
-        install_littlefs_offset=0x670000
-        install_bleota_offset=0x5D0000
+    if partitions_offsets and partitions_offsets.get('flash_size'):
+        flashsize = partitions_offsets['flash_size']
+        log.debug(f"Using flashSize from partitions.bin: {flashsize}")
+    elif devinfo.get("flashSize", None):
+        flashsize = devinfo["flashSize"]
+        log.debug(f"Using flashSize from device.info: {flashsize}")
+    elif t in BIGDB_8MB:
         flashsize = '8MB'
-    elif t in BIGDB_16MB or devinfo.get("flashSize", None) == '16MB':
-        install_littlefs_offset=0xc90000
-        install_bleota_offset=0x650000
+        log.debug("Using flashSize from BIGDB_8MB")
+    elif t in BIGDB_16MB:
         flashsize = '16MB'
+        log.debug("Using flashSize from BIGDB_16MB")
 
-    #s3 -v3 t-deck wireless-paper wireless-tracker 
+    # === DETERMINE OFFSETS ===
+    # Priority: partitions.bin > hardcoded fallback values
+
+    # install_fw_offset: partitions.bin > 0 (default)
+    if partitions_offsets and partitions_offsets.get('fw_offset') is not None:
+        install_fw_offset = partitions_offsets['fw_offset']
+        log.debug(f"Using fw_offset from partitions.bin: 0x{install_fw_offset:x}")
+    else:
+        install_fw_offset = 0
+        if partitions_offsets:  # Parsing was done but fw_offset not found
+            log.debug("fw_offset not found in partitions.bin, using default: 0x0")
+
+    # install_bleota_offset: partitions.bin > hardcoded by flash size
+    if partitions_offsets and partitions_offsets.get('bleota_offset') is not None:
+        install_bleota_offset = partitions_offsets['bleota_offset']
+        log.debug(f"Using bleota_offset from partitions.bin: 0x{install_bleota_offset:x}")
+    else:
+        # Fallback: hardcoded values
+        if flashsize == '16MB':
+            install_bleota_offset = 0x650000
+        elif flashsize == '8MB':
+            install_bleota_offset = 0x5D0000
+        else:
+            install_bleota_offset = 0x260000
+
+        if partitions_offsets:  # Parsing was done but bleota_offset not found
+            log.debug(f"bleota_offset not found in partitions.bin, using fallback: 0x{install_bleota_offset:x}")
+
+    # install_littlefs_offset: partitions.bin > hardcoded by flash size
+    if partitions_offsets and partitions_offsets.get('littlefs_offset') is not None:
+        install_littlefs_offset = partitions_offsets['littlefs_offset']
+        log.debug(f"Using littlefs_offset from partitions.bin: 0x{install_littlefs_offset:x}")
+    else:
+        # Fallback: hardcoded values
+        if flashsize == '16MB':
+            install_littlefs_offset = 0xc90000
+        elif flashsize == '8MB':
+            install_littlefs_offset = 0x670000
+        else:
+            install_littlefs_offset = 0x300000
+
+        if partitions_offsets:  # Parsing was done but littlefs_offset not found
+            log.debug(f"littlefs_offset not found in partitions.bin, using fallback: 0x{install_littlefs_offset:x}")
+
+    # Update offsets for backward compatibility with existing manifests
+    update_offset = 0x10000
+
+    #s3 -v3 t-deck wireless-paper wireless-tracker
     bleotav = 'mt-esp32-ota'
-    
+
     chip_family = "ESP32"
     if ("s3" in t) or ("-v3" in t) or ("t-deck" in t) or ("wireless-paper" in t) or ("wireless-tracker" in t) or devinfo.get("chip", None) == 'esp32s3':
         chip_family = "ESP32-S3"
@@ -728,7 +840,7 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
 
     if not rootFolder:
         return {'error': 'No such firmware found'}
-    
+
     #return zipped firmware folder
     if u == "5":
         #rf = await getRootFolder(t,v)
@@ -764,7 +876,7 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
             path, filename = await getFileByMask(os.path.join(rootFolder,t,v),r".*\.uf2")
             if filename == "firmware.uf2":
                 filename = t+"-"+v+".uf2"
-            
+
     else :
         if u=="1": #update
             #path = os.path.join(rootFolder,t,v,"firmware.bin")
