@@ -904,14 +904,13 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
                 #path = os.path.join(rootFolder,t,v,"littlefs.bin")
                 #filename = "littlefs.bin"
                 path, filename = await getFileByMask(os.path.join(rootFolder,t,v),r".*littlefs.*\.bin")
-            if 'bleota' in p:
+            if 'ota' in p:
                 logInd = False # Do not log additional files downloads
-                if '-s3' in p: # possible need different ota for c3
-                    path = "bin/bleota-s3.bin"
-                    filename = "bleota-s3.bin"
-                else:
-                    path = "bin/bleota.bin"
-                    filename = "bleota.bin"
+                if not re.match(r'^[a-zA-Z0-9_.-]+$', p):
+                    return JSONResponse(content={'error': 'Invalid ota parameter'}, status_code=400)
+                path = f"bin/{p}.bin"
+                filename = f"{p}.bin"
+
     if logInd:
         clientIp = getClientIp(request)
         ipInfo = await getIpInfo(clientIp) if clientIp else None
