@@ -208,7 +208,9 @@
     "license_info": "Licensed under Creative Commons Attribution-NonCommercial 4.0",
     "license_desc": "Non-commercial use with attribution required",
     "new_year_title": "Happy New Year!",
-    "new_year_greeting": "May the New Year bring you joy, health, and good luck! Thank you for using our service. 🎄✨"
+    "new_year_greeting": "May the New Year bring you joy, health, and good luck! Thank you for using our service. 🎄✨",
+    "takemeacoffee_name": "Support the project",
+    "takemeacoffee_desc": "Not required, but appreciated :)"
   },
   "customfirmware": {
     "flash_custom_firmware": "Flash Custom Firmware",

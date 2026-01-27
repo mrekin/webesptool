@@ -334,6 +334,16 @@ export interface MemorySegment {
   color: string;        // Segment color
 }
 
+// ==================== FOOTER TYPES ====================
+
+// Footer link with optional language filter
+export interface FooterLink {
+  name: string;
+  href: string;
+  description: string;
+  langFilter?: string;  // Optional: comma-separated list of locales (e.g., 'ru' or 'ru,en')
+}
+
 // ==================== PINOUT TYPES ====================
 
 export type PinCategory = 'button' | 'lora' | 'lora_power' | 'power' | 'led' | 'audio' | 'i2c' | 'uart' | 'gps' | 'gps_config' | 'led_config' | 'spi' | 'other';

@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { _ as locales } from 'svelte-i18n';
+  import { _ as locales, locale } from 'svelte-i18n';
+  import type { FooterLink } from '$lib/types';
   import { appVersion } from '$lib/utils/envVariables.js';
 
   // Local state
@@ -25,7 +26,8 @@
     {
       name: $locales('footer.community_name'),
       href: 'https://meshtastic.discourse.group/',
-      description: $locales('footer.community_desc')
+      description: $locales('footer.community_desc'),
+      langFilter: 'en,pl'
     },
     {
       name: $locales('footer.mrekin_github_name'),
@@ -36,8 +38,26 @@
       name: $locales('footer.github_name'),
       href: 'https://github.com/meshtastic/firmware',
       description: $locales('footer.github_desc')
+    },
+    {
+      name: $locales('footer.takemeacoffee_name'),
+      href: 'https://yoomoney.ru/fundraise/1FI1RHDF28C.260127',
+      description: $locales('footer.takemeacoffee_desc'),
+      langFilter: 'ru'  // Show only for Russian locale
     }
   ];
+
+  // Reactive filtering based on current locale
+  $: filteredMainLinks = mainLinks.filter((link): link is FooterLink => {
+    // If langFilter is not specified or empty - show for all languages
+    if (!link.langFilter) return true;
+    const trimmedFilter = link.langFilter.trim();
+    if (trimmedFilter === '') return true;
+
+    // Check if current locale is in the allowed list
+    const allowedLocales = trimmedFilter.split(',');
+    return $locale !== null && allowedLocales.includes($locale as string);
+  });
 
   $: toolLinks = [
     {
@@ -83,7 +103,7 @@
       <!-- Top section with main links -->
       <div class="mb-8">
         <div class="flex flex-wrap justify-center gap-4 sm:gap-6 lg:gap-8">
-          {#each mainLinks as link}
+          {#each filteredMainLinks as link}
             <a
               href={link.href}
               target="_blank"

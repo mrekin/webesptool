@@ -208,7 +208,9 @@
     "license_info": "Licencjonowany na warunkach Creative Commons Attribution-NonCommercial 4.0",
     "license_desc": "Użycie niekomercyjne z wymaganym atrybucją",
     "new_year_title": "Szczęśliwego Nowego Roku!",
-    "new_year_greeting": "Niech Nowy Rok przyniesie Ci radość, zdrowie i szczęście! Dziękujemy za korzystanie z naszego serwisu. 🎄✨"
+    "new_year_greeting": "Niech Nowy Rok przyniesie Ci radość, zdrowie i szczęście! Dziękujemy za korzystanie z naszego serwisu. 🎄✨",
+    "takemeacoffee_name": "Wesprzyj projekt",
+    "takemeacoffee_desc": "Nieobowiązkowe, ale miłe :)"
   },
   "customfirmware": {
     "flash_custom_firmware": "Flashuj niestandardowy firmware",
