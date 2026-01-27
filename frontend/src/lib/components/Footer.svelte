@@ -2,6 +2,7 @@
   import { _ as locales, locale } from 'svelte-i18n';
   import type { FooterLink } from '$lib/types';
   import { appVersion } from '$lib/utils/envVariables.js';
+  import { EXTERNAL_LINKS } from '$lib/utils/externalLinks';
 
   // Local state
   let currentYear = new Date().getFullYear();
@@ -10,45 +11,45 @@
   $: mainLinks = [
     {
       name: $locales('footer.meshtastic_name'),
-      href: 'https://meshtastic.org/',
+      href: EXTERNAL_LINKS.MESHTASTIC.MAIN,
       description: $locales('footer.meshtastic_desc')
     },
     {
       name: $locales('footer.meshcore_name'),
-      href: 'https://meshcore.co.uk',
+      href: EXTERNAL_LINKS.OTHER.MESHCORE,
       description: $locales('footer.meshcore_desc')
     },
     {
       name: $locales('footer.documentation_name'),
-      href: 'https://meshtastic.org/docs/',
+      href: EXTERNAL_LINKS.MESHTASTIC.DOCS,
       description: $locales('footer.documentation_desc')
     },
     {
       name: $locales('footer.community_name'),
-      href: 'https://meshtastic.discourse.group/',
+      href: EXTERNAL_LINKS.MESHTASTIC.DISCOURSE,
       description: $locales('footer.community_desc'),
       langFilter: 'en,pl'
     },
     {
       name: $locales('footer.mrekin_github_name'),
-      href: 'https://github.com/mrekin/MeshtasticCustomBoards',
+      href: EXTERNAL_LINKS.GITHUB.MREKIN_BOARDS,
       description: $locales('footer.mrekin_github_desc')
     },
     {
       name: $locales('footer.github_name'),
-      href: 'https://github.com/meshtastic/firmware',
+      href: EXTERNAL_LINKS.GITHUB.MESHTASTIC_FIRMWARE,
       description: $locales('footer.github_desc')
     },
     {
       name: $locales('footer.takemeacoffee_name'),
-      href: 'https://yoomoney.ru/fundraise/1FI1RHDF28C.260127',
+      href: EXTERNAL_LINKS.DONATION.YOOMONEY,
       description: $locales('footer.takemeacoffee_desc'),
       langFilter: 'ru'  // Show only for Russian locale
     }
   ];
 
   // Reactive filtering based on current locale
-  $: filteredMainLinks = mainLinks.filter((link): link is FooterLink => {
+  $: filteredMainLinks = mainLinks.filter((link) => {
     // If langFilter is not specified or empty - show for all languages
     if (!link.langFilter) return true;
     const trimmedFilter = link.langFilter.trim();
@@ -57,17 +58,17 @@
     // Check if current locale is in the allowed list
     const allowedLocales = trimmedFilter.split(',');
     return $locale !== null && allowedLocales.includes($locale as string);
-  });
+  }) as FooterLink[];
 
   $: toolLinks = [
     {
       name: $locales('footer.meshtastic_flasher_name'),
-      href: 'https://flasher.meshtastic.org/',
+      href: EXTERNAL_LINKS.MESHTASTIC.FLASHER,
       description: $locales('footer.meshtastic_flasher_desc')
     },
     {
       name: $locales('footer.esp_web_tools_name'),
-      href: 'https://github.com/espressif/esptool-js',
+      href: EXTERNAL_LINKS.GITHUB.ESPRESSIF_ESPTOOL,
       description: $locales('footer.esp_web_tools_desc')
     }
   ];
@@ -75,16 +76,16 @@
   $: mirrorLinks = [
     {
       name: $locales('footer.primary_mirror_name'),
-      href: 'https://mrekin.duckdns.org/flasher/',
+      href: EXTERNAL_LINKS.MIRRORS.PRIMARY_1,
       description: $locales('footer.primary_mirror_desc')
     },    {
       name: $locales('footer.primary_mirror_name'),
-      href: 'https://flashmesh.ru',
+      href: EXTERNAL_LINKS.MIRRORS.PRIMARY_2,
       description: $locales('footer.primary_mirror_desc')
     },
     {
       name: $locales('footer.european_mirror_name'),
-      href: 'https://de2-vardas.duckdns.org',
+      href: EXTERNAL_LINKS.MIRRORS.EUROPEAN,
       description: $locales('footer.european_mirror_desc')
     }
   ];

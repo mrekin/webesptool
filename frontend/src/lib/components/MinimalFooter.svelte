@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { _ as locales } from 'svelte-i18n';
+  import { _ as locales, locale } from 'svelte-i18n';
   import NewYearModal from './NewYearModal.svelte';
   import { browser } from '$app/environment';
+  import { EXTERNAL_LINKS } from '$lib/utils/externalLinks';
 
   let showNewYearModal = false;
 
@@ -49,6 +50,9 @@
   }
 
   let showTree = showNewYearTree();
+
+  // Show coffee icon only for Russian locale
+  $: showCoffee = $locale === 'ru';
 </script>
 
 <div class="mt-8 pt-6 border-t border-gray-700">
@@ -64,6 +68,19 @@
       >
         🎄
       </button>
+    {/if}
+    <!-- Coffee donation link (Russian only) -->
+    {#if showCoffee}
+      <a
+        href={EXTERNAL_LINKS.DONATION.YOOMONEY}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="ml-1 text-xs hover:scale-125 transition-all duration-300 cursor-pointer bg-transparent border-none p-0 hover:animate-sparkle align-middle coffee-link"
+        aria-label="Support the project"
+        title="{$locales('footer.takemeacoffee_desc')}"
+      >
+        ☕︎
+      </a>
     {/if}
   </p>
 </div>
@@ -83,5 +100,13 @@
 
   :global(.animate-sparkle):hover {
     animation: sparkle 1s ease-in-out infinite;
+  }
+
+  .coffee-link {
+    color: #ffffff !important;
+  }
+
+  .coffee-link:hover {
+    color: #f3f4f6 !important;
   }
 </style>
