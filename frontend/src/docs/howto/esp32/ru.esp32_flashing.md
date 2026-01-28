@@ -11,7 +11,7 @@
 
 **Прошивка через Web Flasher**
 
-Самый простой способ, особено для неподготовленных пользователей.
+Самый простой способ, особенно для неподготовленных пользователей.
 
 [Официальный флешер Meshtastic](https://flasher.meshtastic.org) или [Mrekin Meshtastic Flasher](https://mrekin.duckdns.org/flasher/)
 

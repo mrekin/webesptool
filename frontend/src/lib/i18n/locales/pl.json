@@ -165,7 +165,17 @@
     "check_compatibility": "Sprawdź listę kompatybilności urządzeń",
     "verify_firmware_variant": "Zweryfikuj, że używasz poprawnego wariantu firmware",
     "consult_documentation": "Skonsultuj się z oficjalną dokumentacją Meshtastic",
-    "report_issues": "Zgłaszaj problemy w odpowiednim repozytorium GitHub"
+    "report_issues": "Zgłaszaj problemy w odpowiednim repozytorium GitHub",
+    "recommendations_tab": "Zalecenia",
+    "links_tab": "Linki",
+    "links": {
+      "malla_title": "Malla Meshworks",
+      "malla_desc": "Narzędzie do wizualizacji sieci Meshtastic",
+      "votetovid_title": "VoteToVid",
+      "votetovid_desc": "Narzędzie do oceny widoczności (LOS)",
+      "heywhatsthat_title": "Hey What's That?",
+      "heywhatsthat_desc": "Narzędzie do profilowania terenu i oceny widoczności (LOS)"
+    }
   },
   "importantnotice": {
     "title": "⚠️ Ważne uwagi",

@@ -4,12 +4,20 @@
   import { isNRF52Device, isESP32Device } from '$lib/utils/deviceTypeUtils.js';
   import MarkdownRenderer from '$lib/components/MarkdownRenderer.svelte';
   import { getAvailableDocuments } from '$lib/utils/markdown.js';
+  import { EXTERNAL_LINKS } from '$lib/utils/externalLinks.js';
 
   // Local state
   let showMoreSection = $state(false);
   let showImportantNotes = $state(false);
   let showHowTo = $state(false);
   let availableDocuments = $state<string[]>([]);
+
+  // Tab management
+  let activeTab = $state<'recommendations' | 'links'>('recommendations');
+
+  function setActiveTab(tab: 'recommendations' | 'links') {
+    activeTab = tab;
+  }
 
   // Subscribe to device display info
   let currentDeviceInfo = $derived($deviceDisplayInfo);
@@ -103,6 +111,28 @@
       icon: '📖',
       title: $locales('notes.read_documentation_title'),
       description: $locales('notes.read_documentation_desc')
+    }
+  ]);
+
+  // Useful links data
+  let usefulLinks = $derived([
+    {
+      url: EXTERNAL_LINKS.USEFUL_LINKS.MALLA_MESHWORKS,
+      title: $locales('notes.links.malla_title'),
+      description: $locales('notes.links.malla_desc'),
+      icon: '🗺️'
+    },
+    {
+      url: EXTERNAL_LINKS.USEFUL_LINKS.VOTETOVID,
+      title: $locales('notes.links.votetovid_title'),
+      description: $locales('notes.links.votetovid_desc'),
+      icon: '🗳️'
+    },
+    {
+      url: EXTERNAL_LINKS.USEFUL_LINKS.HEYWHATSTHAT,
+      title: $locales('notes.links.heywhatsthat_title'),
+      description: $locales('notes.links.heywhatsthat_desc'),
+      icon: '🏔️'
     }
   ]);
 </script>
@@ -214,65 +244,124 @@
 
       {#if showMoreSection}
         <div id="more-content" class="mt-3 space-y-4 animate-fade-in">
-          <!-- Best Practices -->
-          <div>
-            <h5 class="font-medium text-orange-200 mb-3 flex items-center">
-              <span class="mr-2">✅</span>
-              {$locales('notes.best_practices')}
-            </h5>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-orange-100">
-              {#each bestPractices as practice}
-                <div class="flex items-start space-x-3 p-3 bg-gray-800 rounded border border-orange-500">
-                  <span class="text-base flex-shrink-0 mt-0.5">{practice.icon}</span>
-                  <div class="flex-1">
-                    <h6 class="font-medium text-orange-200 mb-1">{practice.title}</h6>
-                    <p class="text-orange-300">{practice.description}</p>
-                  </div>
-                </div>
-              {/each}
-            </div>
+          <!-- Tabs Header -->
+          <div class="flex border-b border-orange-600 mb-4">
+            <button
+              onclick={() => setActiveTab('recommendations')}
+              class="px-4 py-2 text-sm font-medium transition-colors duration-200
+                     {activeTab === 'recommendations'
+                       ? 'text-orange-200 border-b-2 border-orange-500'
+                       : 'text-orange-400 hover:text-orange-300'}"
+              aria-selected={activeTab === 'recommendations'}
+              role="tab"
+            >
+              {$locales('notes.recommendations_tab')}
+            </button>
+            <button
+              onclick={() => setActiveTab('links')}
+              class="px-4 py-2 text-sm font-medium transition-colors duration-200
+                     {activeTab === 'links'
+                       ? 'text-orange-200 border-b-2 border-orange-500'
+                       : 'text-orange-400 hover:text-orange-300'}"
+              aria-selected={activeTab === 'links'}
+              role="tab"
+            >
+              {$locales('notes.links_tab')}
+            </button>
           </div>
 
-          <!-- Help and Support -->
-          <div class="p-3 bg-orange-900/30 border border-orange-600 rounded">
-            <h5 class="font-medium text-orange-200 mb-2 flex items-center">
-              <span class="mr-2">💬</span>
-              {$locales('notes.need_help')}
-            </h5>
-            <div class="space-y-2 text-sm text-orange-100">
-              <p>
-                {$locales('notes.if_encounter_issues')}
-              </p>
-              <ul class="list-disc list-inside space-y-1 ml-4">
-                <li>{$locales('notes.check_compatibility')}</li>
-                <li>{$locales('notes.verify_firmware_variant')}</li>
-                <li>{$locales('notes.consult_documentation')}</li>
-                <li>{$locales('notes.report_issues')}</li>
-              </ul>
-              <div class="mt-3 space-x-4">
-                <a
-                  href="https://github.com/mrekin/MeshtasticCustomBoards"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="inline-flex items-center px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors text-sm font-medium"
-                  style="color: white !important;"
-                >
-                  <span class="mr-2">🐛</span>
-                  {$locales('notes.report_issue')}
-                </a>
-                <a
-                  href="https://meshtastic.org/docs/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="inline-flex items-center px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors text-sm ml-2 font-medium"
-                  style="color: white !important;"
-                >
-                  <span class="mr-2">📚</span>
-                  {$locales('notes.documentation')}
-                </a>
+          <!-- Tab Content: Recommendations -->
+          {#if activeTab === 'recommendations'}
+            <div role="tabpanel" aria-labelledby="tab-recommendations">
+              <!-- Best Practices -->
+              <div>
+                <h5 class="font-medium text-orange-200 mb-3 flex items-center">
+                  <span class="mr-2">✅</span>
+                  {$locales('notes.best_practices')}
+                </h5>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-orange-100">
+                  {#each bestPractices as practice}
+                    <div class="flex items-start space-x-3 p-3 bg-gray-800 rounded border border-orange-500">
+                      <span class="text-base flex-shrink-0 mt-0.5">{practice.icon}</span>
+                      <div class="flex-1">
+                        <h6 class="font-medium text-orange-200 mb-1">{practice.title}</h6>
+                        <p class="text-orange-300">{practice.description}</p>
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+
+              <!-- Help and Support -->
+              <div class="p-3 bg-orange-900/30 border border-orange-600 rounded mt-4">
+                <h5 class="font-medium text-orange-200 mb-2 flex items-center">
+                  <span class="mr-2">💬</span>
+                  {$locales('notes.need_help')}
+                </h5>
+                <div class="space-y-2 text-sm text-orange-100">
+                  <p>
+                    {$locales('notes.if_encounter_issues')}
+                  </p>
+                  <ul class="list-disc list-inside space-y-1 ml-4">
+                    <li>{$locales('notes.check_compatibility')}</li>
+                    <li>{$locales('notes.verify_firmware_variant')}</li>
+                    <li>{$locales('notes.consult_documentation')}</li>
+                    <li>{$locales('notes.report_issues')}</li>
+                  </ul>
+                  <div class="mt-3 space-x-4">
+                    <a
+                      href="https://github.com/mrekin/MeshtasticCustomBoards"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="inline-flex items-center px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors text-sm font-medium"
+                      style="color: white !important;"
+                    >
+                      <span class="mr-2">🐛</span>
+                      {$locales('notes.report_issue')}
+                    </a>
+                    <a
+                      href="https://meshtastic.org/docs/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="inline-flex items-center px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors text-sm ml-2 font-medium"
+                      style="color: white !important;"
+                    >
+                      <span class="mr-2">📚</span>
+                      {$locales('notes.documentation')}
+                    </a>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          {/if}
+
+          <!-- Tab Content: Links -->
+          {#if activeTab === 'links'}
+            <div role="tabpanel" aria-labelledby="tab-links">
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm text-orange-100">
+                {#each usefulLinks as link}
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="flex flex-col items-start space-y-2 p-4 bg-gray-800 rounded border border-orange-500 hover:bg-gray-700 hover:border-orange-400 transition-all duration-200 group"
+                  >
+                    <div class="flex items-center space-x-2 w-full">
+                      <span class="text-2xl flex-shrink-0">{link.icon}</span>
+                      <h6 class="font-medium text-orange-200 group-hover:text-orange-100 transition-colors">
+                        {link.title}
+                      </h6>
+                    </div>
+                    {#if link.description}
+                      <p class="text-orange-300 text-xs line-clamp-2">
+                        {link.description}
+                      </p>
+                    {/if}
+                  </a>
+                {/each}
+              </div>
+            </div>
+          {/if}
         </div>
       {/if}
     </div>

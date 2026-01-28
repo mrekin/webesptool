@@ -24,5 +24,10 @@ export const EXTERNAL_LINKS = {
 	},
 	OTHER: {
 		MESHCORE: 'https://meshcore.co.uk'
+	},
+	USEFUL_LINKS: {
+		MALLA_MESHWORKS: 'https://malla.meshworks.ru',
+		VOTETOVID: 'https://votetovid.ru',
+		HEYWHATSTHAT: 'http://www.heywhatsthat.com/profiler.html'
 	}
 } as const;

@@ -165,7 +165,17 @@
     "check_compatibility": "Check the device compatibility list",
     "verify_firmware_variant": "Verify you're using the correct firmware variant",
     "consult_documentation": "Consult the official Meshtastic documentation",
-    "report_issues": "Report issues on the relevant GitHub repository"
+    "report_issues": "Report issues on the relevant GitHub repository",
+    "recommendations_tab": "Recommendations",
+    "links_tab": "Links",
+    "links": {
+      "malla_title": "Malla Meshworks",
+      "malla_desc": "Meshtastic network visualization tool",
+      "votetovid_title": "VoteToVid",
+      "votetovid_desc": "Line of sight (LOS) visibility tool",
+      "heywhatsthat_title": "Hey What's That?",
+      "heywhatsthat_desc": "Terrain profiling and line of sight (LOS) visibility tool"
+    }
   },
   "importantnotice": {
     "title": "⚠️ Important Notice",

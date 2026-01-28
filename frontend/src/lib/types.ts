@@ -344,6 +344,14 @@ export interface FooterLink {
   langFilter?: string;  // Optional: comma-separated list of locales (e.g., 'ru' or 'ru,en')
 }
 
+// Useful link for external resources
+export interface UsefullLink {
+  url: string;
+  title: string;
+  description: string;
+  icon: string;
+}
+
 // ==================== PINOUT TYPES ====================
 
 export type PinCategory = 'button' | 'lora' | 'lora_power' | 'power' | 'led' | 'audio' | 'i2c' | 'uart' | 'gps' | 'gps_config' | 'led_config' | 'spi' | 'other';
