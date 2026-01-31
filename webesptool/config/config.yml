@@ -7,6 +7,29 @@ base:
       desc: "Meshtastic fork with ESP32 optimizations"
       #src: "https://github.com/m1nl/meshtastic-firmware"
       src: "m1nl"
+      type: meshtastic
+    - path: "meshcore/"
+      desc: "Meshtastic meshcore firmware"
+      src: "meshcore"
+      type: meshcore
+  ipInfo:
+    url: "http://192.168.1.115:3080/ip"
+    timeout: 0.2
+
+  news:
+    max_items_on_main: 5
+    archive_page_size: 50
+    db_path: "db/news.db"
+    languages:
+      - code: "en"
+        name: "English"
+        flag: "🇬🇧"
+      - code: "ru"
+        name: "Russian"
+        flag: "🇷🇺"
+      - code: "pl"
+        name: "Polish"
+        flag: "🇵🇱"
 
 
 enviroments:
