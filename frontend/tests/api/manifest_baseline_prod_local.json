@@ -1,0 +1,3011 @@
+{
+  "metadata": {
+    "created": "2026-01-31T18:12:54.124578",
+    "total_devices": 30,
+    "total_test_cases": 60
+  },
+  "test_cases": [
+    {
+      "device": "9m2ibr_aprs_lora_tracker",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "diy-c3-ra62",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "diy-c3-ra62-lite",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "diy-c3-ra62-rgb",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "diy-heltec-ct62-c3-tiny-1_02",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "diy-nano-c3",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "diy-nano-c3-e22",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "diy_c3_ra-01s-p",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "diy_esp32s3_n16r8_b2b_e22_ru",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "diy_esp32s3_n16r8_e22900m30s",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "diy_esp32s3_n16r8_e22900m30s_uart_ru",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "diy_esp32s3_n16r8_ra62_ru",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "diy_esp32s3_n8r2_b2b_e22_ru",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "diy_s3z_e22_b2b_v3_0_ru",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "diy_s3z_ra62_long_v3_02_ru",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "heltec-v2_0",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "heltec-v2_1",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "heltec-v3-ru",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "heltec-v4-ru",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "heltec-vision-master-e213-inkhud-s3-ru",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "heltec-vision-master-e213-s3-ru",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "heltec-vision-master-e290-inkhud-s3-ru",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "heltec-vision-master-e290-ru",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "heltec-wireless-paper-inkhud-ru",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "heltec-wireless-paper-ru",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "heltec-wireless-tracker-V1-0-ru",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "heltec-wireless-tracker-ru",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "heltec-wsl-v3",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "hydra-ru",
+      "type": "esp32",
+      "versions": [
+        "v2.7.18.fb3bf78",
+        "v2.7.17.9058cce"
+      ]
+    },
+    {
+      "device": "hydra-ru-lite",
+      "type": "esp32",
+      "versions": [
+        "v2.7.13.597fa0b",
+        "v2.7.12.45f15b8"
+      ]
+    }
+  ],
+  "baseline_responses": {
+    "9m2ibr_aprs_lora_tracker_v2.7.18.fb3bf78_u1": {
+      "name": "9m2ibr_aprs_lora_tracker",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=9m2ibr_aprs_lora_tracker&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=9m2ibr_aprs_lora_tracker&u=1&e=false&src=Official repo"
+    },
+    "9m2ibr_aprs_lora_tracker_v2.7.18.fb3bf78_u2": {
+      "name": "9m2ibr_aprs_lora_tracker",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=9m2ibr_aprs_lora_tracker&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=9m2ibr_aprs_lora_tracker&u=2&p=mt-esp32-ota&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=9m2ibr_aprs_lora_tracker&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=9m2ibr_aprs_lora_tracker&u=2&e=false&src=Official repo"
+    },
+    "9m2ibr_aprs_lora_tracker_v2.7.17.9058cce_u1": {
+      "name": "9m2ibr_aprs_lora_tracker",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=9m2ibr_aprs_lora_tracker&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=9m2ibr_aprs_lora_tracker&u=1&e=false&src=Official repo"
+    },
+    "9m2ibr_aprs_lora_tracker_v2.7.17.9058cce_u2": {
+      "name": "9m2ibr_aprs_lora_tracker",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=9m2ibr_aprs_lora_tracker&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=9m2ibr_aprs_lora_tracker&u=2&p=mt-esp32-ota&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=9m2ibr_aprs_lora_tracker&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=9m2ibr_aprs_lora_tracker&u=2&e=false&src=Official repo"
+    },
+    "diy-c3-ra62_v2.7.18.fb3bf78_u1": {
+      "name": "diy-c3-ra62",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-c3-ra62&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy-c3-ra62&u=1&e=false&src=Official repo"
+    },
+    "diy-c3-ra62_v2.7.18.fb3bf78_u2": {
+      "name": "diy-c3-ra62",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-c3-ra62&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-c3-ra62&u=2&p=bleota-c3&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-c3-ra62&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy-c3-ra62&u=2&e=false&src=Official repo"
+    },
+    "diy-c3-ra62_v2.7.17.9058cce_u1": {
+      "name": "diy-c3-ra62",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-c3-ra62&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy-c3-ra62&u=1&e=false&src=Official repo"
+    },
+    "diy-c3-ra62_v2.7.17.9058cce_u2": {
+      "name": "diy-c3-ra62",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-c3-ra62&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-c3-ra62&u=2&p=bleota-c3&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-c3-ra62&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy-c3-ra62&u=2&e=false&src=Official repo"
+    },
+    "diy-c3-ra62-lite_v2.7.18.fb3bf78_u1": {
+      "name": "diy-c3-ra62-lite",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-c3-ra62-lite&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy-c3-ra62-lite&u=1&e=false&src=Official repo"
+    },
+    "diy-c3-ra62-lite_v2.7.18.fb3bf78_u2": {
+      "name": "diy-c3-ra62-lite",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-c3-ra62-lite&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-c3-ra62-lite&u=2&p=bleota-c3&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-c3-ra62-lite&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy-c3-ra62-lite&u=2&e=false&src=Official repo"
+    },
+    "diy-c3-ra62-lite_v2.7.17.9058cce_u1": {
+      "name": "diy-c3-ra62-lite",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-c3-ra62-lite&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy-c3-ra62-lite&u=1&e=false&src=Official repo"
+    },
+    "diy-c3-ra62-lite_v2.7.17.9058cce_u2": {
+      "name": "diy-c3-ra62-lite",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-c3-ra62-lite&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-c3-ra62-lite&u=2&p=bleota-c3&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-c3-ra62-lite&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy-c3-ra62-lite&u=2&e=false&src=Official repo"
+    },
+    "diy-c3-ra62-rgb_v2.7.18.fb3bf78_u1": {
+      "name": "diy-c3-ra62-rgb",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-c3-ra62-rgb&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy-c3-ra62-rgb&u=1&e=false&src=Official repo"
+    },
+    "diy-c3-ra62-rgb_v2.7.18.fb3bf78_u2": {
+      "name": "diy-c3-ra62-rgb",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-c3-ra62-rgb&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-c3-ra62-rgb&u=2&p=bleota-c3&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-c3-ra62-rgb&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy-c3-ra62-rgb&u=2&e=false&src=Official repo"
+    },
+    "diy-c3-ra62-rgb_v2.7.17.9058cce_u1": {
+      "name": "diy-c3-ra62-rgb",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-c3-ra62-rgb&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy-c3-ra62-rgb&u=1&e=false&src=Official repo"
+    },
+    "diy-c3-ra62-rgb_v2.7.17.9058cce_u2": {
+      "name": "diy-c3-ra62-rgb",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-c3-ra62-rgb&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-c3-ra62-rgb&u=2&p=bleota-c3&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-c3-ra62-rgb&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy-c3-ra62-rgb&u=2&e=false&src=Official repo"
+    },
+    "diy-heltec-ct62-c3-tiny-1_02_v2.7.18.fb3bf78_u1": {
+      "name": "diy-heltec-ct62-c3-tiny-1_02",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-heltec-ct62-c3-tiny-1_02&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy-heltec-ct62-c3-tiny-1_02&u=1&e=false&src=Official repo"
+    },
+    "diy-heltec-ct62-c3-tiny-1_02_v2.7.18.fb3bf78_u2": {
+      "name": "diy-heltec-ct62-c3-tiny-1_02",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-heltec-ct62-c3-tiny-1_02&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-heltec-ct62-c3-tiny-1_02&u=2&p=bleota-c3&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-heltec-ct62-c3-tiny-1_02&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy-heltec-ct62-c3-tiny-1_02&u=2&e=false&src=Official repo"
+    },
+    "diy-heltec-ct62-c3-tiny-1_02_v2.7.17.9058cce_u1": {
+      "name": "diy-heltec-ct62-c3-tiny-1_02",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-heltec-ct62-c3-tiny-1_02&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy-heltec-ct62-c3-tiny-1_02&u=1&e=false&src=Official repo"
+    },
+    "diy-heltec-ct62-c3-tiny-1_02_v2.7.17.9058cce_u2": {
+      "name": "diy-heltec-ct62-c3-tiny-1_02",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-heltec-ct62-c3-tiny-1_02&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-heltec-ct62-c3-tiny-1_02&u=2&p=bleota-c3&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-heltec-ct62-c3-tiny-1_02&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy-heltec-ct62-c3-tiny-1_02&u=2&e=false&src=Official repo"
+    },
+    "diy-nano-c3_v2.7.18.fb3bf78_u1": {
+      "name": "diy-nano-c3",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-nano-c3&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy-nano-c3&u=1&e=false&src=Official repo"
+    },
+    "diy-nano-c3_v2.7.18.fb3bf78_u2": {
+      "name": "diy-nano-c3",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-nano-c3&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-nano-c3&u=2&p=bleota-c3&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-nano-c3&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy-nano-c3&u=2&e=false&src=Official repo"
+    },
+    "diy-nano-c3_v2.7.17.9058cce_u1": {
+      "name": "diy-nano-c3",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-nano-c3&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy-nano-c3&u=1&e=false&src=Official repo"
+    },
+    "diy-nano-c3_v2.7.17.9058cce_u2": {
+      "name": "diy-nano-c3",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-nano-c3&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-nano-c3&u=2&p=bleota-c3&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-nano-c3&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy-nano-c3&u=2&e=false&src=Official repo"
+    },
+    "diy-nano-c3-e22_v2.7.18.fb3bf78_u1": {
+      "name": "diy-nano-c3-e22",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-nano-c3-e22&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy-nano-c3-e22&u=1&e=false&src=Official repo"
+    },
+    "diy-nano-c3-e22_v2.7.18.fb3bf78_u2": {
+      "name": "diy-nano-c3-e22",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-nano-c3-e22&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-nano-c3-e22&u=2&p=bleota-c3&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy-nano-c3-e22&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy-nano-c3-e22&u=2&e=false&src=Official repo"
+    },
+    "diy-nano-c3-e22_v2.7.17.9058cce_u1": {
+      "name": "diy-nano-c3-e22",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-nano-c3-e22&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy-nano-c3-e22&u=1&e=false&src=Official repo"
+    },
+    "diy-nano-c3-e22_v2.7.17.9058cce_u2": {
+      "name": "diy-nano-c3-e22",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-nano-c3-e22&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-nano-c3-e22&u=2&p=bleota-c3&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy-nano-c3-e22&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy-nano-c3-e22&u=2&e=false&src=Official repo"
+    },
+    "diy_c3_ra-01s-p_v2.7.18.fb3bf78_u1": {
+      "name": "diy_c3_ra-01s-p",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_c3_ra-01s-p&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy_c3_ra-01s-p&u=1&e=false&src=Official repo"
+    },
+    "diy_c3_ra-01s-p_v2.7.18.fb3bf78_u2": {
+      "name": "diy_c3_ra-01s-p",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_c3_ra-01s-p&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_c3_ra-01s-p&u=2&p=bleota-c3&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_c3_ra-01s-p&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy_c3_ra-01s-p&u=2&e=false&src=Official repo"
+    },
+    "diy_c3_ra-01s-p_v2.7.17.9058cce_u1": {
+      "name": "diy_c3_ra-01s-p",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_c3_ra-01s-p&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy_c3_ra-01s-p&u=1&e=false&src=Official repo"
+    },
+    "diy_c3_ra-01s-p_v2.7.17.9058cce_u2": {
+      "name": "diy_c3_ra-01s-p",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-C3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_c3_ra-01s-p&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_c3_ra-01s-p&u=2&p=bleota-c3&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_c3_ra-01s-p&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy_c3_ra-01s-p&u=2&e=false&src=Official repo"
+    },
+    "diy_esp32s3_n16r8_b2b_e22_ru_v2.7.18.fb3bf78_u1": {
+      "name": "diy_esp32s3_n16r8_b2b_e22_ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_b2b_e22_ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_b2b_e22_ru&u=1&e=false&src=Official repo"
+    },
+    "diy_esp32s3_n16r8_b2b_e22_ru_v2.7.18.fb3bf78_u2": {
+      "name": "diy_esp32s3_n16r8_b2b_e22_ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_b2b_e22_ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_b2b_e22_ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_b2b_e22_ru&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_b2b_e22_ru&u=2&e=false&src=Official repo"
+    },
+    "diy_esp32s3_n16r8_b2b_e22_ru_v2.7.17.9058cce_u1": {
+      "name": "diy_esp32s3_n16r8_b2b_e22_ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_b2b_e22_ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_b2b_e22_ru&u=1&e=false&src=Official repo"
+    },
+    "diy_esp32s3_n16r8_b2b_e22_ru_v2.7.17.9058cce_u2": {
+      "name": "diy_esp32s3_n16r8_b2b_e22_ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_b2b_e22_ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_b2b_e22_ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_b2b_e22_ru&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_b2b_e22_ru&u=2&e=false&src=Official repo"
+    },
+    "diy_esp32s3_n16r8_e22900m30s_v2.7.18.fb3bf78_u1": {
+      "name": "diy_esp32s3_n16r8_e22900m30s",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_e22900m30s&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "16MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_e22900m30s&u=1&e=false&src=Official repo"
+    },
+    "diy_esp32s3_n16r8_e22900m30s_v2.7.18.fb3bf78_u2": {
+      "name": "diy_esp32s3_n16r8_e22900m30s",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_e22900m30s&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_e22900m30s&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 6619136
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_e22900m30s&u=2&p=littlefs&src=Official repo",
+              "offset": 13172736
+            }
+          ],
+          "flashsize": "16MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_e22900m30s&u=2&e=false&src=Official repo"
+    },
+    "diy_esp32s3_n16r8_e22900m30s_v2.7.17.9058cce_u1": {
+      "name": "diy_esp32s3_n16r8_e22900m30s",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_e22900m30s&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "16MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_e22900m30s&u=1&e=false&src=Official repo"
+    },
+    "diy_esp32s3_n16r8_e22900m30s_v2.7.17.9058cce_u2": {
+      "name": "diy_esp32s3_n16r8_e22900m30s",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_e22900m30s&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_e22900m30s&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 6619136
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_e22900m30s&u=2&p=littlefs&src=Official repo",
+              "offset": 13172736
+            }
+          ],
+          "flashsize": "16MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_e22900m30s&u=2&e=false&src=Official repo"
+    },
+    "diy_esp32s3_n16r8_e22900m30s_uart_ru_v2.7.18.fb3bf78_u1": {
+      "name": "diy_esp32s3_n16r8_e22900m30s_uart_ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_e22900m30s_uart_ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "16MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_e22900m30s_uart_ru&u=1&e=false&src=Official repo"
+    },
+    "diy_esp32s3_n16r8_e22900m30s_uart_ru_v2.7.18.fb3bf78_u2": {
+      "name": "diy_esp32s3_n16r8_e22900m30s_uart_ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_e22900m30s_uart_ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_e22900m30s_uart_ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 6619136
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_e22900m30s_uart_ru&u=2&p=littlefs&src=Official repo",
+              "offset": 13172736
+            }
+          ],
+          "flashsize": "16MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_e22900m30s_uart_ru&u=2&e=false&src=Official repo"
+    },
+    "diy_esp32s3_n16r8_e22900m30s_uart_ru_v2.7.17.9058cce_u1": {
+      "name": "diy_esp32s3_n16r8_e22900m30s_uart_ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_e22900m30s_uart_ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "16MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_e22900m30s_uart_ru&u=1&e=false&src=Official repo"
+    },
+    "diy_esp32s3_n16r8_e22900m30s_uart_ru_v2.7.17.9058cce_u2": {
+      "name": "diy_esp32s3_n16r8_e22900m30s_uart_ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_e22900m30s_uart_ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_e22900m30s_uart_ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 6619136
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_e22900m30s_uart_ru&u=2&p=littlefs&src=Official repo",
+              "offset": 13172736
+            }
+          ],
+          "flashsize": "16MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_e22900m30s_uart_ru&u=2&e=false&src=Official repo"
+    },
+    "diy_esp32s3_n16r8_ra62_ru_v2.7.18.fb3bf78_u1": {
+      "name": "diy_esp32s3_n16r8_ra62_ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_ra62_ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_ra62_ru&u=1&e=false&src=Official repo"
+    },
+    "diy_esp32s3_n16r8_ra62_ru_v2.7.18.fb3bf78_u2": {
+      "name": "diy_esp32s3_n16r8_ra62_ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_ra62_ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_ra62_ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_ra62_ru&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n16r8_ra62_ru&u=2&e=false&src=Official repo"
+    },
+    "diy_esp32s3_n16r8_ra62_ru_v2.7.17.9058cce_u1": {
+      "name": "diy_esp32s3_n16r8_ra62_ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_ra62_ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_ra62_ru&u=1&e=false&src=Official repo"
+    },
+    "diy_esp32s3_n16r8_ra62_ru_v2.7.17.9058cce_u2": {
+      "name": "diy_esp32s3_n16r8_ra62_ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_ra62_ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_ra62_ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_ra62_ru&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n16r8_ra62_ru&u=2&e=false&src=Official repo"
+    },
+    "diy_esp32s3_n8r2_b2b_e22_ru_v2.7.18.fb3bf78_u1": {
+      "name": "diy_esp32s3_n8r2_b2b_e22_ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n8r2_b2b_e22_ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n8r2_b2b_e22_ru&u=1&e=false&src=Official repo"
+    },
+    "diy_esp32s3_n8r2_b2b_e22_ru_v2.7.18.fb3bf78_u2": {
+      "name": "diy_esp32s3_n8r2_b2b_e22_ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n8r2_b2b_e22_ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n8r2_b2b_e22_ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 3407872
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n8r2_b2b_e22_ru&u=2&p=littlefs&src=Official repo",
+              "offset": 6750208
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy_esp32s3_n8r2_b2b_e22_ru&u=2&e=false&src=Official repo"
+    },
+    "diy_esp32s3_n8r2_b2b_e22_ru_v2.7.17.9058cce_u1": {
+      "name": "diy_esp32s3_n8r2_b2b_e22_ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n8r2_b2b_e22_ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n8r2_b2b_e22_ru&u=1&e=false&src=Official repo"
+    },
+    "diy_esp32s3_n8r2_b2b_e22_ru_v2.7.17.9058cce_u2": {
+      "name": "diy_esp32s3_n8r2_b2b_e22_ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n8r2_b2b_e22_ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n8r2_b2b_e22_ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 3407872
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n8r2_b2b_e22_ru&u=2&p=littlefs&src=Official repo",
+              "offset": 6750208
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy_esp32s3_n8r2_b2b_e22_ru&u=2&e=false&src=Official repo"
+    },
+    "diy_s3z_e22_b2b_v3_0_ru_v2.7.18.fb3bf78_u1": {
+      "name": "diy_s3z_e22_b2b_v3_0_ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_s3z_e22_b2b_v3_0_ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy_s3z_e22_b2b_v3_0_ru&u=1&e=false&src=Official repo"
+    },
+    "diy_s3z_e22_b2b_v3_0_ru_v2.7.18.fb3bf78_u2": {
+      "name": "diy_s3z_e22_b2b_v3_0_ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_s3z_e22_b2b_v3_0_ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_s3z_e22_b2b_v3_0_ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_s3z_e22_b2b_v3_0_ru&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy_s3z_e22_b2b_v3_0_ru&u=2&e=false&src=Official repo"
+    },
+    "diy_s3z_e22_b2b_v3_0_ru_v2.7.17.9058cce_u1": {
+      "name": "diy_s3z_e22_b2b_v3_0_ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_s3z_e22_b2b_v3_0_ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy_s3z_e22_b2b_v3_0_ru&u=1&e=false&src=Official repo"
+    },
+    "diy_s3z_e22_b2b_v3_0_ru_v2.7.17.9058cce_u2": {
+      "name": "diy_s3z_e22_b2b_v3_0_ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_s3z_e22_b2b_v3_0_ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_s3z_e22_b2b_v3_0_ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_s3z_e22_b2b_v3_0_ru&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy_s3z_e22_b2b_v3_0_ru&u=2&e=false&src=Official repo"
+    },
+    "diy_s3z_ra62_long_v3_02_ru_v2.7.18.fb3bf78_u1": {
+      "name": "diy_s3z_ra62_long_v3_02_ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_s3z_ra62_long_v3_02_ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy_s3z_ra62_long_v3_02_ru&u=1&e=false&src=Official repo"
+    },
+    "diy_s3z_ra62_long_v3_02_ru_v2.7.18.fb3bf78_u2": {
+      "name": "diy_s3z_ra62_long_v3_02_ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_s3z_ra62_long_v3_02_ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_s3z_ra62_long_v3_02_ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=diy_s3z_ra62_long_v3_02_ru&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=diy_s3z_ra62_long_v3_02_ru&u=2&e=false&src=Official repo"
+    },
+    "diy_s3z_ra62_long_v3_02_ru_v2.7.17.9058cce_u1": {
+      "name": "diy_s3z_ra62_long_v3_02_ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_s3z_ra62_long_v3_02_ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy_s3z_ra62_long_v3_02_ru&u=1&e=false&src=Official repo"
+    },
+    "diy_s3z_ra62_long_v3_02_ru_v2.7.17.9058cce_u2": {
+      "name": "diy_s3z_ra62_long_v3_02_ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_s3z_ra62_long_v3_02_ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_s3z_ra62_long_v3_02_ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=diy_s3z_ra62_long_v3_02_ru&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=diy_s3z_ra62_long_v3_02_ru&u=2&e=false&src=Official repo"
+    },
+    "heltec-v2_0_v2.7.18.fb3bf78_u1": {
+      "name": "heltec-v2_0",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-v2_0&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-v2_0&u=1&e=false&src=Official repo"
+    },
+    "heltec-v2_0_v2.7.18.fb3bf78_u2": {
+      "name": "heltec-v2_0",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-v2_0&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-v2_0&u=2&p=mt-esp32-ota&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-v2_0&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-v2_0&u=2&e=false&src=Official repo"
+    },
+    "heltec-v2_0_v2.7.17.9058cce_u1": {
+      "name": "heltec-v2_0",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-v2_0&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-v2_0&u=1&e=false&src=Official repo"
+    },
+    "heltec-v2_0_v2.7.17.9058cce_u2": {
+      "name": "heltec-v2_0",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-v2_0&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-v2_0&u=2&p=mt-esp32-ota&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-v2_0&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-v2_0&u=2&e=false&src=Official repo"
+    },
+    "heltec-v2_1_v2.7.18.fb3bf78_u1": {
+      "name": "heltec-v2_1",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-v2_1&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-v2_1&u=1&e=false&src=Official repo"
+    },
+    "heltec-v2_1_v2.7.18.fb3bf78_u2": {
+      "name": "heltec-v2_1",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-v2_1&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-v2_1&u=2&p=mt-esp32-ota&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-v2_1&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-v2_1&u=2&e=false&src=Official repo"
+    },
+    "heltec-v2_1_v2.7.17.9058cce_u1": {
+      "name": "heltec-v2_1",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-v2_1&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-v2_1&u=1&e=false&src=Official repo"
+    },
+    "heltec-v2_1_v2.7.17.9058cce_u2": {
+      "name": "heltec-v2_1",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-v2_1&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-v2_1&u=2&p=mt-esp32-ota&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-v2_1&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-v2_1&u=2&e=false&src=Official repo"
+    },
+    "heltec-v3-ru_v2.7.18.fb3bf78_u1": {
+      "name": "heltec-v3-ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-v3-ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-v3-ru&u=1&e=false&src=Official repo"
+    },
+    "heltec-v3-ru_v2.7.18.fb3bf78_u2": {
+      "name": "heltec-v3-ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-v3-ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-v3-ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 3407872
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-v3-ru&u=2&p=littlefs&src=Official repo",
+              "offset": 6750208
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-v3-ru&u=2&e=false&src=Official repo"
+    },
+    "heltec-v3-ru_v2.7.17.9058cce_u1": {
+      "name": "heltec-v3-ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-v3-ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-v3-ru&u=1&e=false&src=Official repo"
+    },
+    "heltec-v3-ru_v2.7.17.9058cce_u2": {
+      "name": "heltec-v3-ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-v3-ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-v3-ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 3407872
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-v3-ru&u=2&p=littlefs&src=Official repo",
+              "offset": 6750208
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-v3-ru&u=2&e=false&src=Official repo"
+    },
+    "heltec-v4-ru_v2.7.18.fb3bf78_u1": {
+      "name": "heltec-v4-ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-v4-ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "16MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-v4-ru&u=1&e=false&src=Official repo"
+    },
+    "heltec-v4-ru_v2.7.18.fb3bf78_u2": {
+      "name": "heltec-v4-ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-v4-ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-v4-ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 6619136
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-v4-ru&u=2&p=littlefs&src=Official repo",
+              "offset": 13172736
+            }
+          ],
+          "flashsize": "16MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-v4-ru&u=2&e=false&src=Official repo"
+    },
+    "heltec-v4-ru_v2.7.17.9058cce_u1": {
+      "name": "heltec-v4-ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-v4-ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "16MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-v4-ru&u=1&e=false&src=Official repo"
+    },
+    "heltec-v4-ru_v2.7.17.9058cce_u2": {
+      "name": "heltec-v4-ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-v4-ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-v4-ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 6619136
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-v4-ru&u=2&p=littlefs&src=Official repo",
+              "offset": 13172736
+            }
+          ],
+          "flashsize": "16MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-v4-ru&u=2&e=false&src=Official repo"
+    },
+    "heltec-vision-master-e213-inkhud-s3-ru_v2.7.18.fb3bf78_u1": {
+      "name": "heltec-vision-master-e213-inkhud-s3-ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e213-inkhud-s3-ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e213-inkhud-s3-ru&u=1&e=false&src=Official repo"
+    },
+    "heltec-vision-master-e213-inkhud-s3-ru_v2.7.18.fb3bf78_u2": {
+      "name": "heltec-vision-master-e213-inkhud-s3-ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e213-inkhud-s3-ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e213-inkhud-s3-ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 3407872
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e213-inkhud-s3-ru&u=2&p=littlefs&src=Official repo",
+              "offset": 6750208
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e213-inkhud-s3-ru&u=2&e=false&src=Official repo"
+    },
+    "heltec-vision-master-e213-inkhud-s3-ru_v2.7.17.9058cce_u1": {
+      "name": "heltec-vision-master-e213-inkhud-s3-ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e213-inkhud-s3-ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e213-inkhud-s3-ru&u=1&e=false&src=Official repo"
+    },
+    "heltec-vision-master-e213-inkhud-s3-ru_v2.7.17.9058cce_u2": {
+      "name": "heltec-vision-master-e213-inkhud-s3-ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e213-inkhud-s3-ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e213-inkhud-s3-ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 3407872
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e213-inkhud-s3-ru&u=2&p=littlefs&src=Official repo",
+              "offset": 6750208
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e213-inkhud-s3-ru&u=2&e=false&src=Official repo"
+    },
+    "heltec-vision-master-e213-s3-ru_v2.7.18.fb3bf78_u1": {
+      "name": "heltec-vision-master-e213-s3-ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e213-s3-ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e213-s3-ru&u=1&e=false&src=Official repo"
+    },
+    "heltec-vision-master-e213-s3-ru_v2.7.18.fb3bf78_u2": {
+      "name": "heltec-vision-master-e213-s3-ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e213-s3-ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e213-s3-ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 3407872
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e213-s3-ru&u=2&p=littlefs&src=Official repo",
+              "offset": 6750208
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e213-s3-ru&u=2&e=false&src=Official repo"
+    },
+    "heltec-vision-master-e213-s3-ru_v2.7.17.9058cce_u1": {
+      "name": "heltec-vision-master-e213-s3-ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e213-s3-ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e213-s3-ru&u=1&e=false&src=Official repo"
+    },
+    "heltec-vision-master-e213-s3-ru_v2.7.17.9058cce_u2": {
+      "name": "heltec-vision-master-e213-s3-ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e213-s3-ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e213-s3-ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 3407872
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e213-s3-ru&u=2&p=littlefs&src=Official repo",
+              "offset": 6750208
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e213-s3-ru&u=2&e=false&src=Official repo"
+    },
+    "heltec-vision-master-e290-inkhud-s3-ru_v2.7.18.fb3bf78_u1": {
+      "name": "heltec-vision-master-e290-inkhud-s3-ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e290-inkhud-s3-ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e290-inkhud-s3-ru&u=1&e=false&src=Official repo"
+    },
+    "heltec-vision-master-e290-inkhud-s3-ru_v2.7.18.fb3bf78_u2": {
+      "name": "heltec-vision-master-e290-inkhud-s3-ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e290-inkhud-s3-ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e290-inkhud-s3-ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 3407872
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e290-inkhud-s3-ru&u=2&p=littlefs&src=Official repo",
+              "offset": 6750208
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e290-inkhud-s3-ru&u=2&e=false&src=Official repo"
+    },
+    "heltec-vision-master-e290-inkhud-s3-ru_v2.7.17.9058cce_u1": {
+      "name": "heltec-vision-master-e290-inkhud-s3-ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e290-inkhud-s3-ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e290-inkhud-s3-ru&u=1&e=false&src=Official repo"
+    },
+    "heltec-vision-master-e290-inkhud-s3-ru_v2.7.17.9058cce_u2": {
+      "name": "heltec-vision-master-e290-inkhud-s3-ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e290-inkhud-s3-ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e290-inkhud-s3-ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 3407872
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e290-inkhud-s3-ru&u=2&p=littlefs&src=Official repo",
+              "offset": 6750208
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e290-inkhud-s3-ru&u=2&e=false&src=Official repo"
+    },
+    "heltec-vision-master-e290-ru_v2.7.18.fb3bf78_u1": {
+      "name": "heltec-vision-master-e290-ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e290-ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e290-ru&u=1&e=false&src=Official repo"
+    },
+    "heltec-vision-master-e290-ru_v2.7.18.fb3bf78_u2": {
+      "name": "heltec-vision-master-e290-ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e290-ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e290-ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 3407872
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e290-ru&u=2&p=littlefs&src=Official repo",
+              "offset": 6750208
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-vision-master-e290-ru&u=2&e=false&src=Official repo"
+    },
+    "heltec-vision-master-e290-ru_v2.7.17.9058cce_u1": {
+      "name": "heltec-vision-master-e290-ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e290-ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e290-ru&u=1&e=false&src=Official repo"
+    },
+    "heltec-vision-master-e290-ru_v2.7.17.9058cce_u2": {
+      "name": "heltec-vision-master-e290-ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e290-ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e290-ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 3407872
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e290-ru&u=2&p=littlefs&src=Official repo",
+              "offset": 6750208
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-vision-master-e290-ru&u=2&e=false&src=Official repo"
+    },
+    "heltec-wireless-paper-inkhud-ru_v2.7.18.fb3bf78_u1": {
+      "name": "heltec-wireless-paper-inkhud-ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-paper-inkhud-ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-paper-inkhud-ru&u=1&e=false&src=Official repo"
+    },
+    "heltec-wireless-paper-inkhud-ru_v2.7.18.fb3bf78_u2": {
+      "name": "heltec-wireless-paper-inkhud-ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-paper-inkhud-ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-paper-inkhud-ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 3407872
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-paper-inkhud-ru&u=2&p=littlefs&src=Official repo",
+              "offset": 6750208
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-paper-inkhud-ru&u=2&e=false&src=Official repo"
+    },
+    "heltec-wireless-paper-inkhud-ru_v2.7.17.9058cce_u1": {
+      "name": "heltec-wireless-paper-inkhud-ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-wireless-paper-inkhud-ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-wireless-paper-inkhud-ru&u=1&e=false&src=Official repo"
+    },
+    "heltec-wireless-paper-inkhud-ru_v2.7.17.9058cce_u2": {
+      "name": "heltec-wireless-paper-inkhud-ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-wireless-paper-inkhud-ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-wireless-paper-inkhud-ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 3407872
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-wireless-paper-inkhud-ru&u=2&p=littlefs&src=Official repo",
+              "offset": 6750208
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-wireless-paper-inkhud-ru&u=2&e=false&src=Official repo"
+    },
+    "heltec-wireless-paper-ru_v2.7.18.fb3bf78_u1": {
+      "name": "heltec-wireless-paper-ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-paper-ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-paper-ru&u=1&e=false&src=Official repo"
+    },
+    "heltec-wireless-paper-ru_v2.7.18.fb3bf78_u2": {
+      "name": "heltec-wireless-paper-ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-paper-ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-paper-ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 3407872
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-paper-ru&u=2&p=littlefs&src=Official repo",
+              "offset": 6750208
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-paper-ru&u=2&e=false&src=Official repo"
+    },
+    "heltec-wireless-paper-ru_v2.7.17.9058cce_u1": {
+      "name": "heltec-wireless-paper-ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-wireless-paper-ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-wireless-paper-ru&u=1&e=false&src=Official repo"
+    },
+    "heltec-wireless-paper-ru_v2.7.17.9058cce_u2": {
+      "name": "heltec-wireless-paper-ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-wireless-paper-ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-wireless-paper-ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 3407872
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-wireless-paper-ru&u=2&p=littlefs&src=Official repo",
+              "offset": 6750208
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-wireless-paper-ru&u=2&e=false&src=Official repo"
+    },
+    "heltec-wireless-tracker-V1-0-ru_v2.7.18.fb3bf78_u1": {
+      "name": "heltec-wireless-tracker-V1-0-ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-tracker-V1-0-ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-tracker-V1-0-ru&u=1&e=false&src=Official repo"
+    },
+    "heltec-wireless-tracker-V1-0-ru_v2.7.18.fb3bf78_u2": {
+      "name": "heltec-wireless-tracker-V1-0-ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-tracker-V1-0-ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-tracker-V1-0-ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 3407872
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-tracker-V1-0-ru&u=2&p=littlefs&src=Official repo",
+              "offset": 6750208
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-tracker-V1-0-ru&u=2&e=false&src=Official repo"
+    },
+    "heltec-wireless-tracker-V1-0-ru_v2.7.17.9058cce_u1": {
+      "name": "heltec-wireless-tracker-V1-0-ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-wireless-tracker-V1-0-ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-wireless-tracker-V1-0-ru&u=1&e=false&src=Official repo"
+    },
+    "heltec-wireless-tracker-V1-0-ru_v2.7.17.9058cce_u2": {
+      "name": "heltec-wireless-tracker-V1-0-ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-wireless-tracker-V1-0-ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-wireless-tracker-V1-0-ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 3407872
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-wireless-tracker-V1-0-ru&u=2&p=littlefs&src=Official repo",
+              "offset": 6750208
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-wireless-tracker-V1-0-ru&u=2&e=false&src=Official repo"
+    },
+    "heltec-wireless-tracker-ru_v2.7.18.fb3bf78_u1": {
+      "name": "heltec-wireless-tracker-ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-tracker-ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-tracker-ru&u=1&e=false&src=Official repo"
+    },
+    "heltec-wireless-tracker-ru_v2.7.18.fb3bf78_u2": {
+      "name": "heltec-wireless-tracker-ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-tracker-ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-tracker-ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 3407872
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-tracker-ru&u=2&p=littlefs&src=Official repo",
+              "offset": 6750208
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-wireless-tracker-ru&u=2&e=false&src=Official repo"
+    },
+    "heltec-wireless-tracker-ru_v2.7.17.9058cce_u1": {
+      "name": "heltec-wireless-tracker-ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-wireless-tracker-ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-wireless-tracker-ru&u=1&e=false&src=Official repo"
+    },
+    "heltec-wireless-tracker-ru_v2.7.17.9058cce_u2": {
+      "name": "heltec-wireless-tracker-ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-wireless-tracker-ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-wireless-tracker-ru&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 3407872
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-wireless-tracker-ru&u=2&p=littlefs&src=Official repo",
+              "offset": 6750208
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-wireless-tracker-ru&u=2&e=false&src=Official repo"
+    },
+    "heltec-wsl-v3_v2.7.18.fb3bf78_u1": {
+      "name": "heltec-wsl-v3",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-wsl-v3&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-wsl-v3&u=1&e=false&src=Official repo"
+    },
+    "heltec-wsl-v3_v2.7.18.fb3bf78_u2": {
+      "name": "heltec-wsl-v3",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-wsl-v3&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-wsl-v3&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 3407872
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=heltec-wsl-v3&u=2&p=littlefs&src=Official repo",
+              "offset": 6750208
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=heltec-wsl-v3&u=2&e=false&src=Official repo"
+    },
+    "heltec-wsl-v3_v2.7.17.9058cce_u1": {
+      "name": "heltec-wsl-v3",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-wsl-v3&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-wsl-v3&u=1&e=false&src=Official repo"
+    },
+    "heltec-wsl-v3_v2.7.17.9058cce_u2": {
+      "name": "heltec-wsl-v3",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32-S3",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-wsl-v3&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-wsl-v3&u=2&p=mt-esp32s3-ota&src=Official repo",
+              "offset": 3407872
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=heltec-wsl-v3&u=2&p=littlefs&src=Official repo",
+              "offset": 6750208
+            }
+          ],
+          "flashsize": "8MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=heltec-wsl-v3&u=2&e=false&src=Official repo"
+    },
+    "hydra-ru_v2.7.18.fb3bf78_u1": {
+      "name": "hydra-ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=hydra-ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=hydra-ru&u=1&e=false&src=Official repo"
+    },
+    "hydra-ru_v2.7.18.fb3bf78_u2": {
+      "name": "hydra-ru",
+      "version": "v2.7.18.fb3bf78",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=hydra-ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=hydra-ru&u=2&p=mt-esp32-ota&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.18.fb3bf78&t=hydra-ru&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.18.fb3bf78&t=hydra-ru&u=2&e=false&src=Official repo"
+    },
+    "hydra-ru_v2.7.17.9058cce_u1": {
+      "name": "hydra-ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=hydra-ru&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=hydra-ru&u=1&e=false&src=Official repo"
+    },
+    "hydra-ru_v2.7.17.9058cce_u2": {
+      "name": "hydra-ru",
+      "version": "v2.7.17.9058cce",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=hydra-ru&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=hydra-ru&u=2&p=mt-esp32-ota&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.17.9058cce&t=hydra-ru&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.17.9058cce&t=hydra-ru&u=2&e=false&src=Official repo"
+    },
+    "hydra-ru-lite_v2.7.13.597fa0b_u1": {
+      "name": "hydra-ru-lite",
+      "version": "v2.7.13.597fa0b",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.13.597fa0b&t=hydra-ru-lite&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.13.597fa0b&t=hydra-ru-lite&u=1&e=false&src=Official repo"
+    },
+    "hydra-ru-lite_v2.7.13.597fa0b_u2": {
+      "name": "hydra-ru-lite",
+      "version": "v2.7.13.597fa0b",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.13.597fa0b&t=hydra-ru-lite&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.13.597fa0b&t=hydra-ru-lite&u=2&p=mt-esp32-ota&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.13.597fa0b&t=hydra-ru-lite&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.13.597fa0b&t=hydra-ru-lite&u=2&e=false&src=Official repo"
+    },
+    "hydra-ru-lite_v2.7.12.45f15b8_u1": {
+      "name": "hydra-ru-lite",
+      "version": "v2.7.12.45f15b8",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.12.45f15b8&t=hydra-ru-lite&u=1&src=Official repo",
+              "offset": 65536
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.12.45f15b8&t=hydra-ru-lite&u=1&e=false&src=Official repo"
+    },
+    "hydra-ru-lite_v2.7.12.45f15b8_u2": {
+      "name": "hydra-ru-lite",
+      "version": "v2.7.12.45f15b8",
+      "new_install_improv_wait_time": 0,
+      "new_install_prompt_erase": true,
+      "builds": [
+        {
+          "chipFamily": "ESP32",
+          "parts": [
+            {
+              "path": "firmware?v=v2.7.12.45f15b8&t=hydra-ru-lite&u=2&p=fw&src=Official repo",
+              "offset": 0
+            },
+            {
+              "path": "firmware?v=v2.7.12.45f15b8&t=hydra-ru-lite&u=2&p=mt-esp32-ota&src=Official repo",
+              "offset": 2490368
+            },
+            {
+              "path": "firmware?v=v2.7.12.45f15b8&t=hydra-ru-lite&u=2&p=littlefs&src=Official repo",
+              "offset": 3145728
+            }
+          ],
+          "flashsize": "4MB"
+        }
+      ],
+      "pathfw": "api/firmware?v=v2.7.12.45f15b8&t=hydra-ru-lite&u=2&e=false&src=Official repo"
+    }
+  }
+}

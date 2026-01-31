@@ -8,6 +8,7 @@ Stores baseline responses and compares on subsequent runs.
 
 import json
 import asyncio
+import sys
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 from datetime import datetime
@@ -15,13 +16,66 @@ from datetime import datetime
 import aiohttp
 
 
-BASE_URL = "https://mrekin.duckdns.org/flasher/api"
-BASELINE_FILE = Path(__file__).parent / "manifest_baseline.json"
+# Server environments
+SERVERS = {
+    "prod": {
+        "name": "Production (Cloudflare)",
+        "url": "https://mrekin.duckdns.org/flasher",
+        "baseline_file": "manifest_baseline_prod.json"
+    },
+    "prod_local": {
+        "name": "Production Local",
+        "url": "http://192.168.1.115:5550",
+        "baseline_file": "manifest_baseline_prod_local.json"
+    },
+    "test": {
+        "name": "Test",
+        "url": "http://192.168.1.115:5551",
+        "baseline_file": "manifest_baseline_test.json"
+    }
+}
+
 SRC = "Official repo"
 
 
+def select_environment() -> str:
+    """Select server environment from command line or user input."""
+    # Check if -e argument provided
+    if len(sys.argv) > 1:
+        for i, arg in enumerate(sys.argv[1:], 1):
+            if arg == "-e" and i + 1 < len(sys.argv):
+                env = sys.argv[i + 1]
+                if env in SERVERS:
+                    return env
+                else:
+                    print(f"Error: Unknown environment '{env}'")
+                    print(f"Available environments: {', '.join(SERVERS.keys())}")
+                    sys.exit(1)
+
+    # Interactive selection
+    print("Select server environment:")
+    for i, (key, config) in enumerate(SERVERS.items(), 1):
+        print(f"  {i}. {key}: {config['name']} ({config['url']})")
+
+    while True:
+        try:
+            choice = input("\nEnter choice (1-3): ").strip()
+            options = list(SERVERS.keys())
+            if choice.isdigit() and 1 <= int(choice) <= len(options):
+                return options[int(choice) - 1]
+            else:
+                env = choice.lower()
+                if env in options:
+                    return env
+                print(f"Invalid choice. Please enter 1-{len(options)} or environment name.")
+        except (EOFError, KeyboardInterrupt):
+            print("\nExiting...")
+            sys.exit(0)
+
+
 class ManifestTester:
-    def __init__(self, baseline_file: Path):
+    def __init__(self, base_url: str, baseline_file: Path):
+        self.base_url = base_url
         self.baseline_file = baseline_file
         self.baseline: Dict[str, Any] = {}
         self.test_cases: List[Dict[str, Any]] = []
@@ -57,7 +111,7 @@ class ManifestTester:
 
     async def fetch_available_firmwares(self, session: aiohttp.ClientSession) -> Dict:
         """Fetch available devices from /api/availableFirmwares."""
-        url = f"{BASE_URL}/availableFirmwares"
+        url = f"{self.base_url}/api/availableFirmwares"
         params = {"src": SRC}
         async with session.get(url, params=params) as response:
             response.raise_for_status()
@@ -65,7 +119,7 @@ class ManifestTester:
 
     async def fetch_versions(self, session: aiohttp.ClientSession, device: str) -> List[str]:
         """Fetch versions for a device from /api/versions."""
-        url = f"{BASE_URL}/versions"
+        url = f"{self.base_url}/api/versions"
         params = {"t": device, "src": SRC}
         async with session.get(url, params=params) as response:
             response.raise_for_status()
@@ -78,7 +132,7 @@ class ManifestTester:
     async def fetch_manifest(self, session: aiohttp.ClientSession,
                            device: str, version: str, u: str) -> Dict:
         """Fetch manifest from /api/manifest."""
-        url = f"{BASE_URL}/manifest"
+        url = f"{self.base_url}/api/manifest"
         params = {
             "t": device,
             "v": version,
@@ -90,34 +144,15 @@ class ManifestTester:
             return await response.json()
 
     def select_test_devices(self, firmware_data: Dict) -> List[Dict]:
-        """Select 30 devices (min 20 from espdevices)."""
+        """Select 30 ESP devices for manifest testing.
+
+        Manifest endpoint is only relevant for ESP devices.
+        NRF52 and RP2040 devices don't use manifests.
+        """
         esp_devices = firmware_data.get("espdevices", [])
-        uf2_devices = firmware_data.get("uf2devices", [])
-        rp2040_devices = firmware_data.get("rp2040devices", [])
 
-        selected = []
-        # Take at least 20 from espdevices
-        esp_count = min(20, len(esp_devices))
-        selected.extend([{"device": d, "type": "esp32"} for d in esp_devices[:esp_count]])
-
-        # Fill up to 30 from other devices
-        remaining = 30 - len(selected)
-
-        # Add from uf2devices
-        uf2_count = min(remaining, len(uf2_devices))
-        selected.extend([{"device": d, "type": "nrf52"} for d in uf2_devices[:uf2_count]])
-        remaining -= uf2_count
-
-        # Add from rp2040devices if still need more
-        if remaining > 0:
-            rp2040_count = min(remaining, len(rp2040_devices))
-            selected.extend([{"device": d, "type": "rp2040"} for d in rp2040_devices[:rp2040_count]])
-
-        # If still less than 30, add more from espdevices
-        if len(selected) < 30 and len(esp_devices) > 20:
-            additional = min(30 - len(selected), len(esp_devices) - 20)
-            selected.extend([{"device": d, "type": "esp32"}
-                          for d in esp_devices[20:20+additional]])
+        # Take up to 30 ESP devices
+        selected = [{"device": d, "type": "esp32"} for d in esp_devices[:30]]
 
         return selected
 
@@ -153,8 +188,9 @@ class ManifestTester:
                     })
 
                     # Fetch manifests for each version and u value
+                    # u=1 (update) and u=2 (install) are supported
                     for version in versions:
-                        for u in ["1", "2", "4"]:
+                        for u in ["1", "2"]:
                             key = f"{device}_{version}_u{u}"
                             try:
                                 print(f"    Fetching manifest for {version} (u={u})...")
@@ -169,7 +205,7 @@ class ManifestTester:
             self.baseline["baseline_responses"] = baseline_responses
             self.save_baseline()
 
-        total_tests = sum(len(tc["versions"]) for tc in self.test_cases) * 3  # 3 values of u
+        total_tests = sum(len(tc["versions"]) for tc in self.test_cases) * 2  # 2 values of u
         print(f"\nBaseline created successfully!")
         print(f"  Devices: {len(self.test_cases)}")
         print(f"  Total test cases: {total_tests}")
@@ -241,7 +277,7 @@ class ManifestTester:
             for tc in self.test_cases:
                 device = tc["device"]
                 for version in tc["versions"]:
-                    for u in ["1", "2", "4"]:
+                    for u in ["1", "2"]:
                         key = f"{device}_{version}_u{u}"
                         baseline_response = self.baseline["baseline_responses"].get(key)
 
@@ -297,13 +333,21 @@ class ManifestTester:
 
 async def main():
     """Main entry point."""
+    # Select environment
+    env = select_environment()
+    config = SERVERS[env]
+
+    base_url = config["url"]
+    baseline_file = Path(__file__).parent / config["baseline_file"]
+
     print("Testing /api/manifest endpoint")
-    print(f"Base URL: {BASE_URL}")
+    print(f"Environment: {env} - {config['name']}")
+    print(f"Base URL: {base_url}")
     print(f"Source: {SRC}")
-    print(f"Baseline file: {BASELINE_FILE}")
+    print(f"Baseline file: {baseline_file}")
     print()
 
-    tester = ManifestTester(BASELINE_FILE)
+    tester = ManifestTester(base_url, baseline_file)
     await tester.run_tests()
     tester.print_summary()
 

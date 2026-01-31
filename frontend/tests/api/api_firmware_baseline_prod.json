@@ -1,0 +1,49 @@
+{
+  "metadata": {
+    "created": "2026-01-31T17:58:07.633990",
+    "total_files": 4,
+    "total_devices": 1
+  },
+  "baseline_files": {
+    "seeed_wio_tracker_L1_ru_v2.7.18.fb3bf78_uf2": {
+      "filename": "seeed_wio_tracker_L1_ru_v2.7.18.fb3bf78.uf2",
+      "size": 1391104,
+      "md5": "d0e5db0732a84c3d714c34174157c6b6",
+      "device": "seeed_wio_tracker_L1_ru",
+      "version": "v2.7.18.fb3bf78",
+      "u": "1",
+      "p": "uf2",
+      "type": "uf2"
+    },
+    "seeed_wio_tracker_L1_ru_v2.7.18.fb3bf78_ota": {
+      "filename": "seeed_wio_tracker_L1_ru_v2.7.18.fb3bf78-ota.zip",
+      "size": 696395,
+      "md5": "56960515fbc9ae54d8b0bd6230eb1f40",
+      "device": "seeed_wio_tracker_L1_ru",
+      "version": "v2.7.18.fb3bf78",
+      "u": "4",
+      "p": "ota",
+      "type": "uf2"
+    },
+    "seeed_wio_tracker_L1_ru_v2.7.17.9058cce_uf2": {
+      "filename": "seeed_wio_tracker_L1_ru_v2.7.17.9058cce.uf2",
+      "size": 1337344,
+      "md5": "d2b9f01a49c83d8f75cf82c0794e9254",
+      "device": "seeed_wio_tracker_L1_ru",
+      "version": "v2.7.17.9058cce",
+      "u": "1",
+      "p": "uf2",
+      "type": "uf2"
+    },
+    "seeed_wio_tracker_L1_ru_v2.7.17.9058cce_ota": {
+      "filename": "seeed_wio_tracker_L1_ru_v2.7.17.9058cce-ota.zip",
+      "size": 669695,
+      "md5": "902b2bbe7a688085be756b5b2f51eac0",
+      "device": "seeed_wio_tracker_L1_ru",
+      "version": "v2.7.17.9058cce",
+      "u": "4",
+      "p": "ota",
+      "type": "uf2"
+    }
+  }
+}
