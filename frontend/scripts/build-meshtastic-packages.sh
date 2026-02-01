@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+# Save the frontend root directory (where the script is run from)
+FRONTEND_ROOT="$(pwd)"
 MESHTASTIC_REPO_PATH="/tmp/meshtastic-web"
 LOCAL_PACKAGES_PATH="./local-packages"
 
@@ -33,7 +35,7 @@ pnpm run build:npm
 
 # Copy to local packages
 echo "📋 Copying built packages to $LOCAL_PACKAGES_PATH..."
-cd "$(dirname "$0")/.."  # Return to frontend root
+cd "$FRONTEND_ROOT"  # Return to frontend root
 
 rm -rf "$LOCAL_PACKAGES_PATH"
 mkdir -p "$LOCAL_PACKAGES_PATH/@meshtastic/core"
