@@ -499,13 +499,15 @@
 		await resetPort();
 	}
 
-	// Flash firmware
+	// Flash firmware or erase-only mode
 	async function flashFirmware() {
 		// Only use enabled files for flashing
 		const enabledFiles = selectedFirmwareFiles.filter(f => f.isEnabled !== false);
 
-		// Check if we have firmware files selected (only .bin files)
-		if (enabledFiles.length === 0) {
+		// Check if we have firmware files selected OR erase-only mode
+		const isEraseOnly = enabledFiles.length === 0 && eraseBeforeFlash;
+
+		if (!isEraseOnly && enabledFiles.length === 0) {
 			flashError = 'Please select at least one firmware file (.bin)';
 			return;
 		}
@@ -515,12 +517,14 @@
 			return;
 		}
 
-		// Validate all addresses for enabled files
-		for (let i = 0; i < enabledFiles.length; i++) {
-			const fileItem = enabledFiles[i];
-			if (!espManager.isValidFlashAddress(fileItem.address)) {
-				flashError = `Invalid address format for file "${fileItem.filename}": ${fileItem.address}. Please enter a valid address (e.g., 0x0, 0x1000, 4096)`;
-				return;
+		// Validate all addresses for enabled files (skip validation in erase-only mode)
+		if (!isEraseOnly) {
+			for (let i = 0; i < enabledFiles.length; i++) {
+				const fileItem = enabledFiles[i];
+				if (!espManager.isValidFlashAddress(fileItem.address)) {
+					flashError = `Invalid address format for file "${fileItem.filename}": ${fileItem.address}. Please enter a valid address (e.g., 0x0, 0x1000, 4096)`;
+					return;
+				}
 			}
 		}
 
@@ -550,8 +554,12 @@
 			}
 
 			// Add all file sizes
-			for (const fileItem of sortedFiles) {
-				totalVolume += fileItem.file.size;
+			if (!isEraseOnly) {
+				for (const fileItem of sortedFiles) {
+					totalVolume += fileItem.file.size;
+				}
+			} else {
+				// In erase-only mode, totalVolume is just flashSizeBytes
 			}
 
 			// Fixed progress ranges: 0-5% (preparation), 5-95% (work), 95-100% (finalization)
@@ -580,46 +588,49 @@
 				cumulativeProcessed += flashSizeBytes;
 			}
 
-			// Step 2: Flash all files (part of 5-95% work)
-			for (let i = 0; i < totalFiles; i++) {
-				const fileItem = sortedFiles[i];
+			// Step 2: Flash all files (part of 5-95% work) - skip in erase-only mode
+			if (!isEraseOnly) {
+				for (let i = 0; i < totalFiles; i++) {
+					const fileItem = sortedFiles[i];
 
-				flashStatus = `Flashing file ${i + 1}/${totalFiles}: ${fileItem.filename} @ ${fileItem.address}...`;
+					flashStatus = `Flashing file ${i + 1}/${totalFiles}: ${fileItem.filename} @ ${fileItem.address}...`;
 
-				// Read file content using utility
-				const content = await fileHandler.readFileContent(fileItem.file);
-				const firmwareFile: FirmwareFile = {
-					...fileItem.file,
-					content: content
-				};
+					// Read file content using utility
+					const content = await fileHandler.readFileContent(fileItem.file);
+					const firmwareFile: FirmwareFile = {
+						...fileItem.file,
+						content: content
+					};
 
-				const flashOptions = {
-					baudrate: selectedBaudrate,
-					address: fileItem.address, // Already in hex format
-					onProgress: (progress: any) => {
-						// File progress 0-100 maps to portion of 5-95% range
-						const fileSize = fileItem.file.size;
-						const processedBytes = cumulativeProcessed + (progress.progress / 100) * fileSize;
-						flashProgress = Math.round(5 + (processedBytes / totalVolume) * 90);
-						flashStatus = `Flashing file ${i + 1}/${totalFiles}: ${fileItem.filename} @ ${fileItem.address} - ${progress.status}`;
-						if (progress.error) {
-							flashError = progress.error;
+					const flashOptions = {
+						baudrate: selectedBaudrate,
+						address: fileItem.address, // Already in hex format
+						onProgress: (progress: any) => {
+							// File progress 0-100 maps to portion of 5-95% range
+							const fileSize = fileItem.file.size;
+							const processedBytes = cumulativeProcessed + (progress.progress / 100) * fileSize;
+							flashProgress = Math.round(5 + (processedBytes / totalVolume) * 90);
+							flashStatus = `Flashing file ${i + 1}/${totalFiles}: ${fileItem.filename} @ ${fileItem.address} - ${progress.status}`;
+							if (progress.error) {
+								flashError = progress.error;
+							}
 						}
-					}
-				};
+					};
 
-				// Use ESP manager to flash firmware
-				await espManager.flashFirmware(firmwareFile, flashOptions);
+					// Use ESP manager to flash firmware
+					await espManager.flashFirmware(firmwareFile, flashOptions);
 
-				// Add completed file to cumulative processed
-				cumulativeProcessed += fileItem.file.size;
+					// Add completed file to cumulative processed
+					cumulativeProcessed += fileItem.file.size;
+				}
 			}
 
 			// Step 3: Finalization (95-100%)
 			flashProgress = 95;
 			flashStatus = 'Finalizing...';
 			flashProgress = 100;
-			flashStatus = 'All files flashed successfully!';
+			// Different status messages for erase-only vs flash modes
+			flashStatus = isEraseOnly ? $locales('customfirmware.erase_success') : 'All files flashed successfully!';
 		} catch (error) {
 			console.error('Flash error:', error);
 			flashError = error instanceof Error ? error.message : String(error);
@@ -1815,18 +1826,21 @@
 				{:else}
 					<button
 						on:click={flashFirmware}
-						disabled={selectedFirmwareFiles.length === 0 ||
-							!isPortSelected ||
+						disabled={(!isPortSelected) ||
 							isFlashing ||
 							!validationResult.isValid ||
 							selectedFirmwareFiles.some((file) => file.hasError) ||
-							selectedFirmwareFiles.filter(f => f.isEnabled !== false).length === 0}
+							(!eraseBeforeFlash && selectedFirmwareFiles.filter(f => f.isEnabled !== false).length === 0)}
 						class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{#if isFlashing}
 							{$locales('customfirmware.flashing')}...
 						{:else}
-							{$locales('customfirmware.flash_firmware')} ({$locales('customfirmware.flash_firmware_with_count', {values: { count: selectedFirmwareFiles.filter(f => f.isEnabled !== false).length }})})
+							{#if eraseBeforeFlash && selectedFirmwareFiles.filter(f => f.isEnabled !== false).length === 0}
+								{$locales('customfirmware.erase_flash')}
+							{:else}
+								{$locales('customfirmware.flash_firmware')} ({$locales('customfirmware.flash_firmware_with_count', {values: { count: selectedFirmwareFiles.filter(f => f.isEnabled !== false).length }})})
+							{/if}
 						{/if}
 					</button>
 				{/if}

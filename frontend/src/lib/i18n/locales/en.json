@@ -236,6 +236,8 @@
     "step3_flash": "Click \"Flash Firmware\" to start the flashing process",
     "flashing": "Flashing",
     "flash_firmware": "Flash Firmware",
+    "erase_flash": "Erase Flash",
+    "erase_success": "Flash erased successfully!",
     "erase_before_flash": "Erase device before flashing",
     "baudrate_label": "Flash Speed",
     "baudrate_57600": "57600",
