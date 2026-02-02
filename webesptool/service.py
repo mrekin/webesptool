@@ -71,8 +71,8 @@ class CustomLooseVersion(LooseVersion):
             return NotImplemented
 
         #If elements has different types - compare as strings
-        max_len = max(len(self.version), len(other.version))
-        for i in range(max_len):
+        min_len = min(len(self.version), len(other.version))
+        for i in range(min_len):
             try:
                 # If one version has more components, it's considered newer
                 if i >= len(other.version):
