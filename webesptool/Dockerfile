@@ -23,9 +23,8 @@ COPY *.py ${dir}
 ADD utils ${dir}/utils
 ADD config ${dir}/config
 ADD apps ${dir}/apps
-ADD templates ${dir}/templates
+ADD templates/admin ${dir}/templates/admin
 ADD bin ${dir}/bin
-ADD static ${dir}/static
 
 WORKDIR ${dir}
 #CMD ["python3","service.py"]

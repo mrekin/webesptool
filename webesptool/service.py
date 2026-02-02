@@ -19,7 +19,6 @@ from fastapi import APIRouter
 from fastapi import Request
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
 
 import aiofiles
 import yaml
@@ -765,12 +764,10 @@ app = FastAPI(lifespan=lifespan)
 
 
 #app.include_router(router)
-app.mount("/static", StaticFiles(directory="static"), name="static")
 # Include news router
 app.include_router(news_router, tags=["news"])
 
 templates = Jinja2Templates(directory="templates")
-general_pages_router = APIRouter()
 
 
 # Favicon handler - returns 204 No Content to prevent 404 errors
@@ -779,19 +776,6 @@ async def favicon():
     """Handle favicon requests - return no content"""
     return None
 
-
-# Page with script
-@app.get("/", status_code=200)
-async def homepage(request: Request, src:str = None, t:str = None):
-    clientIp = getClientIp(request)
-    ipInfo = await getIpInfo(clientIp) if clientIp else None
-
-    logMsg = f"Main page builder: {str(request.url)}, {str(request.client)}, {str(request.headers)}"
-    if ipInfo:
-        logMsg += f", country: {ipInfo.get('country')}, city: {ipInfo.get('city')}"
-
-    log.debug(logMsg)
-    return templates.TemplateResponse("general/homepage.html",{"request":request, "data" : await getAvailableFirmwares(src = src, t =t), "defaultDevice" : t})
 
 # availableSRCs
 @app.get("/api/srcs", status_code=200)
