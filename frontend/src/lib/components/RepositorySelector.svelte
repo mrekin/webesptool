@@ -1,6 +1,7 @@
 <script lang="ts">
   import { deviceSelection, availableSources } from '$lib/stores.js';
   import { deviceActions } from '$lib/stores.js';
+  import MarkdownRenderer from '$lib/components/MarkdownRenderer.svelte';
 
   // Subscribe to stores
   $: deviceSelectionStore = $deviceSelection;
@@ -27,7 +28,6 @@
               ? 'bg-orange-600 text-white border-orange-500 shadow-sm'
               : 'bg-gray-700 text-orange-300 border-gray-600 hover:bg-gray-600 hover:text-orange-200'
           } border focus:outline-none focus:ring-1 focus:ring-orange-500 text-xs font-medium"
-          title="{(source as any).desc}"
         >
           {(source as any).src}
         </button>
@@ -36,8 +36,8 @@
 
     <!-- Repository Description -->
     {#if currentRepoDesc}
-      <div class="text-xs text-orange-300 italic text-left max-w-md">
-        {currentRepoDesc}
+      <div class="text-xs text-orange-300 text-left max-w-md">
+        <MarkdownRenderer source={currentRepoDesc} wrapperClass="" />
       </div>
     {/if}
   </div>

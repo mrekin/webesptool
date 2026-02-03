@@ -8,6 +8,7 @@ claude_code_zai_env.sh
 frontend/static/radio.webp
 webesptool/static/radio2.webp
 docker-compose_fr_dev.yml
+docker-compose.tst.yml
 plans/
 temp/
 docs/
@@ -15,3 +16,4 @@ docs/tasks/
 # News database
 webesptool/db/news.db*
 webesptool/db/
+frontend/tests/*/*baseline*
