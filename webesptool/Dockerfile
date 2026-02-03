@@ -28,4 +28,4 @@ ADD bin ${dir}/bin
 
 WORKDIR ${dir}
 #CMD ["python3","service.py"]
-CMD ["sh", "-c", "uvicorn service:app --host 0.0.0.0 --port 8000 --root-path ${ROOT_PATH:-}"]
+CMD ["sh", "-c", "uvicorn service:app --host 0.0.0.0 --port 8000 ${ROOT_PATH:+--root-path $ROOT_PATH}"]
