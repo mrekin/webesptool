@@ -75,6 +75,7 @@
     "no_device_info": "Brak dostępnych informacji o urządzeniu",
     "select_device_view": "Wybierz urządzenie, aby zobaczyć szczegóły",
     "select_device_instructions": "Wybierz urządzenie i wersję firmware, aby zobaczyć szczegółowe informacje i instrukcje instalacji.",
+    "readme_not_found": "Plik Readme.md nie znaleziono w repozytorium wariantu",
     "esp_web_tools": "Instalacja przez ESP Web Tools",
     "esp_web_tools_desc": "Kliknij \"{downloadbuttons.update_device}\", aby użyć instalacji opartej na przeglądarce.",
     "alternative_download": "Alternatywa: Ręczne pobieranie",

@@ -31,7 +31,6 @@ import aiofiles.ospath
 import aiofiles.os
 import os
 import re
-import markdown
 import zipfile
 from pathlib import Path
 from looseversion import LooseVersion
@@ -280,7 +279,7 @@ async def getAvailableFirmwares(src = None, rootFolder = None, t:str = None):
     return data
 
 async def buildInfoblock(t:str = None, v:str = None, src:str = None):
-    infoblock={'info':""}
+    infoblock={'info':"",'error':None}
     rmfile = "readme.md"
 
     rootFolder, src, fw_type = await getRootFolder(t,v,src)
@@ -290,11 +289,10 @@ async def buildInfoblock(t:str = None, v:str = None, src:str = None):
     try:
         async with aiofiles.open(rmfile,'r') as file:
             content = await file.read()
-        html = markdown.markdown(content)
-        infoblock['info'] = html
+        infoblock['info'] = content
     except Exception as e:
         log.info("readme.md file not found")
-        infoblock['info'] = "Readme.md file not found in variant repository"
+        infoblock['error'] = "readme_not_found"
     return infoblock
 
 async def buildVersions(t:str = None, src:str = None):

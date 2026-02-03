@@ -49,6 +49,7 @@ export interface VersionsResponse {
 
 export interface InfoBlockResponse {
   info: string;
+  error?: string;
 }
 
 export interface FirmwareRequest {
@@ -126,7 +127,8 @@ export interface FirmwareInfo {
   version: string;
   buildDate: string;
   notes: string;
-  htmlInfo: string;
+  markdownInfo: string;
+  markdownError?: string;
 }
 
 export interface DownloadOption {

@@ -75,6 +75,7 @@
     "no_device_info": "No device information available",
     "select_device_view": "Select a device to view details",
     "select_device_instructions": "Select a device and firmware version to view detailed information and installation instructions.",
+    "readme_not_found": "Readme.md file not found in variant repository",
     "esp_web_tools": "ESP Web Tools Installation",
     "esp_web_tools_desc": "Click \"{downloadbuttons.update_device}\" to use browser-based installation.",
     "alternative_download": "Alternative: Manual Download",

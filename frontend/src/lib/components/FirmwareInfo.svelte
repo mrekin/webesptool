@@ -3,25 +3,15 @@
   import { DeviceType } from '$lib/types.js';
   import { isESP32Device, isNRF52Device, isRP2040Device, getDeviceTypeLabel } from '$lib/utils/deviceTypeUtils.js';
   import { _ as locales } from 'svelte-i18n';
+  import MarkdownRenderer from '$lib/components/MarkdownRenderer.svelte';
 
-  // Local state for HTML rendering
-  let firmwareInfoElement: HTMLElement;
+  // Local state
   let showDeviceInfo = false;
 
   // Subscribe to stores
   $: deviceInfo = $deviceDisplayInfo;
   $: displayInfo = $firmwareDisplayInfo;
   $: error = $loadingState.error;
-
-  // Safely render HTML content
-  function renderHTML(htmlContent: string): string {
-    if (!htmlContent) return '';
-    // Basic sanitization - in production, use a proper HTML sanitizer
-    return htmlContent
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-      .replace(/on\w+="[^"]*"/gi, '')
-      .replace(/javascript:/gi, '');
-  }
 
   // Toggle device info section
   function toggleDeviceInfo() {
@@ -112,13 +102,15 @@
           {#if showDeviceInfo}
             <div id="howto-content" class="mt-3 space-y-4 animate-fade-in">
               <div class="text-orange-300 text-sm">
-                {#if deviceInfo.deviceInfo?.htmlInfo}
-                  <div
-                    bind:this={firmwareInfoElement}
-                    class="text-sm text-orange-100 prose prose-invert max-w-none"
-                  >
-                    {@html renderHTML(deviceInfo.deviceInfo.htmlInfo)}
+                {#if deviceInfo.deviceInfo?.markdownError === 'readme_not_found'}
+                  <div class="text-sm text-yellow-300 text-center py-8 border border-yellow-600 rounded bg-yellow-900/20">
+                    {$locales('firmwareinfo.readme_not_found')}
                   </div>
+                {:else if deviceInfo.deviceInfo?.markdownInfo}
+                  <MarkdownRenderer
+                    source={deviceInfo.deviceInfo.markdownInfo}
+                    wrapperClass="prose prose-invert max-w-none"
+                  />
                 {:else if deviceInfo}
                   <div class="text-sm text-orange-300 text-center py-8">
                     {$locales('firmwareinfo.no_device_info')}
@@ -234,109 +226,19 @@
 {/if}
 
 <style>
-  /* Custom styles for rendered HTML content */
-  :global(.prose h1) {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #fed7aa;
-    margin-bottom: 0.5rem;
-    margin-top: 1rem;
+  /* Fade-in animation */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
-  :global(.prose h2) {
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: #fed7aa;
-    margin-bottom: 0.5rem;
-    margin-top: 0.75rem;
-  }
-
-  :global(.prose h3) {
-    font-size: 1rem;
-    font-weight: 500;
-    color: #fed7aa;
-    margin-bottom: 0.25rem;
-    margin-top: 0.5rem;
-  }
-
-  :global(.prose p) {
-    color: #fed7aa;
-    margin-bottom: 0.5rem;
-  }
-
-  :global(.prose ul) {
-    list-style-type: disc;
-    list-style-position: inside;
-    color: #fed7aa;
-    margin-bottom: 0.5rem;
-  }
-
-  :global(.prose ol) {
-    list-style-type: decimal;
-    list-style-position: inside;
-    color: #fed7aa;
-    margin-bottom: 0.5rem;
-  }
-
-  :global(.prose li) {
-    margin-bottom: 0.25rem;
-  }
-
-  :global(.prose code) {
-    background-color: #111827;
-    padding: 0.125rem 0.25rem;
-    border-radius: 0.25rem;
-    color: #fed7aa;
-    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
-    font-size: 0.75rem;
-  }
-
-  :global(.prose pre) {
-    background-color: #111827;
-    padding: 0.75rem;
-    border-radius: 0.375rem;
-    margin-bottom: 0.5rem;
-    overflow-x: auto;
-  }
-
-  :global(.prose pre code) {
-    background-color: transparent;
-    padding: 0;
-  }
-
-  :global(.prose a) {
-    color: #fb923c;
-    text-decoration: underline;
-  }
-
-  :global(.prose a:hover) {
-    color: #fdba74;
-  }
-
-  :global(.prose blockquote) {
-    border-left: 4px solid #d8690e;
-    padding-left: 1rem;
-    font-style: italic;
-    color: #fed7aa;
-  }
-
-  :global(.prose table) {
-    width: 100%;
-    font-size: 0.875rem;
-    margin-bottom: 0.5rem;
-  }
-
-  :global(.prose th) {
-    background-color: #111827;
-    padding: 0.5rem;
-    text-align: left;
-    font-weight: 500;
-    color: #fed7aa;
-  }
-
-  :global(.prose td) {
-    padding: 0.5rem;
-    border-top: 1px solid #374151;
-    color: #fed7aa;
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
   }
 </style>

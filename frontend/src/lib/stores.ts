@@ -700,7 +700,8 @@ export const apiActions = {
         version: '', // No specific version selected
         buildDate: '',
         notes: '',
-        htmlInfo: infoBlock.info
+        markdownInfo: infoBlock.info,
+        markdownError: infoBlock.error
       });
     } catch (error) {
       loadingActions.setError(error instanceof Error ? error.message : 'Failed to load device info');
@@ -735,7 +736,8 @@ export const apiActions = {
         version,
         buildDate: versionsDataResponse.dates[version] || 'Unknown',
         notes: versionsDataResponse.notes[version] || '',
-        htmlInfo: infoBlock.info
+        markdownInfo: infoBlock.info,
+        markdownError: infoBlock.error
       });
     } catch (error) {
       loadingActions.setError(error instanceof Error ? error.message : 'Failed to load firmware info');

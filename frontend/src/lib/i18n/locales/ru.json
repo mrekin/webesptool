@@ -75,6 +75,7 @@
     "no_device_info": "Информация об устройстве недоступна",
     "select_device_view": "Выберите устройство для просмотра деталей",
     "select_device_instructions": "Выберите устройство и версию прошивки для просмотра подробной информации и инструкций по установке.",
+    "readme_not_found": "Файл Readme.md не найден в репозитории варианта",
     "esp_web_tools": "Установка через ESP Web Tools",
     "esp_web_tools_desc": "Нажмите \"{downloadbuttons.update_device}\" для прошивки из браузера.",
     "alternative_download": "Альтернатива: загрузка и прошивка самостоятельно",
