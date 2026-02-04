@@ -233,7 +233,7 @@
     "status": "Status",
     "instructions": "Instructions",
     "step1_connect": "Connect your ESP device to your computer via USB",
-    "step2_select": "Select your firmware file (.bin, .hex, or .elf)",
+    "step2_select": "Select your firmware file (.bin)",
     "step3_flash": "Click \"Flash Firmware\" to start the flashing process",
     "flashing": "Flashing",
     "flash_firmware": "Flash Firmware",
