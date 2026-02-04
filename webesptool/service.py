@@ -172,6 +172,23 @@ def loadConfig():
         diff = diff if diff else {}
         config = merge(base, diff)
 
+    # Validate firmware type for all repositories
+    if 'fwDirs' in config:
+        validated_dirs = []
+        for fw_dir in config['fwDirs']:
+            if isinstance(fw_dir, dict) and fw_dir.get('type'):
+                type_str = fw_dir['type']
+                try:
+                    FirmwareType(type_str)
+                    validated_dirs.append(fw_dir)
+                except ValueError:
+                    src_name = fw_dir.get('src', 'unknown')
+                    log.error(f"Invalid firmware type '{type_str}' in config for source '{src_name}'. Skipping this source.")
+            else:
+                # Legacy string entries or entries without type
+                validated_dirs.append(fw_dir)
+        config['fwDirs'] = validated_dirs
+
 
 hidden_regex = re.compile(r"^_.*")
 
@@ -195,7 +212,7 @@ async def getAvailableFirmwares(src = None, rootFolder = None, t:str = None):
     rootFolder, src, fw_type = await getRootFolder(src=src)
 
     paths = [rf if isinstance(rf, str) else rf.get('path', None) for rf in config['fwDirs']]
-    srcs =  [{'src': rf.get('src', None), 'desc': rf.get('desc', ''), 'type': rf.get('type', 'meshtastic')} for rf in config['fwDirs'] if isinstance(rf,dict) and rf.get('src', None)]
+    srcs = [{'src': rf.get('src', None), 'desc': rf.get('desc', ''), 'type': rf.get('type', FirmwareType.MESHTASTIC.value)} for rf in config['fwDirs'] if isinstance(rf,dict) and rf.get('src', None)]
     src_values = [s['src'] for s in srcs]
     if not rootFolder and src in src_values:
         for rf in config['fwDirs']:
@@ -444,14 +461,14 @@ async def getSrcs():
             srcs.append({
                 'src': rf.get('src', None),
                 'desc': rf.get('desc', ''),
-                'type': rf.get('type', 'meshtastic')
+                'type': rf.get('type', FirmwareType.MESHTASTIC.value)
             })
         else:
             # For string entries (legacy), provide default values
             srcs.append({
                 'src': rf,
                 'desc': '',
-                'type': 'meshtastic'
+                'type': FirmwareType.MESHTASTIC.value
             })
     return srcs
 
@@ -481,7 +498,8 @@ async def getRootFolder(t = None, v = None, src:str = None):
         for rf in config['fwDirs']:
             if isinstance(rf,dict) and src == rf.get('src', None) and rf.get('path', None):
                 rootFolder = rf.get('path')
-                fw_type = FirmwareType(rf.get('type', 'meshtastic'))  # get type from config
+                type_str = rf.get('type', FirmwareType.MESHTASTIC.value)
+                fw_type = FirmwareType(type_str)  # get type from config
                 return rootFolder, src, fw_type
 
     # Get devices and versions at first path if not provided
@@ -498,7 +516,8 @@ async def getRootFolder(t = None, v = None, src:str = None):
                     for s in config['fwDirs']:
                         if isinstance(s,dict) and s.get('path', None) == rf:
                             src = s.get('src', None)
-                            fw_type = FirmwareType(s.get('type', 'meshtastic'))  # get type from config
+                            type_str = s.get('type', FirmwareType.MESHTASTIC.value)
+                            fw_type = FirmwareType(type_str)  # get type from config
                             break
                     return rf, src, fw_type
 
