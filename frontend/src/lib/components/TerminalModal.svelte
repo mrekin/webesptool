@@ -4,6 +4,11 @@
 	import { _ as locales } from 'svelte-i18n';
 	import type { Terminal } from '@xterm/xterm';
 
+	// Import parsing utilities
+	import parsingRulesJson from '$lib/config/terminal-parsing-rules.json';
+	import { loadParsingRules, createTokenParser, type TokenParser, type ParsedToken } from '$lib/utils/logParser.js';
+	import TokenSidebar from './TokenSidebar.svelte';
+
 	export let isOpen = false;
 	export let onClose = () => {};
 
@@ -14,6 +19,14 @@
 	let autoScroll = true;
 	let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 	let port: SerialPort | null = null;
+
+	// Token parsing state
+	let tokenParser: TokenParser | null = null;
+	let parsedTokens = new Map<string, ParsedToken>();
+	let showTokensSidebar = false;  // Hidden by default
+
+	// Unique key to force reactivity when tokens change
+	let tokensKey = 0;
 
 	// Terminal options
 	const options = {
@@ -30,18 +43,33 @@
 		allowProposedApi: true
 	};
 
+	// Initialize token parser
+	function initializeTokenParser() {
+		try {
+			const rules = loadParsingRules(parsingRulesJson);
+			if (rules.length > 0) {
+				tokenParser = createTokenParser(rules);
+			}
+		} catch (error) {
+			console.error('Failed to initialize token parser:', error);
+		}
+	}
+
 	// Initialize terminal when component loads
 	function onLoad(term: Terminal) {
 		terminal = term;
 
+		// Initialize token parser
+		initializeTokenParser();
+
 		// Add keydown handler to the terminal element to handle Ctrl+C
 		terminal.attachCustomKeyEventHandler((event) => {
-			if ((event.ctrlKey || event.metaKey) && event.key === 'c' && terminal.hasSelection()) {
+			if ((event.ctrlKey || event.metaKey) && event.key === 'c' && terminal!.hasSelection()) {
 				// Only prevent default if there's a selection to copy
 				// This allows Ctrl+C to work normally when there's no selection
 				// (for example, to send interrupt signal to running program)
 				event.preventDefault();
-				setTimeout(() => copyTerminal(false), 0); // Use setTimeout to allow selection to be finalized, don't show message
+				setTimeout(() => copyTerminal(), 0); // Use setTimeout to allow selection to be finalized
 				return false; // Prevent the keypress from being processed further
 			}
 			return !(event.ctrlKey && event.key === 'c'); // Allow other keys, but prevent Ctrl+C propagation when no selection
@@ -97,6 +125,7 @@
 
 			// Open the port
 			terminal.writeln('\x1b[90mOpening port at 115200 baud...\x1b[0m');
+			if (!port) return;
 			await port.open({ baudRate: 115200 });
 
 			if (port.readable) {
@@ -123,6 +152,8 @@
 
 	// Text decoder for converting bytes to text
 	const textDecoder = new TextDecoder();
+	// Buffer for incomplete lines
+	let lineBuffer = '';
 
 	// Read serial data loop
 	async function readSerialLoop() {
@@ -133,6 +164,32 @@
 				if (value && terminal) {
 					// Decode the received bytes to text
 					const decodedValue = textDecoder.decode(value, { stream: true });
+
+					// Parse logs for token extraction - split into complete lines
+					if (tokenParser && decodedValue) {
+						// Add to buffer and split by newlines
+						lineBuffer += decodedValue;
+						const lines = lineBuffer.split('\n');
+
+						// Keep last incomplete line in buffer
+						lineBuffer = lines.pop() || '';
+
+						// Parse each complete line
+						for (const line of lines) {
+							if (line.trim()) {
+								// Remove ANSI escape codes before parsing
+								const cleanLine = line.replace(/\x1b\[[0-9;]*m/g, '');
+								tokenParser.parse(cleanLine + '\n');
+							}
+						}
+
+						// Update reactive tokens variable - create new Map for reactivity
+						const newState = tokenParser.getState();
+						parsedTokens = new Map(newState.tokens);
+						// Trigger reactivity by updating key
+						tokensKey++;
+					}
+
 					terminal.write(decodedValue);
 					if (autoScroll) {
 						terminal.scrollToBottom();
@@ -193,10 +250,36 @@
 		}
 	}
 
+	// Copy tokens to clipboard
+	async function copyTokens() {
+		try {
+			const tokensArray = Array.from(parsedTokens.values()).map((token) => ({
+				name: token.name,
+				value: token.value,
+				type: token.type,
+				timestamp: token.timestamp.toISOString()
+			}));
+
+			const jsonString = JSON.stringify(tokensArray, null, 2);
+			await navigator.clipboard.writeText(jsonString);
+		} catch (error) {
+			console.error('Failed to copy tokens:', error);
+		}
+	}
+
 	// Cleanup
 	async function handleClose() {
 		// Stop reading and disconnect properly, always closing the port
 		await disconnect();
+
+		// Reset token parser state
+		if (tokenParser) {
+			tokenParser.reset();
+			parsedTokens.clear();
+		}
+
+		// Hide tokens sidebar
+		showTokensSidebar = false;
 
 		// Clear terminal reference
 		terminal = null;
@@ -213,7 +296,7 @@
 
 {#if isOpen}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-		<div class="relative max-h-[95vh] w-full max-w-6xl overflow-hidden rounded-lg border border-orange-600 bg-gray-900 shadow-xl flex flex-col">
+		<div class="relative max-h-[95vh] w-full max-w-7xl overflow-hidden rounded-lg border border-orange-600 bg-gray-900 shadow-xl flex flex-col">
 			<!-- Header -->
 			<div class="flex items-center justify-between border-b border-gray-700 p-4 flex-shrink-0">
 				<h2 class="text-xl font-semibold text-white">
@@ -230,11 +313,23 @@
 				</button>
 			</div>
 
-			<!-- Terminal Content -->
-			<div class="p-4 flex-1 min-h-0 flex flex-col">
-				<div class="h-full overflow-hidden rounded-lg border border-gray-700 bg-gray-950 p-4 flex flex-col flex-1">
-					<Xterm {options} {onLoad} class="flex-1" />
+			<!-- Main Content Area with Split View -->
+			<div class="flex flex-1 min-h-0 overflow-hidden">
+				<!-- Terminal Section -->
+				<div class="flex-1 flex flex-col min-h-0 min-w-0">
+					<div class="p-4 flex-1 min-h-0 flex flex-col">
+						<div class="h-full overflow-hidden rounded-lg border border-gray-700 bg-gray-950 p-4 flex flex-col flex-1">
+							<Xterm {options} {onLoad} class="flex-1" />
+						</div>
+					</div>
 				</div>
+
+				<!-- Token Sidebar (conditionally rendered) -->
+				{#if showTokensSidebar}
+					<div class="w-80 flex-shrink-0 border-l border-gray-700 flex flex-col">
+						<TokenSidebar tokens={parsedTokens} onCopy={copyTokens} updateKey={tokensKey} />
+					</div>
+				{/if}
 			</div>
 
 			<!-- Footer with Controls -->
@@ -272,6 +367,21 @@
 						/>
 						<span>{$locales('customfirmware.terminal_autoscroll')}</span>
 					</label>
+
+					{#if tokenParser}
+						<button
+							on:click={() => {
+								showTokensSidebar = !showTokensSidebar;
+							}}
+							class="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
+						>
+							{#if showTokensSidebar}
+								{$locales('customfirmware.hide_tokens')}
+							{:else}
+								{$locales('customfirmware.show_tokens')}
+							{/if}
+						</button>
+					{/if}
 
 					<button
 						on:click={copyTerminal}

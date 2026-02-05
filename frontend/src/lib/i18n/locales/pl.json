@@ -296,7 +296,16 @@
     "terminal_opening": "Otwieranie terminala...",
     "terminal_error": "Błąd terminala",
     "terminal_no_port": "Brak aktywnego portu. Najpierw połącz się z urządzeniem.",
-    "partitions_incompatible_warning": "Plik partitions.bin jest przeznaczony dla urządzenia z większą pamięcią flash ({partitionsMB}MB). Podłączone urządzenie ma {deviceMB}MB."
+    "partitions_incompatible_warning": "Plik partitions.bin jest przeznaczony dla urządzenia z większą pamięcią flash ({partitionsMB}MB). Podłączone urządzenie ma {deviceMB}MB.",
+    "parsed_tokens": "Rozpoznane tokeny",
+    "show_tokens": "Pokaż tokeny",
+    "hide_tokens": "Ukryj tokeny",
+    "tokens_copied": "Tokeny skopiowane do schowka",
+    "no_tokens": "Tokeny nie zostały jeszcze rozpoznane",
+    "device_info": "Informacje o urządzeniu",
+    "dynamic": "Dynamiczne",
+    "averaged": "Uśrednione",
+    "static": "Statyczne"
   },
   "backupconfirm": {
     "title": "Zapisać zrzut pamięci urządzenia?",

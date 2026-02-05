@@ -296,7 +296,16 @@
     "terminal_opening": "Открытие терминала...",
     "terminal_error": "Ошибка терминала",
     "terminal_no_port": "Нет активного порта. Сначала подключитесь к устройству.",
-    "partitions_incompatible_warning": "Файл partitions.bin собран для устройства с большим объемом памяти ({partitionsMB}MB). Подключенное устройство имеет {deviceMB}MB."
+    "partitions_incompatible_warning": "Файл partitions.bin собран для устройства с большим объемом памяти ({partitionsMB}MB). Подключенное устройство имеет {deviceMB}MB.",
+    "parsed_tokens": "Распознанные токены",
+    "show_tokens": "Показать токены",
+    "hide_tokens": "Скрыть токены",
+    "tokens_copied": "Токены скопированы в буфер обмена",
+    "no_tokens": "Токены пока не распознаны",
+    "device_info": "Информация об устройстве",
+    "dynamic": "Динамические",
+    "averaged": "Усредненные",
+    "static": "Статические"
   },
   "backupconfirm": {
     "title": "Сохранить дамп памяти устройства?",

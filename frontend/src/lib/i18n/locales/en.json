@@ -296,7 +296,16 @@
     "terminal_opening": "Opening Terminal...",
     "terminal_error": "Terminal Error",
     "terminal_no_port": "No active port available. Please connect to a device first.",
-    "partitions_incompatible_warning": "File partitions.bin is for a device with larger flash size ({partitionsMB}MB). Connected device has {deviceMB}MB."
+    "partitions_incompatible_warning": "File partitions.bin is for a device with larger flash size ({partitionsMB}MB). Connected device has {deviceMB}MB.",
+    "parsed_tokens": "Parsed Tokens",
+    "show_tokens": "Show Tokens",
+    "hide_tokens": "Hide Tokens",
+    "tokens_copied": "Tokens copied to clipboard",
+    "no_tokens": "No tokens parsed yet",
+    "device_info": "Device Info",
+    "dynamic": "Dynamic",
+    "averaged": "Averaged",
+    "static": "Static"
   },
   "backupconfirm": {
     "title": "Save Device Flash Dump?",

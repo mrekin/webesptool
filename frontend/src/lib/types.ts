@@ -546,3 +546,81 @@ export interface NewsResponse {
 
 // News pagination configuration (must match backend config.yml: news.max_items_on_main)
 export const NEWS_PAGE_SIZE = 5;
+
+// ==================== TERMINAL PARSING TYPES ====================
+
+// Token type enum for type safety
+export enum TokenType {
+  STR = 'str',
+  BOOL = 'bool',
+  STATIC = 'static',
+  AVG = 'avg'
+}
+
+// Token behavior rule (firstEntrance, dropAfter)
+export interface TokenBehaviorRule {
+  type?: string;  // Optional behavior type (e.g., 'firstEntrance')
+  dropAfter?: string;      // Optional regex for resetting token
+}
+
+// Parsing rule from JSON configuration
+export interface ParsingRule {
+  name: string;                    // Token name (required)
+  type: TokenType;                 // Token type (required)
+  regexp?: string;                 // Regex for extracting value (for str, avg)
+  value?: string | boolean;        // Static value (for bool, static)
+  rules?: TokenBehaviorRule[];     // Behavior rules (optional)
+  maxIterations?: number;          // Max iterations for averaging (for avg)
+  ndigits?: number;                // Decimal places for rounding (for avg)
+}
+
+// Parsed token with current value
+export interface ParsedToken {
+  name: string;                    // Token name
+  value: string | number | boolean | null;  // Current value
+  type: TokenType;                 // Token type
+  timestamp: Date;                 // Last update time
+}
+
+// Averaging variable state
+export interface AvgVarState {
+  avg: number;                     // Current average
+  iterations: number;              // Current iteration count
+  maxIterations: number;           // Maximum iterations (depth)
+}
+
+// Token parser state
+export interface TokenParserState {
+  tokens: Map<string, ParsedToken>;      // All parsed tokens
+  avgVars: Map<string, AvgVarState>;     // Averaging states for type=avg
+  lastUpdate: Date | null;               // Last parser update
+}
+
+// Token category for UI grouping
+export enum TokenCategory {
+  FIRST_ENTRANCE = 'firstEntrance',  // Static device info
+  DYNAMIC = 'dynamic',                // Dynamic values (str, bool)
+  AVG = 'avg',                        // Averaged values
+  STATIC = 'static'                   // Static values
+}
+
+// Configuration structure for JSON parsing rules
+export interface ParsingRuleConfig {
+  labels: ParsingRule[];
+}
+
+// Raw parsing rule from JSON (with string type instead of enum)
+export interface RawParsingRule {
+  name: string;
+  type: string;  // 'str' | 'bool' | 'static' | 'avg'
+  regexp?: string;
+  value?: string | boolean;
+  rules?: TokenBehaviorRule[];
+  maxIterations?: number;
+  ndigits?: number;
+}
+
+// Raw configuration structure for JSON parsing rules
+export interface RawParsingRuleConfig {
+  labels: RawParsingRule[];
+}

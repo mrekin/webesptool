@@ -1,0 +1,104 @@
+{
+  "labels": [
+    {
+      "name": "Chip",
+      "type": "str",
+      "regexp": ".* (\\w+) init success(?:,|\\b)",
+      "rules": [
+        {
+          "type": "firstEntrance",
+          "dropAfter": "(Opening port|Init NodeDB)"
+        }
+      ]
+    },
+    {
+      "name": "Nodenum",
+      "type": "str",
+      "regexp": "Use nodenum (.*)$",
+      "rules": [
+        {
+          "type": "firstEntrance",
+          "dropAfter": "(Opening port|Init NodeDB)"
+        }
+      ]
+    },
+    {
+      "name": "Region",
+      "type": "str",
+      "regexp": "Wanted region \\d+, using (\\w+)$",
+      "rules": [
+        {
+          "type": "firstEntrance",
+          "dropAfter": "(Opening port|Init NodeDB)"
+        }
+      ]
+    },
+    {
+      "name": "Frequency",
+      "type": "str",
+      "regexp": "frequency: ([\\.\\d]+)$",
+      "rules": [
+        {
+          "type": "firstEntrance",
+          "dropAfter": "(Opening port|Init NodeDB)"
+        }
+      ]
+    },
+    {
+      "name": "Timezone",
+      "type": "str",
+      "regexp": ".*Set Timezone to (\\w+)$",
+      "rules": [
+        {
+          "type": "firstEntrance",
+          "dropAfter": "(Opening port|Init NodeDB)"
+        }
+      ]
+    },
+    {
+      "name": "IP",
+      "type": "str",
+      "regexp": "Obtained IP address: ([\\.\\d]+)$",
+      "rules": [
+        {
+          "type": "firstEntrance",
+          "dropAfter": "(Opening port|Init NodeDB)"
+        }
+      ]
+    },
+    {
+      "name": "batMv",
+      "type": "str",
+      "regexp": ".*batMv=(\\d+).*"
+    },
+    {
+      "name": "TX power",
+      "type": "str",
+      "regexp": "Final Tx power: (.+)$",
+      "rules": [
+        {
+          "type": "",
+          "dropAfter": "(Opening port|Init NodeDB)"
+        }
+      ]
+    },
+    {
+      "name": "MCU (NRF52)",
+      "type": "bool",
+      "value": "NRF52",
+      "rules": [
+        {
+          "type": "firstEntrance",
+          "dropAfter": "(Opening port|Init NodeDB)"
+        }
+      ]
+    },
+    {
+      "name": "TX avg time",
+      "type": "avg",
+      "regexp": "Packet TX: (\\d+)ms",
+      "maxIterations": 20,
+      "ndigits": 0
+    }
+  ]
+}
