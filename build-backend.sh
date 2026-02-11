@@ -251,19 +251,37 @@ push_image() {
     success "Images successfully pushed to registry"
 }
 
-# Function to get latest version from registry (silent)
-get_latest_version() {
-    # Try to get latest tag info from registry
-    local latest_info=$(docker manifest inspect "$REGISTRY/$IMAGE_NAME:latest" 2>/dev/null)
+# Function to get the version that is currently tagged as latest
+get_latest_tagged_version() {
+    # Get Image ID of latest tag
+    local latest_id=$(docker images "$REGISTRY/$IMAGE_NAME:latest" --format "{{.ID}}" 2>/dev/null)
 
-    if [ $? -eq 0 ] && [ -n "$latest_info" ]; then
-        # Get the actual version tag from latest manifest
-        local version_from_manifest=$(echo "$latest_info" | grep -o '"v[0-9]\+\.[0-9]\+\.[0-9]\+"' | head -1 | tr -d '"')
+    if [ -z "$latest_id" ]; then
+        echo ""
+        return 1
+    fi
 
-        if [ -n "$version_from_manifest" ]; then
-            echo "$version_from_manifest"
+    # Find version tag with matching Image ID
+    for ver in $(docker images "$REGISTRY/$IMAGE_NAME" --format "{{.Tag}}" | grep "^v[0-9]" | sort -V); do
+        local ver_id=$(docker images "$REGISTRY/$IMAGE_NAME:$ver" --format "{{.ID}}" 2>/dev/null)
+        if [ "$ver_id" = "$latest_id" ]; then
+            echo "$ver"
             return 0
         fi
+    done
+
+    echo ""
+    return 1
+}
+
+# Function to get latest version from registry (silent)
+get_latest_version() {
+    # Try to get version that's tagged as latest
+    local latest_version=$(get_latest_tagged_version)
+
+    if [ -n "$latest_version" ]; then
+        echo "$latest_version"
+        return 0
     fi
 
     # Fallback: try to list local images
