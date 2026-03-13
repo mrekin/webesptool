@@ -62,8 +62,28 @@ export async function handle({ event, resolve }) {
     }
 
     try {
+      // Filter out hop-by-hop headers that shouldn't be proxied
+      const headersToProxy = new Headers();
+      const hopByHopHeaders = new Set([
+        'connection',
+        'keep-alive',
+        'proxy-authenticate',
+        'proxy-authorization',
+        'te',
+        'trailers',
+        'transfer-encoding',
+        'upgrade',
+        'host'
+      ]);
+
+      for (const [key, value] of event.request.headers.entries()) {
+        if (!hopByHopHeaders.has(key.toLowerCase())) {
+          headersToProxy.set(key, value);
+        }
+      }
+
       const response = await fetch(apiUrl, {
-        headers: Object.fromEntries(event.request.headers.entries()),
+        headers: headersToProxy,
         method: event.request.method,
         body: body
       });
