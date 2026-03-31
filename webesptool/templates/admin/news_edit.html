@@ -736,6 +736,12 @@
 
     // Generate AI prompt for translation
     function generateAIPrompt() {
+        // Check if AI prompt template is configured
+        if (!AI_PROMPT_TEMPLATE || AI_PROMPT_TEMPLATE.trim() === '') {
+            showAlert('AI prompt template is not configured in config.yml. Please add news.ai_prompt_template parameter.', 'danger');
+            return;
+        }
+
         // No validation needed - if the button is enabled, the form is ready
         // Button is enabled only when a news is selected or "New" is clicked
 

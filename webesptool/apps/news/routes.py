@@ -269,7 +269,7 @@ async def admin_news_list(request: Request, news_id: Optional[int] = None):
     news_config = cfg.get('news', {})
     max_title_length = news_config.get('max_title_length', 30)
     max_body_length = news_config.get('max_body_length', 350)
-    ai_prompt_template = news_config.get('ai_prompt_template') or None
+    ai_prompt_template = news_config.get('ai_prompt_template', '')
     ai_prompt_max_length = news_config.get('ai_prompt_max_length', 10000)
 
     return templates.TemplateResponse("admin/news_edit.html", {
