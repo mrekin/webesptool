@@ -27,6 +27,10 @@
         👁️ Update Preview
     </button>
     <div class="vr mx-2"></div>
+    <button id="btn-ai-prompt" class="btn btn-info btn-sm" onclick="generateAIPrompt()" disabled title="Generate AI translation prompt">
+        🤖 AI prompt
+    </button>
+    <div class="vr mx-2"></div>
     <div class="form-check form-switch ms-2">
         <input class="form-check-input" type="checkbox" id="editJsonToggle">
         <label class="form-check-label" for="editJsonToggle">
@@ -142,24 +146,24 @@
             <div class="editor-section" data-lang="{{ lang.code }}">
                 <div class="editor-section-title">{{ lang.flag }} {{ lang.name }}</div>
                 <div class="mb-2">
-                    <label class="form-label">Title (max 30)</label>
+                    <label class="form-label">Title (max {{ max_title_length }})</label>
                     <input type="text" class="form-control form-control-sm"
                            id="title_{{ lang.code }}"
-                           maxlength="30"
+                           maxlength="{{ max_title_length }}"
                            oninput="updatePreview('{{ lang.code }}')">
                     <div class="form-text">
-                        <span id="char_count_title_{{ lang.code }}">0</span>/30
+                        <span id="char_count_title_{{ lang.code }}">0</span>/{{ max_title_length }}
                     </div>
                 </div>
                 <div class="mb-2">
-                    <label class="form-label">Body (max 300)</label>
+                    <label class="form-label">Body (max {{ max_body_length }})</label>
                     <textarea class="form-control form-control-sm"
                               id="body_{{ lang.code }}"
                               rows="5"
-                              maxlength="300"
+                              maxlength="{{ max_body_length }}"
                               oninput="updatePreview('{{ lang.code }}')"></textarea>
                     <div class="form-text">
-                        <span id="char_count_body_{{ lang.code }}">0</span>/300
+                        <span id="char_count_body_{{ lang.code }}">0</span>/{{ max_body_length }}
                     </div>
                 </div>
             </div>
@@ -204,6 +208,12 @@
     let isJsonMode = false;
     const languages = {{ languages | tojson }};
 
+    // AI prompt configuration
+    const AI_PROMPT_TEMPLATE = {{ ai_prompt_template | tojson }};
+    const AI_PROMPT_MAX_LENGTH = {{ ai_prompt_max_length }};
+    const MAX_TITLE_LENGTH = {{ max_title_length }};
+    const MAX_BODY_LENGTH = {{ max_body_length }};
+
     // Get current news object
     function getCurrentNews() {
         if (currentNewsId === null) {
@@ -237,6 +247,7 @@
         document.getElementById('btn-delete').disabled = false;
         document.getElementById('btn-toggle').disabled = false;
         document.getElementById('btn-pin').disabled = false;
+        document.getElementById('btn-ai-prompt').disabled = false;
 
         // Load data into form
         loadFormData(id);
@@ -259,6 +270,7 @@
         document.getElementById('btn-delete').disabled = true;
         document.getElementById('btn-toggle').disabled = true;
         document.getElementById('btn-pin').disabled = true;
+        document.getElementById('btn-ai-prompt').disabled = false;
 
         // Load empty form
         loadFormData(null);
@@ -719,6 +731,99 @@
             }
         } catch (e) {
             showAlert('Error: ' + e.message, 'danger');
+        }
+    }
+
+    // Generate AI prompt for translation
+    function generateAIPrompt() {
+        // No validation needed - if the button is enabled, the form is ready
+        // Button is enabled only when a news is selected or "New" is clicked
+
+        // Gather data from form
+        const news = gatherFormData();
+
+        // Prepare list of language codes
+        const langCodes = languages.map(l => l.code).join(', ');
+
+        // Truncate news JSON if needed
+        const truncatedNews = truncateNewsForPrompt(news, AI_PROMPT_MAX_LENGTH);
+        const newsJson = JSON.stringify(truncatedNews, null, 2);
+
+        // Generate prompt from template
+        const prompt = AI_PROMPT_TEMPLATE
+            .replace('{supported_langs}', langCodes)
+            .replace('{news_json}', newsJson)
+            .replace('{max_title_length}', MAX_TITLE_LENGTH)
+            .replace('{max_body_length}', MAX_BODY_LENGTH);
+
+        // Copy to clipboard
+        copyToClipboard(prompt);
+
+        // Show success message
+        showAlert('Prompt copied to clipboard', 'success');
+
+        // Automatically switch to JSON mode if not already enabled
+        if (!isJsonMode) {
+            document.getElementById('editJsonToggle').click();
+        }
+    }
+
+    // Truncate news content for AI prompt
+    function truncateNewsForPrompt(news, maxLength) {
+        // Create deep copy to avoid modifying original
+        const copy = JSON.parse(JSON.stringify(news));
+
+        // Check if size is OK
+        const jsonStr = JSON.stringify(copy);
+        if (jsonStr.length <= maxLength) {
+            return copy;
+        }
+
+        // Truncate body fields proportionally
+        const langCodes = Object.keys(copy.content);
+        const maxBodyLength = Math.floor(maxLength / langCodes.length / 2);
+
+        for (const langCode of langCodes) {
+            if (copy.content[langCode] && copy.content[langCode].body) {
+                const originalBody = copy.content[langCode].body;
+                copy.content[langCode].body = originalBody.substring(0, maxBodyLength);
+
+                // Check size again
+                const newJsonStr = JSON.stringify(copy);
+                if (newJsonStr.length <= maxLength) {
+                    break;
+                }
+            }
+        }
+
+        return copy;
+    }
+
+    // Copy text to clipboard with fallback
+    async function copyToClipboard(text) {
+        try {
+            // Try modern Clipboard API first
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textarea);
+
+                if (!successful) {
+                    throw new Error('execCommand failed');
+                }
+            }
+        } catch (err) {
+            console.error('Failed to copy to clipboard:', err);
+            showAlert('Failed to copy to clipboard', 'danger');
+            throw err;
         }
     }
 

@@ -260,14 +260,27 @@ async def admin_news_list(request: Request, news_id: Optional[int] = None):
         news_id: Optional news ID to pre-select (from query param)
     """
     templates = get_templates(request)
+    cfg = get_cfg(request)
     all_news = await get_all_news_admin()
     # Explicitly use None when news_id is not provided
     selected_id = news_id if news_id is not None else None
+
+    # Extract AI prompt configuration from config
+    news_config = cfg.get('news', {})
+    max_title_length = news_config.get('max_title_length', 30)
+    max_body_length = news_config.get('max_body_length', 350)
+    ai_prompt_template = news_config.get('ai_prompt_template') or None
+    ai_prompt_max_length = news_config.get('ai_prompt_max_length', 10000)
+
     return templates.TemplateResponse("admin/news_edit.html", {
         "request": request,
         "news_list": all_news,
         "selected_id": selected_id,
-        "languages": SUPPORTED_LANGUAGES
+        "languages": SUPPORTED_LANGUAGES,
+        "max_title_length": max_title_length,
+        "max_body_length": max_body_length,
+        "ai_prompt_template": ai_prompt_template,
+        "ai_prompt_max_length": ai_prompt_max_length,
     })
 
 

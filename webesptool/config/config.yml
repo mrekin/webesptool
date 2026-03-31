@@ -19,7 +19,11 @@ base:
   news:
     max_items_on_main: 5
     archive_page_size: 50
+    max_title_length: 30
+    max_body_length: 350
     db_path: "db/news.db"
+    ai_prompt_template: "Add missing translations for languages {supported_langs}, keeping JSON structure and not changing other parameters. Provide brief answer as resulting json. Json to translate: {news_json}. Limit title by {max_title_length} and body by {max_body_length}"
+    ai_prompt_max_length: 10000
     languages:
       - code: "en"
         name: "English"
