@@ -289,6 +289,7 @@
     "backup_cancelled": "Backup cancelled",
     "backup_status": "Creating memory dump...",
     "terminal": "Terminal",
+    "meshtastic_config": "Meshtastic Device Configuration",
     "terminal_connected": "Terminal Connected",
     "terminal_disconnected": "Terminal Disconnected",
     "terminal_autoscroll": "Auto-scroll",
@@ -369,7 +370,10 @@
     "deselect_all": "Deselect All",
     "upload_selected": "Write to Device",
     "no_sections_selected": "Please select at least one section to upload",
-    "config_ready": "Configuration loaded. Review and select sections to download."
+    "config_ready": "Configuration loaded. Review and select sections to download.",
+    "preset_configs": "Preset configs",
+    "preview": "Preview",
+    "download": "Download"
   },
   "memorymap": {
     "layout": "Memory Layout",

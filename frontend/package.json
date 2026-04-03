@@ -1,6 +1,6 @@
 {
 	"name": "frontend",
-	"version": "0.10.13",
+	"version": "0.10.14",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",

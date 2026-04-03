@@ -90,11 +90,34 @@
 		});
 	});
 
+	// Disconnect flag to prevent race conditions
+	let isDisconnecting = false;
+
 	onDestroy(async () => {
-		if (meshtasticManager) {
+		if (meshtasticManager && !isDisconnecting) {
+			console.log('[Meshtastic] OnDestroy - disconnecting');
 			await meshtasticManager.disconnect();
 		}
 	});
+
+	// Auto-disconnect when modal closes
+	$: if (!isOpen && meshtasticManager && !isDisconnecting) {
+		isDisconnecting = true;
+
+		console.log('[Meshtastic] Modal closed, auto-disconnecting...');
+		disconnectDevice()
+			.catch((err) => {
+				// Ignore disconnect errors - they're expected
+				if (err?.message?.includes('device has been lost') || err?.name === 'NetworkError') {
+					console.log('[Meshtastic] Device disconnected (expected error)');
+				} else {
+					console.error('[Meshtastic] Disconnect error:', err);
+				}
+			})
+			.finally(() => {
+				isDisconnecting = false;
+			});
+	}
 
 	// Load preset configs list
 	const presetConfigModules = import.meta.glob('/src/lib/config/meshtastic_configs/*.json');
@@ -556,9 +579,9 @@
 		parsedConfig = updatedConfig;
 	}
 
-	async function handleClose() {
+	function handleClose() {
 		if (isSaving || isLoading) return;
-		await disconnectDevice();
+		// Don't disconnect here - reactive block will handle it
 		// Don't clear parsedConfig - keep it for user to review/download
 		onClose();
 	}
@@ -747,7 +770,7 @@
 									on:click={() => showPresetConfigs = !showPresetConfigs}
 									disabled={isSaving || isLoading || presetConfigs.length === 0}
 									class="flex items-center justify-center rounded-md bg-gray-700 px-3 py-2 text-orange-300 transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
-									title="Preset configs"
+									title={$locales('meshtasticdevice.preset_configs')}
 								>
 									🗺️
 								</button>
@@ -778,7 +801,7 @@
 									on:click={() => showJsonPreviewModal = true}
 									class="text-gray-400 transition-colors hover:text-blue-400"
 									aria-label="Preview configuration as JSON"
-									title="Preview"
+									title={$locales('meshtasticdevice.preview')}
 								>
 									<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -790,7 +813,7 @@
 									on:click={downloadDeviceConfig}
 									class="text-gray-400 transition-colors hover:text-green-400"
 									aria-label="Download configuration file"
-									title="Download"
+									title={$locales('meshtasticdevice.download')}
 								>
 									<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />

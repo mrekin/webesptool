@@ -13,6 +13,18 @@ import type {
 import { MeshDevice, Protobuf } from '@meshtastic/core';
 import { TransportWebSerial } from '@meshtastic/transport-web-serial';
 
+// Global handler for Web Serial API unhandled promise rejections
+// Prevents "NetworkError: The device has been lost" in console during disconnect
+window.addEventListener('unhandledrejection', (event) => {
+	const reason = event.reason;
+	if (reason?.message?.includes('device has been lost') ||
+	    reason?.message?.includes('The device has been lost') ||
+	    reason?.name === 'NetworkError') {
+		// Suppress expected disconnect errors from Web Serial API
+		event.preventDefault();
+	}
+});
+
 // @ts-ignore - Accessing runtime enums from Protobuf.Admin
 const ConfigType = (Protobuf as any).Admin?.AdminMessage_ConfigType;
 // @ts-ignore - Accessing runtime enums from Protobuf.Admin

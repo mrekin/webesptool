@@ -19,6 +19,9 @@
 	import TerminalModal from '$lib/components/TerminalModal.svelte';
 	import { uiState } from '$lib/stores.js';
 
+	// Dynamic import for MeshtasticDeviceModal to avoid conflicts with +page.svelte
+	let MeshtasticDeviceModal: any = null;
+
 	export let isOpen = false;
 	export let onClose = () => {};
 	export let preloadedFilesWithOffsets: {
@@ -104,12 +107,21 @@
 	let showFileDetails = false; // Control file details spoiler in AutoSelect mode
 	let autoPortSelectionTriggered = false; // Flag for tracking automatic port selection
 	let showTerminalModal = false; // Terminal modal state
+	let showMeshtasticModal = false; // Meshtastic device modal state
 
 	// Reference to file input to replace document.getElementById
 	let fileInput: HTMLInputElement;
 
 	// Experimental features flag
 	$: experimentalFeatures = $uiState.experimentalFeatures;
+
+	// Function to dynamically load MeshtasticDeviceModal
+	async function openMeshtasticModal() {
+		if (!MeshtasticDeviceModal) {
+			MeshtasticDeviceModal = (await import('$lib/components/MeshtasticDeviceModal.svelte')).default;
+		}
+		showMeshtasticModal = true;
+	}
 
 	// Get baudrate options from utility
 	const baudrateOptions = espManager.getBaudrateOptions().map((opt) => ({
@@ -1866,6 +1878,15 @@
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
 						</svg>
 					</button>
+
+					<!-- Meshtastic device config button - experimental feature -->
+					<button
+						on:click={openMeshtasticModal}
+						class="flex items-center justify-center rounded-md bg-gray-700 px-3 py-2 text-orange-300 transition-colors hover:bg-gray-600"
+						title={$locales('customfirmware.meshtastic_config')}
+					>
+						🗺️
+					</button>
 				{/if}
 			</div>
 			{#if isPortSelected && deviceInfo}
@@ -1916,4 +1937,12 @@
 		isOpen={showTerminalModal}
 		onClose={() => showTerminalModal = false}
 	/>
+
+	<!-- Meshtastic Device Modal -->
+	{#if showMeshtasticModal && MeshtasticDeviceModal}
+		<svelte:component this={MeshtasticDeviceModal}
+			isOpen={showMeshtasticModal}
+			onClose={() => showMeshtasticModal = false}
+		/>
+	{/if}
 {/if}
