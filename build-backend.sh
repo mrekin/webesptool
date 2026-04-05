@@ -16,6 +16,7 @@ NC='\033[0m' # No Color
 # Variables
 IMAGE_NAME="webesptool-backend"
 REGISTRY="registry.mrekin.ru"
+REGISTRY_USER="vardas"
 BACKEND_DIR="./webesptool"
 
 # Global variables
@@ -47,6 +48,46 @@ validate_version() {
         return 0
     else
         return 1
+    fi
+}
+
+# Get full image path with optional user
+get_full_image_path() {
+    local tag=$1
+    if [ -n "$REGISTRY_USER" ]; then
+        echo "$REGISTRY/$REGISTRY_USER/$IMAGE_NAME:$tag"
+    else
+        echo "$REGISTRY/$IMAGE_NAME:$tag"
+    fi
+}
+
+# Get base image path (without tag)
+get_base_image_path() {
+    if [ -n "$REGISTRY_USER" ]; then
+        echo "$REGISTRY/$REGISTRY_USER/$IMAGE_NAME"
+    else
+        echo "$REGISTRY/$IMAGE_NAME"
+    fi
+}
+
+# Registry user prompt function
+prompt_registry_user() {
+    # Skip if already set
+    if [ -n "$REGISTRY_USER" ]; then
+        success "Using registry user: $REGISTRY_USER"
+        return
+    fi
+
+    echo
+    read -p "Enter registry username (press Enter to skip): " username
+    REGISTRY_USER="$username"
+
+    if [ -n "$REGISTRY_USER" ]; then
+        success "Registry user set to: $REGISTRY_USER"
+        info "Image will be: $REGISTRY/$REGISTRY_USER/$IMAGE_NAME:<version>"
+    else
+        info "No registry user specified"
+        info "Image will be: $REGISTRY/$IMAGE_NAME:<version>"
     fi
 }
 
@@ -176,7 +217,8 @@ check_backend_dir() {
 # Image build function
 build_image() {
     info "Starting Docker image build..."
-    info "Image: $REGISTRY/$IMAGE_NAME:$APP_VERSION"
+    local image_path=$(get_full_image_path "$APP_VERSION")
+    info "Image: $image_path"
 
     # Get current date in YYYYMMDD format
     BUILD_DATE=$(date +%Y%m%d)
@@ -185,10 +227,10 @@ build_image() {
     BUILD_VERSION="${APP_VERSION}.${BUILD_DATE}"
 
     # Build tags
-    local build_tags="-t $REGISTRY/$IMAGE_NAME:$APP_VERSION"
+    local build_tags="-t $(get_full_image_path "$APP_VERSION")"
 
     if [ "$SHOULD_TAG_LATEST" = "yes" ]; then
-        build_tags="$build_tags -t $REGISTRY/$IMAGE_NAME:latest"
+        build_tags="$build_tags -t $(get_full_image_path "latest")"
         info "Will also tag as latest"
     else
         info "Will NOT tag as latest"
@@ -210,7 +252,8 @@ build_image() {
 
 # Image size retrieval function
 get_image_size() {
-    local image_id=$(docker images -q "$REGISTRY/$IMAGE_NAME:$APP_VERSION")
+    local image_path=$(get_full_image_path "$APP_VERSION")
+    local image_id=$(docker images -q "$image_path")
     if [ -n "$image_id" ]; then
         # Get image size information in bytes
         local size_bytes=$(docker image inspect "$image_id" --format='{{.Size}}')
@@ -227,8 +270,9 @@ push_image() {
     info "Pushing images to registry..."
 
     # Always push version
-    info "Pushing $REGISTRY/$IMAGE_NAME:$APP_VERSION"
-    docker push "$REGISTRY/$IMAGE_NAME:$APP_VERSION"
+    local version_path=$(get_full_image_path "$APP_VERSION")
+    info "Pushing $version_path"
+    docker push "$version_path"
 
     if [ $? -ne 0 ]; then
         error "Failed to push version $APP_VERSION"
@@ -237,8 +281,9 @@ push_image() {
 
     # Push latest only if tagged
     if [ "$SHOULD_TAG_LATEST" = "yes" ]; then
-        info "Pushing $REGISTRY/$IMAGE_NAME:latest"
-        docker push "$REGISTRY/$IMAGE_NAME:latest"
+        local latest_path=$(get_full_image_path "latest")
+        info "Pushing $latest_path"
+        docker push "$latest_path"
 
         if [ $? -ne 0 ]; then
             error "Failed to push latest"
@@ -253,8 +298,10 @@ push_image() {
 
 # Function to get the version that is currently tagged as latest
 get_latest_tagged_version() {
+    local base_path=$(get_base_image_path)
+
     # Get Image ID of latest tag
-    local latest_id=$(docker images "$REGISTRY/$IMAGE_NAME:latest" --format "{{.ID}}" 2>/dev/null)
+    local latest_id=$(docker images "$base_path:latest" --format "{{.ID}}" 2>/dev/null)
 
     if [ -z "$latest_id" ]; then
         echo ""
@@ -262,8 +309,9 @@ get_latest_tagged_version() {
     fi
 
     # Find version tag with matching Image ID
-    for ver in $(docker images "$REGISTRY/$IMAGE_NAME" --format "{{.Tag}}" | grep "^v[0-9]" | sort -V); do
-        local ver_id=$(docker images "$REGISTRY/$IMAGE_NAME:$ver" --format "{{.ID}}" 2>/dev/null)
+    for ver in $(docker images "$base_path" --format "{{.Tag}}" | grep "^v[0-9]" | sort -V); do
+        local ver_path=$(get_full_image_path "$ver")
+        local ver_id=$(docker images "$ver_path" --format "{{.ID}}" 2>/dev/null)
         if [ "$ver_id" = "$latest_id" ]; then
             echo "$ver"
             return 0
@@ -285,7 +333,8 @@ get_latest_version() {
     fi
 
     # Fallback: try to list local images
-    local local_latest=$(docker images "$REGISTRY/$IMAGE_NAME" --format "table {{.Tag}}" | grep "^v[0-9]" | sort -V | tail -1)
+    local base_path=$(get_base_image_path)
+    local local_latest=$(docker images "$base_path" --format "table {{.Tag}}" | grep "^v[0-9]" | sort -V | tail -1)
 
     if [ -n "$local_latest" ]; then
         echo "$local_latest"
@@ -307,7 +356,8 @@ show_existing_versions() {
         echo -e "  Latest:   ${GREEN}$LATEST_VERSION${NC}"
 
         # Get size of latest image if available locally
-        if docker images -q "$REGISTRY/$IMAGE_NAME:$LATEST_VERSION" &>/dev/null; then
+        local latest_path=$(get_full_image_path "$LATEST_VERSION")
+        if docker images -q "$latest_path" &>/dev/null; then
             local latest_size=$(get_image_size_for_tag "$LATEST_VERSION")
             echo -e "  Size:     ${YELLOW}$latest_size${NC}"
         fi
@@ -316,7 +366,8 @@ show_existing_versions() {
     fi
 
     # Show all local versions
-    local local_versions=$(docker images "$REGISTRY/$IMAGE_NAME" --format "table {{.Tag}}" | grep "^v[0-9]" | sort -V)
+    local base_path=$(get_base_image_path)
+    local local_versions=$(docker images "$base_path" --format "table {{.Tag}}" | grep "^v[0-9]" | sort -V)
     if [ -n "$local_versions" ]; then
         echo -e "  Local:    ${YELLOW}$(echo "$local_versions" | tr '\n' ', ' | sed 's/,$//')${NC}"
     fi
@@ -326,7 +377,8 @@ show_existing_versions() {
 # Function to get image size for specific tag
 get_image_size_for_tag() {
     local tag=$1
-    local image_id=$(docker images -q "$REGISTRY/$IMAGE_NAME:$tag")
+    local image_path=$(get_full_image_path "$tag")
+    local image_id=$(docker images -q "$image_path")
     if [ -n "$image_id" ]; then
         local size_bytes=$(docker image inspect "$image_id" --format='{{.Size}}' 2>/dev/null)
         if [ -n "$size_bytes" ] && [ "$size_bytes" != "0" ]; then
@@ -344,13 +396,15 @@ get_image_size_for_tag() {
 show_image_info() {
     echo
     info "Built image information:"
-    echo -e "  Name:     ${GREEN}$REGISTRY/$IMAGE_NAME${NC}"
+    local base_path=$(get_base_image_path)
+    echo -e "  Name:     ${GREEN}$base_path${NC}"
     echo -e "  Version:  ${GREEN}$APP_VERSION${NC}"
     echo -e "  Size:     ${GREEN}$(get_image_size)${NC}"
     echo
 
     # Additional information
-    local image_id=$(docker images -q "$REGISTRY/$IMAGE_NAME:$APP_VERSION")
+    local image_path=$(get_full_image_path "$APP_VERSION")
+    local image_id=$(docker images -q "$image_path")
     if [ -n "$image_id" ]; then
         echo -e "  Image ID: ${GREEN}${image_id:0:12}${NC}"
 
@@ -408,7 +462,8 @@ prompt_push_to_registry() {
     done
 
     if [ "$SHOULD_PUSH" = "yes" ]; then
-        success "Will push to registry $REGISTRY"
+        local base_path=$(get_base_image_path)
+        success "Will push to registry $base_path"
     else
         warning "Will NOT push to registry"
     fi
@@ -469,6 +524,11 @@ main() {
     # Checks
     check_docker
     check_backend_dir
+
+    # Prompt for registry user (skip in build-only mode)
+    if [ "$SHOULD_PUSH" != "no" ] || [ -z "$APP_VERSION" ]; then
+        prompt_registry_user
+    fi
 
     # Show existing versions first (skip in build-only mode)
     if [ "$SHOULD_PUSH" != "no" ] || [ -z "$APP_VERSION" ]; then
