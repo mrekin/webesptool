@@ -17,3 +17,5 @@ docs/tasks/
 webesptool/db/news.db*
 webesptool/db/
 frontend/tests/*/*baseline*
+mempalace.yaml
+entities.json

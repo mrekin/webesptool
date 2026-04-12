@@ -125,7 +125,11 @@
     "no_device_selected": "Устройство не выбрано",
     "flash_custom_firmware": "Прошить свою прошивку",
     "custom_firmware_description": "Прошить свой файл прошивки на ESP устройства",
-    "meshtastic_device_description": "Конфигурация устройства Meshtastic"
+    "meshtastic_device_description": "Конфигурация устройства Meshtastic",
+    "download_archive": "Скачать архив",
+    "download_archive_description": "Скачать архивные версии прошивки",
+    "archives_list_title": "Доступные архивы",
+    "loading_archives": "Загрузка архивов..."
   },
   "notes": {
     "howto": "Инструкции",

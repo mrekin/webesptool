@@ -522,6 +522,43 @@ class APIService {
     return this.request<NewsResponse>(`/news/archive?${params}`);
   }
 
+  /**
+   * Get list of available archive files for repository
+   * Note: Archives are repository-level, not device-specific
+   */
+  async getArchiveList(
+    source: string
+  ): Promise<string[]> {
+    const params = new URLSearchParams({
+      type: 'archives',
+      repo: source
+    });
+
+    const response = await this.request<{files: string[]}>(
+      `/files?${params.toString()}`
+    );
+
+    return response.files || [];
+  }
+
+  /**
+   * Download specific archive file
+   * Note: Archives are repository-level, not device-specific
+   */
+  async downloadArchive(
+    source: string,
+    filename: string
+  ): Promise<FirmwareDownloadResponse> {
+    const params = {
+      type: 'archives',
+      repo: source,
+      file: filename
+      // NO 't' parameter - archives are repository-level
+    };
+
+    return await this.downloadFileWithFilename('/files', params);
+  }
+
   // Clear cache
   clearCache(): void {
     this.cache.clear();

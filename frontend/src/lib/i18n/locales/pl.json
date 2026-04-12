@@ -125,7 +125,11 @@
     "no_device_selected": "Nie wybrano urządzenia",
     "flash_custom_firmware": "Flashuj niestandardowy firmware",
     "custom_firmware_description": "Flashuj własny plik firmware na urządzenia ESP",
-    "meshtastic_device_description": "Konfiguracja urządzenia Meshtastic"
+    "meshtastic_device_description": "Konfiguracja urządzenia Meshtastic",
+    "download_archive": "Pobierz archiwum",
+    "download_archive_description": "Pobierz zarchiwizowane wersje oprogramowania",
+    "archives_list_title": "Dostępne archiwa",
+    "loading_archives": "Ładowanie archiwów..."
   },
   "notes": {
     "howto": "Jak to zrobić",

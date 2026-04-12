@@ -755,6 +755,56 @@ async def getIpInfo(ip: str):
 
     return None
 
+async def validateAndSecurePath(basePath: str, userPath: str) -> str:
+    """Validate path to prevent traversal attacks"""
+    full_path = os.path.realpath(os.path.join(basePath, userPath))
+    base_real = os.path.realpath(basePath)
+
+    if os.path.commonprefix([full_path, base_real]) != base_real:
+        raise ValueError("Path traversal detected")
+
+    return full_path
+
+async def listZipFilesInDirectory(directory: str) -> list[str]:
+    """List all .zip files in directory sorted alphabetically"""
+    if not await aiofiles.os.path.isdir(directory):
+        return []
+
+    files = []
+    async for entry in aiofiles.os.scandir(directory):
+        if entry.is_file() and entry.name.endswith('.zip'):
+            files.append(entry.name)
+
+    return sorted(files)
+
+async def logFileDownload(
+    request: Request,
+    file_type: str,
+    filename: str,
+    device: str | None,
+    repository: str,
+    version: str | None = None,
+    path: str | None = None
+):
+    """Centralized logging for file downloads"""
+    clientIp = getClientIp(request)
+    ipInfo = await getIpInfo(clientIp) if clientIp else None
+
+    if file_type == "firmware":
+        # Old format for monitoring compatibility
+        logMsg = f"DownloadFile: type: {device}, version: {version}, path: {path}, filename: {filename}, url: {str(request.url)}, client: {str(request.client)}, headers: {str(request.headers)}"
+    else:
+        # New format for other file types
+        logMsg = f"Download {file_type}:"
+        if device:
+            logMsg += f" device: {device},"
+        logMsg += f" repository: {repository}, file: {filename}, url: {str(request.url)}, client: {str(request.client)}"
+
+    if ipInfo:
+        logMsg += f", country: {ipInfo.get('country')}, city: {ipInfo.get('city')}"
+
+    log.info(logMsg)
+
 
 # Lifespan context manager for startup/shutdown events
 @asynccontextmanager
@@ -908,15 +958,110 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
                 filename = f"{p}.bin"
 
     if logInd:
-        clientIp = getClientIp(request)
-        ipInfo = await getIpInfo(clientIp) if clientIp else None
-
-        logMsg = f"DownloadFile: type: {t}, version: {v}, path: {path}, filename: {filename}, url: {str(request.url)}, client: {str(request.client)}, headers: {str(request.headers)}"
-        if ipInfo:
-            logMsg += f", country: {ipInfo.get('country')}, city: {ipInfo.get('city')}"
-
-        log.info(logMsg)
+        await logFileDownload(
+            request=request,
+            file_type="firmware",
+            filename=filename,
+            device=t,
+            repository=src,
+            version=v,
+            path=path
+        )
     return FileResponse(path=path, filename=filename, media_type=await getMimeType(path))
+
+@app.get("/api/files")
+async def getArchiveFiles(
+    request: Request,
+    type: str = None,
+    repo: str = None,
+    file: str = None
+):
+    """
+    Archive files endpoint
+    Parameters:
+    - type: must be 'archives'
+    - repo: repository identifier (meshcore, m1nl, etc.)
+    - file: specific filename (optional)
+    """
+    # Validate type parameter
+    if type != "archives":
+        return JSONResponse(
+            content={'error': 'Invalid type parameter, must be "archives"'},
+            status_code=400
+        )
+
+    # Validate required parameters (no 't' parameter needed!)
+    if not repo:
+        return JSONResponse(
+            content={'error': 'Missing required parameter: repo'},
+            status_code=400
+        )
+
+    # Get repository path WITHOUT device type
+    rootFolder, src, fw_type = await getRootFolder(None, None, repo)
+    if not rootFolder:
+        return JSONResponse(
+            content={'error': 'Repository not found'},
+            status_code=404
+        )
+
+    # Archive directory is at repository level
+    archive_path = os.path.join(rootFolder, "archive")
+
+    # Check if archive directory exists (return empty list if not)
+    if not await aiofiles.os.path.isdir(archive_path):
+        return JSONResponse(
+            content={'files': []},  # Empty list = no archives available
+            status_code=200
+        )
+
+    if file:
+        # Download specific file
+        # Validate filename to prevent path traversal
+        if not re.match(r'^[a-zA-Z0-9._-]+$', file):
+            return JSONResponse(
+                content={'error': 'Invalid filename'},
+                status_code=400
+            )
+
+        # Build secure file path
+        try:
+            file_path = await validateAndSecurePath(archive_path, file)
+        except ValueError:
+            return JSONResponse(
+                content={'error': 'Path traversal detected'},
+                status_code=400
+            )
+
+        # Check if file exists
+        if not await aiofiles.os.path.isfile(file_path):
+            return JSONResponse(
+                content={'error': 'File not found'},
+                status_code=404
+            )
+
+        # Log the download (without device parameter)
+        await logFileDownload(
+            request=request,
+            file_type="archive",
+            filename=file,
+            device=None,  # Archives are repository-level, not device-specific
+            repository=src
+        )
+
+        # Return file
+        return FileResponse(
+            path=file_path,
+            filename=file,
+            media_type=await getMimeType(file_path)
+        )
+    else:
+        # List available files
+        files = await listZipFilesInDirectory(archive_path)
+        return JSONResponse(
+            content={'files': files},
+            status_code=200
+        )
 
 
 def unirun():

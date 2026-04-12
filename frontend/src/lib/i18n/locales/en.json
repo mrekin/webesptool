@@ -125,7 +125,11 @@
     "no_device_selected": "No device selected",
     "flash_custom_firmware": "Flash Custom Firmware",
     "custom_firmware_description": "Flash your own firmware file to ESP devices",
-    "meshtastic_device_description": "Meshtastic Device Configuration"
+    "meshtastic_device_description": "Meshtastic Device Configuration",
+    "download_archive": "Download Archive",
+    "download_archive_description": "Download archived firmware versions",
+    "archives_list_title": "Available Archives",
+    "loading_archives": "Loading archives..."
   },
   "notes": {
     "howto": "HowTo",

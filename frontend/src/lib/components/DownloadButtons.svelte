@@ -20,6 +20,11 @@
   let showMoreOptions = false;
   let firmwareMode: 'update' | 'full' = 'update'; // update = mode 1, full = mode 2
 
+  // Archive state
+  let showArchiveDropdown = false;
+  let availableArchives: string[] = [];
+  let loadingArchives = false;
+
   // CustomFirmwareModal data moved to parent component
 
   // Subscribe to stores
@@ -32,6 +37,11 @@
 
   // Available download options based on device type and version
   $: downloadOptions = getDownloadOptions(deviceSelectionStore.devicePioTarget, deviceDisplayInfoStore?.deviceType, deviceSelectionStore.version, firmwareMode, $locale, currentSourceStore?.type);
+
+  // Load archives when source changes (repository-level, not device!)
+  $: if (deviceSelectionStore.source) {
+    loadArchives();
+  }
 
 
   function getDownloadOptions(devicePioTarget: string | null, deviceType: DeviceType | null | undefined, version: string | null, mode: 'update' | 'full', locale: any, sourceType: RepositoryType | undefined): DownloadOption[] {
@@ -117,9 +127,42 @@
       available: true,
       icon: '📦',
       description: $locales('downloadbuttons.download_complete_archive')
-    });    
+    });
+
+    // Add archive option if archives are available
+    if (availableArchives.length > 0) {
+      options.push({
+        id: 'archive',
+        label: $locales('downloadbuttons.download_archive'),
+        mode: 'archive',
+        available: true,
+        icon: '📦',
+        description: $locales('downloadbuttons.download_archive_description')
+      });
+    }
 
     return options;
+  }
+
+  // Add function to load archives
+  async function loadArchives() {
+    // Archives are repository-level, only need source
+    if (!deviceSelectionStore.source) {
+      return;
+    }
+
+    loadingArchives = true;
+    try {
+      availableArchives = await apiService.getArchiveList(
+        deviceSelectionStore.source
+        // NO devicePioTarget parameter - archives are repository-level
+      );
+    } catch (error) {
+      console.error('Failed to load archives:', error);
+      availableArchives = [];
+    } finally {
+      loadingArchives = false;
+    }
   }
 
   // Function to generate manifest URL for ESP Web Tools
@@ -181,6 +224,11 @@
       return;
     }
 
+    if (option.id === 'archive') {
+      showArchiveDropdown = !showArchiveDropdown;
+      return;
+    }
+
     // For fwzip - use zip download with u=5 parameter for all devices
     if (option.id === 'fwzip') {
       await apiActions.downloadFirmware(
@@ -215,6 +263,27 @@
     }
     // For uf2 and other options - use direct download
     await handleDownload(option);
+  }
+
+  // Add function to download selected archive
+  async function downloadArchive(filename: string) {
+    // Archives are repository-level, only need source
+    if (!deviceSelectionStore.source) {
+      return;
+    }
+
+    try {
+      const response = await apiService.downloadArchive(
+        deviceSelectionStore.source,
+        filename
+        // NO devicePioTarget parameter - archives are repository-level
+      );
+      apiService.triggerDownload(response.blob, response.filename);
+      showArchiveDropdown = false;
+    } catch (error) {
+      console.error('Failed to download archive:', error);
+      alert('Failed to download archive: ' + (error as any).message);
+    }
   }
 
   // Handle manifest flashing using CustomFirmwareModal
@@ -457,5 +526,26 @@
     </div>
   </div>
 </dialog>
+
+<!-- Archive Dropdown -->
+{#if showArchiveDropdown && availableArchives.length > 0}
+  <div class="mt-4 p-4 bg-gray-800 border border-orange-600 rounded-lg">
+    <h3 class="text-lg font-semibold text-orange-200 mb-3">{$locales('downloadbuttons.archives_list_title')}</h3>
+    {#if loadingArchives}
+      <div class="text-orange-300">{$locales('downloadbuttons.loading_archives')}</div>
+    {:else}
+      <div class="space-y-2 max-h-60 overflow-y-auto">
+        {#each availableArchives as archive}
+          <button
+            on:click={() => downloadArchive(archive)}
+            class="w-full text-left px-3 py-2 bg-gray-700 hover:bg-gray-600 text-orange-100 rounded transition-colors duration-200 text-sm"
+          >
+            {archive}
+          </button>
+        {/each}
+      </div>
+    {/if}
+  </div>
+{/if}
 
 <!-- CustomFirmwareModal moved to +page.svelte for proper centering -->
