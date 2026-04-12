@@ -36,7 +36,7 @@
 
 
   // Available download options based on device type and version
-  $: downloadOptions = getDownloadOptions(deviceSelectionStore.devicePioTarget, deviceDisplayInfoStore?.deviceType, deviceSelectionStore.version, firmwareMode, $locale, currentSourceStore?.type, availableArchives);
+  $: downloadOptions = getDownloadOptions(deviceSelectionStore.devicePioTarget, deviceDisplayInfoStore?.deviceType, deviceSelectionStore.version, firmwareMode, $locale, currentSourceStore?.type);
 
   // Load archives when source changes (repository-level, not device!)
   $: if (deviceSelectionStore.source) {
@@ -44,7 +44,7 @@
   }
 
 
-  function getDownloadOptions(devicePioTarget: string | null, deviceType: DeviceType | null | undefined, version: string | null, mode: 'update' | 'full', locale: any, sourceType: RepositoryType | undefined, archives: string[]): DownloadOption[] {
+  function getDownloadOptions(devicePioTarget: string | null, deviceType: DeviceType | null | undefined, version: string | null, mode: 'update' | 'full', locale: any, sourceType: RepositoryType | undefined): DownloadOption[] {
     if (!devicePioTarget || !version) return [];
 
     const options: DownloadOption[] = [];
@@ -129,18 +129,6 @@
       description: $locales('downloadbuttons.download_complete_archive')
     });
 
-    // Add archive option if archives are available
-    if (archives.length > 0) {
-      options.push({
-        id: 'archive',
-        label: $locales('downloadbuttons.download_archive'),
-        mode: 'archive',
-        available: true,
-        icon: '📦',
-        description: $locales('downloadbuttons.download_archive_description')
-      });
-    }
-
     return options;
   }
 
@@ -148,6 +136,7 @@
   async function loadArchives() {
     // Archives are repository-level, only need source
     if (!deviceSelectionStore.source) {
+      availableArchives = [];
       return;
     }
 
@@ -157,6 +146,7 @@
         deviceSelectionStore.source
         // NO devicePioTarget parameter - archives are repository-level
       );
+      console.log('Loaded archives:', availableArchives, 'from source:', deviceSelectionStore.source);
     } catch (error) {
       console.error('Failed to load archives:', error);
       availableArchives = [];
@@ -224,11 +214,6 @@
       return;
     }
 
-    if (option.id === 'archive') {
-      showArchiveDropdown = !showArchiveDropdown;
-      return;
-    }
-
     // For fwzip - use zip download with u=5 parameter for all devices
     if (option.id === 'fwzip') {
       await apiActions.downloadFirmware(
@@ -273,12 +258,21 @@
     }
 
     try {
-      const response = await apiService.downloadArchive(
-        deviceSelectionStore.source,
-        filename
-        // NO devicePioTarget parameter - archives are repository-level
-      );
-      apiService.triggerDownload(response.blob, response.filename);
+      // Build direct download URL so browser shows download progress
+      const params = new URLSearchParams({
+        type: 'archives',
+        repo: deviceSelectionStore.source,
+        file: filename
+      });
+      const url = `./api/files?${params.toString()}`;
+
+      // Use anchor download for browser-native progress tracking
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       showArchiveDropdown = false;
     } catch (error) {
       console.error('Failed to download archive:', error);
@@ -405,6 +399,16 @@
         aria-label="{$locales('downloadbuttons.meshtastic_device_description')}"
       >
         <span class="text-xl">❓</span>
+      </button>
+    {/if}
+    {#if availableArchives.length > 0}
+      <button
+        on:click={() => showArchiveDropdown = !showArchiveDropdown}
+        class="text-orange-200 hover:text-orange-100 transition-colors p-1 rounded"
+        title="{$locales('downloadbuttons.download_archive')}"
+        aria-label="{$locales('downloadbuttons.download_archive')}"
+      >
+        <span class="text-xl">📦</span>
       </button>
     {/if}
   </div>
