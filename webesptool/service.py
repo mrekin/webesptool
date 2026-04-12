@@ -1,3 +1,4 @@
+import asyncio
 import json
 from enum import Enum
 from typing import Optional
@@ -33,7 +34,6 @@ import os
 import re
 import zipfile
 from pathlib import Path
-from looseversion import LooseVersion
 import io
 import mimetypes
 import aiohttp
@@ -45,57 +45,8 @@ from utils.partition_parser import (
         find_partition_by_type,
     )
 
-
-
-
-class CustomLooseVersion(LooseVersion):
-    def parse(self, vstring):
-        # I've given up on thinking I can reconstruct the version string
-        # from the parsed tuple -- so I just store the string here for
-        # use by __str__
-        self.vstring = vstring
-        components = re.split(r'[\. ]',vstring)
-        for i, obj in enumerate(components):
-            try:
-                components[i] = int(obj)
-            except ValueError:
-                pass
-
-        self.version = components
-
-    def _cmp (self, other):
-        if isinstance(other, str):
-            other = CustomLooseVersion(other)
-        elif not isinstance(other, CustomLooseVersion):
-            return NotImplemented
-
-        #If elements has different types - compare as strings
-        min_len = min(len(self.version), len(other.version))
-        for i in range(min_len):
-            try:
-                # If one version has more components, it's considered newer
-                if i >= len(other.version):
-                    return 1
-                if i >= len(self.version):
-                    return -1
-
-                if type(self.version[i]) != type(other.version[i]):
-                    self.version[i] = str(self.version[i])
-                    other.version[i] = str(other.version[i])
-            except Exception as e:
-                pass
-
-        if "daily" in self.vstring and "daily" not in other.vstring and self.version[:len(self.version)-1] == other.version[:len(other.version)-1]:
-            return 1
-        if "daily" not in self.vstring and "daily" in other.vstring and self.version[:len(self.version)-1] == other.version[:len(other.version)-1]:
-            return -1
-
-        if self.version == other.version:
-            return 0
-        if self.version < other.version:
-            return -1
-        if self.version > other.version:
-            return 1
+# Shared version comparison utility
+from utils.version import CustomLooseVersion
 
 
 # Copied from device-install.sh
@@ -770,12 +721,16 @@ async def listZipFilesInDirectory(directory: str) -> list[str]:
     if not await aiofiles.os.path.isdir(directory):
         return []
 
-    files = []
-    async for entry in aiofiles.os.scandir(directory):
-        if entry.is_file() and entry.name.endswith('.zip'):
-            files.append(entry.name)
+    # Use regular os.scandir with asyncio.to_thread to avoid blocking
+    def scan_files():
+        files = []
+        with os.scandir(directory) as entries:
+            for entry in entries:
+                if entry.is_file() and entry.name.endswith('.zip'):
+                    files.append(entry.name)
+        return sorted(files)
 
-    return sorted(files)
+    return await asyncio.to_thread(scan_files)
 
 async def logFileDownload(
     request: Request,

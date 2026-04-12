@@ -36,7 +36,7 @@
 
 
   // Available download options based on device type and version
-  $: downloadOptions = getDownloadOptions(deviceSelectionStore.devicePioTarget, deviceDisplayInfoStore?.deviceType, deviceSelectionStore.version, firmwareMode, $locale, currentSourceStore?.type);
+  $: downloadOptions = getDownloadOptions(deviceSelectionStore.devicePioTarget, deviceDisplayInfoStore?.deviceType, deviceSelectionStore.version, firmwareMode, $locale, currentSourceStore?.type, availableArchives);
 
   // Load archives when source changes (repository-level, not device!)
   $: if (deviceSelectionStore.source) {
@@ -44,7 +44,7 @@
   }
 
 
-  function getDownloadOptions(devicePioTarget: string | null, deviceType: DeviceType | null | undefined, version: string | null, mode: 'update' | 'full', locale: any, sourceType: RepositoryType | undefined): DownloadOption[] {
+  function getDownloadOptions(devicePioTarget: string | null, deviceType: DeviceType | null | undefined, version: string | null, mode: 'update' | 'full', locale: any, sourceType: RepositoryType | undefined, archives: string[]): DownloadOption[] {
     if (!devicePioTarget || !version) return [];
 
     const options: DownloadOption[] = [];
@@ -130,7 +130,7 @@
     });
 
     // Add archive option if archives are available
-    if (availableArchives.length > 0) {
+    if (archives.length > 0) {
       options.push({
         id: 'archive',
         label: $locales('downloadbuttons.download_archive'),

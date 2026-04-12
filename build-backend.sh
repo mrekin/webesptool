@@ -588,21 +588,24 @@ main() {
     else
         echo
         warning "Image built but not pushed to registry"
-        info "To push manually: docker push $REGISTRY/$IMAGE_NAME:$APP_VERSION"
+        local push_path=$(get_full_image_path "$APP_VERSION")
+        info "To push manually: docker push $push_path"
     fi
 
     echo
     info "To run the image:"
-    echo -e "  docker run -p 8000:8000 $REGISTRY/$IMAGE_NAME:$APP_VERSION"
+    local run_path=$(get_full_image_path "$APP_VERSION")
+    echo -e "  docker run -p 8000:8000 $run_path"
     echo
     info "With custom root path:"
-    echo -e "  docker run -p 8000:8000 -e ROOT_PATH=/your/path $REGISTRY/$IMAGE_NAME:$APP_VERSION"
+    echo -e "  docker run -p 8000:8000 -e ROOT_PATH=/your/path $run_path"
     echo
 
     # Show tag info
     if [ "$SHOULD_TAG_LATEST" = "yes" ]; then
         info "Also available as latest:"
-        echo -e "  docker run -p 8000:8000 $REGISTRY/$IMAGE_NAME:latest"
+        local latest_path=$(get_full_image_path "latest")
+        echo -e "  docker run -p 8000:8000 $latest_path"
     fi
     echo
 }
