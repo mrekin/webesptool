@@ -43,6 +43,11 @@
     loadArchives();
   }
 
+  // Close archive dropdown when device is selected
+  $: if (deviceSelectionStore.devicePioTarget) {
+    showArchiveDropdown = false;
+  }
+
 
   function getDownloadOptions(devicePioTarget: string | null, deviceType: DeviceType | null | undefined, version: string | null, mode: 'update' | 'full', locale: any, sourceType: RepositoryType | undefined): DownloadOption[] {
     if (!devicePioTarget || !version) return [];
@@ -401,7 +406,7 @@
         <span class="text-xl">❓</span>
       </button>
     {/if}
-    {#if availableArchives.length > 0}
+    {#if !deviceSelectionStore.devicePioTarget && availableArchives.length > 0}
       <button
         on:click={() => showArchiveDropdown = !showArchiveDropdown}
         class="text-orange-200 hover:text-orange-100 transition-colors p-1 rounded"
@@ -532,7 +537,7 @@
 </dialog>
 
 <!-- Archive Dropdown -->
-{#if showArchiveDropdown && availableArchives.length > 0}
+{#if showArchiveDropdown && !deviceSelectionStore.devicePioTarget && availableArchives.length > 0}
   <div class="mt-4 p-4 bg-gray-800 border border-orange-600 rounded-lg">
     <h3 class="text-lg font-semibold text-orange-200 mb-3">{$locales('downloadbuttons.archives_list_title')}</h3>
     {#if loadingArchives}
