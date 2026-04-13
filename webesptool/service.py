@@ -716,8 +716,8 @@ async def validateAndSecurePath(basePath: str, userPath: str) -> str:
 
     return full_path
 
-async def listZipFilesInDirectory(directory: str) -> list[str]:
-    """List all .zip files in directory sorted alphabetically"""
+async def listZipFilesInDirectory(directory: str) -> list[dict]:
+    """List all .zip files in directory with name and size, sorted by name"""
     if not await aiofiles.os.path.isdir(directory):
         return []
 
@@ -727,8 +727,8 @@ async def listZipFilesInDirectory(directory: str) -> list[str]:
         with os.scandir(directory) as entries:
             for entry in entries:
                 if entry.is_file() and entry.name.endswith('.zip'):
-                    files.append(entry.name)
-        return sorted(files)
+                    files.append({'name': entry.name, 'size': entry.stat().st_size})
+        return sorted(files, key=lambda x: x['name'])
 
     return await asyncio.to_thread(scan_files)
 

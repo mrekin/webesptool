@@ -22,7 +22,7 @@
 
   // Archive state
   let showArchiveDropdown = false;
-  let availableArchives: string[] = [];
+  let availableArchives: {name: string; size: number}[] = [];
   let loadingArchives = false;
 
   // CustomFirmwareModal data moved to parent component
@@ -158,6 +158,13 @@
     } finally {
       loadingArchives = false;
     }
+  }
+
+  // Format file size to human-readable string
+  function formatFileSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
   // Function to generate manifest URL for ESP Web Tools
@@ -544,12 +551,13 @@
       <div class="text-orange-300">{$locales('downloadbuttons.loading_archives')}</div>
     {:else}
       <div class="space-y-2 max-h-60 overflow-y-auto">
-        {#each availableArchives as archive}
+        {#each [...availableArchives].sort((a, b) => b.name.localeCompare(a.name)) as archive}
           <button
-            on:click={() => downloadArchive(archive)}
-            class="w-full text-left px-3 py-2 bg-gray-700 hover:bg-gray-600 text-orange-100 rounded transition-colors duration-200 text-sm"
+            on:click={() => downloadArchive(archive.name)}
+            class="w-full text-left px-3 py-2 bg-gray-700 hover:bg-gray-600 text-orange-100 rounded transition-colors duration-200 text-sm flex items-center justify-between"
           >
-            {archive}
+            <span class="truncate">{archive.name}</span>
+            <span class="text-orange-400 text-xs ml-2 flex-shrink-0">{formatFileSize(archive.size)}</span>
           </button>
         {/each}
       </div>

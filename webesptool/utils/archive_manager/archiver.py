@@ -1,7 +1,7 @@
 """
 Archive creation and management for archive manager.
 
-Handles ZIP archive creation, validation, backup and file removal.
+Handles ZIP and 7z archive creation, validation, backup and file removal.
 """
 
 import os
@@ -9,7 +9,9 @@ import shutil
 import zipfile
 from zipfile import ZIP_DEFLATED
 
-from .const import ARCHIVE_DIR, BACKUP_DIR
+import py7zr
+
+from .const import ARCHIVE_DIR, BACKUP_DIR, DEFAULT_FORMAT
 from .file_operations import (
     calculate_total_size,
     collect_files_in_directory,
@@ -18,12 +20,33 @@ from .file_operations import (
 )
 
 
-def create_archive(files: list, archive_path: str, repo_root: str) -> bool:
+def create_archive(files: list, archive_path: str, repo_root: str, archive_format: str = None) -> bool:
     """
-    Create a ZIP archive containing the specified files.
+    Create an archive (ZIP or 7z) containing the specified files.
 
     Files are stored with their relative paths from repo_root,
     preserving the directory structure.
+
+    Args:
+        files: List of absolute file paths to include.
+        archive_path: Destination path for the archive.
+        repo_root: Root directory for computing relative paths.
+        archive_format: Archive format ('7z' or 'zip'). Defaults to DEFAULT_FORMAT.
+
+    Returns:
+        True if archive was created successfully, False otherwise.
+    """
+    fmt = archive_format or DEFAULT_FORMAT
+
+    if fmt == '7z':
+        return _create_archive_7z(files, archive_path, repo_root)
+    else:
+        return _create_archive_zip(files, archive_path, repo_root)
+
+
+def _create_archive_zip(files: list, archive_path: str, repo_root: str) -> bool:
+    """
+    Create a ZIP archive containing the specified files.
 
     Args:
         files: List of absolute file paths to include.
@@ -61,16 +84,75 @@ def create_archive(files: list, archive_path: str, repo_root: str) -> bool:
         return False
 
 
-def validate_archive(archive_path: str) -> bool:
+def _create_archive_7z(files: list, archive_path: str, repo_root: str) -> bool:
     """
-    Validate ZIP archive integrity using testzip().
+    Create a 7z archive containing the specified files using py7zr.
+
+    Uses FILTER_LZMA2 with maximum compression preset.
 
     Args:
-        archive_path: Path to the ZIP archive.
+        files: List of absolute file paths to include.
+        archive_path: Destination path for the 7z archive.
+        repo_root: Root directory for computing relative paths.
+
+    Returns:
+        True if archive was created successfully, False otherwise.
+    """
+    try:
+        ensure_directory(os.path.dirname(archive_path))
+
+        # Build list of (file_path, arcname) tuples
+        arc_files = []
+        for file_path in files:
+            arcname = os.path.relpath(file_path, repo_root)
+            arc_files.append((file_path, arcname))
+
+        total = len(arc_files)
+
+        # Use maximum compression (LZMA2, preset 9)
+        filters = [{'id': py7zr.FILTER_LZMA2, 'preset': 9}]
+        with py7zr.SevenZipFile(archive_path, mode='w', filters=filters) as zf:
+            for idx, (file_path, arcname) in enumerate(arc_files, 1):
+                zf.write(file_path, arcname)
+                # Progress indicator
+                if total > 100:
+                    if idx % 50 == 0:
+                        print(f"  Progress: {idx}/{total} files...")
+                elif total > 10:
+                    if idx % 10 == 0:
+                        print(f"  Progress: {idx}/{total} files...")
+
+        return True
+    except Exception as e:
+        print(f"Error creating 7z archive: {e}")
+        # Remove partially created archive
+        if os.path.isfile(archive_path):
+            os.remove(archive_path)
+        return False
+
+
+def validate_archive(archive_path: str) -> bool:
+    """
+    Validate archive integrity by testing it.
+
+    Supports both ZIP and 7z formats based on file extension.
+
+    Args:
+        archive_path: Path to the archive.
 
     Returns:
         True if archive is valid, False otherwise.
     """
+    ext = os.path.splitext(archive_path)[1].lower()
+
+    if ext == '.7z':
+        return _validate_7z(archive_path)
+    else:
+        return _validate_zip(archive_path)
+
+
+def _validate_zip(archive_path: str) -> bool:
+    """Validate ZIP archive integrity using testzip()."""
     try:
         with zipfile.ZipFile(archive_path, 'r') as zf:
             result = zf.testzip()
@@ -83,6 +165,49 @@ def validate_archive(archive_path: str) -> bool:
         return False
     except Exception as e:
         print(f"Archive validation failed: {e}")
+        return False
+
+
+def _validate_7z(archive_path: str) -> bool:
+    """Validate 7z archive integrity using py7zr test()."""
+    try:
+        print(f"  Opening archive: {archive_path}")
+        with py7zr.SevenZipFile(archive_path, mode='r') as zf:
+            # Display archive info
+            print(f"  Archive info: {zf.archiveinfo()}")
+
+            # List files in archive
+            files = zf.list()
+            print(f"  Files in archive: {len(files)}")
+
+            # Check CRC in files
+            print("  Checking CRC for files:")
+            crc_count = 0
+            for f in files[:10]:  # Check first 10 files
+                crc = f.crc if hasattr(f, 'crc') else None
+                if crc:
+                    crc_count += 1
+                print(f"    {f.filename if hasattr(f, 'filename') else '?'}: CRC={crc}")
+
+            print(f"  Files with CRC (first 10): {crc_count}/10")
+
+            # Show first few files as sample
+            print("  Sample files (first 5):")
+            for f in files[:5]:
+                print(f"    - {f.filename if hasattr(f, 'filename') else f}")
+
+            # Run integrity test
+            print("  Running integrity test...")
+            result = zf.test()
+            print(f"  Test result: {result}")
+
+            # test() returns True (CRC OK), False (CRC error), or None (no CRC)
+            # Both True and None mean success, only False means failure
+            return result is not False
+    except Exception as e:
+        print(f"7z archive validation failed: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 

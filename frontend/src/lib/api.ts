@@ -528,13 +528,13 @@ class APIService {
    */
   async getArchiveList(
     source: string
-  ): Promise<string[]> {
+  ): Promise<{name: string; size: number}[]> {
     const params = new URLSearchParams({
       type: 'archives',
       repo: source
     });
 
-    const response = await this.request<{files: string[]}>(
+    const response = await this.request<{files: {name: string; size: number}[]}>(
       `/files?${params.toString()}`
     );
 

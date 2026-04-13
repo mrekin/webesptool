@@ -37,6 +37,7 @@ from .config_loader import (
 )
 from .const import (
     ARCHIVE_DIR,
+    DEFAULT_FORMAT,
     EXIT_ERROR_ARCHIVE_CREATE,
     EXIT_ERROR_ARCHIVE_VALIDATION,
     EXIT_ERROR_CONFIG,
@@ -45,6 +46,7 @@ from .const import (
     EXIT_ERROR_NO_VERSIONS,
     EXIT_ERROR_USER_CANCEL,
     EXIT_SUCCESS,
+    SUPPORTED_FORMATS,
 )
 from .file_operations import (
     collect_files_in_directory,
@@ -100,6 +102,47 @@ def select_repository(repos: list) -> dict:
             if 0 <= idx < len(repos):
                 return repos[idx]
             print(f"Please enter a number between 1 and {len(repos)}")
+        except ValueError:
+            print("Please enter a valid number or 'q' to quit")
+
+
+def select_archive_format() -> str:
+    """
+    Let user select archive format (7z or zip).
+
+    Returns:
+        Selected format string ('7z' or 'zip').
+    """
+    print("\nArchive format:")
+    print("-" * 40)
+    for idx, fmt in enumerate(SUPPORTED_FORMATS, 1):
+        default = " (default)" if fmt == DEFAULT_FORMAT else ""
+        print(f"  {idx}. {fmt}{default}")
+    print()
+
+    while True:
+        try:
+            choice = input(
+                f"Select format (1-{len(SUPPORTED_FORMATS)}),\n"
+                f"or press Enter for default ({DEFAULT_FORMAT}),\n"
+                f"or 'q' to quit: "
+            ).strip()
+        except (KeyboardInterrupt, EOFError):
+            print()
+            return None
+
+        if choice.lower() == 'q':
+            return None
+
+        # Empty input means use default
+        if choice == '':
+            return DEFAULT_FORMAT
+
+        try:
+            idx = int(choice) - 1
+            if 0 <= idx < len(SUPPORTED_FORMATS):
+                return SUPPORTED_FORMATS[idx]
+            print(f"Please enter a number between 1 and {len(SUPPORTED_FORMATS)}")
         except ValueError:
             print("Please enter a valid number or 'q' to quit")
 
@@ -281,7 +324,7 @@ def _parse_number_input(raw: str, max_count: int) -> list:
     return sorted(indices)
 
 
-def display_preview(selected_versions: list, version_map: dict, repo_root: str) -> int:
+def display_preview(selected_versions: list, version_map: dict, repo_root: str, archive_format: str = DEFAULT_FORMAT) -> int:
     """
     Display preview of files that will be archived.
 
@@ -289,6 +332,7 @@ def display_preview(selected_versions: list, version_map: dict, repo_root: str) 
         selected_versions: List of selected version strings.
         version_map: Dict mapping version to list of directory paths.
         repo_root: Root path of the repository.
+        archive_format: Archive format ('7z' or 'zip').
 
     Returns:
         Total number of files to be archived.
@@ -314,7 +358,8 @@ def display_preview(selected_versions: list, version_map: dict, repo_root: str) 
 
     print("\n" + "-" * 60)
     print(f"Total: {len(all_files)} file(s), {format_size(total_size)}")
-    print(f"Archive name: {get_version_range_name(selected_versions)}.zip")
+    print(f"Format: {archive_format}")
+    print(f"Archive name: {get_version_range_name(selected_versions)}.{archive_format}")
     print("-" * 60)
 
     return len(all_files)
@@ -337,6 +382,39 @@ def confirm_action(prompt: str) -> bool:
         return False
 
     return answer in ('', 'y', 'yes')
+
+
+def select_post_archive_action() -> str:
+    """
+    Ask user what to do with original files after archive creation.
+
+    Returns:
+        'backup' - create backup and remove original files
+        'test' - test mode, keep original files
+        'cancel' - cancel operation
+    """
+    print("\nWhat to do with original files?")
+    print("-" * 40)
+    print("  1. Create backup and remove originals")
+    print("  2. Test mode - keep originals (archive created)")
+    print("  3. Cancel operation")
+    print()
+
+    while True:
+        try:
+            choice = input("Select option (1-3): ").strip()
+        except (KeyboardInterrupt, EOFError):
+            print()
+            return 'cancel'
+
+        if choice == '1':
+            return 'backup'
+        elif choice == '2':
+            return 'test'
+        elif choice == '3' or choice.lower() == 'q':
+            return 'cancel'
+        else:
+            print("Please enter 1, 2, or 3")
 
 
 def display_success(archive_path: str) -> None:
@@ -400,6 +478,12 @@ def main() -> int:
             print(f"Error: Repository path does not exist: {repo_root}")
             return EXIT_ERROR_CONFIG
 
+        # Select archive format
+        archive_format = select_archive_format()
+        if archive_format is None:
+            print("Operation cancelled")
+            return EXIT_ERROR_USER_CANCEL
+
         # Collect all versions
         print("\nScanning repository for firmware versions...")
         version_map = collect_all_versions(repo_root)
@@ -436,7 +520,7 @@ def main() -> int:
             return EXIT_ERROR_NO_VERSIONS
 
         # Display preview
-        display_preview(selected, version_map, repo_root)
+        display_preview(selected, version_map, repo_root, archive_format)
 
         # Confirm operation
         if not confirm_action("\nProceed with archiving?"):
@@ -455,7 +539,7 @@ def main() -> int:
             return EXIT_ERROR_DISK_SPACE
 
         # Create archive
-        archive_name = get_version_range_name(selected) + ".zip"
+        archive_name = get_version_range_name(selected) + f".{archive_format}"
         archive_dir = os.path.join(repo_root, ARCHIVE_DIR)
         archive_path = os.path.join(archive_dir, archive_name)
 
@@ -466,7 +550,7 @@ def main() -> int:
                 return EXIT_ERROR_USER_CANCEL
 
         print(f"\nCreating archive: {archive_path}")
-        if not create_archive(all_files, archive_path, repo_root):
+        if not create_archive(all_files, archive_path, repo_root, archive_format):
             print("Error: Failed to create archive")
             return EXIT_ERROR_ARCHIVE_CREATE
 
@@ -481,15 +565,19 @@ def main() -> int:
 
         print("Archive integrity verified")
 
-        # Ask about backup
-        if confirm_action("Create backup of original files?"):
+        # Ask what to do with original files
+        action = select_post_archive_action()
+
+        if action == 'cancel':
+            print("\nOperation cancelled (archive created, files kept)")
+            display_success(archive_path)
+            return EXIT_ERROR_USER_CANCEL
+        elif action == 'backup':
             print("\nBacking up original files...")
             if not backup_files(all_dirs, repo_root):
                 print("Warning: Backup encountered errors. Archive is safe.")
-        else:
-            print("\nRemoving original files...")
-            if not remove_files(all_dirs):
-                print("Warning: Some files could not be removed. Archive is safe.")
+        elif action == 'test':
+            print("\nTest mode: Original files kept (archive created successfully)")
 
         # Display success
         display_success(archive_path)

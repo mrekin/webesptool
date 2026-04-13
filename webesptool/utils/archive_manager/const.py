@@ -9,6 +9,10 @@ BACKUP_DIR = "backup"
 # File names
 VER_INFO_FILE = "ver.info"
 
+# Archive formats
+DEFAULT_FORMAT = "7z"
+SUPPORTED_FORMATS = ("7z", "zip")
+
 # Exit codes
 EXIT_SUCCESS = 0
 EXIT_ERROR_CONFIG = 1          # Error loading config
