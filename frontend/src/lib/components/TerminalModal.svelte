@@ -467,25 +467,24 @@
 			<!-- Footer with Controls (two columns) -->
 			<div class="flex items-center justify-between border-t border-gray-700 p-4 flex-shrink-0 gap-4">
 				<!-- Left: Connection controls -->
-				<div class="flex space-x-3 flex-shrink-0">
+				<div class="flex-shrink-0">
+					<!-- Connection toggle button -->
 					<button
-						on:click={connectToPort}
-						disabled={isConnecting || isConnected}
-						class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+						on:click={isConnected ? disconnect : connectToPort}
+						disabled={isConnecting}
+						class:bg-blue-600={!isConnected && !isConnecting}
+						class:hover:bg-blue-700={!isConnected && !isConnecting}
+						class:bg-gray-700={isConnected}
+						class:hover:bg-gray-600={isConnected}
+						class="rounded-md px-4 py-2 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{#if isConnecting}
 							{$locales('customfirmware.connecting')}...
+						{:else if isConnected}
+							{$locales('customfirmware.disconnect')}
 						{:else}
 							{$locales('customfirmware.select_port')}
 						{/if}
-					</button>
-
-					<button
-						on:click={disconnect}
-						disabled={!isConnected}
-						class="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						{$locales('customfirmware.disconnect')}
 					</button>
 				</div>
 
