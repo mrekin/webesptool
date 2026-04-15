@@ -28,6 +28,13 @@
 	// Unique key to force reactivity when tokens change
 	let tokensKey = 0;
 
+	// Command input state
+	let commandInput = '';
+	let commandHistory: string[] = [];
+	let historyIndex = -1;
+	const MAX_HISTORY = 50;
+	let selectedLineEnding = 'crlf'; // 'lf', 'crlf', 'cr'
+
 	// Terminal options
 	const options = {
 		fontSize: 14,
@@ -267,6 +274,96 @@
 		}
 	}
 
+	// Get line ending characters based on selection
+	function getLineEndingChars(): string {
+		switch (selectedLineEnding) {
+			case 'lf': return '\n';
+			case 'crlf': return '\r\n';
+			case 'cr': return '\r';
+			default: return '\r\n';
+		}
+	}
+
+	// Send command to serial port
+	async function sendCommand(): Promise<void> {
+		if (!port || !isConnected || !terminal) return;
+
+		const command = commandInput.trim();
+		if (!command) return;
+
+		let writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
+		try {
+			// Get writer from writable stream
+			writer = port.writable.getWriter();
+
+			// Encode command with line ending
+			const encoder = new TextEncoder();
+			const data = command + getLineEndingChars();
+			await writer.write(encoder.encode(data));
+
+			// Release writer lock
+			writer.releaseLock();
+			writer = null;
+
+			// Echo command to terminal with prefix
+			terminal.writeln(`\x1b[1;36m>> ${command}\x1b[0m`);
+
+			// Add to history
+			commandHistory.push(command);
+			if (commandHistory.length > MAX_HISTORY) {
+				commandHistory.shift();
+			}
+			historyIndex = commandHistory.length;
+
+			// Clear input
+			commandInput = '';
+
+			// Auto-scroll to bottom
+			if (autoScroll) {
+				terminal.scrollToBottom();
+			}
+		} catch (error) {
+			// Ensure writer is released on error
+			if (writer) {
+				try { writer.releaseLock(); } catch { /* ignore */ }
+			}
+			if (terminal) {
+				terminal.writeln(`\x1b[1;31mFailed to send command: ${error}\x1b[0m`);
+			}
+		}
+	}
+
+	// Handle keyboard navigation in input field
+	function handleInputKeydown(event: KeyboardEvent): void {
+		if (!isConnected) return;
+
+		// Send on Enter
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			sendCommand();
+			return;
+		}
+
+		// Navigate history with Up/Down arrows
+		if (event.key === 'ArrowUp') {
+			event.preventDefault();
+			if (historyIndex > 0) {
+				historyIndex--;
+				commandInput = commandHistory[historyIndex];
+			}
+		} else if (event.key === 'ArrowDown') {
+			event.preventDefault();
+			if (historyIndex < commandHistory.length - 1) {
+				historyIndex++;
+				commandInput = commandHistory[historyIndex];
+			} else {
+				// Clear input if at the end of history
+				historyIndex = commandHistory.length;
+				commandInput = '';
+			}
+		}
+	}
+
 	// Cleanup
 	async function handleClose() {
 		// Stop reading and disconnect properly, always closing the port
@@ -332,10 +429,10 @@
 				{/if}
 			</div>
 
-			<!-- Footer with Controls -->
-			<div class="flex items-center justify-between border-t border-gray-700 p-4 flex-shrink-0">
-				<!-- Connection controls -->
-				<div class="flex space-x-3">
+			<!-- Footer with Controls (three columns) -->
+			<div class="flex items-center justify-between border-t border-gray-700 p-4 flex-shrink-0 gap-4">
+				<!-- Left: Connection controls -->
+				<div class="flex space-x-3 flex-shrink-0">
 					<button
 						on:click={connectToPort}
 						disabled={isConnecting || isConnected}
@@ -357,8 +454,43 @@
 					</button>
 				</div>
 
-				<!-- Terminal controls -->
-				<div class="flex items-center space-x-4">
+				<!-- Center: Command input -->
+				<div class="flex items-center space-x-2 flex-1 min-w-0">
+					<!-- Line Ending Selector -->
+					<select
+						bind:value={selectedLineEnding}
+						disabled={!isConnected}
+						class="rounded-md border border-gray-600 bg-gray-700 px-2 py-2 text-sm text-white focus:ring-orange-600 disabled:opacity-50"
+						title={$locales('customfirmware.terminal_line_ending_title')}
+					>
+						<option value="lf">LF</option>
+						<option value="crlf">CRLF</option>
+						<option value="cr">CR</option>
+					</select>
+
+					<!-- Command Input Field -->
+					<input
+						type="text"
+						bind:value={commandInput}
+						on:keydown={handleInputKeydown}
+						disabled={!isConnected}
+						placeholder={$locales('customfirmware.terminal_input_placeholder')}
+						class="flex-1 rounded-md border border-gray-600 bg-gray-700 px-3 py-2 text-sm text-white placeholder-gray-400 focus:border-orange-600 focus:outline-none focus:ring-1 focus:ring-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+					/>
+
+					<!-- Send Button -->
+					<button
+						on:click={sendCommand}
+						disabled={!isConnected || !commandInput.trim()}
+						class="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+						title={$locales('customfirmware.terminal_send_tooltip')}
+					>
+						{$locales('customfirmware.terminal_send')}
+					</button>
+				</div>
+
+				<!-- Right: Terminal controls -->
+				<div class="flex items-center space-x-4 flex-shrink-0">
 					<label class="flex items-center space-x-2 text-sm text-gray-300">
 						<input
 							type="checkbox"

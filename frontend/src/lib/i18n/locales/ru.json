@@ -310,7 +310,11 @@
     "device_info": "Информация об устройстве",
     "dynamic": "Динамические",
     "averaged": "Усредненные",
-    "static": "Статические"
+    "static": "Статические",
+    "terminal_input_placeholder": "Введите команду...",
+    "terminal_send": "Отправить",
+    "terminal_send_tooltip": "Отправить команду устройству (Enter)",
+    "terminal_line_ending_title": "Формат переноса строки"
   },
   "backupconfirm": {
     "title": "Сохранить дамп памяти устройства?",

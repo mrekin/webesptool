@@ -310,7 +310,11 @@
     "device_info": "Device Info",
     "dynamic": "Dynamic",
     "averaged": "Averaged",
-    "static": "Static"
+    "static": "Static",
+    "terminal_input_placeholder": "Type a command...",
+    "terminal_send": "Send",
+    "terminal_send_tooltip": "Send command to device (Enter)",
+    "terminal_line_ending_title": "Line ending format"
   },
   "backupconfirm": {
     "title": "Save Device Flash Dump?",
