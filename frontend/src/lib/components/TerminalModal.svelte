@@ -429,7 +429,42 @@
 				{/if}
 			</div>
 
-			<!-- Footer with Controls (three columns) -->
+			<!-- Command Input Area -->
+			<div class="flex items-center space-x-2 border-t border-gray-700 p-4 flex-shrink-0">
+				<!-- Line Ending Selector -->
+				<select
+					bind:value={selectedLineEnding}
+					disabled={!isConnected}
+					class="rounded-md border border-gray-600 bg-gray-700 px-2 py-2 text-sm text-white focus:ring-orange-600 disabled:opacity-50"
+					title={$locales('customfirmware.terminal_line_ending_title')}
+				>
+					<option value="lf">LF</option>
+					<option value="crlf">CRLF</option>
+					<option value="cr">CR</option>
+				</select>
+
+				<!-- Command Input Field -->
+				<input
+					type="text"
+					bind:value={commandInput}
+					on:keydown={handleInputKeydown}
+					disabled={!isConnected}
+					placeholder={$locales('customfirmware.terminal_input_placeholder')}
+					class="flex-1 rounded-md border border-gray-600 bg-gray-700 px-3 py-2 text-sm text-white placeholder-gray-400 focus:border-orange-600 focus:outline-none focus:ring-1 focus:ring-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+				/>
+
+				<!-- Send Button -->
+				<button
+					on:click={sendCommand}
+					disabled={!isConnected || !commandInput.trim()}
+					class="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+					title={$locales('customfirmware.terminal_send_tooltip')}
+				>
+					{$locales('customfirmware.terminal_send')}
+				</button>
+			</div>
+
+			<!-- Footer with Controls (two columns) -->
 			<div class="flex items-center justify-between border-t border-gray-700 p-4 flex-shrink-0 gap-4">
 				<!-- Left: Connection controls -->
 				<div class="flex space-x-3 flex-shrink-0">
@@ -451,41 +486,6 @@
 						class="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{$locales('customfirmware.disconnect')}
-					</button>
-				</div>
-
-				<!-- Center: Command input -->
-				<div class="flex items-center space-x-2 flex-1 min-w-0">
-					<!-- Line Ending Selector -->
-					<select
-						bind:value={selectedLineEnding}
-						disabled={!isConnected}
-						class="rounded-md border border-gray-600 bg-gray-700 px-2 py-2 text-sm text-white focus:ring-orange-600 disabled:opacity-50"
-						title={$locales('customfirmware.terminal_line_ending_title')}
-					>
-						<option value="lf">LF</option>
-						<option value="crlf">CRLF</option>
-						<option value="cr">CR</option>
-					</select>
-
-					<!-- Command Input Field -->
-					<input
-						type="text"
-						bind:value={commandInput}
-						on:keydown={handleInputKeydown}
-						disabled={!isConnected}
-						placeholder={$locales('customfirmware.terminal_input_placeholder')}
-						class="flex-1 rounded-md border border-gray-600 bg-gray-700 px-3 py-2 text-sm text-white placeholder-gray-400 focus:border-orange-600 focus:outline-none focus:ring-1 focus:ring-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
-					/>
-
-					<!-- Send Button -->
-					<button
-						on:click={sendCommand}
-						disabled={!isConnected || !commandInput.trim()}
-						class="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-						title={$locales('customfirmware.terminal_send_tooltip')}
-					>
-						{$locales('customfirmware.terminal_send')}
 					</button>
 				</div>
 
