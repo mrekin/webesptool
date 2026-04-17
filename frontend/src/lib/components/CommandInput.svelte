@@ -33,7 +33,18 @@
 	 * Handle input change - update autocomplete suggestion
 	 */
 	function handleInput() {
-		suggestion = getAutocompleteSuggestion(value, mode, null);
+		// Update current command from suggestion if available
+	let newSuggestion = getAutocompleteSuggestion(value, mode, null, suggestion);
+
+		// Remove leading space from suggestion if input already ends with space
+		if (newSuggestion && value.endsWith(' ') && newSuggestion.text.startsWith(' ')) {
+			newSuggestion = {
+				...newSuggestion,
+				text: newSuggestion.text.substring(1)
+			};
+		}
+
+		suggestion = newSuggestion;
 	}
 
 	/**
@@ -59,12 +70,9 @@
 				if (nextSuggestion) {
 					// Show next variant
 					suggestion = nextSuggestion;
-				} else {
-					// Accept current suggestion
-					value = acceptSuggestion(value, suggestion);
-					suggestion = null;
-					// After accepting, check if there are more suggestions
-					suggestion = getAutocompleteSuggestion(value, mode, null);
+					// Update current command when cycling
+					if (nextSuggestion.type === 'command') {
+					}
 				}
 			}
 			return;
@@ -127,15 +135,27 @@
 			return;
 		}
 
-		// ArrowRight - accept suggestion up to next separator
-		if (event.key === 'ArrowRight' && suggestion) {
-			event.preventDefault();
+			// ArrowRight - accept suggestion up to next separator (only if cursor at end)
+			if (event.key === 'ArrowRight' && suggestion) {
+				const cursorPosition = inputElement.selectionStart;
+				const isAtEnd = cursorPosition === value.length;
 
-			value = acceptSuggestionToNextSeparator(value, suggestion);
-			// Update suggestion after partial accept
-			suggestion = getAutocompleteSuggestion(value, mode, null);
-			return;
-		}
+				console.log('[ArrowRight] Cursor position:', cursorPosition, 'Value length:', value.length, 'Is at end:', isAtEnd);
+
+				if (isAtEnd) {
+					event.preventDefault();
+
+					console.log('[ArrowRight] Before accept:', { value, suggestion });
+					const oldValue = value;
+					value = acceptSuggestionToNextSeparator(value, suggestion);
+					console.log('[ArrowRight] After accept:', { oldValue, newValue: value, accepted: value.slice(oldValue.length) });
+					// Update suggestion after partial accept (null for lastSuggestion to avoid Tab cycling)
+					suggestion = getAutocompleteSuggestion(value, mode, null, null);
+					console.log('[ArrowRight] New suggestion:', suggestion);
+					return;
+				}
+				// If not at end, let browser handle cursor movement normally
+			}
 	}
 </script>
 

@@ -98,151 +98,52 @@ export function parseCommandInput(
 
 /**
  * Get autocomplete suggestion based on current input and mode.
+ * Algorithm from test_autocomplete.py:
+ * 1. If current_command provided, continue from it
+ * 2. If input ends with space - show params or continuations
+ * 3. If input matches exact command - show params or continuations with leading space
+ * 4. If input partial match - show rest of command + params
  */
 export function getAutocompleteSuggestion(
   input: string,
   mode: 'normal' | 'meshcore',
+  currentCommand?: string | null,
   lastSuggestion?: AutocompleteSuggestion | null
 ): AutocompleteSuggestion | null {
+  console.log('[getAutocompleteSuggestion] CALLED WITH:', {
+    input,
+    mode,
+    currentCommand,
+    lastSuggestion
+  });
+
   const trimmedInput = input.trim();
 
-  // Handle /mc command in both modes (for switching)
-  if ('/mc'.startsWith(trimmedInput)) {
-    return {
-      text: '/mc'.slice(trimmedInput.length),
-      type: 'command',
-      command: '/mc'
-    };
+  // Handle /mc command in normal mode
+  if (mode === 'normal') {
+    // Suggest /mc for inputs that start with / (including just "/")
+    if (trimmedInput === '/' || '/mc'.startsWith(trimmedInput)) {
+      return {
+        text: '/mc'.slice(trimmedInput.length),
+        type: 'command' as const,
+        command: '/mc'
+      };
+    }
+    return null;
   }
 
   if (mode !== 'meshcore') return null;
-
   if (!trimmedInput) return null;
 
-  // Find all commands that match the input
-  const matchingCommands = meshcoreCommandData
+  // Find all commands that start with input (PARTIAL MATCH - this handles ALL cases!)
+  let matchingCommands = meshcoreCommandData
     .filter(cmd => !cmd.interactive)
-    .filter(cmd => cmd.command.startsWith(trimmedInput))
+    .filter(cmd => cmd.command.startsWith(input))
     .sort((a, b) => a.command.localeCompare(b.command));
 
-  if (matchingCommands.length === 0) {
-    return null;
-  }
+  console.log('[getAutocompleteSuggestion] Matching commands:', matchingCommands.map(c => c.command));
 
-  // If input ends with space, we're looking for next word in multi-word commands
-  if (trimmedInput.endsWith(' ')) {
-    const prefix = trimmedInput.slice(0, -1); // Remove trailing space
-
-    // Find commands that start with this prefix and have more words
-    const continuationCommands = meshcoreCommandData
-      .filter(cmd => !cmd.interactive)
-      .filter(cmd => cmd.command.startsWith(prefix + ' '))
-      .sort((a, b) => a.command.localeCompare(b.command));
-
-    if (continuationCommands.length === 0) {
-      return null;
-    }
-
-    // Cycle through continuation commands
-    let startIndex = 0;
-    if (lastSuggestion && lastSuggestion.type === 'command') {
-      const lastIndex = continuationCommands.findIndex(
-        cmd => cmd.command === lastSuggestion.command
-      );
-      if (lastIndex >= 0) {
-        startIndex = (lastIndex + 1) % continuationCommands.length;
-      }
-    }
-
-    const nextCommand = continuationCommands[startIndex];
-    const remainingPart = nextCommand.command.slice(prefix.length + 1); // +1 for the space
-    const nextWordMatch = remainingPart.match(/^(\S+)/);
-
-    if (nextWordMatch) {
-      const nextWord = nextWordMatch[1];
-
-      // Add parameter hints if this is the full command
-      let paramHint = '';
-      if (nextCommand.params.length > 0) {
-        const sep = nextCommand.separator === 'comma' ? ',' : ' ';
-        paramHint = sep + nextCommand.params
-          .map(p => `<${p.name}>`)
-          .join(sep);
-      }
-
-      return {
-        text: nextWord + paramHint,
-        type: 'command',
-        command: nextCommand.command
-      };
-    }
-
-    return null;
-  }
-
-  // Check if input exactly matches a command
-  const exactCommand = findCommand(trimmedInput);
-
-  if (exactCommand) {
-    // Check if there are commands that start with this command + space
-    const continuationCommands = meshcoreCommandData
-      .filter(cmd => !cmd.interactive)
-      .filter(cmd => cmd.command.startsWith(trimmedInput + ' '))
-      .sort((a, b) => a.command.localeCompare(b.command));
-
-    if (continuationCommands.length > 0) {
-      // Show next word from continuation commands
-      let startIndex = 0;
-      if (lastSuggestion && lastSuggestion.type === 'command') {
-        const lastIndex = continuationCommands.findIndex(
-          cmd => cmd.command === lastSuggestion.command
-        );
-        if (lastIndex >= 0) {
-          startIndex = (lastIndex + 1) % continuationCommands.length;
-        }
-      }
-
-      const nextCommand = continuationCommands[startIndex];
-      const remainingPart = nextCommand.command.slice(trimmedInput.length + 1); // +1 for the space
-      const nextWordMatch = remainingPart.match(/^(\S+)/);
-
-      if (nextWordMatch) {
-        const nextWord = nextWordMatch[1];
-
-        // Add parameter hints if this is the full command
-        let paramHint = '';
-        if (nextCommand.params.length > 0) {
-          const sep = nextCommand.separator === 'comma' ? ',' : ' ';
-          paramHint = sep + nextCommand.params
-            .map(p => `<${p.name}>`)
-            .join(sep);
-        }
-
-        return {
-          text: ' ' + nextWord + paramHint,
-          type: 'command',
-          command: nextCommand.command
-        };
-      }
-    }
-
-    // No continuation commands - show parameters for this command
-    if (exactCommand.params.length > 0) {
-      const sep = exactCommand.separator === 'comma' ? ',' : ' ';
-      const paramHint = sep + exactCommand.params
-        .map(p => `<${p.name}>`)
-        .join(sep);
-      return {
-        text: paramHint,
-        type: 'param',
-        command: exactCommand.command
-      };
-    }
-
-    return null; // Command without params, fully matched
-  }
-
-  // Input is a partial command match - show suggestions
+  // Tab cycling: if lastSuggestion provided, start from next command
   let startIndex = 0;
   if (lastSuggestion && lastSuggestion.type === 'command') {
     const lastIndex = matchingCommands.findIndex(
@@ -250,33 +151,71 @@ export function getAutocompleteSuggestion(
     );
     if (lastIndex >= 0) {
       startIndex = (lastIndex + 1) % matchingCommands.length;
+      console.log('[getAutocompleteSuggestion] Tab cycling: from index', lastIndex, 'to', startIndex);
     }
   }
 
-  const nextCommand = matchingCommands[startIndex];
-  const suffix = nextCommand.command.slice(trimmedInput.length);
+  if (matchingCommands.length > 0) {
+    const nextCmd = matchingCommands[startIndex];
+    console.log('[getAutocompleteSuggestion] Selected command:', nextCmd.command);
 
-  // Add parameter hints
-  let paramHint = '';
-  if (nextCommand.params.length > 0) {
-    const sep = nextCommand.separator === 'comma' ? ',' : ' ';
-    paramHint = sep + nextCommand.params
-      .map(p => `<${p.name}>`)
-      .join(sep);
+    // Just suggest rest of command (params are already in command name!)
+    const suffix = nextCmd.command.slice(input.length);
+    return {
+      text: suffix,
+      type: 'command' as const,
+      command: nextCmd.command
+    };
   }
 
-  return {
-    text: suffix + paramHint,
-    type: 'command',
-    command: nextCommand.command
-  };
-}
+  // Check if input matches a command with partially entered params
+  // e.g., "set radio 123" should match "set radio" and show next param
+  for (const cmd of meshcoreCommandData) {
+    if (input.startsWith(cmd.command + ' ') && cmd.params.length > 0) {
+      // Extract params part from input
+      const paramsPart = input.slice(cmd.command.length + 1).trim();
 
-/**
- * Accept suggestion and append it to input.
- * For command suggestions: accept only the command part (strip param hints in <>).
- * For param suggestions: accept only separators (strip param hints in <>).
- */
+      // Determine separator
+      const separator = cmd.separator || 'space';
+
+      // Count how many params are entered
+      let enteredParams: string[] = [];
+      if (separator === 'comma') {
+        enteredParams = paramsPart.split(',').map(p => p.trim()).filter(p => p);
+      } else { // space
+        enteredParams = paramsPart.split(/\s+/).filter(p => p);
+      }
+
+      // Check if we can move to next param
+      if (enteredParams.length < cmd.params.length) {
+        // Check if input ends with separator (ready for next param)
+        if (separator === 'comma' && input.endsWith(',')) {
+          // Show remaining params
+          const remainingParams = cmd.params.slice(enteredParams.length);
+          if (remainingParams.length > 0) {
+            const paramNames = remainingParams.map(p => p.name);
+            const paramsStr = paramNames.join('},{');
+            return {
+              text: `{${paramsStr}}`,
+              type: 'param' as const,
+              command: cmd.command
+            };
+          }
+        } else if (separator === 'space' && input.endsWith(' ')) {
+          // Show next param
+          const nextParam = cmd.params[enteredParams.length];
+          return {
+            text: `{${nextParam.name}}`,
+            type: 'param',
+            command: cmd.command
+          };
+        }
+      }
+    }
+  }
+
+  return null;
+}
 export function acceptSuggestion(
   input: string,
   suggestion: AutocompleteSuggestion
@@ -289,101 +228,120 @@ export function acceptSuggestion(
 /**
  * Accept suggestion up to the next separator (space or comma) or parameter hint.
  * Used for ArrowRight key functionality.
+ * Logic from test_autocomplete.py:
+ * - If suggestion starts with space: accept the space
+ * - If suggestion starts with '<', '{', '[': don't accept (user must type param value)
+ * - If suggestion starts with comma: accept the comma
+ * - Otherwise: accept ENTIRE word up to next space
  */
 export function acceptSuggestionToNextSeparator(
   input: string,
   suggestion: AutocompleteSuggestion
 ): string {
-  let text = suggestion.text;
+  const text = suggestion.text;
 
-  // Check if text starts with a separator (space or comma)
-  const startsWithSeparator = text.length > 0 && (text[0] === ' ' || text[0] === ',');
+  console.log('[acceptSuggestionToNextSeparator]', {
+    input,
+    suggestionText: text,
+    startsWithSpace: text.startsWith(' '),
+    startsWithBrace: text.startsWith('{'),
+    startsWithComma: text.startsWith(',')
+  });
 
-  if (startsWithSeparator) {
-    // Text starts with separator - accept it and the following word
-    const separator = text[0];
-    text = text.substring(1); // Remove leading separator
-
-    // Find the next separator or parameter hint
-    const spaceIndex = text.indexOf(' ');
-    const commaIndex = text.indexOf(',');
-    const paramStartIndex = text.indexOf('<');
-
-    let endIndex = text.length; // Default: accept everything
-
-    const indices = [
-      spaceIndex !== -1 ? spaceIndex : Infinity,
-      commaIndex !== -1 ? commaIndex : Infinity,
-      paramStartIndex !== -1 ? paramStartIndex : Infinity
-    ];
-
-    const minIndex = Math.min(...indices);
-
-    if (minIndex !== Infinity) {
-      endIndex = minIndex;
-    }
-
-    // Accept: separator + word up to next boundary
-    const word = text.substring(0, endIndex);
-    return input + separator + word;
+  if (!text) {
+    console.log('[acceptSuggestionToNextSeparator] Empty text, returning input');
+    return input;
   }
 
-  // Text doesn't start with separator - find first boundary
-  const spaceIndex = text.indexOf(' ');
-  const commaIndex = text.indexOf(',');
-  const paramStartIndex = text.indexOf('<');
-
-  let endIndex = text.length; // Default: accept everything
-
-  const indices = [
-    spaceIndex !== -1 ? spaceIndex : Infinity,
-    commaIndex !== -1 ? commaIndex : Infinity,
-    paramStartIndex !== -1 ? paramStartIndex : Infinity
-  ];
-
-  const minIndex = Math.min(...indices);
-
-  if (minIndex !== Infinity) {
-    endIndex = minIndex;
+  // Check if starts with space
+  if (text.startsWith(' ')) {
+    console.log('[acceptSuggestionToNextSeparator] Accepting space');
+    return input + ' ';
   }
 
-  // Accept text up to (but not including) the boundary
-  const acceptedText = text.substring(0, endIndex);
-
-  // Add the separator back if we stopped at one
-  let result = input + acceptedText;
-  if (minIndex !== Infinity && minIndex === spaceIndex) {
-    result += ' ';
-  } else if (minIndex !== Infinity && minIndex === commaIndex) {
-    result += ',';
+  // Check if starts with parameter placeholder brackets
+  if (text.startsWith('<') || text.startsWith('{') || text.startsWith('[')) {
+    console.log('[acceptSuggestionToNextSeparator] Parameter placeholder, not accepting');
+    return input;
   }
 
-  return result;
+  // Check if starts with comma (separator)
+  if (text.startsWith(',')) {
+    console.log('[acceptSuggestionToNextSeparator] Accepting comma');
+    return input + ',';
+  }
+
+  // Otherwise: accept entire word up to next space
+  const spaceIdx = text.indexOf(' ');
+  if (spaceIdx === -1) {
+    console.log('[acceptSuggestionToNextSeparator] No space found, accepting entire text:', text);
+    return input + text;
+  } else {
+    const toAccept = text.substring(0, spaceIdx);
+    console.log('[acceptSuggestionToNextSeparator] Accepting up to space:', toAccept);
+    return input + toAccept;
+  }
 }
 
 /**
  * Get the next suggestion for cycling through autocomplete variants.
+ * Returns the next variant, cycling back to the first command when reaching the end.
+ */
+/**
+ * Get the next suggestion for cycling through autocomplete variants.
+ * Returns the next variant, cycling back to the first command when reaching the end.
  */
 export function getNextSuggestion(
   input: string,
   currentSuggestion: AutocompleteSuggestion
 ): AutocompleteSuggestion | null {
-  if (currentSuggestion.type === 'command') {
-    const nextSuggestion = getAutocompleteSuggestion(
-      input,
-      'meshcore',
-      currentSuggestion
-    );
+  console.log('[getNextSuggestion] CALLED WITH:', { input, currentSuggestion });
 
-    // If we cycled back to the same command, return null (signal to accept current)
-    if (nextSuggestion && nextSuggestion.command !== currentSuggestion.command) {
-      return nextSuggestion;
+  if (currentSuggestion.type === 'command') {
+    // Find all matching commands
+    const matchingCommands = meshcoreCommandData
+      .filter(cmd => !cmd.interactive)
+      .filter(cmd => cmd.command.startsWith(input))
+      .sort((a, b) => a.command.localeCompare(b.command));
+
+    console.log('[getNextSuggestion] Matching commands:', matchingCommands.map(c => c.command));
+
+    if (matchingCommands.length === 0) {
+      console.log('[getNextSuggestion] No matching commands');
+      return null;
     }
 
-    return null;
+    // Find current command index
+    const currentIndex = matchingCommands.findIndex(
+      cmd => cmd.command === currentSuggestion.command
+    );
+
+    console.log('[getNextSuggestion] Current command index:', currentIndex);
+
+    if (currentIndex === -1) {
+      console.log('[getNextSuggestion] Current command not found in matching list');
+      return null;
+    }
+
+    // Cycle to next command, wrapping around to first
+    const nextIndex = (currentIndex + 1) % matchingCommands.length;
+    const nextCmd = matchingCommands[nextIndex];
+
+    console.log('[getNextSuggestion] Next command index:', nextIndex, 'command:', nextCmd.command);
+
+    // Just suggest rest of command (params are already in command name!)
+    const suffix = nextCmd.command.slice(input.length);
+    const result = {
+      text: suffix,
+      type: 'command' as const,
+      command: nextCmd.command
+    };
+
+    console.log('[getNextSuggestion] Returning:', result);
+    return result;
   }
 
-  // Parameter suggestions do not support cycling
+  console.log('[getNextSuggestion] Not a command suggestion');
   return null;
 }
 
