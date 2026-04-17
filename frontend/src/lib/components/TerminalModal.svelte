@@ -360,6 +360,9 @@
 		// Clear terminal reference
 		terminal = null;
 
+		// Clear command input
+		commandInput = '';
+
 		// Call the onClose callback
 		onClose();
 	}
