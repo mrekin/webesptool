@@ -51,7 +51,7 @@
 	 * Handle keydown events for autocomplete, mode switch, history, and submit
 	 */
 	function handleKeydown(event: KeyboardEvent) {
-		// Tab - cycle suggestions or accept
+		// Tab - switch to meshcore mode or accept suggestion
 		if (event.key === 'Tab') {
 			event.preventDefault();
 
@@ -64,18 +64,7 @@
 					return;
 				}
 			}
-
-			if (suggestion) {
-				const nextSuggestion = getNextSuggestion(value, suggestion);
-				if (nextSuggestion) {
-					// Show next variant
-					suggestion = nextSuggestion;
-					// Update current command when cycling
-					if (nextSuggestion.type === 'command') {
-					}
-				}
-			}
-			return;
+			// Tab accepts suggestion same as ArrowRight (handled below)
 		}
 
 		// Enter - submit command or switch mode
@@ -157,24 +146,24 @@
 			return;
 		}
 
-			// ArrowRight - accept suggestion up to next separator (only if cursor at end)
-			if (event.key === 'ArrowRight' && suggestion) {
+			// ArrowRight/Tab - accept suggestion up to next separator (only if cursor at end)
+			if ((event.key === 'ArrowRight' || event.key === 'Tab') && suggestion) {
 				const cursorPosition = inputElement.selectionStart;
 				const isAtEnd = cursorPosition === value.length;
 
-				console.log('[ArrowRight] Cursor position:', cursorPosition, 'Value length:', value.length, 'Is at end:', isAtEnd);
+				console.log('[' + event.key + '] Cursor position:', cursorPosition, 'Value length:', value.length, 'Is at end:', isAtEnd);
 
 				if (isAtEnd) {
 					event.preventDefault();
 
-					console.log('[ArrowRight] Before accept:', { value, suggestion });
+					console.log('[' + event.key + '] Before accept:', { value, suggestion });
 					const oldValue = value;
 					value = acceptSuggestionToNextSeparator(value, suggestion);
-					console.log('[ArrowRight] After accept:', { oldValue, newValue: value, accepted: value.slice(oldValue.length) });
+					console.log('[' + event.key + '] After accept:', { oldValue, newValue: value, accepted: value.slice(oldValue.length) });
 					// Update suggestion after partial accept, passing current suggestion to maintain context
 					const currentSuggestion = suggestion;
 					suggestion = getAutocompleteSuggestion(value, mode, null, currentSuggestion);
-					console.log('[ArrowRight] New suggestion:', suggestion);
+					console.log('[' + event.key + '] New suggestion:', suggestion);
 					return;
 				}
 				// If not at end, let browser handle cursor movement normally
