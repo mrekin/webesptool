@@ -9,15 +9,17 @@
 		getPreviousSuggestion
 	} from '$lib/utils/meshcoreCommands.js';
 
-	export let value = '';
-	export let isConnected = false;
-	export let onSubmit = (cmd: string) => {};
-	export let placeholder = '';
-	export let commandHistory: string[] = [];
-	export let historyIndex = -1;
+	let {
+		value = '',
+		isConnected = false,
+		onSubmit = (_cmd: string) => {},
+		placeholder = '',
+		commandHistory = [],
+		historyIndex = -1
+	} = $props();
 
-	let mode: TerminalMode = 'normal';
-	let suggestion: AutocompleteSuggestion | null = null;
+	let mode = $state<TerminalMode>('normal');
+	let suggestion = $state<AutocompleteSuggestion | null>(null);
 	let inputElement: HTMLInputElement;
 
 	// Subscribe to terminal mode store
@@ -153,7 +155,8 @@
 
 				console.log('[' + event.key + '] Cursor position:', cursorPosition, 'Value length:', value.length, 'Is at end:', isAtEnd);
 
-				if (isAtEnd) {
+				// Tab: always accept; ArrowRight: only if at end
+				if (event.key === 'Tab' || isAtEnd) {
 					event.preventDefault();
 
 					console.log('[' + event.key + '] Before accept:', { value, suggestion });
@@ -178,8 +181,8 @@
 			type="text"
 			bind:this={inputElement}
 			bind:value
-			on:input={handleInput}
-			on:keydown={handleKeydown}
+			oninput={handleInput}
+			onkeydown={handleKeydown}
 			{placeholder}
 			class="command-input w-full rounded-md border border-gray-600 bg-gray-700 pl-3 pr-8 py-2 text-sm text-white placeholder-gray-400 focus:border-orange-600 focus:outline-none focus:ring-1 focus:ring-orange-600 relative"
 			style="font-family: Consolas, 'Courier New', monospace;"
