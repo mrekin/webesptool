@@ -146,6 +146,22 @@ export function getAutocompleteSuggestion(
   // Tab cycling: if lastSuggestion provided, start from next command
   let startIndex = 0;
   if (lastSuggestion && lastSuggestion.type === 'command') {
+    const lastCommand = lastSuggestion.command;
+
+    // If input is a prefix of lastSuggestion command, continue with that same command
+    if (lastCommand.startsWith(input)) {
+      const matchingCmd = matchingCommands.find(cmd => cmd.command === lastCommand);
+      if (matchingCmd) {
+        const suffix = matchingCmd.command.slice(input.length);
+        console.log('[getAutocompleteSuggestion] Input continues from lastSuggestion, staying on:', lastCommand);
+        return {
+          text: suffix,
+          type: 'command' as const,
+          command: matchingCmd.command
+        };
+      }
+    }
+
     const lastIndex = matchingCommands.findIndex(
       cmd => cmd.command === lastSuggestion.command
     );
@@ -342,6 +358,64 @@ export function getNextSuggestion(
   }
 
   console.log('[getNextSuggestion] Not a command suggestion');
+  return null;
+}
+
+/**
+ * Get the previous suggestion for cycling through autocomplete variants.
+ * Returns the previous variant, cycling back to the last command when reaching the beginning.
+ */
+export function getPreviousSuggestion(
+  input: string,
+  currentSuggestion: AutocompleteSuggestion
+): AutocompleteSuggestion | null {
+  console.log('[getPreviousSuggestion] CALLED WITH:', { input, currentSuggestion });
+
+  if (currentSuggestion.type === 'command') {
+    // Find all matching commands
+    const matchingCommands = meshcoreCommandData
+      .filter(cmd => !cmd.interactive)
+      .filter(cmd => cmd.command.startsWith(input))
+      .sort((a, b) => a.command.localeCompare(b.command));
+
+    console.log('[getPreviousSuggestion] Matching commands:', matchingCommands.map(c => c.command));
+
+    if (matchingCommands.length === 0) {
+      console.log('[getPreviousSuggestion] No matching commands');
+      return null;
+    }
+
+    // Find current command index
+    const currentIndex = matchingCommands.findIndex(
+      cmd => cmd.command === currentSuggestion.command
+    );
+
+    console.log('[getPreviousSuggestion] Current command index:', currentIndex);
+
+    if (currentIndex === -1) {
+      console.log('[getPreviousSuggestion] Current command not found in matching list');
+      return null;
+    }
+
+    // Cycle to previous command, wrapping around to last
+    const prevIndex = (currentIndex - 1 + matchingCommands.length) % matchingCommands.length;
+    const prevCmd = matchingCommands[prevIndex];
+
+    console.log('[getPreviousSuggestion] Previous command index:', prevIndex, 'command:', prevCmd.command);
+
+    // Just suggest rest of command (params are already in command name!)
+    const suffix = prevCmd.command.slice(input.length);
+    const result = {
+      text: suffix,
+      type: 'command' as const,
+      command: prevCmd.command
+    };
+
+    console.log('[getPreviousSuggestion] Returning:', result);
+    return result;
+  }
+
+  console.log('[getPreviousSuggestion] Not a command suggestion');
   return null;
 }
 

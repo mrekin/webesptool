@@ -4,9 +4,9 @@
 	import type { AutocompleteSuggestion, TerminalMode } from '$lib/types.js';
 	import {
 		getAutocompleteSuggestion,
-		acceptSuggestion,
 		acceptSuggestionToNextSeparator,
-		getNextSuggestion
+		getNextSuggestion,
+		getPreviousSuggestion
 	} from '$lib/utils/meshcoreCommands.js';
 
 	export let value = '';
@@ -102,9 +102,20 @@
 			return;
 		}
 
-		// ArrowUp - navigate history backward
+		// ArrowUp - navigate history backward OR cycle autocomplete suggestions forward
 		if (event.key === 'ArrowUp') {
 			event.preventDefault();
+
+			// Priority: autocomplete over history
+			if (suggestion) {
+				const nextSuggestion = getNextSuggestion(value, suggestion);
+				if (nextSuggestion) {
+					suggestion = nextSuggestion;
+				}
+				return;
+			}
+
+			// Otherwise: navigate history backward
 			if (commandHistory.length === 0) return;
 			if (historyIndex > 0) {
 				historyIndex--;
@@ -114,9 +125,20 @@
 			return;
 		}
 
-		// ArrowDown - navigate history forward
+		// ArrowDown - navigate history forward OR cycle autocomplete suggestions backward
 		if (event.key === 'ArrowDown') {
 			event.preventDefault();
+
+			// Priority: autocomplete over history
+			if (suggestion) {
+				const prevSuggestion = getPreviousSuggestion(value, suggestion);
+				if (prevSuggestion) {
+					suggestion = prevSuggestion;
+				}
+				return;
+			}
+
+			// Otherwise: navigate history forward
 			if (commandHistory.length === 0) return;
 			if (historyIndex < commandHistory.length - 1) {
 				historyIndex++;
@@ -149,8 +171,9 @@
 					const oldValue = value;
 					value = acceptSuggestionToNextSeparator(value, suggestion);
 					console.log('[ArrowRight] After accept:', { oldValue, newValue: value, accepted: value.slice(oldValue.length) });
-					// Update suggestion after partial accept (null for lastSuggestion to avoid Tab cycling)
-					suggestion = getAutocompleteSuggestion(value, mode, null, null);
+					// Update suggestion after partial accept, passing current suggestion to maintain context
+					const currentSuggestion = suggestion;
+					suggestion = getAutocompleteSuggestion(value, mode, null, currentSuggestion);
 					console.log('[ArrowRight] New suggestion:', suggestion);
 					return;
 				}
