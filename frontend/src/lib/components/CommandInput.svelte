@@ -153,20 +153,20 @@
 				const cursorPosition = inputElement.selectionStart;
 				const isAtEnd = cursorPosition === value.length;
 
-				console.log('[' + event.key + '] Cursor position:', cursorPosition, 'Value length:', value.length, 'Is at end:', isAtEnd);
+				// console.log('[' + event.key + '] Cursor position:', cursorPosition, 'Value length:', value.length, 'Is at end:', isAtEnd);
 
 				// Tab: always accept; ArrowRight: only if at end
 				if (event.key === 'Tab' || isAtEnd) {
 					event.preventDefault();
 
-					console.log('[' + event.key + '] Before accept:', { value, suggestion });
+					// console.log('[' + event.key + '] Before accept:', { value, suggestion });
 					const oldValue = value;
 					value = acceptSuggestionToNextSeparator(value, suggestion);
-					console.log('[' + event.key + '] After accept:', { oldValue, newValue: value, accepted: value.slice(oldValue.length) });
+					// console.log('[' + event.key + '] After accept:', { oldValue, newValue: value, accepted: value.slice(oldValue.length) });
 					// Update suggestion after partial accept, passing current suggestion to maintain context
 					const currentSuggestion = suggestion;
 					suggestion = getAutocompleteSuggestion(value, mode, null, currentSuggestion);
-					console.log('[' + event.key + '] New suggestion:', suggestion);
+					// console.log('[' + event.key + '] New suggestion:', suggestion);
 					return;
 				}
 				// If not at end, let browser handle cursor movement normally
