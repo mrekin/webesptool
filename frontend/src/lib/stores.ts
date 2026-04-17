@@ -16,7 +16,8 @@ import type {
   DeviceDisplayInfo,
   SelectionState,
   Device,
-  PinoutData
+  PinoutData,
+  TerminalMode
 } from './types.js';
 import { InterfaceMode } from './types.js';
 import { mapCategoryToDeviceType } from './utils/deviceTypeUtils.js';
@@ -1022,4 +1023,14 @@ export const hasPinoutData = derived(
 // Инициализация - загрузить pinout данные при старте приложения
 if (browser) {
   pinoutActions.loadPinoutData();
+}
+
+// ==================== TERMINAL MODE STORE ====================
+
+// Terminal mode store - manages meshcore/normal mode for terminal
+export const terminalMode = writable<TerminalMode>('normal');
+
+// Reset terminal mode to normal
+export function resetTerminalMode() {
+  terminalMode.set('normal');
 }

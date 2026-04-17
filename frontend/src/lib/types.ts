@@ -624,3 +624,42 @@ export interface RawParsingRule {
 export interface RawParsingRuleConfig {
   labels: RawParsingRule[];
 }
+
+// ==================== MESHCORE AUTOCOMPLETE TYPES ====================
+
+// Separator type for command parameters
+export type MeshcoreCommandSeparator = 'space' | 'comma' | null;
+
+// Single command parameter definition
+export interface MeshcoreCommandParam {
+  name: string;
+  type: 'string' | 'number' | 'enum';
+  options?: string[];  // For enum type
+  maxLength?: number;
+}
+
+// Meshcore command definition
+export interface MeshcoreCommand {
+  command: string;
+  params: MeshcoreCommandParam[];
+  separator: MeshcoreCommandSeparator;
+  interactive?: boolean;  // Commands with multi-line input (no autocomplete)
+}
+
+// Result of parsing user input
+export interface ParsedCommandInput {
+  command: string;
+  params: string[];
+  paramCount: number;
+  inQuotes: boolean;
+}
+
+// Autocomplete suggestion
+export interface AutocompleteSuggestion {
+  text: string;           // Suggestion suffix text
+  type: 'command' | 'param';  // Suggestion type
+  command: string;        // Full command name
+}
+
+// Terminal mode type
+export type TerminalMode = 'normal' | 'meshcore';

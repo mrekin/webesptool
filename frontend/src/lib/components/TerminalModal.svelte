@@ -8,6 +8,8 @@
 	import parsingRulesJson from '$lib/config/terminal-parsing-rules.json';
 	import { loadParsingRules, createTokenParser, type TokenParser, type ParsedToken } from '$lib/utils/logParser.js';
 	import TokenSidebar from './TokenSidebar.svelte';
+	import CommandInput from './CommandInput.svelte';
+	import { resetTerminalMode } from '$lib/stores.js';
 
 	export let isOpen = false;
 	export let onClose = () => {};
@@ -284,12 +286,12 @@
 		}
 	}
 
-	// Send command to serial port
-	async function sendCommand(): Promise<void> {
+	// Send command to serial port (called from CommandInput or Send button)
+	async function sendCommand(command?: string): Promise<void> {
 		if (!port || !isConnected || !terminal) return;
 
-		const command = commandInput.trim();
-		if (!command) return;
+		const cmd = (command || commandInput).trim();
+		if (!cmd) return;
 
 		let writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
 		try {
@@ -298,7 +300,7 @@
 
 			// Encode command with line ending
 			const encoder = new TextEncoder();
-			const data = command + getLineEndingChars();
+			const data = cmd + getLineEndingChars();
 			await writer.write(encoder.encode(data));
 
 			// Release writer lock
@@ -306,10 +308,10 @@
 			writer = null;
 
 			// Echo command to terminal with prefix
-			terminal.writeln(`\x1b[1;36m>> ${command}\x1b[0m`);
+			terminal.writeln(`\x1b[1;36m>> ${cmd}\x1b[0m`);
 
 			// Add to history
-			commandHistory.push(command);
+			commandHistory.push(cmd);
 			if (commandHistory.length > MAX_HISTORY) {
 				commandHistory.shift();
 			}
@@ -333,41 +335,18 @@
 		}
 	}
 
-	// Handle keyboard navigation in input field
-	function handleInputKeydown(event: KeyboardEvent): void {
-		if (!isConnected) return;
-
-		// Send on Enter
-		if (event.key === 'Enter') {
-			event.preventDefault();
-			sendCommand();
-			return;
-		}
-
-		// Navigate history with Up/Down arrows
-		if (event.key === 'ArrowUp') {
-			event.preventDefault();
-			if (historyIndex > 0) {
-				historyIndex--;
-				commandInput = commandHistory[historyIndex];
-			}
-		} else if (event.key === 'ArrowDown') {
-			event.preventDefault();
-			if (historyIndex < commandHistory.length - 1) {
-				historyIndex++;
-				commandInput = commandHistory[historyIndex];
-			} else {
-				// Clear input if at the end of history
-				historyIndex = commandHistory.length;
-				commandInput = '';
-			}
-		}
+	// Handle command submission from CommandInput
+	function handleSubmitCommand(cmd: string): void {
+		sendCommand(cmd);
 	}
 
 	// Cleanup
 	async function handleClose() {
 		// Stop reading and disconnect properly, always closing the port
 		await disconnect();
+
+		// Reset meshcore mode
+		resetTerminalMode();
 
 		// Reset token parser state
 		if (tokenParser) {
@@ -443,19 +422,19 @@
 					<option value="cr">CR</option>
 				</select>
 
-				<!-- Command Input Field -->
-				<input
-					type="text"
+				<!-- Command Input Component -->
+				<CommandInput
 					bind:value={commandInput}
-					on:keydown={handleInputKeydown}
-					disabled={!isConnected}
+					isConnected={isConnected}
+					onSubmit={handleSubmitCommand}
 					placeholder={$locales('customfirmware.terminal_input_placeholder')}
-					class="flex-1 rounded-md border border-gray-600 bg-gray-700 px-3 py-2 text-sm text-white placeholder-gray-400 focus:border-orange-600 focus:outline-none focus:ring-1 focus:ring-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+					{commandHistory}
+					bind:historyIndex
 				/>
 
 				<!-- Send Button -->
 				<button
-					on:click={sendCommand}
+					on:click={() => sendCommand()}
 					disabled={!isConnected || !commandInput.trim()}
 					class="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
 					title={$locales('customfirmware.terminal_send_tooltip')}
