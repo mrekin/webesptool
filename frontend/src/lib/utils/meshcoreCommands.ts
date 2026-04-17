@@ -110,12 +110,12 @@ export function getAutocompleteSuggestion(
   currentCommand?: string | null,
   lastSuggestion?: AutocompleteSuggestion | null
 ): AutocompleteSuggestion | null {
-  console.log('[getAutocompleteSuggestion] CALLED WITH:', {
+  /* console.log('[getAutocompleteSuggestion] CALLED WITH:', {
     input,
     mode,
     currentCommand,
     lastSuggestion
-  });
+  }); */
 
   const trimmedInput = input.trim();
 
@@ -141,7 +141,7 @@ export function getAutocompleteSuggestion(
     .filter(cmd => cmd.command.startsWith(input))
     .sort((a, b) => a.command.localeCompare(b.command));
 
-  console.log('[getAutocompleteSuggestion] Matching commands:', matchingCommands.map(c => c.command));
+  // console.log('[getAutocompleteSuggestion] Matching commands:', matchingCommands.map(c => c.command));
 
   // Tab cycling: if lastSuggestion provided, start from next command
   let startIndex = 0;
@@ -153,7 +153,7 @@ export function getAutocompleteSuggestion(
       const matchingCmd = matchingCommands.find(cmd => cmd.command === lastCommand);
       if (matchingCmd) {
         const suffix = matchingCmd.command.slice(input.length);
-        console.log('[getAutocompleteSuggestion] Input continues from lastSuggestion, staying on:', lastCommand);
+        // console.log('[getAutocompleteSuggestion] Input continues from lastSuggestion, staying on:', lastCommand);
         return {
           text: suffix,
           type: 'command' as const,
@@ -167,13 +167,13 @@ export function getAutocompleteSuggestion(
     );
     if (lastIndex >= 0) {
       startIndex = (lastIndex + 1) % matchingCommands.length;
-      console.log('[getAutocompleteSuggestion] Tab cycling: from index', lastIndex, 'to', startIndex);
+      // console.log('[getAutocompleteSuggestion] Tab cycling: from index', lastIndex, 'to', startIndex);
     }
   }
 
   if (matchingCommands.length > 0) {
     const nextCmd = matchingCommands[startIndex];
-    console.log('[getAutocompleteSuggestion] Selected command:', nextCmd.command);
+    // console.log('[getAutocompleteSuggestion] Selected command:', nextCmd.command);
 
     // Just suggest rest of command (params are already in command name!)
     const suffix = nextCmd.command.slice(input.length);
@@ -256,45 +256,45 @@ export function acceptSuggestionToNextSeparator(
 ): string {
   const text = suggestion.text;
 
-  console.log('[acceptSuggestionToNextSeparator]', {
+  /* console.log('[acceptSuggestionToNextSeparator]', {
     input,
     suggestionText: text,
     startsWithSpace: text.startsWith(' '),
     startsWithBrace: text.startsWith('{'),
     startsWithComma: text.startsWith(',')
-  });
+  }); */
 
   if (!text) {
-    console.log('[acceptSuggestionToNextSeparator] Empty text, returning input');
+    // console.log('[acceptSuggestionToNextSeparator] Empty text, returning input');
     return input;
   }
 
   // Check if starts with space
   if (text.startsWith(' ')) {
-    console.log('[acceptSuggestionToNextSeparator] Accepting space');
+    // console.log('[acceptSuggestionToNextSeparator] Accepting space');
     return input + ' ';
   }
 
   // Check if starts with parameter placeholder brackets
   if (text.startsWith('<') || text.startsWith('{') || text.startsWith('[')) {
-    console.log('[acceptSuggestionToNextSeparator] Parameter placeholder, not accepting');
+    // console.log('[acceptSuggestionToNextSeparator] Parameter placeholder, not accepting');
     return input;
   }
 
   // Check if starts with comma (separator)
   if (text.startsWith(',')) {
-    console.log('[acceptSuggestionToNextSeparator] Accepting comma');
+    // console.log('[acceptSuggestionToNextSeparator] Accepting comma');
     return input + ',';
   }
 
   // Otherwise: accept entire word up to next space
   const spaceIdx = text.indexOf(' ');
   if (spaceIdx === -1) {
-    console.log('[acceptSuggestionToNextSeparator] No space found, accepting entire text:', text);
+    // console.log('[acceptSuggestionToNextSeparator] No space found, accepting entire text:', text);
     return input + text;
   } else {
     const toAccept = text.substring(0, spaceIdx);
-    console.log('[acceptSuggestionToNextSeparator] Accepting up to space:', toAccept);
+    // console.log('[acceptSuggestionToNextSeparator] Accepting up to space:', toAccept);
     return input + toAccept;
   }
 }
@@ -311,7 +311,7 @@ export function getNextSuggestion(
   input: string,
   currentSuggestion: AutocompleteSuggestion
 ): AutocompleteSuggestion | null {
-  console.log('[getNextSuggestion] CALLED WITH:', { input, currentSuggestion });
+  // console.log('[getNextSuggestion] CALLED WITH:', { input, currentSuggestion });
 
   if (currentSuggestion.type === 'command') {
     // Find all matching commands
@@ -320,10 +320,10 @@ export function getNextSuggestion(
       .filter(cmd => cmd.command.startsWith(input))
       .sort((a, b) => a.command.localeCompare(b.command));
 
-    console.log('[getNextSuggestion] Matching commands:', matchingCommands.map(c => c.command));
+    // console.log('[getNextSuggestion] Matching commands:', matchingCommands.map(c => c.command));
 
     if (matchingCommands.length === 0) {
-      console.log('[getNextSuggestion] No matching commands');
+      // console.log('[getNextSuggestion] No matching commands');
       return null;
     }
 
@@ -332,10 +332,10 @@ export function getNextSuggestion(
       cmd => cmd.command === currentSuggestion.command
     );
 
-    console.log('[getNextSuggestion] Current command index:', currentIndex);
+    // console.log('[getNextSuggestion] Current command index:', currentIndex);
 
     if (currentIndex === -1) {
-      console.log('[getNextSuggestion] Current command not found in matching list');
+      // console.log('[getNextSuggestion] Current command not found in matching list');
       return null;
     }
 
@@ -343,7 +343,7 @@ export function getNextSuggestion(
     const nextIndex = (currentIndex + 1) % matchingCommands.length;
     const nextCmd = matchingCommands[nextIndex];
 
-    console.log('[getNextSuggestion] Next command index:', nextIndex, 'command:', nextCmd.command);
+    // console.log('[getNextSuggestion] Next command index:', nextIndex, 'command:', nextCmd.command);
 
     // Just suggest rest of command (params are already in command name!)
     const suffix = nextCmd.command.slice(input.length);
@@ -353,11 +353,11 @@ export function getNextSuggestion(
       command: nextCmd.command
     };
 
-    console.log('[getNextSuggestion] Returning:', result);
+    // console.log('[getNextSuggestion] Returning:', result);
     return result;
   }
 
-  console.log('[getNextSuggestion] Not a command suggestion');
+  // console.log('[getNextSuggestion] Not a command suggestion');
   return null;
 }
 
@@ -369,7 +369,7 @@ export function getPreviousSuggestion(
   input: string,
   currentSuggestion: AutocompleteSuggestion
 ): AutocompleteSuggestion | null {
-  console.log('[getPreviousSuggestion] CALLED WITH:', { input, currentSuggestion });
+  // console.log('[getPreviousSuggestion] CALLED WITH:', { input, currentSuggestion });
 
   if (currentSuggestion.type === 'command') {
     // Find all matching commands
@@ -378,10 +378,10 @@ export function getPreviousSuggestion(
       .filter(cmd => cmd.command.startsWith(input))
       .sort((a, b) => a.command.localeCompare(b.command));
 
-    console.log('[getPreviousSuggestion] Matching commands:', matchingCommands.map(c => c.command));
+    // console.log('[getPreviousSuggestion] Matching commands:', matchingCommands.map(c => c.command));
 
     if (matchingCommands.length === 0) {
-      console.log('[getPreviousSuggestion] No matching commands');
+      // console.log('[getPreviousSuggestion] No matching commands');
       return null;
     }
 
@@ -390,10 +390,10 @@ export function getPreviousSuggestion(
       cmd => cmd.command === currentSuggestion.command
     );
 
-    console.log('[getPreviousSuggestion] Current command index:', currentIndex);
+    // console.log('[getPreviousSuggestion] Current command index:', currentIndex);
 
     if (currentIndex === -1) {
-      console.log('[getPreviousSuggestion] Current command not found in matching list');
+      // console.log('[getPreviousSuggestion] Current command not found in matching list');
       return null;
     }
 
@@ -401,7 +401,7 @@ export function getPreviousSuggestion(
     const prevIndex = (currentIndex - 1 + matchingCommands.length) % matchingCommands.length;
     const prevCmd = matchingCommands[prevIndex];
 
-    console.log('[getPreviousSuggestion] Previous command index:', prevIndex, 'command:', prevCmd.command);
+    // console.log('[getPreviousSuggestion] Previous command index:', prevIndex, 'command:', prevCmd.command);
 
     // Just suggest rest of command (params are already in command name!)
     const suffix = prevCmd.command.slice(input.length);
@@ -411,11 +411,11 @@ export function getPreviousSuggestion(
       command: prevCmd.command
     };
 
-    console.log('[getPreviousSuggestion] Returning:', result);
+    // console.log('[getPreviousSuggestion] Returning:', result);
     return result;
   }
 
-  console.log('[getPreviousSuggestion] Not a command suggestion');
+  // console.log('[getPreviousSuggestion] Not a command suggestion');
   return null;
 }
 
