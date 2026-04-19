@@ -311,7 +311,7 @@
     "dynamic": "Dynamic",
     "averaged": "Averaged",
     "static": "Static",
-    "terminal_input_placeholder": "Type a command...",
+    "terminal_input_placeholder": "Type a command or select mode with /",
     "terminal_send": "Send",
     "terminal_send_tooltip": "Send command to device (Enter)",
     "terminal_line_ending_title": "Line ending format",

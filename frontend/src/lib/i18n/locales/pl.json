@@ -311,7 +311,7 @@
     "dynamic": "Dynamiczne",
     "averaged": "Uśrednione",
     "static": "Statyczne",
-    "terminal_input_placeholder": "Wpisz polecenie...",
+    "terminal_input_placeholder": "Wpisz polecenie lub wybierz tryb przez /",
     "terminal_send": "Wyślij",
     "terminal_send_tooltip": "Wyślij polecenie do urządzenia (Enter)",
     "terminal_line_ending_title": "Format końca linii",

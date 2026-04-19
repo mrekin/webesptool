@@ -311,7 +311,7 @@
     "dynamic": "Динамические",
     "averaged": "Усредненные",
     "static": "Статические",
-    "terminal_input_placeholder": "Введите команду...",
+    "terminal_input_placeholder": "Введите команду или выберите режим через /",
     "terminal_send": "Отправить",
     "terminal_send_tooltip": "Отправить команду устройству (Enter)",
     "terminal_line_ending_title": "Формат переноса строки",
