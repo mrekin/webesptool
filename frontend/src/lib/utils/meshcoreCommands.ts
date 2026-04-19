@@ -124,10 +124,13 @@ export function getAutocompleteSuggestion(
   if (mode === 'normal') {
     // Suggest /mc for inputs that start with / (including just "/")
     if (trimmedInput === '/' || '/mc'.startsWith(trimmedInput)) {
+      const shortDescription = showShortDescriptions ? 'Switch to MeshCore mode' : undefined;
+
       return {
         text: '/mc'.slice(trimmedInput.length),
         type: 'command' as const,
-        command: '/mc'
+        command: '/mc',
+        shortDescription
       };
     }
     return null;
