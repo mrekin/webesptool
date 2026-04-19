@@ -644,6 +644,7 @@ export interface MeshcoreCommand {
   params: MeshcoreCommandParam[];
   separator: MeshcoreCommandSeparator;
   interactive?: boolean;  // Commands with multi-line input (no autocomplete)
+  shortDescription?: string;  // Brief description of the command (1-10 words)
 }
 
 // Result of parsing user input
@@ -663,6 +664,7 @@ export interface AutocompleteSuggestion {
   enumValue?: string;     // Full enum value
   matchedValues?: string[]; // All matched enum values for cycling
   paramPrefix?: string;   // The partial input that was matched (for cycling replacement)
+  shortDescription?: string;  // Brief description of the command (1-10 words)
 }
 
 // Terminal mode type

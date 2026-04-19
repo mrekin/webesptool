@@ -1,8 +1,10 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { Xterm } from '@battlefieldduck/xterm-svelte';
 	import { _ as locales } from 'svelte-i18n';
 	import type { Terminal } from '@xterm/xterm';
+	import { browser } from '$app/environment';
+	import { getCookie, setCookie } from '$lib/utils/cookies.js';
 
 	// Import parsing utilities
 	import parsingRulesJson from '$lib/config/terminal-parsing-rules.json';
@@ -11,14 +13,14 @@
 	import CommandInput from './CommandInput.svelte';
 	import { resetTerminalMode } from '$lib/stores.js';
 
-	export let isOpen = false;
-	export let onClose = () => {};
+	let { isOpen = false, onClose = () => {} } = $props();
 
 	// State
 	let terminal: Terminal | null = null;
 	let isConnecting = false;
 	let isConnected = false;
-	let autoScroll = true;
+	let autoScroll = $state(true);
+	let showCommandShortDescriptions = $state(true);
 	let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 	let port: SerialPort | null = null;
 
@@ -36,6 +38,21 @@
 	let historyIndex = -1;
 	const MAX_HISTORY = 50;
 	let selectedLineEnding = 'crlf'; // 'lf', 'crlf', 'cr'
+
+	// Load settings from cookie on mount
+	function loadSettings() {
+		if (browser) {
+			const savedValue = getCookie('meshtastic-terminal-show-short-descriptions');
+			showCommandShortDescriptions = savedValue !== 'false';  // Default to true
+		}
+	}
+
+	// Save settings to cookie when changed
+	$effect(() => {
+		if (browser) {
+			setCookie('meshtastic-terminal-show-short-descriptions', String(showCommandShortDescriptions), 365);
+		}
+	});
 
 	// Terminal options
 	const options = {
@@ -371,6 +388,11 @@
 		shouldContinueReading = false;
 		await disconnect();
 	});
+
+	// Load settings on mount
+	onMount(() => {
+		loadSettings();
+	});
 </script>
 
 {#if isOpen}
@@ -432,6 +454,7 @@
 					onSubmit={handleSubmitCommand}
 					placeholder={$locales('customfirmware.terminal_input_placeholder')}
 					{commandHistory}
+					showCommandShortDescriptions={showCommandShortDescriptions}
 					bind:historyIndex
 				/>
 
@@ -479,6 +502,15 @@
 							class="rounded border-gray-600 bg-gray-700 text-orange-600 focus:ring-orange-600"
 						/>
 						<span>{$locales('customfirmware.terminal_autoscroll')}</span>
+					</label>
+
+					<label class="flex items-center space-x-2 text-sm text-gray-300">
+						<input
+							type="checkbox"
+							bind:checked={showCommandShortDescriptions}
+							class="rounded border-gray-600 bg-gray-700 text-orange-600 focus:ring-orange-600"
+						/>
+						<span>{$locales('customfirmware.show_command_short_descriptions')}</span>
 					</label>
 
 					{#if tokenParser}

@@ -297,6 +297,7 @@
     "terminal_connected": "Terminal Connected",
     "terminal_disconnected": "Terminal Disconnected",
     "terminal_autoscroll": "Auto-scroll",
+    "show_command_short_descriptions": "Show command descriptions",
     "terminal_copy": "Copy Selection",
     "terminal_opening": "Opening Terminal...",
     "terminal_error": "Terminal Error",

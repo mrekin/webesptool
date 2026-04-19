@@ -108,7 +108,8 @@ export function getAutocompleteSuggestion(
   input: string,
   mode: 'normal' | 'meshcore',
   currentCommand?: string | null,
-  lastSuggestion?: AutocompleteSuggestion | null
+  lastSuggestion?: AutocompleteSuggestion | null,
+  showShortDescriptions?: boolean
 ): AutocompleteSuggestion | null {
   /* console.log('[getAutocompleteSuggestion] CALLED WITH:', {
     input,
@@ -153,11 +154,18 @@ export function getAutocompleteSuggestion(
       const matchingCmd = matchingCommands.find(cmd => cmd.command === lastCommand);
       if (matchingCmd) {
         const suffix = matchingCmd.command.slice(input.length);
+
+        // Add short description if enabled and available
+        const shortDescription = (showShortDescriptions && matchingCmd.shortDescription)
+          ? matchingCmd.shortDescription
+          : undefined;
+
         // console.log('[getAutocompleteSuggestion] Input continues from lastSuggestion, staying on:', lastCommand);
         return {
           text: suffix,
           type: 'command' as const,
-          command: matchingCmd.command
+          command: matchingCmd.command,
+          shortDescription
         };
       }
     }
@@ -177,10 +185,17 @@ export function getAutocompleteSuggestion(
 
     // Just suggest rest of command (params are already in command name!)
     const suffix = nextCmd.command.slice(input.length);
+
+    // Add short description if enabled and available
+    const shortDescription = (showShortDescriptions && nextCmd.shortDescription)
+      ? nextCmd.shortDescription
+      : undefined;
+
     return {
       text: suffix,
       type: 'command' as const,
-      command: nextCmd.command
+      command: nextCmd.command,
+      shortDescription
     };
   }
 
@@ -261,7 +276,7 @@ export function getAutocompleteSuggestion(
   // enum suggestions when the user is actually typing (non-empty value)
   for (const cmd of meshcoreCommandData) {
     if (cmd.params.length === 0) continue;
-    const enumSuggestion = getEnumSuggestion(input, cmd, lastSuggestion);
+    const enumSuggestion = getEnumSuggestion(input, cmd, lastSuggestion, showShortDescriptions);
     if (enumSuggestion) return enumSuggestion;
   }
 
@@ -341,7 +356,8 @@ function getCurrentParamContext(
 function getEnumSuggestion(
   input: string,
   cmd: MeshcoreCommand,
-  lastSuggestion?: AutocompleteSuggestion | null
+  lastSuggestion?: AutocompleteSuggestion | null,
+  showShortDescriptions?: boolean
 ): AutocompleteSuggestion | null {
   const ctx = getCurrentParamContext(input, cmd);
   if (!ctx) return null;
@@ -474,7 +490,8 @@ export function acceptSuggestionToNextSeparator(
  */
 export function getNextSuggestion(
   input: string,
-  currentSuggestion: AutocompleteSuggestion
+  currentSuggestion: AutocompleteSuggestion,
+  showShortDescriptions?: boolean
 ): AutocompleteSuggestion | null {
   // console.log('[getNextSuggestion] CALLED WITH:', { input, currentSuggestion });
 
@@ -516,10 +533,17 @@ export function getNextSuggestion(
 
     // Just suggest rest of command (params are already in command name!)
     const suffix = nextCmd.command.slice(input.length);
+
+    // Add short description if enabled and available
+    const shortDescription = (showShortDescriptions && nextCmd.shortDescription)
+      ? nextCmd.shortDescription
+      : undefined;
+
     const result = {
       text: suffix,
       type: 'command' as const,
-      command: nextCmd.command
+      command: nextCmd.command,
+      shortDescription
     };
 
     // console.log('[getNextSuggestion] Returning:', result);
@@ -536,7 +560,8 @@ export function getNextSuggestion(
  */
 export function getPreviousSuggestion(
   input: string,
-  currentSuggestion: AutocompleteSuggestion
+  currentSuggestion: AutocompleteSuggestion,
+  showShortDescriptions?: boolean
 ): AutocompleteSuggestion | null {
   // console.log('[getPreviousSuggestion] CALLED WITH:', { input, currentSuggestion });
 
@@ -578,10 +603,17 @@ export function getPreviousSuggestion(
 
     // Just suggest rest of command (params are already in command name!)
     const suffix = prevCmd.command.slice(input.length);
+
+    // Add short description if enabled and available
+    const shortDescription = (showShortDescriptions && prevCmd.shortDescription)
+      ? prevCmd.shortDescription
+      : undefined;
+
     const result = {
       text: suffix,
       type: 'command' as const,
-      command: prevCmd.command
+      command: prevCmd.command,
+      shortDescription
     };
 
     // console.log('[getPreviousSuggestion] Returning:', result);

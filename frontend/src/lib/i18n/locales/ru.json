@@ -297,6 +297,7 @@
     "terminal_connected": "Терминал подключен",
     "terminal_disconnected": "Терминал отключен",
     "terminal_autoscroll": "Автопрокрутка",
+    "show_command_short_descriptions": "Показывать описания команд",
     "terminal_copy": "Копировать выделение",
     "terminal_opening": "Открытие терминала...",
     "terminal_error": "Ошибка терминала",

@@ -15,7 +15,8 @@
 		onSubmit = (_cmd: string) => {},
 		placeholder = '',
 		commandHistory = [],
-		historyIndex = -1
+		historyIndex = -1,
+		showCommandShortDescriptions = true
 	} = $props();
 
 	let mode = $state<TerminalMode>('normal');
@@ -36,7 +37,7 @@
 	 */
 	function handleInput() {
 		// Update current command from suggestion if available
-	let newSuggestion = getAutocompleteSuggestion(value, mode, null, suggestion);
+	let newSuggestion = getAutocompleteSuggestion(value, mode, null, suggestion, showCommandShortDescriptions);
 
 		// Remove leading space from suggestion if input already ends with space
 		if (newSuggestion && value.endsWith(' ') && newSuggestion.text.startsWith(' ')) {
@@ -99,7 +100,7 @@
 
 			// Priority: autocomplete over history
 			if (suggestion) {
-				const nextSuggestion = getNextSuggestion(value, suggestion);
+				const nextSuggestion = getNextSuggestion(value, suggestion, showCommandShortDescriptions);
 				if (nextSuggestion) {
 					suggestion = nextSuggestion;
 				}
@@ -122,7 +123,7 @@
 
 			// Priority: autocomplete over history
 			if (suggestion) {
-				const prevSuggestion = getPreviousSuggestion(value, suggestion);
+				const prevSuggestion = getPreviousSuggestion(value, suggestion, showCommandShortDescriptions);
 				if (prevSuggestion) {
 					suggestion = prevSuggestion;
 				}
@@ -165,7 +166,7 @@
 					// console.log('[' + event.key + '] After accept:', { oldValue, newValue: value, accepted: value.slice(oldValue.length) });
 					// Update suggestion after partial accept, passing current suggestion to maintain context
 					const currentSuggestion = suggestion;
-					suggestion = getAutocompleteSuggestion(value, mode, null, currentSuggestion);
+					suggestion = getAutocompleteSuggestion(value, mode, null, currentSuggestion, showCommandShortDescriptions);
 					// console.log('[' + event.key + '] New suggestion:', suggestion);
 					return;
 				}
@@ -206,6 +207,9 @@
 			>
 				<!-- Invisible text matching current input to position the suggestion correctly -->
 				<span style="visibility: hidden;">{value}</span><span class="text-gray-400">{suggestion.text}</span>
+					{#if suggestion.shortDescription}
+						<span class="text-gray-500 italic ml-2">- {suggestion.shortDescription}</span>
+					{/if}
 			</div>
 		{/if}
 	</div>

@@ -297,6 +297,7 @@
     "terminal_connected": "Terminal podłączony",
     "terminal_disconnected": "Terminal rozłączony",
     "terminal_autoscroll": "Auto-przewijanie",
+    "show_command_short_descriptions": "Pokaż opisy poleceń",
     "terminal_copy": "Kopiuj zaznaczenie",
     "terminal_opening": "Otwieranie terminala...",
     "terminal_error": "Błąd terminala",
