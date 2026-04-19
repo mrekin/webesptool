@@ -187,9 +187,10 @@ export function getAutocompleteSuggestion(
   // Check if input matches a command with partially entered params
   // e.g., "set radio 123" should match "set radio" and show next param
   for (const cmd of meshcoreCommandData) {
-    if (input.startsWith(cmd.command + ' ') && cmd.params.length > 0) {
+    const baseCommand = getBaseCommandName(cmd.command);
+    if (input.startsWith(baseCommand + ' ') && cmd.params.length > 0) {
       // Extract params part from input
-      const paramsPart = input.slice(cmd.command.length + 1).trim();
+      const paramsPart = input.slice(baseCommand.length + 1).trim();
 
       // Determine separator
       const separator = cmd.separator || 'space';
@@ -205,33 +206,196 @@ export function getAutocompleteSuggestion(
       // Check if we can move to next param
       if (enteredParams.length < cmd.params.length) {
         // Check if input ends with separator (ready for next param)
-        if (separator === 'comma' && input.endsWith(',')) {
-          // Show remaining params
+        // For comma separator: user must type comma
+        // For space separator: user can type space OR comma
+        const endsWithSeparator = separator === 'comma'
+          ? input.endsWith(',')
+          : (input.endsWith(' ') || input.endsWith(','));
+
+        if (endsWithSeparator) {
+          // Show all remaining params, with enum params shown as values
           const remainingParams = cmd.params.slice(enteredParams.length);
           if (remainingParams.length > 0) {
-            const paramNames = remainingParams.map(p => p.name);
-            const paramsStr = paramNames.join('},{');
+            const paramTexts = remainingParams.map(p => {
+              if (p.type === 'enum' && p.options) {
+                return `{${p.options.join('|')}}`;
+              }
+              return `{${p.name}}`;
+            });
+
+            const paramSeparator = separator === 'comma' ? ',' : ' ';
             return {
-              text: `{${paramsStr}}`,
+              text: paramTexts.join(paramSeparator),
               type: 'param' as const,
               command: cmd.command
             };
           }
-        } else if (separator === 'space' && input.endsWith(' ')) {
-          // Show next param
-          const nextParam = cmd.params[enteredParams.length];
-          return {
-            text: `{${nextParam.name}}`,
-            type: 'param',
-            command: cmd.command
-          };
+        } else if (enteredParams.length > 0 && enteredParams.length < cmd.params.length) {
+          // User entered a param value but hasn't typed separator yet
+          // Show separator + remaining params to guide user
+          const remainingParams = cmd.params.slice(enteredParams.length);
+          if (remainingParams.length > 0) {
+            const paramTexts = remainingParams.map(p => {
+              if (p.type === 'enum' && p.options) {
+                return `{${p.options.join('|')}}`;
+              }
+              return `{${p.name}}`;
+            });
+
+            // Prepend separator to show user what to type next
+            const paramSeparator = separator === 'comma' ? ',' : ' ';
+            const prefix = paramSeparator;
+            return {
+              text: prefix + paramTexts.join(paramSeparator),
+              type: 'param' as const,
+              command: cmd.command
+            };
+          }
         }
       }
     }
   }
 
+  // Check enum parameter autocomplete for partially entered values
+  // This check comes AFTER the param placeholder check, so we only show
+  // enum suggestions when the user is actually typing (non-empty value)
+  for (const cmd of meshcoreCommandData) {
+    if (cmd.params.length === 0) continue;
+    const enumSuggestion = getEnumSuggestion(input, cmd, lastSuggestion);
+    if (enumSuggestion) return enumSuggestion;
+  }
+
   return null;
 }
+
+/**
+ * Find enum values that start with the given prefix (case-insensitive).
+ */
+function findMatchingEnumValues(prefix: string, options: string[]): string[] {
+  const lowerPrefix = prefix.toLowerCase();
+  return options.filter(option => option.toLowerCase().startsWith(lowerPrefix));
+}
+
+/**
+ * Extract the base command name from a full command string.
+ * Strips parameter placeholders like {on|off}, {pubkey}, etc.
+ * e.g., "gps {on|off}" -> "gps", "setperm {pubkey} {0|1|2|3}" -> "setperm"
+ */
+function getBaseCommandName(fullCommand: string): string {
+  // Match everything before the first parameter placeholder (space + { or just {)
+  const braceIndex = fullCommand.indexOf('{');
+  if (braceIndex === -1) return fullCommand;
+  // Trim trailing space before the brace
+  return fullCommand.substring(0, braceIndex).trimEnd();
+}
+
+/**
+ * Determine the current parameter context for a command with params.
+ * Returns the index of the param being entered and its partial value.
+ */
+function getCurrentParamContext(
+  input: string,
+  cmd: MeshcoreCommand
+): { paramIndex: number; paramValue: string; justStarted: boolean } | null {
+  const baseCommand = getBaseCommandName(cmd.command);
+  if (!input.startsWith(baseCommand + ' ')) return null;
+
+  const paramsPart = input.slice(baseCommand.length + 1);
+  const separator = cmd.separator || 'space';
+
+  let enteredParams: string[] = [];
+  if (separator === 'comma') {
+    enteredParams = paramsPart.split(',').map((p: string) => p.trim()).filter((p: string) => p);
+  } else {
+    enteredParams = paramsPart.split(/\s+/).filter((p: string) => p);
+  }
+
+  // Determine which param is being entered
+  // If input ends with separator, user is starting a new param
+  const endsWithSeparator = separator === 'comma'
+    ? input.endsWith(',')
+    : input.endsWith(' ');
+
+  if (endsWithSeparator) {
+    // User finished entering a param and is starting the next one
+    const nextIndex = enteredParams.length;
+    if (nextIndex < cmd.params.length) {
+      return { paramIndex: nextIndex, paramValue: '', justStarted: true };
+    }
+    return null; // All params entered
+  }
+
+  // User is typing a param value
+  const currentIndex = enteredParams.length - 1;
+  if (currentIndex >= 0 && currentIndex < cmd.params.length) {
+    return { paramIndex: currentIndex, paramValue: enteredParams[currentIndex], justStarted: false };
+  }
+
+  return null;
+}
+
+/**
+ * Handle enum parameter autocomplete for a partially entered command.
+ * Called when the input matches a known command with enum params.
+ */
+function getEnumSuggestion(
+  input: string,
+  cmd: MeshcoreCommand,
+  lastSuggestion?: AutocompleteSuggestion | null
+): AutocompleteSuggestion | null {
+  const ctx = getCurrentParamContext(input, cmd);
+  if (!ctx) return null;
+
+  const param = cmd.params[ctx.paramIndex];
+  if (param.type !== 'enum' || !param.options) return null;
+
+  // If user just started a new param (value is empty, just finished previous param),
+  // don't show enum suggestion - let placeholder logic show param name instead
+  if (ctx.justStarted) {
+    return null;
+  }
+
+  // Find matching enum values (empty prefix matches all values)
+  const matchedValues = ctx.paramValue === ''
+    ? param.options
+    : findMatchingEnumValues(ctx.paramValue, param.options);
+
+  if (matchedValues.length === 0) return null;
+
+  // If exact full match and it's the only match, no suggestion needed
+  if (ctx.paramValue !== '' && matchedValues.length === 1 &&
+      matchedValues[0].toLowerCase() === ctx.paramValue.toLowerCase()) {
+    return null;
+  }
+
+  // Determine which value to show (cycling support via lastSuggestion)
+  let selectedIndex = 0;
+  if (lastSuggestion && lastSuggestion.type === 'enum' &&
+      lastSuggestion.paramName === param.name &&
+      lastSuggestion.command === cmd.command &&
+      lastSuggestion.matchedValues) {
+    // Find the last shown value in current matched list
+    const lastIdx = matchedValues.indexOf(lastSuggestion.enumValue || '');
+    if (lastIdx >= 0) {
+      selectedIndex = (lastIdx + 1) % matchedValues.length;
+    }
+  }
+
+  const selectedValue = matchedValues[selectedIndex];
+  // Suffix is the part after what user already typed
+  const suffix = selectedValue.slice(ctx.paramValue.length);
+
+  return {
+    text: suffix,
+    type: 'enum',
+    command: cmd.command,
+    paramName: param.name,
+    enumValue: selectedValue,
+    matchedValues,
+    paramPrefix: ctx.paramValue
+  };
+}
+
 export function acceptSuggestion(
   input: string,
   suggestion: AutocompleteSuggestion
@@ -269,6 +433,11 @@ export function acceptSuggestionToNextSeparator(
     return input;
   }
 
+  // For enum suggestions: accept the full suffix (replacing partial input)
+  if (suggestion.type === 'enum' && suggestion.enumValue) {
+    return input + text;
+  }
+
   // Check if starts with space
   if (text.startsWith(' ')) {
     // console.log('[acceptSuggestionToNextSeparator] Accepting space');
@@ -303,15 +472,15 @@ export function acceptSuggestionToNextSeparator(
  * Get the next suggestion for cycling through autocomplete variants.
  * Returns the next variant, cycling back to the first command when reaching the end.
  */
-/**
- * Get the next suggestion for cycling through autocomplete variants.
- * Returns the next variant, cycling back to the first command when reaching the end.
- */
 export function getNextSuggestion(
   input: string,
   currentSuggestion: AutocompleteSuggestion
 ): AutocompleteSuggestion | null {
   // console.log('[getNextSuggestion] CALLED WITH:', { input, currentSuggestion });
+
+  if (currentSuggestion.type === 'enum') {
+    return cycleEnumSuggestion(currentSuggestion, 1);
+  }
 
   if (currentSuggestion.type === 'command') {
     // Find all matching commands
@@ -371,6 +540,10 @@ export function getPreviousSuggestion(
 ): AutocompleteSuggestion | null {
   // console.log('[getPreviousSuggestion] CALLED WITH:', { input, currentSuggestion });
 
+  if (currentSuggestion.type === 'enum') {
+    return cycleEnumSuggestion(currentSuggestion, -1);
+  }
+
   if (currentSuggestion.type === 'command') {
     // Find all matching commands
     const matchingCommands = meshcoreCommandData
@@ -417,6 +590,34 @@ export function getPreviousSuggestion(
 
   // console.log('[getPreviousSuggestion] Not a command suggestion');
   return null;
+}
+
+/**
+ * Cycle through enum values in a suggestion by a given direction.
+ * direction: 1 for next, -1 for previous.
+ * When cycling, replaces the partial input with the new enum value.
+ */
+function cycleEnumSuggestion(
+  currentSuggestion: AutocompleteSuggestion,
+  direction: 1 | -1
+): AutocompleteSuggestion | null {
+  if (!currentSuggestion.matchedValues || !currentSuggestion.enumValue) {
+    return null;
+  }
+
+  const currentIndex = currentSuggestion.matchedValues.indexOf(currentSuggestion.enumValue);
+  if (currentIndex === -1) return null;
+
+  const newIndex = (currentIndex + direction + currentSuggestion.matchedValues.length) %
+                    currentSuggestion.matchedValues.length;
+  const newValue = currentSuggestion.matchedValues[newIndex];
+  const prefix = currentSuggestion.paramPrefix || '';
+
+  return {
+    ...currentSuggestion,
+    text: newValue.slice(prefix.length),
+    enumValue: newValue
+  };
 }
 
 /**

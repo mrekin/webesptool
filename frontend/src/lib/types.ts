@@ -657,8 +657,12 @@ export interface ParsedCommandInput {
 // Autocomplete suggestion
 export interface AutocompleteSuggestion {
   text: string;           // Suggestion suffix text
-  type: 'command' | 'param';  // Suggestion type
+  type: 'command' | 'param' | 'enum';  // Suggestion type
   command: string;        // Full command name
+  paramName?: string;     // Param name for enum suggestions
+  enumValue?: string;     // Full enum value
+  matchedValues?: string[]; // All matched enum values for cycling
+  paramPrefix?: string;   // The partial input that was matched (for cycling replacement)
 }
 
 // Terminal mode type

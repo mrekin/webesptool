@@ -108,7 +108,7 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
   { command: 'set owner.info {text}', params: [{ name: 'text', type: 'string' }], separator: 'space' },
   { command: 'set path.hash.mode {value}', params: [{ name: 'value', type: 'string' }], separator: 'space' },
   { command: 'set prv.key {private_key}', params: [{ name: 'private_key', type: 'string' }], separator: 'space' },
-  { command: 'set radio {freq} {bw} {sf} {cr}', params: [
+  { command: 'set radio {freq},{bw},{sf},{cr}', params: [
     { name: 'freq', type: 'number' },
     { name: 'bw', type: 'number' },
     { name: 'sf', type: 'number' },
@@ -126,7 +126,7 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
   { command: 'stats-core', params: [], separator: null },
   { command: 'stats-packets', params: [], separator: null },
   { command: 'stats-radio', params: [], separator: null },
-  { command: 'tempradio {freq} {bw} {sf} {cr} {timeout_mins}', params: [
+  { command: 'tempradio {freq},{bw},{sf},{cr},{timeout_mins}', params: [
     { name: 'freq', type: 'number' },
     { name: 'bw', type: 'number' },
     { name: 'sf', type: 'number' },
