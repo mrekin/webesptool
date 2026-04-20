@@ -26,7 +26,7 @@ RUN rm -f .env
 ARG APP_VERSION
 
 # Build the Svelte application for production with version
-RUN VITE_APP_VERSION=$APP_VERSION pnpm run build
+RUN VITE_APP_VERSION=${APP_VERSION} pnpm run build
 
 # Stage 2: Create the final production image
 FROM node:22-alpine AS runner
