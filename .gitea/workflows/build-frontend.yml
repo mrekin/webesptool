@@ -36,7 +36,7 @@ jobs:
         with:
           registry: registry.mrekin.ru
           username: ${{ gitea.actor }}
-          password: ${{ secrets.GITEA_TOKEN }}
+          password: ${{ gitea.token }}
 
       # Step 5: Build and push Docker image
       - name: Build and push
