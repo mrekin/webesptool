@@ -17,7 +17,13 @@
 	import MemoryMap from '$lib/components/MemoryMap.svelte';
 	import BackupConfirmModal from '$lib/components/BackupConfirmModal.svelte';
 	import TerminalModal from '$lib/components/TerminalModal.svelte';
-	import { uiState } from '$lib/stores.js';
+	import { uiState, selectionState, availableSources } from '$lib/stores.js';
+	import { RepositoryType } from '$lib/types.js';
+	import { EXTERNAL_LINKS } from '$lib/utils/externalLinks.js';
+
+	// External links
+	const MESHCORE_CONFIGURATOR_URL = 'https://config.meshcore.io';
+	const MESHTASTIC_FLASHER_URL = EXTERNAL_LINKS.MESHTASTIC.FLASHER;
 
 	// Dynamic import for MeshtasticDeviceModal to avoid conflicts with +page.svelte
 	let MeshtasticDeviceModal: any = null;
@@ -1879,14 +1885,30 @@
 						</svg>
 					</button>
 
-					<!-- Meshtastic device config button - experimental feature -->
-					<button
-						on:click={openMeshtasticModal}
-						class="flex items-center justify-center rounded-md bg-gray-700 px-3 py-2 text-orange-300 transition-colors hover:bg-gray-600"
-						title={$locales('customfirmware.meshtastic_config')}
-					>
-						🗺️
-					</button>
+						<!-- Meshtastic device config button - experimental feature -->
+						{#if !isAutoSelectMode || $availableSources.find(s => s.src === $selectionState.repository)?.type === RepositoryType.MESHTASTIC}
+						<button
+							on:click={openMeshtasticModal}
+							class="flex items-center justify-center rounded-md bg-gray-700 px-3 py-2 text-orange-300 transition-colors hover:bg-gray-600"
+							title={$locales('customfirmware.meshtastic_config')}
+						>
+							🗺️
+						</button>
+						{/if}
+
+						<!-- Meshcore configurator button -->
+						{#if !isAutoSelectMode || $availableSources.find(s => s.src === $selectionState.repository)?.type === RepositoryType.MESHCORE}
+						<a
+							href={MESHCORE_CONFIGURATOR_URL}
+							target="_blank"
+							rel="noopener noreferrer"
+							title={$locales('customfirmware.meshcore_configurator')}
+							class="flex items-center justify-center rounded-md bg-gray-700 px-3 py-2 text-lg transition-colors hover:bg-gray-600"
+							aria-label={$locales('customfirmware.meshcore_configurator')}
+						>
+							📤
+						</a>
+						{/if}
 				{/if}
 			</div>
 			{#if isPortSelected && deviceInfo}

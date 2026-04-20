@@ -316,7 +316,8 @@
     "terminal_send": "Отправить",
     "terminal_send_tooltip": "Отправить команду устройству (Enter)",
     "terminal_line_ending_title": "Формат переноса строки",
-    "terminal_meshcore_mode_indicator": "Режим MeshCore"
+    "terminal_meshcore_mode_indicator": "Режим MeshCore",
+    "meshcore_configurator": "Конфигуратор Meshcore"
   },
   "backupconfirm": {
     "title": "Сохранить дамп памяти устройства?",

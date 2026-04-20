@@ -316,7 +316,8 @@
     "terminal_send": "Wyślij",
     "terminal_send_tooltip": "Wyślij polecenie do urządzenia (Enter)",
     "terminal_line_ending_title": "Format końca linii",
-    "terminal_meshcore_mode_indicator": "Tryb MeshCore"
+    "terminal_meshcore_mode_indicator": "Tryb MeshCore",
+    "meshcore_configurator": "Konfigurator Meshcore"
   },
   "backupconfirm": {
     "title": "Zapisać zrzut pamięci urządzenia?",

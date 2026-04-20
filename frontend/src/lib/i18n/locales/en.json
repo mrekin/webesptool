@@ -316,7 +316,8 @@
     "terminal_send": "Send",
     "terminal_send_tooltip": "Send command to device (Enter)",
     "terminal_line_ending_title": "Line ending format",
-    "terminal_meshcore_mode_indicator": "MeshCore mode"
+    "terminal_meshcore_mode_indicator": "MeshCore mode",
+    "meshcore_configurator": "Meshcore Configurator"
   },
   "backupconfirm": {
     "title": "Save Device Flash Dump?",
