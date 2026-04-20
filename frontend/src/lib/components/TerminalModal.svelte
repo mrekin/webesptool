@@ -11,7 +11,7 @@
 	import { loadParsingRules, createTokenParser, type TokenParser, type ParsedToken } from '$lib/utils/logParser.js';
 	import TokenSidebar from './TokenSidebar.svelte';
 	import CommandInput from './CommandInput.svelte';
-	import { resetTerminalMode } from '$lib/stores.js';
+	import { resetTerminalMode, uiState } from '$lib/stores.js';
 
 	let { isOpen = false, onClose = () => {} } = $props();
 
@@ -40,6 +40,9 @@
 	const MAX_HISTORY = 50;
 	let selectedLineEnding = $state('crlf'); // 'lf', 'crlf', 'cr'
 
+	// Experimental features flag
+	let experimentalFeatures = $state($uiState.experimentalFeatures);
+
 	// Load settings from cookie on mount
 	function loadSettings() {
 		if (browser) {
@@ -52,6 +55,13 @@
 	$effect(() => {
 		if (browser) {
 			setCookie('meshtastic-terminal-show-short-descriptions', String(showCommandShortDescriptions), 365);
+		}
+	});
+
+	// Close token sidebar when experimental features are disabled
+	$effect(() => {
+		if (!experimentalFeatures) {
+			showTokensSidebar = false;
 		}
 	});
 
@@ -444,7 +454,7 @@
 				</div>
 
 				<!-- Token Sidebar (conditionally rendered) -->
-				{#if showTokensSidebar}
+				{#if showTokensSidebar && experimentalFeatures}
 					<div class="w-80 flex-shrink-0 border-l border-gray-700 flex flex-col">
 						<TokenSidebar tokens={parsedTokens} onCopy={copyTokens} updateKey={tokensKey} />
 					</div>
@@ -529,14 +539,14 @@
 					<span>{$locales('customfirmware.show_command_short_descriptions')}</span>
 				</label>
 
-				{#if tokenParser}
+				{#if tokenParser && experimentalFeatures}
 					<button
 						on:click={() => {
 							showTokensSidebar = !showTokensSidebar;
 						}}
 						class="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600 flex-shrink-0"
 					>
-						{#if showTokensSidebar}
+						{#if showTokensSidebar && experimentalFeatures}
 							{$locales('customfirmware.hide_tokens')}
 						{:else}
 							{$locales('customfirmware.show_tokens')}

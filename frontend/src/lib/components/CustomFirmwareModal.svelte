@@ -1863,8 +1863,8 @@
 					</button>
 				{/if}
 
-				{#if experimentalFeatures}
-					<!-- Terminal button - experimental feature -->
+				<!-- Terminal button -->
+				<button
 					<button
 						on:click={async () => {
 							// Close the current connection properly
@@ -1885,6 +1885,7 @@
 						</svg>
 					</button>
 
+					{#if experimentalFeatures}
 						<!-- Meshtastic device config button - experimental feature -->
 						{#if !isAutoSelectMode || $availableSources.find(s => s.src === $selectionState.repository)?.type === RepositoryType.MESHTASTIC}
 						<button
@@ -1895,6 +1896,7 @@
 							🗺️
 						</button>
 						{/if}
+					{/if}
 
 						<!-- Meshcore configurator button -->
 						{#if !isAutoSelectMode || $availableSources.find(s => s.src === $selectionState.repository)?.type === RepositoryType.MESHCORE}
@@ -1907,7 +1909,6 @@
 							📤
 						</button>
 						{/if}
-				{/if}
 			</div>
 			{#if isPortSelected && deviceInfo}
 				<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-4">
