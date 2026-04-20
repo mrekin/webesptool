@@ -1898,16 +1898,14 @@
 
 						<!-- Meshcore configurator button -->
 						{#if !isAutoSelectMode || $availableSources.find(s => s.src === $selectionState.repository)?.type === RepositoryType.MESHCORE}
-						<a
-							href={MESHCORE_CONFIGURATOR_URL}
-							target="_blank"
-							rel="noopener noreferrer"
-							title={$locales('customfirmware.meshcore_configurator')}
+						<button
+							on:click={() => window.open(MESHCORE_CONFIGURATOR_URL, '_blank', 'noopener,noreferrer')}
 							class="flex items-center justify-center rounded-md bg-gray-700 px-3 py-2 text-lg transition-colors hover:bg-gray-600"
+							title={$locales('customfirmware.meshcore_configurator')}
 							aria-label={$locales('customfirmware.meshcore_configurator')}
 						>
 							📤
-						</a>
+						</button>
 						{/if}
 				{/if}
 			</div>
