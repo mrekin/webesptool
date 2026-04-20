@@ -432,7 +432,7 @@
 					{$locales('customfirmware.terminal')}
 				</h2>
 				<button
-					on:click={handleClose}
+					onclick={handleClose}
 					class="rounded text-gray-400 transition-colors hover:text-white"
 					aria-label="Close terminal"
 				>
@@ -488,7 +488,7 @@
 
 				<!-- Send Button -->
 				<button
-					on:click={() => sendCommand()}
+					onclick={() => sendCommand()}
 					disabled={!isConnected || !commandInput.trim()}
 					class="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
 					title={$locales('customfirmware.terminal_send_tooltip')}
@@ -501,7 +501,7 @@
 			<div class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-700 p-4 flex-shrink-0">
 				<!-- Connection toggle button -->
 				<button
-					on:click={isConnected ? disconnect : connectToPort}
+					onclick={isConnected ? disconnect : connectToPort}
 					disabled={isConnecting}
 					class:bg-blue-600={!isConnected && !isConnecting}
 					class:hover:bg-blue-700={!isConnected && !isConnecting}
@@ -541,7 +541,7 @@
 
 				{#if tokenParser && experimentalFeatures}
 					<button
-						on:click={() => {
+						onclick={() => {
 							showTokensSidebar = !showTokensSidebar;
 						}}
 						class="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600 flex-shrink-0"
@@ -555,7 +555,7 @@
 				{/if}
 
 				<button
-					on:click={copyTerminal}
+					onclick={copyTerminal}
 					class="rounded-md bg-gray-700 p-2 text-white transition-colors hover:bg-gray-600 flex-shrink-0"
 					title={$locales('customfirmware.terminal_copy')}
 				>
@@ -565,7 +565,7 @@
 				</button>
 
 				<button
-					on:click={handleClose}
+					onclick={handleClose}
 					class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 flex-shrink-0"
 				>
 					{$locales('common.close')}
