@@ -74,6 +74,7 @@
 		"@xterm/addon-fit": "^0.11.0",
 		"@xterm/addon-search": "^0.16.0",
 		"buffer": "^6.0.3",
+		"crc": "^4.3.2",
 		"esptool-js": "^0.5.7",
 		"js-yaml": "^4.1.1",
 		"jszip": "^3.10.1",
