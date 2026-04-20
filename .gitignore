@@ -19,3 +19,5 @@ webesptool/db/
 frontend/tests/*/*baseline*
 mempalace.yaml
 entities.json
+build-backend-new.sh
+build-frontend-new.sh
