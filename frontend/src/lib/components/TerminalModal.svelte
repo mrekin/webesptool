@@ -469,79 +469,77 @@
 				</button>
 			</div>
 
-			<!-- Footer with Controls (two columns) -->
-			<div class="flex items-center justify-between border-t border-gray-700 p-4 flex-shrink-0 gap-4">
-				<!-- Left: Connection controls -->
-				<div class="flex-shrink-0">
-					<!-- Connection toggle button -->
+			<!-- Footer with Controls (responsive) -->
+			<div class="flex flex-wrap items-center gap-3 border-t border-gray-700 p-4 flex-shrink-0">
+				<!-- Connection toggle button -->
+				<button
+					on:click={isConnected ? disconnect : connectToPort}
+					disabled={isConnecting}
+					class:bg-blue-600={!isConnected && !isConnecting}
+					class:hover:bg-blue-700={!isConnected && !isConnecting}
+					class:bg-gray-700={isConnected}
+					class:hover:bg-gray-600={isConnected}
+					class="rounded-md px-4 py-2 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50 flex-shrink-0"
+				>
+					{#if isConnecting}
+						{$locales('customfirmware.connecting')}...
+					{:else if isConnected}
+						{$locales('customfirmware.disconnect')}
+					{:else}
+						{$locales('customfirmware.select_port')}
+					{/if}
+				</button>
+
+				<!-- Terminal controls -->
+				<label class="flex items-center space-x-2 text-sm text-gray-300 flex-shrink-0">
+					<input
+						type="checkbox"
+						bind:checked={autoScroll}
+						class="rounded border-gray-600 bg-gray-700 text-orange-600 focus:ring-orange-600"
+					/>
+					<span>{$locales('customfirmware.terminal_autoscroll')}</span>
+				</label>
+
+				<label class="flex items-center space-x-2 text-sm text-gray-300 flex-shrink-0">
+					<input
+						type="checkbox"
+						bind:checked={showCommandShortDescriptions}
+						class="rounded border-gray-600 bg-gray-700 text-orange-600 focus:ring-orange-600"
+					/>
+					<span>{$locales('customfirmware.show_command_short_descriptions')}</span>
+				</label>
+
+				{#if tokenParser}
 					<button
-						on:click={isConnected ? disconnect : connectToPort}
-						disabled={isConnecting}
-						class:bg-blue-600={!isConnected && !isConnecting}
-						class:hover:bg-blue-700={!isConnected && !isConnecting}
-						class:bg-gray-700={isConnected}
-						class:hover:bg-gray-600={isConnected}
-						class="rounded-md px-4 py-2 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+						on:click={() => {
+							showTokensSidebar = !showTokensSidebar;
+						}}
+						class="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600 flex-shrink-0"
 					>
-						{#if isConnecting}
-							{$locales('customfirmware.connecting')}...
-						{:else if isConnected}
-							{$locales('customfirmware.disconnect')}
+						{#if showTokensSidebar}
+							{$locales('customfirmware.hide_tokens')}
 						{:else}
-							{$locales('customfirmware.select_port')}
+							{$locales('customfirmware.show_tokens')}
 						{/if}
 					</button>
-				</div>
+				{/if}
 
-				<!-- Right: Terminal controls -->
-				<div class="flex items-center space-x-4 flex-shrink-0">
-					<label class="flex items-center space-x-2 text-sm text-gray-300">
-						<input
-							type="checkbox"
-							bind:checked={autoScroll}
-							class="rounded border-gray-600 bg-gray-700 text-orange-600 focus:ring-orange-600"
-						/>
-						<span>{$locales('customfirmware.terminal_autoscroll')}</span>
-					</label>
+				<button
+					on:click={copyTerminal}
+					class="rounded-md bg-gray-700 p-2 text-white transition-colors hover:bg-gray-600 flex-shrink-0"
+					title={$locales('customfirmware.terminal_copy')}
+				>
+					<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+	<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+</svg>
+				</button>
 
-					<label class="flex items-center space-x-2 text-sm text-gray-300">
-						<input
-							type="checkbox"
-							bind:checked={showCommandShortDescriptions}
-							class="rounded border-gray-600 bg-gray-700 text-orange-600 focus:ring-orange-600"
-						/>
-						<span>{$locales('customfirmware.show_command_short_descriptions')}</span>
-					</label>
-
-					{#if tokenParser}
-						<button
-							on:click={() => {
-								showTokensSidebar = !showTokensSidebar;
-							}}
-							class="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
-						>
-							{#if showTokensSidebar}
-								{$locales('customfirmware.hide_tokens')}
-							{:else}
-								{$locales('customfirmware.show_tokens')}
-							{/if}
-						</button>
-					{/if}
-
-					<button
-						on:click={copyTerminal}
-						class="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
-					>
-						{$locales('customfirmware.terminal_copy')}
-					</button>
-
-					<button
-						on:click={handleClose}
-						class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700"
-					>
-						{$locales('common.close')}
-					</button>
-				</div>
+				<button
+					on:click={handleClose}
+					class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 flex-shrink-0"
+				>
+					{$locales('common.close')}
+				</button>
 			</div>
 		</div>
 	</div>

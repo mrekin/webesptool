@@ -298,7 +298,7 @@
     "terminal_disconnected": "Терминал отключен",
     "terminal_autoscroll": "Автопрокрутка",
     "show_command_short_descriptions": "Показывать описания команд",
-    "terminal_copy": "Копировать выделение",
+    "terminal_copy": "Копировать выделенное",
     "terminal_opening": "Открытие терминала...",
     "terminal_error": "Ошибка терминала",
     "terminal_no_port": "Нет активного порта. Сначала подключитесь к устройству.",

@@ -202,13 +202,13 @@
 		<!-- Autocomplete Suggestion Overlay -->
 		{#if suggestion}
 			<div
-				class="autocomplete-overlay absolute top-2 left-3 pointer-events-none whitespace-pre overflow-hidden"
+				class="autocomplete-overlay absolute inset-y-0 left-0 right-10 pointer-events-none overflow-hidden flex items-center px-3"
 				style="font-family: Consolas, 'Courier New', monospace; font-size: 0.875rem;"
 			>
 				<!-- Invisible text matching current input to position the suggestion correctly -->
-				<span style="visibility: hidden;">{value}</span><span class="text-gray-400">{suggestion.text}</span>
+				<span class="whitespace-pre" style="visibility: hidden;">{value}</span><span class="text-gray-400 whitespace-pre">{suggestion.text}</span>
 					{#if suggestion.shortDescription}
-						<span class="text-gray-500 italic ml-2">- {suggestion.shortDescription}</span>
+						<span class="text-gray-500 italic ml-2 whitespace-nowrap overflow-hidden text-ellipsis">- {suggestion.shortDescription}</span>
 					{/if}
 			</div>
 		{/if}
