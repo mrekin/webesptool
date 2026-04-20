@@ -22,23 +22,16 @@ jobs:
         id: version
         run: |
           VERSION=$(grep '"version"' frontend/package.json | head -1 | sed 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+          BUILD_DATE=$(date +%Y%m%d)
           echo "version=v$VERSION" >> $GITHUB_OUTPUT
           echo "version_number=$VERSION" >> $GITHUB_OUTPUT
+          echo "build_date=$BUILD_DATE" >> $GITHUB_OUTPUT
           echo "Extracted version: v$VERSION"
+          echo "Build date: $BUILD_DATE"
 
       # Step 3: Set up Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      # Debug: Check local-packages
-      - name: Debug files
-        run: |
-          echo "Checking local-packages..."
-          ls -la frontend/local-packages/
-          echo "Checking @meshtastic/core..."
-          ls -la frontend/local-packages/@meshtastic/core/
-          echo "Checking package.json in @meshtastic/core..."
-          cat frontend/local-packages/@meshtastic/core/package.json
 
       # Step 4: Login to Gitea Container Registry
       - name: Login to Gitea Container Registry
@@ -58,7 +51,7 @@ jobs:
             registry.mrekin.ru/${{ github.repository_owner }}/webesptool-frontend:${{ steps.version.outputs.version }}
             registry.mrekin.ru/${{ github.repository_owner }}/webesptool-frontend:latest
           build-args: |
-            APP_VERSION=${{ steps.version.outputs.version_number }}.${{ github.run_number }}
+            APP_VERSION=${{ steps.version.outputs.version_number }}.${{ steps.version.outputs.build_date }}
 
       # Step 6: Logout from registry
       - name: Logout
