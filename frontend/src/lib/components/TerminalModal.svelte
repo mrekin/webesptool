@@ -17,27 +17,28 @@
 
 	// State
 	let terminal: Terminal | null = null;
-	let isConnecting = false;
-	let isConnected = false;
+	let fitAddon: any = null;
+	let isConnecting = $state(false);
+	let isConnected = $state(false);
 	let autoScroll = $state(true);
 	let showCommandShortDescriptions = $state(true);
 	let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 	let port: SerialPort | null = null;
 
 	// Token parsing state
-	let tokenParser: TokenParser | null = null;
-	let parsedTokens = new Map<string, ParsedToken>();
-	let showTokensSidebar = false;  // Hidden by default
+	let tokenParser = $state<TokenParser | null>(null);
+	let parsedTokens = $state(new Map<string, ParsedToken>());
+	let showTokensSidebar = $state(false);  // Hidden by default
 
 	// Unique key to force reactivity when tokens change
-	let tokensKey = 0;
+	let tokensKey = $state(0);
 
 	// Command input state
-	let commandInput = '';
+	let commandInput = $state('');
 	let commandHistory: string[] = [];
-	let historyIndex = -1;
+	let historyIndex = $state(-1);
 	const MAX_HISTORY = 50;
-	let selectedLineEnding = 'crlf'; // 'lf', 'crlf', 'cr'
+	let selectedLineEnding = $state('crlf'); // 'lf', 'crlf', 'cr'
 
 	// Load settings from cookie on mount
 	function loadSettings() {
@@ -111,13 +112,25 @@
 			});
 
 			import('@xterm/addon-fit').then(({ FitAddon }) => {
-				const fitAddon = new FitAddon();
+				fitAddon = new FitAddon();
 				terminal?.loadAddon(fitAddon);
 
 				// Wait a bit for the terminal to be properly initialized before fitting
 				setTimeout(() => {
 					fitAddon.fit();
 				}, 100);
+
+				// Handle window resize
+				const handleResize = () => {
+					if (fitAddon && terminal) {
+						fitAddon.fit();
+					}
+				};
+
+				window.addEventListener('resize', handleResize);
+
+				// Store cleanup function
+				(terminal as any)._resizeHandler = handleResize;
 			}).catch(error => {
 				console.error('Failed to load fit addon:', error);
 			});
@@ -375,8 +388,13 @@
 		showTokensSidebar = false;
 
 		// Clear terminal reference
-		terminal = null;
+		// Clean up resize handler
+		if (terminal && (terminal as any)._resizeHandler) {
+			window.removeEventListener('resize', (terminal as any)._resizeHandler);
+			delete (terminal as any)._resizeHandler;
+		}
 
+		terminal = null;
 		// Clear command input
 		commandInput = '';
 
@@ -418,9 +436,9 @@
 			<div class="flex flex-1 min-h-0 overflow-hidden">
 				<!-- Terminal Section -->
 				<div class="flex-1 flex flex-col min-h-0 min-w-0">
-					<div class="p-4 flex-1 min-h-0 flex flex-col">
-						<div class="h-full overflow-hidden rounded-lg border border-gray-700 bg-gray-950 p-4 flex flex-col flex-1">
-							<Xterm {options} {onLoad} class="flex-1" />
+					<div class="p-4 flex-1 min-h-0">
+						<div class="h-full w-full overflow-hidden rounded-lg border border-gray-700 bg-gray-950 relative">
+							<Xterm {options} {onLoad} />
 						</div>
 					</div>
 				</div>
@@ -470,7 +488,7 @@
 			</div>
 
 			<!-- Footer with Controls (responsive) -->
-			<div class="flex flex-wrap items-center gap-3 border-t border-gray-700 p-4 flex-shrink-0">
+			<div class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-700 p-4 flex-shrink-0">
 				<!-- Connection toggle button -->
 				<button
 					on:click={isConnected ? disconnect : connectToPort}
@@ -490,6 +508,8 @@
 					{/if}
 				</button>
 
+				<!-- Right-side controls -->
+				<div class="flex flex-wrap items-center gap-3">
 				<!-- Terminal controls -->
 				<label class="flex items-center space-x-2 text-sm text-gray-300 flex-shrink-0">
 					<input
@@ -540,6 +560,7 @@
 				>
 					{$locales('common.close')}
 				</button>
+				</div>
 			</div>
 		</div>
 	</div>
