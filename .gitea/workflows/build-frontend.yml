@@ -49,8 +49,6 @@ jobs:
             registry.mrekin.ru/${{ github.repository_owner }}/webesptool-frontend:latest
           build-args: |
             APP_VERSION=${{ steps.version.outputs.version_number }}.${{ github.run_number }}
-          cache-from: type=registry,ref=registry.mrekin.ru/${{ github.repository_owner }}/webesptool-frontend:latest
-          cache-to: type=inline
 
       # Step 6: Logout from registry
       - name: Logout
