@@ -1,5 +1,6 @@
 !.gitignore
 \.*/
+!.gitea/
 log/
 webesptool/data*
 webesptool/meshcore
