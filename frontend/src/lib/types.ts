@@ -520,6 +520,8 @@ export interface MeshtasticEventCallbacks {
   onModuleConfigPacket?: (config: any) => void;
   onChannelPacket?: (channel: any) => void;
   onUserPacket?: (user: any) => void;
+  onMessagePacket?: (data: any) => void;
+  onMeshPacket?: (data: any) => void;
   onError?: (error: Error) => void;
 }
 

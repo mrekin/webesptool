@@ -30,6 +30,14 @@
 	let isConnecting = $state(false);
 	let deviceInfo = $state<MeshtasticDeviceInfo | null>(null);
 
+	// Connection indicator state
+	let connectionColor = $derived(
+		isConnecting ? 'bg-yellow-500' :
+		isPortSelected && deviceInfo ? 'bg-green-500' :
+		'bg-red-500'
+	);
+	let isPulsing = $state(false);
+
 	// Operation state
 	let isSaving = $state(false);
 	let isLoading = $state(false);
@@ -94,9 +102,31 @@
 			},
 			onNodeStatsUpdate: (stats: MeshtasticNodeStats) => {
 				nodeStats = { ...stats };
+				triggerPulse();
 			},
 			onMetricsUpdate: (metrics: MeshtasticNodeMetrics) => {
 				deviceMetrics = { ...metrics };
+				triggerPulse();
+			},
+			onConfigPacket: (_config: any) => {
+				triggerPulse();
+			},
+			onModuleConfigPacket: (_config: any) => {
+				triggerPulse();
+			},
+			onChannelPacket: (_channel: any) => {
+				triggerPulse();
+			},
+			onUserPacket: (_user: any) => {
+				triggerPulse();
+			},
+			onMessagePacket: (_data: any) => {
+				console.log('[Meshtastic] onMessagePacket callback');
+				triggerPulse();
+			},
+			onMeshPacket: (_data: any) => {
+				console.log('[Meshtastic] onMeshPacket callback');
+				triggerPulse();
 			}
 		});
 	});
@@ -244,6 +274,21 @@
 		} finally {
 			isConnecting = false;
 		}
+	}
+
+	function triggerPulse() {
+		// Only show activity when device is connected
+		if (!isPortSelected || !deviceInfo) return;
+
+		// Don't restart if already pulsing
+		if (isPulsing) return;
+
+		isPulsing = true;
+
+		// Single blink: 1.0s animation
+		setTimeout(() => {
+			isPulsing = false;
+		}, 1050);
 	}
 
 	async function disconnectDevice() {
@@ -642,6 +687,16 @@
 	}
 </script>
 
+<style>
+	@keyframes blink {
+		0%, 100% { opacity: 0.5; }
+		50% { opacity: 1; }
+	}
+	.blink {
+		animation: blink 1.0s ease-in-out;
+	}
+</style>
+
 {#if isOpen}
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in"
@@ -699,8 +754,25 @@
 
 				{#if operationStatus && !operationError}
 					<div role="status" aria-live="polite" class="rounded-md bg-gray-700 p-3">
-						<div class="text-sm text-orange-200">{operationStatus}</div>
+						<div class="flex items-center justify-between">
+							<div class="text-sm text-orange-200">{operationStatus}</div>
+							<!-- Connection indicator -->
+							<div
+								class="h-3 w-3 rounded-full {connectionColor} {isPulsing ? 'blink' : ''}"
+								title="Connection status"
+							></div>
+						</div>
 					</div>
+				{:else}
+					<!-- Connection indicator - always visible when connecting or connected -->
+					{#if isPortSelected || isConnecting}
+						<div class="flex items-center justify-end py-2">
+							<div
+								class="h-3 w-3 rounded-full {connectionColor} {isPulsing ? 'blink' : ''}"
+								title="Connection status"
+							></div>
+						</div>
+					{/if}
 				{/if}
 
 				<!-- Two-column layout -->

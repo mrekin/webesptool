@@ -957,6 +957,12 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 		device.events.onChannelPacket.subscribe((channel: any) => {
 			eventCallbacks.onChannelPacket?.(channel);
 		});
+		device.events.onMessagePacket.subscribe((data: any) => {
+			eventCallbacks.onMessagePacket?.(data);
+		});
+		device.events.onMeshPacket.subscribe((data: any) => {
+			eventCallbacks.onMeshPacket?.(data);
+		});
 		device.events.onUserPacket.subscribe((packet: any) => {
 			// User packet for our own node (owner info)
 			if (packet.data && cachedMyNodeInfo && packet.from === cachedMyNodeInfo.myNodeNum) {
