@@ -93,11 +93,9 @@
 				deviceInfo = { ...info };
 			},
 			onNodeStatsUpdate: (stats: MeshtasticNodeStats) => {
-				// Create a new object to ensure Svelte 5 reactivity
 				nodeStats = { ...stats };
 			},
 			onMetricsUpdate: (metrics: MeshtasticNodeMetrics) => {
-				// Create a new object to ensure Svelte 5 reactivity
 				deviceMetrics = { ...metrics };
 			}
 		});
