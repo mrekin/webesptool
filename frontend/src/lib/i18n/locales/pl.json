@@ -346,7 +346,9 @@
     "save_config": "Zapisz konfigurację",
     "load_config": "Załaduj konfigurację",
     "save_button": "Pobierz konfigurację",
+    "save_button_tooltip": "Pobierz konfigurację z urządzenia do pliku",
     "load_button": "Prześlij konfigurację",
+    "load_button_tooltip": "Prześlij konfigurację z pliku na urządzenie",
     "reading_config": "Odczyt konfiguracji z urządzenia...",
     "reading_local_config": "Odczyt konfiguracji lokalnej...",
     "reading_module_config": "Odczyt konfiguracji modułów...",
@@ -384,7 +386,15 @@
     "config_ready": "Konfiguracja załadowana. Przeglądnij i wybierz sekcje do pobrania.",
     "preset_configs": "Konfiguracje wstępne",
     "preview": "Podgląd",
-    "download": "Pobierz"
+    "download": "Pobierz",
+    "dfu_button": "DFU",
+    "dfu_button_tooltip": "Włącz tryb DFU do flashowania firmware",
+    "dfu_confirm_title": "Tryb DFU",
+    "dfu_confirm_message": "Urządzenie uruchomi się ponownie i wejdzie w tryb DFU. Aby kontynuować normalną pracę, trzeba będzie ponownie się połączyć. Kontynuować?",
+    "dfu_entering": "Włączanie trybu DFU...",
+    "dfu_success": "Urządzenie weszło w tryb DFU i zostało odłączone",
+    "dfu_error": "Nie udało się wejść w tryb DFU: {error}",
+    "dfu_not_supported": "To urządzenie nie obsługuje trybu DFU"
   },
   "memorymap": {
     "layout": "Układ pamięci",

@@ -346,7 +346,9 @@
     "save_config": "Save Configuration",
     "load_config": "Load Configuration",
     "save_button": "Download Config",
+    "save_button_tooltip": "Download configuration from device to file",
     "load_button": "Upload Config",
+    "load_button_tooltip": "Upload configuration from file to device",
     "reading_config": "Reading configuration from device...",
     "reading_local_config": "Reading local configuration...",
     "reading_module_config": "Reading module configuration...",
@@ -384,7 +386,15 @@
     "config_ready": "Configuration loaded. Review and select sections to download.",
     "preset_configs": "Preset configs",
     "preview": "Preview",
-    "download": "Download"
+    "download": "Download",
+    "dfu_button": "DFU",
+    "dfu_button_tooltip": "Enter DFU mode for firmware flashing",
+    "dfu_confirm_title": "Enter DFU Mode",
+    "dfu_confirm_message": "The device will reboot and enter DFU mode. You'll need to reconnect to continue normal operation. Continue?",
+    "dfu_entering": "Entering DFU mode...",
+    "dfu_success": "Device entered DFU mode and disconnected",
+    "dfu_error": "Failed to enter DFU mode: {error}",
+    "dfu_not_supported": "DFU mode is not supported by this device"
   },
   "memorymap": {
     "layout": "Memory Layout",

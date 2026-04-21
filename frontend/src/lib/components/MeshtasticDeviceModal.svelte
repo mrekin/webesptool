@@ -20,47 +20,50 @@
 	import JsonPreviewModal from './JsonPreviewModal.svelte';
 
 	// Props
-	export let isOpen = false;
-	export let onClose = () => {};
+	let { isOpen = false, onClose = () => {} } = $props();
 
 	// Meshtastic manager
 	let meshtasticManager: ReturnType<typeof createMeshtasticManager> | null = null;
 
 	// Connection state
-	let isPortSelected = false;
-	let isConnecting = false;
-	let deviceInfo: MeshtasticDeviceInfo | null = null;
+	let isPortSelected = $state(false);
+	let isConnecting = $state(false);
+	let deviceInfo = $state<MeshtasticDeviceInfo | null>(null);
 
 	// Operation state
-	let isSaving = false;
-	let isLoading = false;
-	let operationStatus = '';
-	let operationError = '';
+	let isSaving = $state(false);
+	let isLoading = $state(false);
+	let operationStatus = $state('');
+	let operationError = $state('');
+
+	// DFU state
+	let isEnteringDfu = $state(false);
+	let showDfuConfirm = $state(false);
 
 	// File input reference
-	let fileInput: HTMLInputElement;
+	let fileInput = $state<HTMLInputElement | undefined>(undefined);
 
 	// UI state
-	let showInstructions = false;
-	let showPresetConfigs = false;
-	let showJsonPreviewModal = false;
+	let showInstructions = $state(false);
+	let showPresetConfigs = $state(false);
+	let showJsonPreviewModal = $state(false);
 
 	// Network metrics
-	let nodeStats: MeshtasticNodeStats = { totalNodes: 0, onlineNodes: 0 };
-	let deviceMetrics: MeshtasticNodeMetrics = {};
+	let nodeStats = $state<MeshtasticNodeStats>({ totalNodes: 0, onlineNodes: 0 });
+	let deviceMetrics = $state<MeshtasticNodeMetrics>({});
 
 	// Preset configs
-	let presetConfigs: string[] = [];
+	let presetConfigs = $state<string[]>([]);
 
 	// Config file and selection state
-	let parsedConfig: MeshtasticFullConfig | null = null;
-	let configFromDevice = false; // Track if config is from device (not from file)
-	let configSelection: MeshtasticConfigSelection = {
+	let parsedConfig = $state<MeshtasticFullConfig | null>(null);
+	let configFromDevice = $state(false); // Track if config is from device (not from file)
+	let configSelection = $state<MeshtasticConfigSelection>({
 		localConfig: { enabled: true, sections: [] },
 		moduleConfig: { enabled: true, sections: [] },
 		includeChannels: true,
 		includeOwner: true
-	};
+	});
 
 	onMount(() => {
 		meshtasticManager = createMeshtasticManager({
@@ -72,26 +75,36 @@
 		meshtasticManager.setEventCallbacks({
 			onDeviceStatus: (status: MeshtasticConnectionStatus) => {
 				if (status === 'disconnected') {
-					isPortSelected = false;
-					deviceInfo = null;
-					nodeStats = { totalNodes: 0, onlineNodes: 0 };
-					deviceMetrics = {};
+					if (isEnteringDfu) {
+						// Expected disconnection when entering DFU
+						operationStatus = $locales('meshtasticdevice.dfu_success');
+						isEnteringDfu = false;
+					} else {
+						// Normal disconnection
+						isPortSelected = false;
+						deviceInfo = null;
+						nodeStats = { totalNodes: 0, onlineNodes: 0 };
+						deviceMetrics = {};
+					}
 				}
 			},
 			onMyNodeInfo: (info: MeshtasticDeviceInfo) => {
-				deviceInfo = info;
+				// Create a new object to ensure Svelte 5 reactivity
+				deviceInfo = { ...info };
 			},
 			onNodeStatsUpdate: (stats: MeshtasticNodeStats) => {
-				nodeStats = stats;
+				// Create a new object to ensure Svelte 5 reactivity
+				nodeStats = { ...stats };
 			},
 			onMetricsUpdate: (metrics: MeshtasticNodeMetrics) => {
-				deviceMetrics = metrics;
+				// Create a new object to ensure Svelte 5 reactivity
+				deviceMetrics = { ...metrics };
 			}
 		});
 	});
 
 	// Disconnect flag to prevent race conditions
-	let isDisconnecting = false;
+	let isDisconnecting = $state(false);
 
 	onDestroy(async () => {
 		if (meshtasticManager && !isDisconnecting) {
@@ -101,11 +114,12 @@
 	});
 
 	// Auto-disconnect when modal closes
-	$: if (!isOpen && meshtasticManager && !isDisconnecting) {
-		isDisconnecting = true;
+	async function handleModalClose() {
+		if (!meshtasticManager || isDisconnecting) return;
 
+		isDisconnecting = true;
 		console.log('[Meshtastic] Modal closed, auto-disconnecting...');
-		disconnectDevice()
+		await disconnectDevice()
 			.catch((err) => {
 				// Ignore disconnect errors - they're expected
 				if (err?.message?.includes('device has been lost') || err?.name === 'NetworkError') {
@@ -118,6 +132,12 @@
 				isDisconnecting = false;
 			});
 	}
+
+	$effect(() => {
+		if (!isOpen && meshtasticManager && !isDisconnecting) {
+			handleModalClose();
+		}
+	});
 
 	// Load preset configs list
 	const presetConfigModules = import.meta.glob('/src/lib/config/meshtastic_configs/*.json');
@@ -197,9 +217,11 @@
 	}
 
 	// Load preset configs when modal opens
-	$: if (isOpen) {
-		loadPresetConfigs();
-	}
+	$effect(() => {
+		if (isOpen) {
+			loadPresetConfigs();
+		}
+	});
 
 	async function selectPort() {
 		isConnecting = true;
@@ -236,6 +258,26 @@
 			operationStatus = '';
 		} catch (error) {
 			operationError = $locales('meshtasticdevice.disconnect_error');
+		}
+	}
+
+	async function handleEnterDfuMode() {
+		if (!meshtasticManager || !isPortSelected) return;
+
+		showDfuConfirm = false;
+		isEnteringDfu = true;
+		operationStatus = $locales('meshtasticdevice.dfu_entering');
+		operationError = '';
+
+		try {
+			await meshtasticManager.enterDfuMode();
+			// Device will reboot and disconnect
+			// onDeviceStatus callback will handle the disconnection
+		} catch (error) {
+			operationError = $locales('meshtasticdevice.dfu_error', {
+				values: { error: error instanceof Error ? error.message : String(error) }
+			});
+			isEnteringDfu = false;
 		}
 	}
 
@@ -590,7 +632,7 @@
 {#if isOpen}
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in"
-		on:keydown={(e) => e.key === 'Escape' && !isSaving && !isLoading && handleClose()}
+		onkeydown={(e) => e.key === 'Escape' && !isSaving && !isLoading && handleClose()}
 		role="dialog"
 		aria-modal="true"
 		aria-labelledby="modal-title"
@@ -605,13 +647,13 @@
 					{$locales('meshtasticdevice.title')}
 				</h2>
 				<button
-					on:click={handleClose}
-					on:keydown={(e) => e.key === 'Escape' && handleClose()}
+					onclick={handleClose}
+					onkeydown={(e) => e.key === 'Escape' && handleClose()}
 					disabled={isSaving || isLoading}
 					class="text-gray-400 transition-colors hover:text-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
 					aria-label="Close modal"
 				>
-					✕
+					&#x2715;
 				</button>
 			</div>
 
@@ -620,14 +662,14 @@
 				<!-- Headers Row -->
 				<div class="mb-4 grid grid-cols-1 gap-6 md:grid-cols-2">
 					<div>
-						<label class="block text-sm font-medium text-orange-300">
+						<div class="block text-sm font-medium text-orange-300">
 							{$locales('meshtasticdevice.select_port')}
-						</label>
+						</div>
 					</div>
 					<div>
-						<label class="block text-sm font-medium text-orange-300">
+						<div class="block text-sm font-medium text-orange-300">
 							{$locales('meshtasticdevice.config_actions')}
-						</label>
+						</div>
 					</div>
 				</div>
 
@@ -655,20 +697,20 @@
 						<div class="h-[100px]">
 							{#if !isPortSelected}
 								<button
-									on:click={selectPort}
+									onclick={selectPort}
 									disabled={isConnecting || isSaving || isLoading}
 									class="h-full w-full rounded-lg border-2 border-dashed border-gray-600 p-4 text-center transition-colors hover:border-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
 								>
 									{#if isConnecting}
 										<div class="space-y-2">
-											<div class="animate-spin text-2xl">⏳</div>
+											<div class="animate-spin text-2xl">&#x23F3;</div>
 											<div class="text-sm text-orange-200">
 												{$locales('meshtasticdevice.connecting')}
 											</div>
 										</div>
 									{:else}
 										<div class="space-y-2">
-											<div class="text-2xl">🔌</div>
+											<div class="text-2xl">&#x1F50C;</div>
 											<div class="text-sm text-orange-200">
 												{$locales('meshtasticdevice.click_to_select_port')}
 											</div>
@@ -680,7 +722,7 @@
 								<div class="relative h-full rounded-lg border border-gray-600 bg-gray-800 p-4">
 									<div class="flex h-full flex-col justify-center">
 										<div class="mb-1 flex items-center space-x-2">
-											<div class="text-lg">✅</div>
+											<div class="text-lg">&#x2705;</div>
 											<div class="text-sm font-medium text-green-400">
 												{$locales('meshtasticdevice.port_connected')}
 											</div>
@@ -710,7 +752,7 @@
 										{/if}
 									</div>
 									<button
-										on:click={async () => await disconnectDevice()}
+										onclick={async () => await disconnectDevice()}
 										disabled={isSaving || isLoading}
 										class="absolute right-2 top-2 text-xs text-gray-400 transition-colors hover:text-red-400 disabled:cursor-not-allowed"
 									>
@@ -723,68 +765,80 @@
 
 					<!-- Right column: Config actions -->
 					<div class="space-y-3">
-						<button
-							on:click={saveConfiguration}
-							disabled={!isPortSelected || isSaving || isLoading}
-							class="flex w-full items-center justify-center space-x-2 rounded-md bg-orange-600 px-4 py-2 text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
-						>
-							<span>📥</span>
-							<span>{$locales('meshtasticdevice.save_button')}</span>
-							{#if isSaving}
-								<span class="animate-spin">⏳</span>
-							{/if}
-						</button>
+						<div class="flex space-x-2">
+							<button
+								onclick={saveConfiguration}
+								disabled={!isPortSelected || isSaving || isLoading}
+								class="flex w-14 items-center justify-center rounded-md bg-orange-600 py-2 text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+								title={$locales('meshtasticdevice.save_button_tooltip')}
+							>
+								<span>&#x1F4E5;</span>
+								{#if isSaving}
+									<span class="animate-spin">&#x23F3;</span>
+								{/if}
+							</button>
 
-						<div class="relative">
-							<!-- Preset configs dropdown -->
-							{#if showPresetConfigs && presetConfigs.length > 0}
-								<div class="absolute bottom-full right-0 mb-2 w-64 rounded-lg border border-orange-600 bg-gray-800 shadow-2xl z-10">
-									<div class="max-h-60 overflow-y-auto">
-										{#each presetConfigs as config}
-											<button
-												on:click={() => loadPresetConfig(config)}
-												disabled={isLoading}
-												class="w-full px-4 py-2 text-left text-sm text-gray-300 transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
-											>
-												{config.replace('.json', '')}
-											</button>
-										{/each}
+							<button
+								onclick={selectConfigFile}
+								disabled={isSaving || isLoading}
+								class="flex w-14 items-center justify-center rounded-md bg-blue-600 py-2 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+								title={$locales('meshtasticdevice.load_button_tooltip')}
+							>
+								<span>&#x1F4E4;</span>
+								{#if isLoading}
+									<span class="animate-spin">&#x23F3;</span>
+								{/if}
+							</button>
+
+							<div class="relative">
+								<!-- Preset configs dropdown -->
+								{#if showPresetConfigs && presetConfigs.length > 0}
+									<div class="absolute bottom-full right-0 mb-2 w-64 rounded-lg border border-orange-600 bg-gray-800 shadow-2xl z-10">
+										<div class="max-h-60 overflow-y-auto">
+											{#each presetConfigs as config (config)}
+												<button
+													onclick={() => loadPresetConfig(config)}
+													disabled={isLoading}
+													class="w-full px-4 py-2 text-left text-sm text-gray-300 transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+												>
+													{config.replace('.json', '')}
+												</button>
+											{/each}
+										</div>
 									</div>
-								</div>
-							{/if}
-
-							<div class="flex space-x-2">
-								<button
-									on:click={selectConfigFile}
-									disabled={isSaving || isLoading}
-									class="flex-1 flex items-center justify-center space-x-2 rounded-md bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-								>
-									<span>📤</span>
-									<span>{$locales('meshtasticdevice.load_button')}</span>
-									{#if isLoading}
-										<span class="animate-spin">⏳</span>
-									{/if}
-								</button>
+								{/if}
 
 								<button
-									on:click={() => showPresetConfigs = !showPresetConfigs}
+									onclick={() => showPresetConfigs = !showPresetConfigs}
 									disabled={isSaving || isLoading || presetConfigs.length === 0}
-									class="flex items-center justify-center rounded-md bg-gray-700 px-3 py-2 text-orange-300 transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+									class="flex w-14 items-center justify-center rounded-md bg-gray-700 py-2 text-orange-300 transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
 									title={$locales('meshtasticdevice.preset_configs')}
 								>
-									🗺️
+									&#x1F5FA;&#xFE0F;
 								</button>
 							</div>
 
-							<!-- Hidden file input -->
+							<button
+								onclick={() => showDfuConfirm = true}
+								disabled={!isPortSelected || isSaving || isLoading || isEnteringDfu}
+								class="flex w-14 items-center justify-center rounded-md bg-orange-600 py-2 text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+								title={$locales('meshtasticdevice.dfu_button_tooltip')}
+							>
+								<span>&#x1F5A5;</span>
+								{#if isEnteringDfu}
+									<span class="animate-spin">&#x23F3;</span>
+								{/if}
+							</button>
+						</div>
+
+						<!-- Hidden file input -->
 						<input
 							bind:this={fileInput}
 							type="file"
 							accept=".json,application/json"
-							on:change={handleFileSelect}
+							onchange={handleFileSelect}
 							class="hidden"
 						/>
-						</div>
 					</div>
 				</div>
 
@@ -798,7 +852,7 @@
 							<div class="flex items-center gap-2">
 								<!-- Preview icon -->
 								<button
-									on:click={() => showJsonPreviewModal = true}
+									onclick={() => showJsonPreviewModal = true}
 									class="text-gray-400 transition-colors hover:text-blue-400"
 									aria-label="Preview configuration as JSON"
 									title={$locales('meshtasticdevice.preview')}
@@ -810,7 +864,7 @@
 								</button>
 								<!-- Save icon - download config to file -->
 								<button
-									on:click={downloadDeviceConfig}
+									onclick={downloadDeviceConfig}
 									class="text-gray-400 transition-colors hover:text-green-400"
 									aria-label="Download configuration file"
 									title={$locales('meshtasticdevice.download')}
@@ -829,8 +883,8 @@
 								<input
 									type="checkbox"
 									bind:checked={configSelection.localConfig.enabled}
-									on:change={(e) => {
-										toggleAllLocalConfig(e.currentTarget.checked);
+									onchange={() => {
+										toggleAllLocalConfig(configSelection.localConfig.enabled);
 									}}
 									class="h-4 w-4 rounded border-gray-600 bg-gray-700 text-orange-600 focus:ring-orange-500"
 								/>
@@ -839,7 +893,7 @@
 								</span>
 							</label>
 							<div class="grid grid-cols-2 gap-2 pl-6 md:grid-cols-3">
-								{#each Object.keys(parsedConfig.localConfig) as section}
+								{#each Object.keys(parsedConfig.localConfig) as section (section)}
 									<label class="flex items-center space-x-2 text-xs text-gray-400">
 										<input
 											type="checkbox"
@@ -861,8 +915,8 @@
 								<input
 									type="checkbox"
 									bind:checked={configSelection.moduleConfig.enabled}
-									on:change={(e) => {
-										toggleAllModuleConfig(e.currentTarget.checked);
+									onchange={() => {
+										toggleAllModuleConfig(configSelection.moduleConfig.enabled);
 									}}
 									class="h-4 w-4 rounded border-gray-600 bg-gray-700 text-orange-600 focus:ring-orange-500"
 								/>
@@ -871,7 +925,7 @@
 								</span>
 							</label>
 							<div class="grid grid-cols-2 gap-2 pl-6 md:grid-cols-3">
-								{#each Object.keys(parsedConfig.moduleConfig) as section}
+								{#each Object.keys(parsedConfig.moduleConfig) as section (section)}
 									<label class="flex items-center space-x-2 text-xs text-gray-400">
 										<input
 											type="checkbox"
@@ -916,14 +970,14 @@
 
 						<!-- Upload button -->
 						<button
-							on:click={uploadSelectedConfig}
+							onclick={uploadSelectedConfig}
 							disabled={!isSelectionValid() || isLoading}
 							class="flex w-full items-center justify-center space-x-2 rounded-md bg-green-600 px-4 py-2 text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
 						>
-							<span>📤</span>
+							<span>&#x1F4E4;</span>
 							<span>{$locales('meshtasticdevice.upload_selected')}</span>
 							{#if isLoading}
-								<span class="animate-spin">⏳</span>
+								<span class="animate-spin">&#x23F3;</span>
 							{/if}
 						</button>
 					</div>
@@ -932,7 +986,7 @@
 				<!-- Instructions Spoiler -->
 				<div class="space-y-2">
 					<button
-						on:click={() => (showInstructions = !showInstructions)}
+						onclick={() => (showInstructions = !showInstructions)}
 						class="flex items-center space-x-2 text-sm font-medium text-orange-300 transition-colors hover:text-orange-200"
 					>
 						<span>{$locales('meshtasticdevice.instructions_title')}</span>
@@ -949,7 +1003,7 @@
 							<div
 								class="mt-2 rounded-md border border-yellow-700/50 bg-yellow-900/20 p-2 text-xs text-yellow-400"
 							>
-								⚠️ {$locales('meshtasticdevice.warning_config')}
+								&#x26A0;&#xFE0F; {$locales('meshtasticdevice.warning_config')}
 							</div>
 						</div>
 					{/if}
@@ -959,47 +1013,95 @@
 			<!-- Footer with metrics and close button -->
 			<div class="flex flex-col gap-4 border-t border-gray-700 p-6">
 				<!-- Metrics row -->
-				{#if isPortSelected}
-					<div class="grid grid-cols-4 gap-4 text-center">
-						<div class="space-y-1">
-							<div class="text-xs text-gray-400">Nodes</div>
-							<div class="text-sm font-medium text-orange-300">
-								{nodeStats.onlineNodes}/{nodeStats.totalNodes}
+					{#if isPortSelected}
+						<div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 text-center text-xs">
+							<div class="space-y-1">
+								<div class="text-gray-400">Nodes</div>
+								<div class="font-medium text-orange-300">
+									{nodeStats.onlineNodes}/{nodeStats.totalNodes}
+								</div>
+							</div>
+							<div class="space-y-1">
+								<div class="text-gray-400">Battery</div>
+								<div class="font-medium text-orange-300">
+									{deviceMetrics.batteryLevel !== undefined
+										? `${deviceMetrics.batteryLevel}%`
+										: deviceMetrics.voltage !== undefined
+										? `${deviceMetrics.voltage.toFixed(2)}V`
+										: 'N/A'}
+								</div>
+							</div>
+							<div class="space-y-1">
+								<div class="text-gray-400">ChUtil</div>
+								<div class="font-medium text-orange-300">
+									{deviceMetrics.chUtil !== undefined
+										? `${deviceMetrics.chUtil.toFixed(2)}%`
+										: 'N/A'}
+								</div>
+							</div>
+							<div class="space-y-1">
+								<div class="text-gray-400">AirUtil</div>
+								<div class="font-medium text-orange-300">
+									{deviceMetrics.airUtil !== undefined
+										? `${deviceMetrics.airUtil.toFixed(2)}%`
+										: 'N/A'}
+								</div>
+							</div>
+							<div class="space-y-1">
+								<div class="text-gray-400">Uptime</div>
+								<div class="font-medium text-orange-300">
+									{deviceMetrics.uptimeSeconds !== undefined
+										? `${Math.floor(deviceMetrics.uptimeSeconds / 60)}m`
+										: 'N/A'}
+								</div>
+							</div>
+							<div class="space-y-1">
+								<div class="text-gray-400">TX/RX</div>
+								<div class="font-medium text-orange-300">
+									{deviceMetrics.numPacketsTx !== undefined && deviceMetrics.numPacketsRx !== undefined
+										? `${deviceMetrics.numPacketsTx}/${deviceMetrics.numPacketsRx}`
+										: 'N/A'}
+								</div>
+							</div>
+							<div class="space-y-1">
+								<div class="text-gray-400">Bad/Dupe</div>
+								<div class="font-medium text-orange-300">
+									{deviceMetrics.numPacketsRxBad !== undefined && deviceMetrics.numRxDupe !== undefined
+										? `${deviceMetrics.numPacketsRxBad}/${deviceMetrics.numRxDupe}`
+										: 'N/A'}
+								</div>
+							</div>
+							<div class="space-y-1">
+								<div class="text-gray-400">Relay</div>
+								<div class="font-medium text-orange-300">
+									{deviceMetrics.numTxRelay !== undefined
+										? deviceMetrics.numTxRelay
+										: 'N/A'}
+								</div>
+							</div>
+							<div class="space-y-1">
+								<div class="text-gray-400">Dropped</div>
+								<div class="font-medium text-orange-300">
+									{deviceMetrics.numTxDropped !== undefined
+										? deviceMetrics.numTxDropped
+										: 'N/A'}
+								</div>
+							</div>
+							<div class="space-y-1">
+								<div class="text-gray-400">Heap</div>
+								<div class="font-medium text-orange-300">
+									{deviceMetrics.heapFreeBytes !== undefined && deviceMetrics.heapTotalBytes !== undefined
+										? `${(deviceMetrics.heapFreeBytes / 1024).toFixed(0)}/${(deviceMetrics.heapTotalBytes / 1024).toFixed(0)}KB`
+										: 'N/A'}
+								</div>
 							</div>
 						</div>
-						<div class="space-y-1">
-							<div class="text-xs text-gray-400">Battery</div>
-							<div class="text-sm font-medium text-orange-300">
-								{deviceMetrics.batteryLevel !== undefined
-									? `${deviceMetrics.batteryLevel}%`
-									: deviceMetrics.voltage !== undefined
-									? `${deviceMetrics.voltage.toFixed(2)}V`
-									: 'N/A'}
-							</div>
-						</div>
-						<div class="space-y-1">
-							<div class="text-xs text-gray-400">ChUtil</div>
-							<div class="text-sm font-medium text-orange-300">
-								{deviceMetrics.chUtil !== undefined
-									? `${deviceMetrics.chUtil.toFixed(1)}%`
-									: 'N/A'}
-							</div>
-						</div>
-						<div class="space-y-1">
-							<div class="text-xs text-gray-400">AirUtil</div>
-							<div class="text-sm font-medium text-orange-300">
-								{deviceMetrics.airUtil !== undefined
-									? `${deviceMetrics.airUtil.toFixed(1)}%`
-									: 'N/A'}
-							</div>
-						</div>
-					</div>
-				{/if}
+					{/if}
 
 				<!-- Close button -->
 				<div class="flex justify-end">
 					<button
-						on:click={handleClose}
+						onclick={handleClose}
 						disabled={isSaving || isLoading}
 						class="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
 					>
@@ -1017,4 +1119,32 @@
 		config={parsedConfig}
 		onSave={handleJsonPreviewSave}
 	/>
+
+	<!-- DFU Confirmation Dialog -->
+	{#if showDfuConfirm}
+		<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+			<div class="max-w-md rounded-lg border border-orange-600 bg-gray-800 p-6 shadow-2xl">
+				<h3 class="mb-4 text-lg font-semibold text-orange-200">
+					{$locales('meshtasticdevice.dfu_confirm_title')}
+				</h3>
+				<p class="mb-6 text-sm text-gray-300">
+					{$locales('meshtasticdevice.dfu_confirm_message')}
+				</p>
+				<div class="flex space-x-3">
+					<button
+						onclick={() => showDfuConfirm = false}
+						class="flex-1 rounded-md bg-gray-700 px-4 py-2 text-white transition-colors hover:bg-gray-600"
+					>
+						{$locales('common.cancel')}
+					</button>
+					<button
+						onclick={handleEnterDfuMode}
+						class="flex-1 rounded-md bg-orange-600 px-4 py-2 text-white transition-colors hover:bg-orange-700"
+					>
+						{$locales('meshtasticdevice.dfu_button')}
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 {/if}

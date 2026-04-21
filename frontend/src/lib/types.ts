@@ -453,6 +453,18 @@ export interface MeshtasticNodeMetrics {
   chUtil?: number;        // Channel utilization (0-100)
   airUtil?: number;       // Air utilization (0-100)
   time?: number;          // Timestamp
+
+		// LocalStats fields
+		uptimeSeconds?: number;
+		numPacketsTx?: number;
+		numPacketsRx?: number;
+		numPacketsRxBad?: number;
+		numRxDupe?: number;
+		numTxRelay?: number;
+		numTxRelayCanceled?: number;
+		numTxDropped?: number;
+		heapFreeBytes?: number;
+		heapTotalBytes?: number;
 }
 
 export interface MeshtasticNodeStats {

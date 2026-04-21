@@ -497,6 +497,7 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 	let cachedOwner: any = null;
 	let cachedMetrics: MeshtasticNodeMetrics = {};
 	let networkNodes: Map<number, any> = new Map();  // All nodes in network
+	let receivedNodeInfoWithMetrics = false;  // Track if we received NodeInfo with deviceMetrics
 
 	const baudRate = options?.baudRate ?? DEFAULT_BAUDRATE;
 	const heartbeatInterval = options?.heartbeatInterval ?? DEFAULT_HEARTBEAT_INTERVAL;
@@ -508,6 +509,7 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 	 */
 	async function connect(): Promise<MeshtasticDeviceInfo> {
 		try {
+			receivedNodeInfoWithMetrics = false;  // Reset flag for new connection
 			updateConnectionStatus('connecting');
 
 			// Ensure cleanup from any previous connection
@@ -597,6 +599,7 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 			device.getOwner().catch((err: Error) => {
 				console.error('[Meshtastic] GetOwner error:', err);
 			});
+
 
 			return extractDeviceInfo();
 		} catch (error) {
@@ -739,6 +742,16 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 	}
 
 	/**
+	 * Enter DFU (Device Firmware Update) mode
+	 * Device will reboot and disconnect
+	 */
+	async function enterDfuMode(): Promise<number> {
+		ensureConfigured();
+		console.log('[Meshtastic] Entering DFU mode...');
+		return await device.enterDfuMode();
+	}
+
+	/**
 	 * Read single channel from device
 	 */
 	async function readChannel(index: number, timeoutMs: number = 2000): Promise<MeshtasticChannelInfo> {
@@ -848,9 +861,6 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 					cachedNodeInfo = packet.data;
 					console.log('[Meshtastic] Cached own NodeInfo:', cachedNodeInfo);
 					// Extract metrics from deviceMetrics
-					if (packet.data.deviceMetrics) {
-						extractMetrics(packet.data.deviceMetrics);
-					}
 					// Notify with updated device info
 					const deviceInfo = extractDeviceInfo();
 					eventCallbacks.onMyNodeInfo?.(deviceInfo);
@@ -898,27 +908,45 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 			console.log('[Meshtastic] Telemetry packet received:', packet);
 			console.log('[Meshtastic] Telemetry data keys:', packet.data ? Object.keys(packet.data) : 'no data');
 			console.log('[Meshtastic] Telemetry data:', JSON.stringify(packet.data, null, 2));
+			console.log('[Meshtastic] Telemetry from:', packet.from, 'cachedMyNodeInfo:', cachedMyNodeInfo?.myNodeNum);
 
 			// Telemetry for our own node
 			if (packet.data && cachedMyNodeInfo && packet.from === cachedMyNodeInfo.myNodeNum) {
+				console.log('[Meshtastic] Processing telemetry from our own node');
 				// Telemetry can have different variants: deviceMetrics, environmentMetrics, etc.
 				const telemetry = packet.data;
 
-				// Device metrics contain battery, chutil, airutil
-				if (telemetry.deviceMetrics) {
-					console.log('[Meshtastic] Device metrics telemetry:', telemetry.deviceMetrics);
-					extractMetrics(telemetry.deviceMetrics);
-				}
+				// Check for variant structure (newer protocol)
+				if (telemetry.variant && telemetry.variant.value) {
+					const variantType = telemetry.variant.case;
+					const variantData = telemetry.variant.value;
+					console.log('[Meshtastic] Telemetry variant:', variantType, 'data:', variantData);
 
-				// Environment metrics (temperature, humidity, etc.)
-				if (telemetry.environmentMetrics) {
-					console.log('[Meshtastic] Environment metrics:', telemetry.environmentMetrics);
-				}
+					// Process different variant types
+					if (variantType === 'localStats') {
+						console.log('[Meshtastic] Local stats via variant:', variantData);
+						// localStats has channelUtilization and airUtilTx
+						extractMetrics(variantData);
+						receivedNodeInfoWithMetrics = true;
+					} else if (variantType === 'powerMetrics') {
+						console.log('[Meshtastic] Power metrics via variant:', variantData);
+						extractMetrics(variantData);
+						receivedNodeInfoWithMetrics = true;
+					}
+				} else {
+					// Legacy structure - direct properties
+					// Device metrics contain battery, chutil, airutil
 
-				// Power metrics (voltage, current)
-				if (telemetry.powerMetrics) {
-					console.log('[Meshtastic] Power metrics:', telemetry.powerMetrics);
-					extractMetrics(telemetry.powerMetrics);
+					// Environment metrics (temperature, humidity, etc.)
+					if (telemetry.environmentMetrics) {
+						console.log('[Meshtastic] Environment metrics:', telemetry.environmentMetrics);
+					}
+
+					// Power metrics (voltage, current)
+					if (telemetry.powerMetrics) {
+						console.log('[Meshtastic] Power metrics:', telemetry.powerMetrics);
+						extractMetrics(telemetry.powerMetrics);
+					}
 				}
 			}
 		});
@@ -1034,7 +1062,7 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 			onlineNodes
 		};
 
-		console.log('[Meshtastic] Node stats update:', stats);
+		console.log('[Meshtastic] Node stats update:', stats, 'networkNodes.size:', networkNodes.size);
 		eventCallbacks.onNodeStatsUpdate?.(stats);
 	}
 
@@ -1066,11 +1094,38 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 			newMetrics.time = metrics.time;
 		}
 
+		// Extract node stats from localStats (more accurate than networkNodes)
+		if (metrics.numOnlineNodes !== undefined || metrics.numTotalNodes !== undefined) {
+			const nodeStats = {
+				onlineNodes: metrics.numOnlineNodes ?? 0,
+				totalNodes: metrics.numTotalNodes ?? 0
+			};
+			console.log("[Meshtastic] Node stats from localStats:", nodeStats);
+			eventCallbacks.onNodeStatsUpdate?.(nodeStats);
+		}
+
+		// Extract other LocalStats fields
+		if (metrics.uptimeSeconds !== undefined) newMetrics.uptimeSeconds = metrics.uptimeSeconds;
+		if (metrics.numPacketsTx !== undefined) newMetrics.numPacketsTx = metrics.numPacketsTx;
+		if (metrics.numPacketsRx !== undefined) newMetrics.numPacketsRx = metrics.numPacketsRx;
+		if (metrics.numPacketsRxBad !== undefined) newMetrics.numPacketsRxBad = metrics.numPacketsRxBad;
+		if (metrics.numRxDupe !== undefined) newMetrics.numRxDupe = metrics.numRxDupe;
+		if (metrics.numTxRelay !== undefined) newMetrics.numTxRelay = metrics.numTxRelay;
+		if (metrics.numTxRelayCanceled !== undefined) newMetrics.numTxRelayCanceled = metrics.numTxRelayCanceled;
+		if (metrics.numTxDropped !== undefined) newMetrics.numTxDropped = metrics.numTxDropped;
+		if (metrics.heapFreeBytes !== undefined) newMetrics.heapFreeBytes = metrics.heapFreeBytes;
+		if (metrics.heapTotalBytes !== undefined) newMetrics.heapTotalBytes = metrics.heapTotalBytes;
+
+
+
 		// Log what we found
 		if (Object.keys(newMetrics).length > 0) {
 			console.log('[Meshtastic] Metrics extracted:', newMetrics);
 			cachedMetrics = { ...cachedMetrics, ...newMetrics };
+			console.log('[Meshtastic] Calling onMetricsUpdate callback with:', cachedMetrics);
+			console.log('[Meshtastic] Callback exists:', !!eventCallbacks.onMetricsUpdate);
 			eventCallbacks.onMetricsUpdate?.(cachedMetrics);
+			console.log('[Meshtastic] onMetricsUpdate callback called');
 		} else {
 			console.log('[Meshtastic] No metrics found in data. Available keys:', Object.keys(data || {}));
 		}
@@ -1231,6 +1286,7 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 		writeChannel,
 		writeOwner,
 		commitSettings,
+		enterDfuMode,
 		readAllLocalConfig,
 		readAllModuleConfig,
 		readAllChannels,
