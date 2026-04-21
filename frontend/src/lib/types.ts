@@ -454,17 +454,25 @@ export interface MeshtasticNodeMetrics {
   airUtil?: number;       // Air utilization (0-100)
   time?: number;          // Timestamp
 
-		// LocalStats fields
-		uptimeSeconds?: number;
-		numPacketsTx?: number;
-		numPacketsRx?: number;
-		numPacketsRxBad?: number;
-		numRxDupe?: number;
-		numTxRelay?: number;
-		numTxRelayCanceled?: number;
-		numTxDropped?: number;
-		heapFreeBytes?: number;
-		heapTotalBytes?: number;
+	// LocalStats fields
+	uptimeSeconds?: number;
+	numPacketsTx?: number;
+	numPacketsRx?: number;
+	numPacketsRxBad?: number;
+	numRxDupe?: number;
+	numTxRelay?: number;
+	numTxRelayCanceled?: number;
+	numTxDropped?: number;
+	heapFreeBytes?: number;
+	heapTotalBytes?: number;
+
+	// EnvironmentMetrics fields
+	temperature?: number;
+	relativeHumidity?: number;
+	barometricPressure?: number;
+	gasResistance?: number;
+	current?: number;
+	iaq?: number;
 }
 
 export interface MeshtasticNodeStats {

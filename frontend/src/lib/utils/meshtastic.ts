@@ -99,46 +99,116 @@ export function base64ToUint8Array(base64Str: string): Uint8Array {
 }
 
 /**
- * Recursively convert base64 strings back to Uint8Array in config object
+ * Recursively convert base64/hex strings back to Uint8Array in config object
  * Restores security keys when loading config from file
+ * Handles all fields that should be Uint8Array for protobuf encoding
+ *
+ * Conversion rules (in order):
+ * 1. Strings starting with "base64:" -> Uint8Array
+ * 2. Fields named like "privateKey", "publicKey", etc. (even without base64: prefix)
+ * 3. MAC addresses in hex format "AA:BB:CC:..." -> Uint8Array
  */
 export function restoreUint8Arrays(obj: any, key: string = ''): any {
-	// Check if this looks like a base64-encoded security key
-	// Keys like privateKey, publicKey, adminKey, psk are stored as "base64:..."
-	if (typeof obj === 'string' && obj.startsWith('base64:')) {
-		try {
-			return base64ToUint8Array(obj);
-		} catch {
-			// If decoding fails, return original string
-			return obj;
-		}
-	}
-
-	// Convert hex MAC address back to Uint8Array
-	if (key === 'macaddr' && typeof obj === 'string' && obj.includes(':')) {
-		const hexStr = obj.replace(/:/g, '');
-		const bytes = new Uint8Array(hexStr.length / 2);
-		for (let i = 0; i < hexStr.length; i += 2) {
-			bytes[i / 2] = parseInt(hexStr.substring(i, i + 2), 16);
-		}
-		return bytes;
-	}
-
-	// Handle non-object types (numbers, booleans, already converted arrays)
-	if (typeof obj !== 'object' || obj === null) {
+	// Keep Uint8Array as is
+	if (obj instanceof Uint8Array) {
 		return obj;
 	}
 
-	// Recursively process object properties or array elements
+	// Handle non-object types (numbers, booleans, strings that don't need conversion)
+	if (typeof obj !== 'object' || obj === null) {
+		// Check if this looks like a base64-encoded security key
+		// Keys like privateKey, publicKey, adminKey, psk are stored as "base64:..."
+		if (typeof obj === 'string' && obj.startsWith('base64:')) {
+			try {
+				const converted = base64ToUint8Array(obj);
+				console.log(`[Meshtastic] Converted base64 string to Uint8Array (${converted.length} bytes) for field: ${key}`);
+				return converted;
+			} catch (e) {
+				console.error(`[Meshtastic] Failed to convert ${key} from base64:`, e);
+				return obj;
+			}
+		}
+		return obj;
+	}
+
+	// Handle arrays
 	if (Array.isArray(obj)) {
 		return obj.map((item) => restoreUint8Arrays(item, key));
 	}
 
+	// Handle objects - recursively process properties
 	const result: any = {};
 	for (const [k, value] of Object.entries(obj)) {
-		result[k] = restoreUint8Arrays(value, k);
+		// Check if this field should be a byte array based on its name
+		const shouldByteArray = isByteArrayField(k);
+
+		if (shouldByteArray) {
+			console.log(`[Meshtastic] Processing byte array field: ${k}, type: ${typeof value}, value:`, value);
+
+			if (typeof value === 'string') {
+				// Try to convert base64 string to Uint8Array
+				if (value.startsWith('base64:')) {
+					try {
+						result[k] = base64ToUint8Array(value);
+						console.log(`[Meshtastic] ✓ Converted ${k} from base64 to Uint8Array(${result[k].length} bytes)`);
+						continue;
+					} catch (e) {
+						console.error(`[Meshtastic] Failed to convert ${k} from base64:`, e);
+					}
+				}
+
+				// Try to convert hex string to Uint8Array (for MAC addresses, etc)
+				if (value.includes(':')) {
+					try {
+						const hexStr = value.replace(/:/g, '');
+						const bytes = new Uint8Array(hexStr.length / 2);
+						for (let i = 0; i < hexStr.length; i += 2) {
+							bytes[i / 2] = parseInt(hexStr.substring(i, i + 2), 16);
+						}
+						result[k] = bytes;
+						console.log(`[Meshtastic] ✓ Converted ${k} from hex to Uint8Array(${bytes.length} bytes)`);
+						continue;
+					} catch (e) {
+						console.error(`[Meshtastic] Failed to convert ${k} from hex:`, e);
+					}
+				}
+
+				// If conversion failed but field should be Uint8Array, warn and keep as string
+				console.error(`[Meshtastic] ✗ Field ${k} should be Uint8Array but is string:`, value);
+				result[k] = value;
+			} else if (value instanceof Uint8Array) {
+				console.log(`[Meshtastic] ✓ Field ${k} is already Uint8Array(${value.length} bytes)`);
+				result[k] = value;
+			} else {
+				console.error(`[Meshtastic] ✗ Field ${k} should be Uint8Array but is ${typeof value}:`, value);
+				result[k] = value;
+			}
+		} else {
+			// Recursively process nested objects
+			result[k] = restoreUint8Arrays(value, k);
+		}
 	}
 	return result;
+}
+
+/**
+ * Check if a field should be a byte array based on its name
+ * These fields contain binary data and must be Uint8Array for protobuf encoding
+ */
+function isByteArrayField(fieldName: string): boolean {
+	const byteArrayFields = [
+		'privateKey',
+		'publicKey',
+		'adminKey',
+		'psk',
+		'macaddr',
+		'preset',
+		'localSk',
+		'ownerKey'
+	];
+
+	const lowerFieldName = fieldName.toLowerCase();
+	return byteArrayFields.some((field) => lowerFieldName.includes(field.toLowerCase()));
 }
 
 /**
@@ -213,9 +283,9 @@ export function cleanProtobufFields(obj: any): any {
 		return obj;
 	}
 
-	// Keep Uint8Array as is
+	// Convert Uint8Array to base64 string immediately
 	if (obj instanceof Uint8Array) {
-		return obj;
+		return uint8ArrayToBase64(obj);
 	}
 
 	if (Array.isArray(obj)) {
@@ -228,9 +298,9 @@ export function cleanProtobufFields(obj: any): any {
 		if (key.startsWith('$') || key === 'payloadVariant') {
 			continue;
 		}
-		// Recursively clean nested objects, but keep Uint8Array
+		// Recursively clean nested objects, convert Uint8Array to base64
 		if (value instanceof Uint8Array) {
-			result[key] = value;
+			result[key] = uint8ArrayToBase64(value);
 		} else if (typeof value === 'object' && value !== null) {
 			result[key] = cleanProtobufFields(value);
 		} else {
@@ -668,9 +738,24 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 		// Extract the actual config data (without the section name wrapper)
 		const configData = config[sectionName];
 
+		console.log(`[Meshtastic] writeLocalConfig: sectionName=${sectionName}`);
+		console.log('[Meshtastic] configData before resolveEnumValues:', JSON.stringify(configData, (key, value) => {
+			if (value instanceof Uint8Array) {
+				return `Uint8Array(${value.length} bytes)`;
+			}
+			return value;
+		}, 2));
+
 		// Resolve enum values (e.g., "RU" -> 9, "LONG_FAST" -> 0)
 		// Use path with section name for enum resolution
 		const resolvedConfig = resolveEnumValues(configData, `localConfig.${sectionName}`);
+
+		console.log('[Meshtastic] resolvedConfig after resolveEnumValues:', JSON.stringify(resolvedConfig, (key, value) => {
+			if (value instanceof Uint8Array) {
+				return `Uint8Array(${value.length} bytes)`;
+			}
+			return value;
+		}, 2));
 
 		// Wrap in Config object with payloadVariant
 		// The library expects Config.Config which has a payloadVariant field
@@ -678,7 +763,13 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 			payloadVariant: { case: sectionName, value: resolvedConfig }
 		};
 
-		console.log(`[Meshtastic] Writing LocalConfig section: ${sectionName}`, configWithVariant);
+		console.log(`[Meshtastic] Final configWithVariant for ${sectionName}:`, JSON.stringify(configWithVariant, (key, value) => {
+			if (value instanceof Uint8Array) {
+				return `Uint8Array(${value.length} bytes)`;
+			}
+			return value;
+		}, 2));
+
 		await device.setConfig(configWithVariant);
 	}
 
@@ -905,48 +996,78 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 		});
 
 		device.events.onTelemetryPacket.subscribe((packet: any) => {
-			console.log('[Meshtastic] Telemetry packet received:', packet);
+			console.log('[Meshtastic] Telemetry packet received');
+			console.log('[Meshtastic] Telemetry from:', packet.from, 'cachedMyNodeInfo:', cachedMyNodeInfo?.myNodeNum);
 			console.log('[Meshtastic] Telemetry data keys:', packet.data ? Object.keys(packet.data) : 'no data');
 			console.log('[Meshtastic] Telemetry data:', JSON.stringify(packet.data, null, 2));
-			console.log('[Meshtastic] Telemetry from:', packet.from, 'cachedMyNodeInfo:', cachedMyNodeInfo?.myNodeNum);
 
-			// Telemetry for our own node
-			if (packet.data && cachedMyNodeInfo && packet.from === cachedMyNodeInfo.myNodeNum) {
-				console.log('[Meshtastic] Processing telemetry from our own node');
-				// Telemetry can have different variants: deviceMetrics, environmentMetrics, etc.
-				const telemetry = packet.data;
+			// Only process telemetry from our own node
+			if (!packet.data) {
+				console.log('[Meshtastic] Ignoring telemetry: no data');
+				return;
+			}
 
-				// Check for variant structure (newer protocol)
-				if (telemetry.variant && telemetry.variant.value) {
-					const variantType = telemetry.variant.case;
-					const variantData = telemetry.variant.value;
-					console.log('[Meshtastic] Telemetry variant:', variantType, 'data:', variantData);
+			if (!cachedMyNodeInfo) {
+				console.log('[Meshtastic] Ignoring telemetry: no cachedMyNodeInfo');
+				return;
+			}
 
-					// Process different variant types
-					if (variantType === 'localStats') {
-						console.log('[Meshtastic] Local stats via variant:', variantData);
-						// localStats has channelUtilization and airUtilTx
-						extractMetrics(variantData);
-						receivedNodeInfoWithMetrics = true;
-					} else if (variantType === 'powerMetrics') {
-						console.log('[Meshtastic] Power metrics via variant:', variantData);
-						extractMetrics(variantData);
-						receivedNodeInfoWithMetrics = true;
-					}
+			if (packet.from !== cachedMyNodeInfo.myNodeNum) {
+				console.log('[Meshtastic] Ignoring telemetry: from different node', packet.from, '!=', cachedMyNodeInfo.myNodeNum);
+				return;
+			}
+
+			console.log('[Meshtastic] Processing telemetry from our own node');
+			const telemetry = packet.data;
+
+			// Check for variant structure (newer protocol)
+			if (telemetry.variant && telemetry.variant.value) {
+				const variantType = telemetry.variant.case;
+				const variantData = telemetry.variant.value;
+				console.log('[Meshtastic] Telemetry variant:', variantType);
+				console.log('[Meshtastic] Variant data:', JSON.stringify(variantData, null, 2));
+
+				// Process different variant types
+				if (variantType === 'deviceMetrics') {
+					console.log('[Meshtastic] Device metrics via variant:', variantData);
+					extractMetrics(variantData);
+					receivedNodeInfoWithMetrics = true;
+				} else if (variantType === 'localStats') {
+					console.log('[Meshtastic] Local stats via variant:', variantData);
+					extractMetrics(variantData);
+					receivedNodeInfoWithMetrics = true;
+				} else if (variantType === 'powerMetrics') {
+					console.log('[Meshtastic] Power metrics via variant:', variantData);
+					extractMetrics(variantData);
+					receivedNodeInfoWithMetrics = true;
+				} else if (variantType === 'environmentMetrics') {
+					console.log('[Meshtastic] Environment metrics via variant:', variantData);
+					extractMetrics(variantData);
 				} else {
-					// Legacy structure - direct properties
-					// Device metrics contain battery, chutil, airutil
+					console.log('[Meshtastic] Unknown variant type:', variantType);
+				}
+			} else {
+				// Legacy structure - direct properties
+				console.log('[Meshtastic] Legacy telemetry structure');
 
-					// Environment metrics (temperature, humidity, etc.)
-					if (telemetry.environmentMetrics) {
-						console.log('[Meshtastic] Environment metrics:', telemetry.environmentMetrics);
-					}
+				// Device metrics (battery, voltage, channel utilization, air util)
+				if (telemetry.deviceMetrics) {
+					console.log('[Meshtastic] Device metrics (legacy):', telemetry.deviceMetrics);
+					extractMetrics(telemetry.deviceMetrics);
+					receivedNodeInfoWithMetrics = true;
+				}
 
-					// Power metrics (voltage, current)
-					if (telemetry.powerMetrics) {
-						console.log('[Meshtastic] Power metrics:', telemetry.powerMetrics);
-						extractMetrics(telemetry.powerMetrics);
-					}
+				// Environment metrics (temperature, humidity, etc.)
+				if (telemetry.environmentMetrics) {
+					console.log('[Meshtastic] Environment metrics (legacy):', telemetry.environmentMetrics);
+					extractMetrics(telemetry.environmentMetrics);
+				}
+
+				// Power metrics (voltage, current)
+				if (telemetry.powerMetrics) {
+					console.log('[Meshtastic] Power metrics (legacy):', telemetry.powerMetrics);
+					extractMetrics(telemetry.powerMetrics);
+					receivedNodeInfoWithMetrics = true;
 				}
 			}
 		});
@@ -1068,64 +1189,61 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 
 	/**
 	 * Extract metrics from device metrics data
-	 * Handles both deviceMetrics from NodeInfo and telemetry packets
+	 * Handles DeviceMetrics, LocalStats, PowerMetrics, and EnvironmentMetrics
 	 */
 	function extractMetrics(data: any): void {
-		console.log('[Meshtastic] Extracting metrics from:', data);
+		console.log('[Meshtastic] Extracting metrics from:', JSON.stringify(data, null, 2));
 
 		const newMetrics: MeshtasticNodeMetrics = {};
 
-		// Try different possible structures
-		const metrics = data.deviceMetrics || data;
+		// DeviceMetrics fields
+		if (data.batteryLevel !== undefined) newMetrics.batteryLevel = data.batteryLevel;
+		if (data.voltage !== undefined) newMetrics.voltage = data.voltage;
+		if (data.channelUtilization !== undefined) newMetrics.chUtil = data.channelUtilization;
+		if (data.airUtilTx !== undefined) newMetrics.airUtil = data.airUtilTx;
 
-		if (metrics.batteryLevel !== undefined) {
-			newMetrics.batteryLevel = metrics.batteryLevel;
-		}
-		if (metrics.voltage !== undefined) {
-			newMetrics.voltage = metrics.voltage;
-		}
-		if (metrics.channelUtilization !== undefined) {
-			newMetrics.chUtil = metrics.channelUtilization;
-		}
-		if (metrics.airUtilTx !== undefined) {
-			newMetrics.airUtil = metrics.airUtilTx;
-		}
-		if (metrics.time !== undefined) {
-			newMetrics.time = metrics.time;
-		}
+		// LocalStats fields (includes deviceMetrics + more)
+		if (data.time !== undefined) newMetrics.time = data.time;
+		if (data.uptimeSeconds !== undefined) newMetrics.uptimeSeconds = data.uptimeSeconds;
+		if (data.numPacketsTx !== undefined) newMetrics.numPacketsTx = data.numPacketsTx;
+		if (data.numPacketsRx !== undefined) newMetrics.numPacketsRx = data.numPacketsRx;
+		if (data.numPacketsRxBad !== undefined) newMetrics.numPacketsRxBad = data.numPacketsRxBad;
+		if (data.numRxDupe !== undefined) newMetrics.numRxDupe = data.numRxDupe;
+		if (data.numTxRelay !== undefined) newMetrics.numTxRelay = data.numTxRelay;
+		if (data.numTxRelayCanceled !== undefined) newMetrics.numTxRelayCanceled = data.numTxRelayCanceled;
+		if (data.numTxDropped !== undefined) newMetrics.numTxDropped = data.numTxDropped;
+		if (data.heapFreeBytes !== undefined) newMetrics.heapFreeBytes = data.heapFreeBytes;
+		if (data.heapTotalBytes !== undefined) newMetrics.heapTotalBytes = data.heapTotalBytes;
 
-		// Extract node stats from localStats (more accurate than networkNodes)
-		if (metrics.numOnlineNodes !== undefined || metrics.numTotalNodes !== undefined) {
+		// Node stats from LocalStats
+		if (data.numOnlineNodes !== undefined || data.numTotalNodes !== undefined) {
 			const nodeStats = {
-				onlineNodes: metrics.numOnlineNodes ?? 0,
-				totalNodes: metrics.numTotalNodes ?? 0
+				onlineNodes: data.numOnlineNodes ?? 0,
+				totalNodes: data.numTotalNodes ?? 0
 			};
-			console.log("[Meshtastic] Node stats from localStats:", nodeStats);
+			console.log('[Meshtastic] Node stats from localStats:', nodeStats);
 			eventCallbacks.onNodeStatsUpdate?.(nodeStats);
 		}
 
-		// Extract other LocalStats fields
-		if (metrics.uptimeSeconds !== undefined) newMetrics.uptimeSeconds = metrics.uptimeSeconds;
-		if (metrics.numPacketsTx !== undefined) newMetrics.numPacketsTx = metrics.numPacketsTx;
-		if (metrics.numPacketsRx !== undefined) newMetrics.numPacketsRx = metrics.numPacketsRx;
-		if (metrics.numPacketsRxBad !== undefined) newMetrics.numPacketsRxBad = metrics.numPacketsRxBad;
-		if (metrics.numRxDupe !== undefined) newMetrics.numRxDupe = metrics.numRxDupe;
-		if (metrics.numTxRelay !== undefined) newMetrics.numTxRelay = metrics.numTxRelay;
-		if (metrics.numTxRelayCanceled !== undefined) newMetrics.numTxRelayCanceled = metrics.numTxRelayCanceled;
-		if (metrics.numTxDropped !== undefined) newMetrics.numTxDropped = metrics.numTxDropped;
-		if (metrics.heapFreeBytes !== undefined) newMetrics.heapFreeBytes = metrics.heapFreeBytes;
-		if (metrics.heapTotalBytes !== undefined) newMetrics.heapTotalBytes = metrics.heapTotalBytes;
+		// PowerMetrics fields (already covered: voltage, channelUtilization, airUtilTx)
+		if (data.chanelUtilization !== undefined) newMetrics.chUtil = data.chanelUtilization; // typo in protobuf
 
-
+		// EnvironmentMetrics fields
+		if (data.temperature !== undefined) newMetrics.temperature = data.temperature;
+		if (data.relativeHumidity !== undefined) newMetrics.relativeHumidity = data.relativeHumidity;
+		if (data.barometricPressure !== undefined) newMetrics.barometricPressure = data.barometricPressure;
+		if (data.gasResistance !== undefined) newMetrics.gasResistance = data.gasResistance;
+		if (data.voltage !== undefined) newMetrics.voltage = data.voltage;
+		if (data.current !== undefined) newMetrics.current = data.current;
+		if (data.iaq !== undefined) newMetrics.iaq = data.iaq;
 
 		// Log what we found
 		if (Object.keys(newMetrics).length > 0) {
 			console.log('[Meshtastic] Metrics extracted:', newMetrics);
 			cachedMetrics = { ...cachedMetrics, ...newMetrics };
-			console.log('[Meshtastic] Calling onMetricsUpdate callback with:', cachedMetrics);
-			console.log('[Meshtastic] Callback exists:', !!eventCallbacks.onMetricsUpdate);
+			console.log('[Meshtastic] Cached metrics (after merge):', cachedMetrics);
+			console.log('[Meshtastic] Calling onMetricsUpdate callback');
 			eventCallbacks.onMetricsUpdate?.(cachedMetrics);
-			console.log('[Meshtastic] onMetricsUpdate callback called');
 		} else {
 			console.log('[Meshtastic] No metrics found in data. Available keys:', Object.keys(data || {}));
 		}
@@ -1182,6 +1300,18 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
 					const unsubscribe = device.events.onConfigPacket.subscribe((config: any) => {
 						clearTimeout(timeout);
 						unsubscribe();
+
+						// Log config structure to see what we get
+						console.log('[Meshtastic] Raw config packet received:');
+						console.log('[Meshtastic] config.payloadVariant.case:', config.payloadVariant?.case);
+
+						if (config.payloadVariant?.case === 'security') {
+							console.log('[Meshtastic] Security config value type:', typeof config.payloadVariant.value);
+							console.log('[Meshtastic] publicKey type:', typeof config.payloadVariant.value?.publicKey);
+							console.log('[Meshtastic] publicKey instanceof Uint8Array:', config.payloadVariant.value?.publicKey instanceof Uint8Array);
+							console.log('[Meshtastic] publicKey:', config.payloadVariant.value?.publicKey);
+						}
+
 						resolve({ config, pending: device.pendingSettingsChanges });
 					});
 
@@ -1321,6 +1451,11 @@ export function resolveEnumValues(config: any, path: string = ''): any {
 		return config;
 	}
 
+	// Keep Uint8Array as is - don't process it
+	if (config instanceof Uint8Array) {
+		return config;
+	}
+
 	if (Array.isArray(config)) {
 		return config.map((item, index) => resolveEnumValues(item, `${path}[${index}]`));
 	}
@@ -1329,6 +1464,12 @@ export function resolveEnumValues(config: any, path: string = ''): any {
 
 	for (const [key, value] of Object.entries(config)) {
 		const currentPath = path ? `${path}.${key}` : key;
+
+		// CRITICAL: Check Uint8Array FIRST before any other processing!
+		if (value instanceof Uint8Array) {
+			result[key] = value;
+			continue;
+		}
 
 		if (typeof value === 'string') {
 			// Check if this field has an enum mapping

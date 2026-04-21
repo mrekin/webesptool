@@ -474,12 +474,24 @@
 			throw new Error($locales('meshtasticdevice.not_connected'));
 		}
 
-		// Restore Uint8Array from base64 strings before writing to device
+		console.log('[Meshtastic] Preparing config for device write');
+		console.log('[Meshtastic] Config before restoration:', JSON.stringify(config, null, 2));
+
+		// Restore Uint8Array from base64/hex strings before writing to device
+		// This handles all fields that should be Uint8Array for protobuf encoding
 		const configForDevice = restoreUint8Arrays(config);
+
+		console.log('[Meshtastic] Config after restoreUint8Arrays:', JSON.stringify(configForDevice, (key, value) => {
+			if (value instanceof Uint8Array) {
+				return `Uint8Array(${value.length} bytes)`;
+			}
+			return value;
+		}, 2));
 
 		// Write LocalConfig sections
 		operationStatus = $locales('meshtasticdevice.writing_local_config');
 		for (const [sectionName, configData] of Object.entries(configForDevice.localConfig)) {
+			console.log(`[Meshtastic] Writing LocalConfig section: ${sectionName}`);
 			// Wrap configData with section name so writeLocalConfig can determine payloadVariant.case
 			await meshtasticManager.writeLocalConfig({ [sectionName]: configData });
 		}
@@ -487,6 +499,7 @@
 		// Write ModuleConfig sections
 		operationStatus = $locales('meshtasticdevice.writing_module_config');
 		for (const [sectionName, moduleData] of Object.entries(configForDevice.moduleConfig)) {
+			console.log(`[Meshtastic] Writing ModuleConfig section: ${sectionName}`);
 			// Wrap moduleData with section name so writeModuleConfig can determine payloadVariant.case
 			await meshtasticManager.writeModuleConfig({ [sectionName]: moduleData });
 		}
@@ -494,12 +507,14 @@
 		// Write channels
 		operationStatus = $locales('meshtasticdevice.writing_channels');
 		for (const channel of configForDevice.channels) {
+			console.log('[Meshtastic] Writing channel:', channel);
 			await meshtasticManager.writeChannel(channel.config);
 		}
 
 		// Write owner (if present)
 		if (configForDevice.owner) {
 			operationStatus = $locales('meshtasticdevice.writing_owner');
+			console.log('[Meshtastic] Writing owner:', configForDevice.owner);
 			await meshtasticManager.writeOwner(configForDevice.owner);
 		}
 
