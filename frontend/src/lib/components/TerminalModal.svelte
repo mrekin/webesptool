@@ -20,6 +20,11 @@
 	let fitAddon: any = null;
 	let isConnecting = $state(false);
 	let isConnected = $state(false);
+
+	// Type for disconnect reason tracking
+	type DisconnectReason = 'user-initiated' | 'unexpected' | null;
+	let disconnectReason: DisconnectReason = $state(null);
+
 	let autoScroll = $state(true);
 	let showCommandShortDescriptions = $state(true);
 	let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
@@ -249,11 +254,27 @@
 			if (terminal) {
 				terminal.writeln(`\x1b[1;31mRead error: ${error}\x1b[0m`);
 			}
+
+			// Check if the error indicates device disconnection
+			const isFatalError =
+				(error instanceof Error && error.name === 'NetworkError') ||
+				(error instanceof Error && (
+					error.message.includes('device has been lost') ||
+					error.message.includes('The device has been lost') ||
+					error.message.includes('Port is closed') ||
+					error.message.includes('The port is closed')
+				));
+
+			if (isFatalError && disconnectReason !== 'user-initiated') {
+				handleUnexpectedDisconnect(error instanceof Error ? error : new Error(String(error)));
+			}
 		}
 	}
 
 	// Disconnect from port
 	async function disconnect() {
+		disconnectReason = 'user-initiated';
+
 		try {
 			// Set flag to stop the read loop
 			shouldContinueReading = false;
@@ -287,6 +308,39 @@
 			}
 		} catch (error) {
 			console.error('Disconnect error:', error);
+		} finally {
+			disconnectReason = null;
+		}
+	}
+
+	// Handle unexpected device disconnection
+	async function handleUnexpectedDisconnect(error?: Error) {
+		isConnected = false;
+		shouldContinueReading = false;
+
+		if (reader) {
+			try {
+				await reader.cancel();
+			} catch (e) {
+				console.warn('Error cancelling reader:', e);
+			}
+			reader = null;
+		}
+
+		if (port) {
+			try {
+				await port.close();
+			} catch (e) {
+				console.warn('Error closing port:', e);
+			}
+			port = null;
+		}
+
+		if (terminal) {
+			terminal.writeln('\x1b[1;33mDevice disconnected unexpectedly\x1b[0m\r\n');
+			if (error && error.message) {
+				terminal.writeln(`\x1b[90mReason: ${error.message}\x1b[0m\r\n`);
+			}
 		}
 	}
 
@@ -336,6 +390,12 @@
 		let writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
 		try {
 			// Get writer from writable stream
+			if (!port.writable) {
+				if (terminal) {
+					terminal.writeln('\x1b[1;31mPort is not writable\x1b[0m');
+				}
+				return;
+			}
 			writer = port.writable.getWriter();
 
 			// Encode command with line ending

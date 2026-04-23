@@ -10,12 +10,12 @@
 	} from '$lib/utils/meshcoreCommands.js';
 
 	let {
-		value = '',
+		value = $bindable(),
 		isConnected = false,
 		onSubmit = (_cmd: string) => {},
 		placeholder = '',
 		commandHistory = [],
-		historyIndex = -1,
+		historyIndex = $bindable(),
 		showCommandShortDescriptions = true
 	} = $props();
 
