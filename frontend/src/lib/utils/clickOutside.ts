@@ -7,39 +7,39 @@ import { onMount, onDestroy } from 'svelte';
  * @param selector - Optional selector to exclude elements (e.g., '.dropdown-list')
  */
 export function createClickOutside(
-  element: HTMLElement,
-  callback: () => void,
-  excludeSelector?: string
+    element: HTMLElement,
+    callback: () => void,
+    excludeSelector?: string
 ) {
-  function handleClick(event: MouseEvent) {
-    const target = event.target as HTMLElement;
+    function handleClick(event: MouseEvent) {
+        const target = event.target as HTMLElement;
 
-    // Check if click is outside the element
-    let isOutside = !element.contains(target);
+        // Check if click is outside the element
+        let isOutside = !element.contains(target);
 
-    // If exclude selector provided, also check if clicked element matches it
-    if (excludeSelector && target.closest(excludeSelector)) {
-      isOutside = false;
+        // If exclude selector provided, also check if clicked element matches it
+        if (excludeSelector && target.closest(excludeSelector)) {
+            isOutside = false;
+        }
+
+        if (isOutside) {
+            callback();
+        }
     }
 
-    if (isOutside) {
-      callback();
-    }
-  }
+    onMount(() => {
+        document.addEventListener('click', handleClick, true);
+    });
 
-  onMount(() => {
-    document.addEventListener('click', handleClick, true);
-  });
+    onDestroy(() => {
+        document.removeEventListener('click', handleClick, true);
+    });
 
-  onDestroy(() => {
-    document.removeEventListener('click', handleClick, true);
-  });
-
-  return {
-    destroy: () => {
-      document.removeEventListener('click', handleClick, true);
-    }
-  };
+    return {
+        destroy: () => {
+            document.removeEventListener('click', handleClick, true);
+        }
+    };
 }
 
 /**
@@ -49,37 +49,37 @@ export function createClickOutside(
  * @param excludeSelector - Optional selector to exclude elements
  */
 export function createClickOutsideForMultiple(
-  elements: HTMLElement[],
-  callback: () => void,
-  excludeSelector?: string
+    elements: HTMLElement[],
+    callback: () => void,
+    excludeSelector?: string
 ) {
-  function handleClick(event: MouseEvent) {
-    const target = event.target as HTMLElement;
+    function handleClick(event: MouseEvent) {
+        const target = event.target as HTMLElement;
 
-    // Check if click is outside all elements
-    let isOutsideAll = elements.every(element => !element.contains(target));
+        // Check if click is outside all elements
+        let isOutsideAll = elements.every((element) => !element.contains(target));
 
-    // If exclude selector provided, also check if clicked element matches it
-    if (excludeSelector && target.closest(excludeSelector)) {
-      isOutsideAll = false;
+        // If exclude selector provided, also check if clicked element matches it
+        if (excludeSelector && target.closest(excludeSelector)) {
+            isOutsideAll = false;
+        }
+
+        if (isOutsideAll) {
+            callback();
+        }
     }
 
-    if (isOutsideAll) {
-      callback();
-    }
-  }
+    onMount(() => {
+        document.addEventListener('click', handleClick, true);
+    });
 
-  onMount(() => {
-    document.addEventListener('click', handleClick, true);
-  });
+    onDestroy(() => {
+        document.removeEventListener('click', handleClick, true);
+    });
 
-  onDestroy(() => {
-    document.removeEventListener('click', handleClick, true);
-  });
-
-  return {
-    destroy: () => {
-      document.removeEventListener('click', handleClick, true);
-    }
-  };
+    return {
+        destroy: () => {
+            document.removeEventListener('click', handleClick, true);
+        }
+    };
 }

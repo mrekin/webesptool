@@ -1,4 +1,11 @@
-import type { PinoutData, PinInfo, PinCategory, BoardVariant, PinDefines, ConfigInfo } from '$lib/types';
+import type {
+    PinoutData,
+    PinInfo,
+    PinCategory,
+    BoardVariant,
+    PinDefines,
+    ConfigInfo
+} from '$lib/types';
 import { isNRF52Device } from './deviceTypeUtils';
 import type { DeviceType } from '$lib/types';
 import pinoutJson from '$lib/config/my_pinout.json';
@@ -8,221 +15,232 @@ let pinoutCache: PinoutData | null = null;
 
 // Load pinout data from JSON file
 export async function loadPinoutData(): Promise<PinoutData> {
-  if (pinoutCache) return pinoutCache;
+    if (pinoutCache) return pinoutCache;
 
-  try {
-    // Use imported data directly
-    const data = pinoutJson as PinoutData;
-    pinoutCache = data;
-    return data;
-  } catch (error) {
-    console.error('Error loading pinout data:', error);
-    throw error;
-  }
+    try {
+        // Use imported data directly
+        const data = pinoutJson as PinoutData;
+        pinoutCache = data;
+        return data;
+    } catch (error) {
+        console.error('Error loading pinout data:', error);
+        throw error;
+    }
 }
 
 // Map devicePioTarget to (variant, board) from my_pinout.json
 // Solves the problem that devicePioTarget doesn't always match board name
-export function mapDeviceToPinout(devicePioTarget: string, pinoutData: PinoutData): { variant: string; board: string } | null {
-  const { variants } = pinoutData;
+export function mapDeviceToPinout(
+    devicePioTarget: string,
+    pinoutData: PinoutData
+): { variant: string; board: string } | null {
+    const { variants } = pinoutData;
 
-  // Strategy 1: Direct match (new structure v2.0)
-  if (variants[devicePioTarget]) {
-    return { variant: devicePioTarget, board: devicePioTarget };
-  }
-
-  // Strategy 2: Case-insensitive match
-  for (const [boardName] of Object.entries(variants)) {
-    if (boardName.toLowerCase() === devicePioTarget.toLowerCase()) {
-      return { variant: boardName, board: boardName };
+    // Strategy 1: Direct match (new structure v2.0)
+    if (variants[devicePioTarget]) {
+        return { variant: devicePioTarget, board: devicePioTarget };
     }
-  }
 
-  // Strategy 3: Partial match (for "t-deck" → "tdeck")
-  for (const [boardName] of Object.entries(variants)) {
-    const normalizedBoard = boardName.toLowerCase().replace(/[-_]/g, '');
-    const normalizedDevice = devicePioTarget.toLowerCase().replace(/[-_]/g, '');
-
-    if (normalizedBoard.includes(normalizedDevice) || normalizedDevice.includes(normalizedBoard)) {
-      return { variant: boardName, board: boardName };
+    // Strategy 2: Case-insensitive match
+    for (const [boardName] of Object.entries(variants)) {
+        if (boardName.toLowerCase() === devicePioTarget.toLowerCase()) {
+            return { variant: boardName, board: boardName };
+        }
     }
-  }
 
-  // Strategy 4: Manual mapping for special cases
-  const manualMapping: Record<string, { variant: string; board: string }> = {
-    // Add as needed
-  };
+    // Strategy 3: Partial match (for "t-deck" → "tdeck")
+    for (const [boardName] of Object.entries(variants)) {
+        const normalizedBoard = boardName.toLowerCase().replace(/[-_]/g, '');
+        const normalizedDevice = devicePioTarget.toLowerCase().replace(/[-_]/g, '');
 
-  if (manualMapping[devicePioTarget]) {
-    return manualMapping[devicePioTarget];
-  }
+        if (
+            normalizedBoard.includes(normalizedDevice) ||
+            normalizedDevice.includes(normalizedBoard)
+        ) {
+            return { variant: boardName, board: boardName };
+        }
+    }
 
-  return null;
+    // Strategy 4: Manual mapping for special cases
+    const manualMapping: Record<string, { variant: string; board: string }> = {
+        // Add as needed
+    };
+
+    if (manualMapping[devicePioTarget]) {
+        return manualMapping[devicePioTarget];
+    }
+
+    return null;
 }
 
 // Parse C expressions for pins (e.g. "(0 + 13)", "(32 + 4)")
 function parsePinExpression(expr: string): number | null {
-  if (!expr) return null;
+    if (!expr) return null;
 
-  // If it's a simple number
-  const simpleNum = Number(expr);
-  if (!isNaN(simpleNum)) return simpleNum;
+    // If it's a simple number
+    const simpleNum = Number(expr);
+    if (!isNaN(simpleNum)) return simpleNum;
 
-  // Parse expressions like "(0 + 13)", "(32 + 4)"
-  // Remove spaces and check for pattern (number + number)
-  const cleaned = expr.replace(/\s+/g, '');
-  const match = cleaned.match(/^\(?(\d+)\s*\+\s*(\d+)\)?$/);
+    // Parse expressions like "(0 + 13)", "(32 + 4)"
+    // Remove spaces and check for pattern (number + number)
+    const cleaned = expr.replace(/\s+/g, '');
+    const match = cleaned.match(/^\(?(\d+)\s*\+\s*(\d+)\)?$/);
 
-  if (match) {
-    const num1 = parseInt(match[1]);
-    const num2 = parseInt(match[2]);
-    return num1 + num2;
-  }
+    if (match) {
+        const num1 = parseInt(match[1]);
+        const num2 = parseInt(match[2]);
+        return num1 + num2;
+    }
 
-  return null;
+    return null;
 }
 
 // Format pin number based on device type
 // For NRF52: format P<port>.<pin>, where port = pinNumber // 32, pin = pinNumber % 32
 // For others: decimal number as string
 function formatPinNumber(pinNumber: number, deviceType: DeviceType | null): string {
-  if (deviceType && isNRF52Device(deviceType)) {
-    const port = Math.floor(pinNumber / 32);
-    const pin = pinNumber % 32;
-    // Add leading zero for pin < 10
-    return `P${port}.${pin.toString().padStart(2, '0')}`;
-  }
-  return pinNumber.toString();
+    if (deviceType && isNRF52Device(deviceType)) {
+        const port = Math.floor(pinNumber / 32);
+        const pin = pinNumber % 32;
+        // Add leading zero for pin < 10
+        return `P${port}.${pin.toString().padStart(2, '0')}`;
+    }
+    return pinNumber.toString();
 }
 
 // Resolve pin value - supports chain of references (e.g. KB_INT -> TCA8418_INT -> 15)
 function resolvePinValue(
-  pinValue: string,
-  pinData: PinDefines,
-  visited: Set<string> = new Set()
+    pinValue: string,
+    pinData: PinDefines,
+    visited: Set<string> = new Set()
 ): string | null {
-  // Check for circular references
-  if (visited.has(pinValue)) {
-    console.warn(`Circular reference detected: ${Array.from(visited).join(' -> ')} -> ${pinValue}`);
-    return null;
-  }
-
-  // If value is a number or expression, return as is
-  const simpleNum = Number(pinValue);
-  if (!isNaN(simpleNum)) return pinValue;
-
-  // Check if value is a reference to another pin
-  // Search in all categories
-  for (const [_category, categoryDefines] of Object.entries(pinData)) {
-    if (!categoryDefines) continue;
-
-    if (pinValue in categoryDefines) {
-      const resolvedValue = categoryDefines[pinValue];
-      // Recursively resolve further
-      visited.add(pinValue);
-      const result = resolvePinValue(resolvedValue, pinData, visited);
-      visited.delete(pinValue);
-      return result;
+    // Check for circular references
+    if (visited.has(pinValue)) {
+        console.warn(
+            `Circular reference detected: ${Array.from(visited).join(' -> ')} -> ${pinValue}`
+        );
+        return null;
     }
-  }
 
-  // If it's an expression (not a number and not a reference), return as is
-  return pinValue;
+    // If value is a number or expression, return as is
+    const simpleNum = Number(pinValue);
+    if (!isNaN(simpleNum)) return pinValue;
+
+    // Check if value is a reference to another pin
+    // Search in all categories
+    for (const [_category, categoryDefines] of Object.entries(pinData)) {
+        if (!categoryDefines) continue;
+
+        if (pinValue in categoryDefines) {
+            const resolvedValue = categoryDefines[pinValue];
+            // Recursively resolve further
+            visited.add(pinValue);
+            const result = resolvePinValue(resolvedValue, pinData, visited);
+            visited.delete(pinValue);
+            return result;
+        }
+    }
+
+    // If it's an expression (not a number and not a reference), return as is
+    return pinValue;
 }
 
 // Extract pins from board variant data
-export function extractPinsFromVariant(variant: BoardVariant, deviceType: DeviceType | null = null): PinInfo[] {
-  const pins: PinInfo[] = [];
-  const { pins: pinData } = variant;
+export function extractPinsFromVariant(
+    variant: BoardVariant,
+    deviceType: DeviceType | null = null
+): PinInfo[] {
+    const pins: PinInfo[] = [];
+    const { pins: pinData } = variant;
 
-  for (const [category, categoryDefines] of Object.entries(pinData)) {
-    if (!categoryDefines) continue;
+    for (const [category, categoryDefines] of Object.entries(pinData)) {
+        if (!categoryDefines) continue;
 
-    for (const [pinName, pinValue] of Object.entries(categoryDefines)) {
-      // Resolve pin value (may be a reference to another pin)
-      const resolvedValue = resolvePinValue(pinValue as string, pinData);
-      if (!resolvedValue) continue;
+        for (const [pinName, pinValue] of Object.entries(categoryDefines)) {
+            // Resolve pin value (may be a reference to another pin)
+            const resolvedValue = resolvePinValue(pinValue as string, pinData);
+            if (!resolvedValue) continue;
 
-      // Parse pin value (may be an expression like "(0 + 13)")
-      const parsedPin = parsePinExpression(resolvedValue);
-      if (parsedPin === null) {
-        continue;
-      }
+            // Parse pin value (may be an expression like "(0 + 13)")
+            const parsedPin = parsePinExpression(resolvedValue);
+            if (parsedPin === null) {
+                continue;
+            }
 
-      pins.push({
-        name: pinName,
-        pinNumber: formatPinNumber(parsedPin, deviceType),
-        category: category as PinCategory,
-        description: getPinDescription(pinName, category as PinCategory)
-      });
+            pins.push({
+                name: pinName,
+                pinNumber: formatPinNumber(parsedPin, deviceType),
+                category: category as PinCategory,
+                description: getPinDescription(pinName, category as PinCategory)
+            });
+        }
     }
-  }
 
-  // Sort by numeric value for correct display
-  return pins.sort((a, b) => {
-    const numA = parseInt(a.pinNumber.replace(/\D/g, '') || a.pinNumber);
-    const numB = parseInt(b.pinNumber.replace(/\D/g, '') || b.pinNumber);
-    return numA - numB;
-  });
+    // Sort by numeric value for correct display
+    return pins.sort((a, b) => {
+        const numA = parseInt(a.pinNumber.replace(/\D/g, '') || a.pinNumber);
+        const numB = parseInt(b.pinNumber.replace(/\D/g, '') || b.pinNumber);
+        return numA - numB;
+    });
 }
 
 // Extract configs from board variant data
 export function extractConfigsFromVariant(variant: BoardVariant): ConfigInfo[] {
-  const configs: ConfigInfo[] = [];
-  const { config } = variant;
+    const configs: ConfigInfo[] = [];
+    const { config } = variant;
 
-  if (!config) return configs;
+    if (!config) return configs;
 
-  for (const [category, categoryConfigs] of Object.entries(config)) {
-    if (!categoryConfigs) continue;
+    for (const [category, categoryConfigs] of Object.entries(config)) {
+        if (!categoryConfigs) continue;
 
-    for (const [name, value] of Object.entries(categoryConfigs)) {
-      configs.push({ name, value: value as string, category });
+        for (const [name, value] of Object.entries(categoryConfigs)) {
+            configs.push({ name, value: value as string, category });
+        }
     }
-  }
 
-  return configs;
+    return configs;
 }
 
 // Get human-readable description for pin
 function getPinDescription(pinName: string, category: PinCategory): string {
-  const descriptions: Record<string, string> = {
-    'LORA_SCK': 'LoRa SPI Clock',
-    'LORA_MISO': 'LoRa SPI MISO',
-    'LORA_MOSI': 'LoRa SPI MOSI',
-    'LORA_CS': 'LoRa Chip Select',
-    'LORA_DIO1': 'LoRa DIO1',
-    'LORA_DIO2': 'LoRa DIO2',
-    'LORA_RESET': 'LoRa Reset',
-    'BUTTON_PIN': 'User Button',
-    'LED_PIN': 'Status LED',
-    'I2C_SDA': 'I2C Data',
-    'I2C_SCL': 'I2C Clock',
-    'BATTERY_PIN': 'Battery Voltage ADC',
-    'RX_PIN': 'UART RX',
-    'TX_PIN': 'UART TX'
-  };
+    const descriptions: Record<string, string> = {
+        LORA_SCK: 'LoRa SPI Clock',
+        LORA_MISO: 'LoRa SPI MISO',
+        LORA_MOSI: 'LoRa SPI MOSI',
+        LORA_CS: 'LoRa Chip Select',
+        LORA_DIO1: 'LoRa DIO1',
+        LORA_DIO2: 'LoRa DIO2',
+        LORA_RESET: 'LoRa Reset',
+        BUTTON_PIN: 'User Button',
+        LED_PIN: 'Status LED',
+        I2C_SDA: 'I2C Data',
+        I2C_SCL: 'I2C Clock',
+        BATTERY_PIN: 'Battery Voltage ADC',
+        RX_PIN: 'UART RX',
+        TX_PIN: 'UART TX'
+    };
 
-  return descriptions[pinName] || `${category} pin`;
+    return descriptions[pinName] || `${category} pin`;
 }
 
 // Get color for pin category
 export function getCategoryColor(category: PinCategory): string {
-  const colors: Record<PinCategory, string> = {
-    button: '#f59e0b',      // orange
-    lora: '#3b82f6',        // blue
-    lora_power: '#8b5cf6',  // purple
-    power: '#ef4444',       // red
-    led: '#eab308',         // yellow
-    audio: '#ec4899',       // pink
-    i2c: '#14b8a6',         // teal
-    uart: '#06b6d4',        // cyan
-    gps: '#22c55e',         // green
-    gps_config: '#84cc16',  // lime
-    led_config: '#fbbf24',  // amber
-    spi: '#a855f7',         // violet
-    other: '#6b7280'        // gray
-  };
+    const colors: Record<PinCategory, string> = {
+        button: '#f59e0b', // orange
+        lora: '#3b82f6', // blue
+        lora_power: '#8b5cf6', // purple
+        power: '#ef4444', // red
+        led: '#eab308', // yellow
+        audio: '#ec4899', // pink
+        i2c: '#14b8a6', // teal
+        uart: '#06b6d4', // cyan
+        gps: '#22c55e', // green
+        gps_config: '#84cc16', // lime
+        led_config: '#fbbf24', // amber
+        spi: '#a855f7', // violet
+        other: '#6b7280' // gray
+    };
 
-  return colors[category] || colors.other;
+    return colors[category] || colors.other;
 }

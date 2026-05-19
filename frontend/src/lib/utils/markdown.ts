@@ -5,28 +5,31 @@ import { isESP32Device, isNRF52Device, isRP2040Device } from '$lib/utils/deviceT
 import { DeviceType } from '$lib/types.js';
 
 interface MarkdownOptions {
-  /** Whether to cache loaded files, defaults to true */
-  cache?: boolean;
+    /** Whether to cache loaded files, defaults to true */
+    cache?: boolean;
 }
 
 // Cache for loaded markdown files
 const markdownCache = new Map<string, string>();
 
 // Pre-import all markdown files (recursive to support subdirectories)
-const markdownModules = import.meta.glob('/src/docs/**/*.md', { query: '?raw', import: 'default' }) as Record<string, () => Promise<string>>;
+const markdownModules = import.meta.glob('/src/docs/**/*.md', {
+    query: '?raw',
+    import: 'default'
+}) as Record<string, () => Promise<string>>;
 
 /**
  * Gets the current locale from svelte-i18n
  * @returns current locale string (e.g., 'en', 'ru')
  */
 function getCurrentLocale(): string {
-  try {
-    const currentLocale = get(locale);
-    return currentLocale || 'en';
-  } catch (error) {
-    console.warn('[Markdown] Could not get locale, using default "en":', error);
-    return 'en';
-  }
+    try {
+        const currentLocale = get(locale);
+        return currentLocale || 'en';
+    } catch (error) {
+        console.warn('[Markdown] Could not get locale, using default "en":', error);
+        return 'en';
+    }
 }
 
 /**
@@ -35,67 +38,70 @@ function getCurrentLocale(): string {
  * @param deviceType - Optional device type to filter documents
  * @returns Promise<string[]> - Array of document filenames
  */
-export async function getAvailableDocuments(directory: string, deviceType?: DeviceType): Promise<string[]> {
-  const docs: string[] = [];
+export async function getAvailableDocuments(
+    directory: string,
+    deviceType?: DeviceType
+): Promise<string[]> {
+    const docs: string[] = [];
 
-  // Get all file paths from the specified directory
-  for (const [path] of Object.entries(markdownModules)) {
-    const dirPrefix = `/src/docs/${directory}/`;
-    if (path.startsWith(dirPrefix)) {
-      const relativePath = path.replace(dirPrefix, '');
+    // Get all file paths from the specified directory
+    for (const [path] of Object.entries(markdownModules)) {
+        const dirPrefix = `/src/docs/${directory}/`;
+        if (path.startsWith(dirPrefix)) {
+            const relativePath = path.replace(dirPrefix, '');
 
-      // If deviceType is specified, filter subdirectory documents
-      if (deviceType) {
-        // If file is in a subdirectory, check if it matches device type
-        if (relativePath.includes('/')) {
-          // For ESP32: only files from esp32/ subdirectory
-          if (isESP32Device(deviceType) && !relativePath.startsWith('esp32/')) {
-            continue;
-          }
-          // For nRF52: only files from nrf52/ subdirectory
-          if (isNRF52Device(deviceType) && !relativePath.startsWith('nrf52/')) {
-            continue;
-          }
-          // For RP2040: only files from rp2040/ subdirectory
-          if (isRP2040Device(deviceType) && !relativePath.startsWith('rp2040/')) {
-            continue;
-          }
+            // If deviceType is specified, filter subdirectory documents
+            if (deviceType) {
+                // If file is in a subdirectory, check if it matches device type
+                if (relativePath.includes('/')) {
+                    // For ESP32: only files from esp32/ subdirectory
+                    if (isESP32Device(deviceType) && !relativePath.startsWith('esp32/')) {
+                        continue;
+                    }
+                    // For nRF52: only files from nrf52/ subdirectory
+                    if (isNRF52Device(deviceType) && !relativePath.startsWith('nrf52/')) {
+                        continue;
+                    }
+                    // For RP2040: only files from rp2040/ subdirectory
+                    if (isRP2040Device(deviceType) && !relativePath.startsWith('rp2040/')) {
+                        continue;
+                    }
+                }
+                // If no deviceType specified, only include files from root directory
+            } else {
+                // Only include files from root directory (no subdirectories)
+                if (relativePath.includes('/')) {
+                    continue;
+                }
+            }
+
+            // Add only base filenames (without locale prefix)
+            // For files in subdirectories: esp32/en.esp32_flashing.md -> esp32/esp32_flashing.md
+            // For files in root: en.welcome.md -> welcome.md
+            let baseFilename = relativePath;
+            if (baseFilename.includes('/')) {
+                // File in subdirectory - remove locale prefix after the slash
+                baseFilename = baseFilename.replace(/\/([a-z]{2})\./, '/');
+            } else {
+                // File in root - remove locale prefix
+                baseFilename = baseFilename.replace(/^[a-z]{2}\./, '');
+            }
+
+            // Avoid duplicates
+            if (!docs.includes(baseFilename)) {
+                docs.push(baseFilename);
+            }
         }
-        // If no deviceType specified, only include files from root directory
-      } else {
-        // Only include files from root directory (no subdirectories)
-        if (relativePath.includes('/')) {
-          continue;
-        }
-      }
-
-      // Add only base filenames (without locale prefix)
-      // For files in subdirectories: esp32/en.esp32_flashing.md -> esp32/esp32_flashing.md
-      // For files in root: en.welcome.md -> welcome.md
-      let baseFilename = relativePath;
-      if (baseFilename.includes('/')) {
-        // File in subdirectory - remove locale prefix after the slash
-        baseFilename = baseFilename.replace(/\/([a-z]{2})\./, '/');
-      } else {
-        // File in root - remove locale prefix
-        baseFilename = baseFilename.replace(/^[a-z]{2}\./, '');
-      }
-
-      // Avoid duplicates
-      if (!docs.includes(baseFilename)) {
-        docs.push(baseFilename);
-      }
     }
-  }
 
-  // Sort: device-specific files from subdirectories first, then common files from root
-  return docs.sort((a, b) => {
-    const aInSubdir = a.includes('/');
-    const bInSubdir = b.includes('/');
-    if (aInSubdir && !bInSubdir) return -1; // subdirectories first
-    if (!aInSubdir && bInSubdir) return 1;  // root later
-    return a.localeCompare(b);
-  });
+    // Sort: device-specific files from subdirectories first, then common files from root
+    return docs.sort((a, b) => {
+        const aInSubdir = a.includes('/');
+        const bInSubdir = b.includes('/');
+        if (aInSubdir && !bInSubdir) return -1; // subdirectories first
+        if (!aInSubdir && bInSubdir) return 1; // root later
+        return a.localeCompare(b);
+    });
 }
 
 /**
@@ -104,59 +110,62 @@ export async function getAvailableDocuments(directory: string, deviceType?: Devi
  * @returns Promise<string> - The markdown content
  */
 async function loadMarkdownWithFallback(filename: string): Promise<string> {
-  const currentLocale = getCurrentLocale();
+    const currentLocale = getCurrentLocale();
 
-  // Always search in howto directory for this implementation
-  const directory = 'howto';
+    // Always search in howto directory for this implementation
+    const directory = 'howto';
 
-  // Ensure filename has .md extension for normalization
-  const normalizedFilename = filename.endsWith('.md') ? filename.slice(0, -3) : filename;
+    // Ensure filename has .md extension for normalization
+    const normalizedFilename = filename.endsWith('.md') ? filename.slice(0, -3) : filename;
 
-  // Build paths with locale support
-  const basePath = `/src/docs/${directory}/`;
+    // Build paths with locale support
+    const basePath = `/src/docs/${directory}/`;
 
-  // For files in subdirectories, locale prefix goes after the subdirectory
-  // For root files, locale prefix goes at the beginning
-  let possiblePaths: string[] = [];
+    // For files in subdirectories, locale prefix goes after the subdirectory
+    // For root files, locale prefix goes at the beginning
+    let possiblePaths: string[] = [];
 
-  if (normalizedFilename.includes('/')) {
-    // File in subdirectory: esp32/esp32_flashing.md
-    const [subdir, filePart] = normalizedFilename.split('/');
-    possiblePaths = [
-      `${basePath}${subdir}/${currentLocale}.${filePart}.md`,
-      `${basePath}${subdir}/en.${filePart}.md`,
-      `${basePath}${subdir}/${filePart}.md`
-    ];
-  } else {
-    // File in root directory: welcome.md
-    possiblePaths = [
-      `${basePath}${currentLocale}.${normalizedFilename}.md`,
-      `${basePath}en.${normalizedFilename}.md`,
-      `${basePath}${normalizedFilename}.md`
-    ];
-  }
-
-  let lastError: Error | null = null;
-
-  console.debug(`[Markdown] Looking for file: ${filename}, trying paths:`, possiblePaths);
-
-  for (const path of possiblePaths) {
-    try {
-      console.debug(`[Markdown] Checking path: ${path}, exists: ${!!markdownModules[path]}`);
-      if (markdownModules[path]) {
-        const content = await markdownModules[path]();
-        console.info(`[Markdown] Successfully loaded: ${path}`);
-        return content;
-      }
-    } catch (error) {
-      lastError = error as Error;
-      console.debug(`[Markdown] Failed to load ${path}:`, error);
-      continue; // Try next path
+    if (normalizedFilename.includes('/')) {
+        // File in subdirectory: esp32/esp32_flashing.md
+        const [subdir, filePart] = normalizedFilename.split('/');
+        possiblePaths = [
+            `${basePath}${subdir}/${currentLocale}.${filePart}.md`,
+            `${basePath}${subdir}/en.${filePart}.md`,
+            `${basePath}${subdir}/${filePart}.md`
+        ];
+    } else {
+        // File in root directory: welcome.md
+        possiblePaths = [
+            `${basePath}${currentLocale}.${normalizedFilename}.md`,
+            `${basePath}en.${normalizedFilename}.md`,
+            `${basePath}${normalizedFilename}.md`
+        ];
     }
-  }
 
-  // If we get here, no file was found
-  throw lastError || new Error(`Failed to load markdown file: ${filename} (searched in ${directory})`);
+    let lastError: Error | null = null;
+
+    console.debug(`[Markdown] Looking for file: ${filename}, trying paths:`, possiblePaths);
+
+    for (const path of possiblePaths) {
+        try {
+            console.debug(`[Markdown] Checking path: ${path}, exists: ${!!markdownModules[path]}`);
+            if (markdownModules[path]) {
+                const content = await markdownModules[path]();
+                console.info(`[Markdown] Successfully loaded: ${path}`);
+                return content;
+            }
+        } catch (error) {
+            lastError = error as Error;
+            console.debug(`[Markdown] Failed to load ${path}:`, error);
+            continue; // Try next path
+        }
+    }
+
+    // If we get here, no file was found
+    throw (
+        lastError ||
+        new Error(`Failed to load markdown file: ${filename} (searched in ${directory})`)
+    );
 }
 
 /**
@@ -183,38 +192,38 @@ async function loadMarkdownWithFallback(filename: string): Promise<string> {
  * ```
  */
 export async function insertDoc(filename: string, options: MarkdownOptions = {}): Promise<string> {
-  // Validate browser environment
-  if (!browser) {
-    console.warn('[Markdown] insertDoc should only be used in browser environment');
-    return '';
-  }
-
-  const { cache = true } = options;
-
-  // Use filename directly for cache key to preserve subdirectory information
-  const cacheKey = `${getCurrentLocale()}:${filename}`;
-
-  // Check cache first
-  if (cache && markdownCache.has(cacheKey)) {
-    console.debug(`[Markdown] Retrieved from cache: ${cacheKey}`);
-    return markdownCache.get(cacheKey)!;
-  }
-
-  try {
-    // Load the markdown content
-    const content = await loadMarkdownWithFallback(filename);
-
-    // Cache the result if caching is enabled
-    if (cache) {
-      markdownCache.set(cacheKey, content);
-      console.debug(`[Markdown] Cached: ${cacheKey}`);
+    // Validate browser environment
+    if (!browser) {
+        console.warn('[Markdown] insertDoc should only be used in browser environment');
+        return '';
     }
 
-    return content;
-  } catch (error) {
-    console.error(`[Markdown] Error loading "${filename}":`, error);
-    return '';
-  }
+    const { cache = true } = options;
+
+    // Use filename directly for cache key to preserve subdirectory information
+    const cacheKey = `${getCurrentLocale()}:${filename}`;
+
+    // Check cache first
+    if (cache && markdownCache.has(cacheKey)) {
+        console.debug(`[Markdown] Retrieved from cache: ${cacheKey}`);
+        return markdownCache.get(cacheKey)!;
+    }
+
+    try {
+        // Load the markdown content
+        const content = await loadMarkdownWithFallback(filename);
+
+        // Cache the result if caching is enabled
+        if (cache) {
+            markdownCache.set(cacheKey, content);
+            console.debug(`[Markdown] Cached: ${cacheKey}`);
+        }
+
+        return content;
+    } catch (error) {
+        console.error(`[Markdown] Error loading "${filename}":`, error);
+        return '';
+    }
 }
 
 /**
@@ -222,20 +231,20 @@ export async function insertDoc(filename: string, options: MarkdownOptions = {})
  * @param filename - Optional filename to clear specific entry
  */
 export function clearMarkdownCache(filename?: string): void {
-  if (filename) {
-    // Clear specific file from all locales
-    for (const [key] of markdownCache) {
-      if (key.endsWith(`:${filename}`) || key.includes(`${filename}.md`)) {
-        markdownCache.delete(key);
-        console.info(`[Markdown] Cleared cache for: ${key}`);
-      }
+    if (filename) {
+        // Clear specific file from all locales
+        for (const [key] of markdownCache) {
+            if (key.endsWith(`:${filename}`) || key.includes(`${filename}.md`)) {
+                markdownCache.delete(key);
+                console.info(`[Markdown] Cleared cache for: ${key}`);
+            }
+        }
+    } else {
+        // Clear all cache
+        const size = markdownCache.size;
+        markdownCache.clear();
+        console.info(`[Markdown] Cleared all cache entries (${size} files)`);
     }
-  } else {
-    // Clear all cache
-    const size = markdownCache.size;
-    markdownCache.clear();
-    console.info(`[Markdown] Cleared all cache entries (${size} files)`);
-  }
 }
 
 /**
@@ -243,12 +252,12 @@ export function clearMarkdownCache(filename?: string): void {
  * @returns object with cache information
  */
 export function getMarkdownCacheStats() {
-  return {
-    size: markdownCache.size,
-    entries: Array.from(markdownCache.entries()).map(([key, content]) => ({
-      key,
-      size: content.length,
-      preview: content.substring(0, 100) + (content.length > 100 ? '...' : '')
-    }))
-  };
+    return {
+        size: markdownCache.size,
+        entries: Array.from(markdownCache.entries()).map(([key, content]) => ({
+            key,
+            size: content.length,
+            preview: content.substring(0, 100) + (content.length > 100 ? '...' : '')
+        }))
+    };
 }

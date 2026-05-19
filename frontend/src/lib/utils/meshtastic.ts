@@ -1,26 +1,28 @@
 import type {
-	MeshtasticDeviceInfo,
-	MeshtasticConnectionStatus,
-	MeshtasticConnectionOptions,
-	MeshtasticConfigReadResult,
-	MeshtasticChannelInfo,
-	MeshtasticOwnerInfo,
-	MeshtasticEventCallbacks,
-	MeshtasticNodeMetrics,
-	MeshtasticNodeStats
+    MeshtasticDeviceInfo,
+    MeshtasticConnectionStatus,
+    MeshtasticConnectionOptions,
+    MeshtasticConfigReadResult,
+    MeshtasticChannelInfo,
+    MeshtasticOwnerInfo,
+    MeshtasticEventCallbacks,
+    MeshtasticNodeMetrics,
+    MeshtasticNodeStats
 } from '$lib/types.js';
 import { MeshDevice, Protobuf } from '@meshtastic/core';
 import { TransportWebSerial } from '@meshtastic/transport-web-serial';
 // Global handler for Web Serial API unhandled promise rejections
 // Prevents "NetworkError: The device has been lost" in console during disconnect
 window.addEventListener('unhandledrejection', (event) => {
-	const reason = event.reason;
-	if (reason?.message?.includes('device has been lost') ||
-	    reason?.message?.includes('The device has been lost') ||
-	    reason?.name === 'NetworkError') {
-		// Suppress expected disconnect errors from Web Serial API
-		event.preventDefault();
-	}
+    const reason = event.reason;
+    if (
+        reason?.message?.includes('device has been lost') ||
+        reason?.message?.includes('The device has been lost') ||
+        reason?.name === 'NetworkError'
+    ) {
+        // Suppress expected disconnect errors from Web Serial API
+        event.preventDefault();
+    }
 });
 // @ts-ignore - Accessing runtime enums from Protobuf.Admin
 const ConfigType = (Protobuf as any).Admin?.AdminMessage_ConfigType;
@@ -36,23 +38,27 @@ let Config_DeviceConfig_Role: any;
 // @ts-ignore
 let Config_LoRaConfig_ModemPreset: any;
 function getEnums() {
-	if (!Config_LoRaConfig_RegionCode) {
-		const Config = (Protobuf as any).Config;
-		Config_LoRaConfig_RegionCode = Config?.Config_LoRaConfig_RegionCode;
-		Config_DeviceConfig_Role = Config?.Config_DeviceConfig_Role;
-		Config_LoRaConfig_ModemPreset = Config?.Config_LoRaConfig_ModemPreset;
-	}
-	return { Config_LoRaConfig_RegionCode, Config_DeviceConfig_Role, Config_LoRaConfig_ModemPreset };
+    if (!Config_LoRaConfig_RegionCode) {
+        const Config = (Protobuf as any).Config;
+        Config_LoRaConfig_RegionCode = Config?.Config_LoRaConfig_RegionCode;
+        Config_DeviceConfig_Role = Config?.Config_DeviceConfig_Role;
+        Config_LoRaConfig_ModemPreset = Config?.Config_LoRaConfig_ModemPreset;
+    }
+    return {
+        Config_LoRaConfig_RegionCode,
+        Config_DeviceConfig_Role,
+        Config_LoRaConfig_ModemPreset
+    };
 }
 // Local enum since DeviceStatusEnum is not exported from @meshtastic/core
 enum DeviceStatusEnum {
-	DeviceRestarting = 1,
-	DeviceDisconnected = 2,
-	DeviceConnecting = 3,
-	DeviceReconnecting = 4,
-	DeviceConnected = 5,
-	DeviceConfiguring = 6,
-	DeviceConfigured = 7
+    DeviceRestarting = 1,
+    DeviceDisconnected = 2,
+    DeviceConnecting = 3,
+    DeviceReconnecting = 4,
+    DeviceConnected = 5,
+    DeviceConfiguring = 6,
+    DeviceConfigured = 7
 }
 const DEFAULT_BAUDRATE = 115200;
 const DEFAULT_HEARTBEAT_INTERVAL = 300000;
@@ -62,28 +68,26 @@ const DEFAULT_HEARTBEAT_INTERVAL = 300000;
  * Matches Python client format for security keys (privateKey, publicKey, adminKey)
  */
 export function uint8ArrayToBase64(bytes: Uint8Array): string {
-	const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
-	return 'base64:' + btoa(binary);
+    const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
+    return 'base64:' + btoa(binary);
 }
 /**
  * Convert base64 string (with or without 'base64:' prefix) back to Uint8Array
  * Used when loading config from file
  */
 export function base64ToUint8Array(base64Str: string): Uint8Array {
-	// Remove 'base64:' prefix if present
-	const actualBase64 = base64Str.startsWith('base64:')
-		? base64Str.substring(7)
-		: base64Str;
-	// Empty base64 string means empty Uint8Array
-	if (actualBase64 === '') {
-		return new Uint8Array(0);
-	}
-	const binary = atob(actualBase64);
-	const bytes = new Uint8Array(binary.length);
-	for (let i = 0; i < binary.length; i++) {
-		bytes[i] = binary.charCodeAt(i);
-	}
-	return bytes;
+    // Remove 'base64:' prefix if present
+    const actualBase64 = base64Str.startsWith('base64:') ? base64Str.substring(7) : base64Str;
+    // Empty base64 string means empty Uint8Array
+    if (actualBase64 === '') {
+        return new Uint8Array(0);
+    }
+    const binary = atob(actualBase64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
 }
 /**
  * Recursively convert base64/hex strings back to Uint8Array in config object
@@ -96,231 +100,251 @@ export function base64ToUint8Array(base64Str: string): Uint8Array {
  * 3. MAC addresses in hex format "AA:BB:CC:..." -> Uint8Array
  */
 export function restoreUint8Arrays(obj: any, key: string = ''): any {
-	// Keep Uint8Array as is
-	if (obj instanceof Uint8Array) {
-		return obj;
-	}
-	// Handle non-object types (numbers, booleans, strings that don't need conversion)
-	if (typeof obj !== 'object' || obj === null) {
-		// Check if this looks like a base64-encoded security key
-		// Keys like privateKey, publicKey, adminKey, psk are stored as "base64:..."
-		if (typeof obj === 'string' && obj.startsWith('base64:')) {
-			try {
-				const converted = base64ToUint8Array(obj);
-				console.log(`[Meshtastic] Converted base64 string to Uint8Array (${converted.length} bytes) for field: ${key}`);
-				return converted;
-			} catch (e) {
-				console.error(`[Meshtastic] Failed to convert ${key} from base64:`, e);
-				return obj;
-			}
-		}
-		return obj;
-	}
-	// Handle arrays
-	if (Array.isArray(obj)) {
-		return obj.map((item) => restoreUint8Arrays(item, key));
-	}
-	// Handle objects - recursively process properties
-	const result: any = {};
-	for (const [k, value] of Object.entries(obj)) {
-		// Check if this field should be a byte array based on its name
-		const shouldByteArray = isByteArrayField(k);
-		if (shouldByteArray) {
-			console.log(`[Meshtastic] Processing byte array field: ${k}, type: ${typeof value}, value:`, value);
-			if (typeof value === 'string') {
-				// Try to convert base64 string to Uint8Array
-				if (value.startsWith('base64:')) {
-					try {
-						result[k] = base64ToUint8Array(value);
-						console.log(`[Meshtastic] ✓ Converted ${k} from base64 to Uint8Array(${result[k].length} bytes)`);
-						continue;
-					} catch (e) {
-						console.error(`[Meshtastic] Failed to convert ${k} from base64:`, e);
-					}
-				}
-				// Try to convert hex string to Uint8Array (for MAC addresses, etc)
-				if (value.includes(':')) {
-					try {
-						const hexStr = value.replace(/:/g, '');
-						const bytes = new Uint8Array(hexStr.length / 2);
-						for (let i = 0; i < hexStr.length; i += 2) {
-							bytes[i / 2] = parseInt(hexStr.substring(i, i + 2), 16);
-						}
-						result[k] = bytes;
-						console.log(`[Meshtastic] ✓ Converted ${k} from hex to Uint8Array(${bytes.length} bytes)`);
-						continue;
-					} catch (e) {
-						console.error(`[Meshtastic] Failed to convert ${k} from hex:`, e);
-					}
-				}
-				// If conversion failed but field should be Uint8Array, warn and keep as string
-				console.error(`[Meshtastic] ✗ Field ${k} should be Uint8Array but is string:`, value);
-				result[k] = value;
-			} else if (value instanceof Uint8Array) {
-				console.log(`[Meshtastic] ✓ Field ${k} is already Uint8Array(${value.length} bytes)`);
-				result[k] = value;
-			} else {
-				console.error(`[Meshtastic] ✗ Field ${k} should be Uint8Array but is ${typeof value}:`, value);
-				result[k] = value;
-			}
-		} else {
-			// Recursively process nested objects
-			result[k] = restoreUint8Arrays(value, k);
-		}
-	}
-	return result;
+    // Keep Uint8Array as is
+    if (obj instanceof Uint8Array) {
+        return obj;
+    }
+    // Handle non-object types (numbers, booleans, strings that don't need conversion)
+    if (typeof obj !== 'object' || obj === null) {
+        // Check if this looks like a base64-encoded security key
+        // Keys like privateKey, publicKey, adminKey, psk are stored as "base64:..."
+        if (typeof obj === 'string' && obj.startsWith('base64:')) {
+            try {
+                const converted = base64ToUint8Array(obj);
+                console.log(
+                    `[Meshtastic] Converted base64 string to Uint8Array (${converted.length} bytes) for field: ${key}`
+                );
+                return converted;
+            } catch (e) {
+                console.error(`[Meshtastic] Failed to convert ${key} from base64:`, e);
+                return obj;
+            }
+        }
+        return obj;
+    }
+    // Handle arrays
+    if (Array.isArray(obj)) {
+        return obj.map((item) => restoreUint8Arrays(item, key));
+    }
+    // Handle objects - recursively process properties
+    const result: any = {};
+    for (const [k, value] of Object.entries(obj)) {
+        // Check if this field should be a byte array based on its name
+        const shouldByteArray = isByteArrayField(k);
+        if (shouldByteArray) {
+            console.log(
+                `[Meshtastic] Processing byte array field: ${k}, type: ${typeof value}, value:`,
+                value
+            );
+            if (typeof value === 'string') {
+                // Try to convert base64 string to Uint8Array
+                if (value.startsWith('base64:')) {
+                    try {
+                        result[k] = base64ToUint8Array(value);
+                        console.log(
+                            `[Meshtastic] ✓ Converted ${k} from base64 to Uint8Array(${result[k].length} bytes)`
+                        );
+                        continue;
+                    } catch (e) {
+                        console.error(`[Meshtastic] Failed to convert ${k} from base64:`, e);
+                    }
+                }
+                // Try to convert hex string to Uint8Array (for MAC addresses, etc)
+                if (value.includes(':')) {
+                    try {
+                        const hexStr = value.replace(/:/g, '');
+                        const bytes = new Uint8Array(hexStr.length / 2);
+                        for (let i = 0; i < hexStr.length; i += 2) {
+                            bytes[i / 2] = parseInt(hexStr.substring(i, i + 2), 16);
+                        }
+                        result[k] = bytes;
+                        console.log(
+                            `[Meshtastic] ✓ Converted ${k} from hex to Uint8Array(${bytes.length} bytes)`
+                        );
+                        continue;
+                    } catch (e) {
+                        console.error(`[Meshtastic] Failed to convert ${k} from hex:`, e);
+                    }
+                }
+                // If conversion failed but field should be Uint8Array, warn and keep as string
+                console.error(
+                    `[Meshtastic] ✗ Field ${k} should be Uint8Array but is string:`,
+                    value
+                );
+                result[k] = value;
+            } else if (value instanceof Uint8Array) {
+                console.log(
+                    `[Meshtastic] ✓ Field ${k} is already Uint8Array(${value.length} bytes)`
+                );
+                result[k] = value;
+            } else {
+                console.error(
+                    `[Meshtastic] ✗ Field ${k} should be Uint8Array but is ${typeof value}:`,
+                    value
+                );
+                result[k] = value;
+            }
+        } else {
+            // Recursively process nested objects
+            result[k] = restoreUint8Arrays(value, k);
+        }
+    }
+    return result;
 }
 /**
  * Check if a field should be a byte array based on its name
  * These fields contain binary data and must be Uint8Array for protobuf encoding
  */
 function isByteArrayField(fieldName: string): boolean {
-	const byteArrayFields = [
-		'privateKey',
-		'publicKey',
-		'adminKey',
-		'psk',
-		'macaddr',
-		'preset',
-		'localSk',
-		'ownerKey'
-	];
-	const lowerFieldName = fieldName.toLowerCase();
-	return byteArrayFields.some((field) => lowerFieldName.includes(field.toLowerCase()));
+    const byteArrayFields = [
+        'privateKey',
+        'publicKey',
+        'adminKey',
+        'psk',
+        'macaddr',
+        'preset',
+        'localSk',
+        'ownerKey'
+    ];
+    const lowerFieldName = fieldName.toLowerCase();
+    return byteArrayFields.some((field) => lowerFieldName.includes(field.toLowerCase()));
 }
 /**
  * JSON replacer function that converts BigInt and Uint8Array for serialization
  * Handles security keys with base64 encoding matching Python client format
  */
 export function meshtasticJsonReplacer(_key: string, value: any): any {
-	if (typeof value === 'bigint') {
-		return value.toString();
-	}
-	// Handle Uint8Array (security keys: privateKey, publicKey, adminKey)
-	// Match Python client format with 'base64:' prefix
-	if (value instanceof Uint8Array) {
-		return uint8ArrayToBase64(value);
-	}
-	return value;
+    if (typeof value === 'bigint') {
+        return value.toString();
+    }
+    // Handle Uint8Array (security keys: privateKey, publicKey, adminKey)
+    // Match Python client format with 'base64:' prefix
+    if (value instanceof Uint8Array) {
+        return uint8ArrayToBase64(value);
+    }
+    return value;
 }
 /**
  * Convert MAC address from base64-encoded Uint8Array to hex string format
  * Format: "XX:XX:XX:XX:XX:XX"
  */
 export function macaddrToHex(macaddr: Uint8Array | string): string {
-	// If it's already a string with base64: prefix, decode it
-	if (typeof macaddr === 'string') {
-		if (macaddr.startsWith('base64:')) {
-			macaddr = base64ToUint8Array(macaddr);
-		} else {
-			// Already in some format, return as is
-			return macaddr;
-		}
-	}
-	// Convert Uint8Array to hex format
-	if (macaddr instanceof Uint8Array) {
-		return Array.from(macaddr)
-			.map((byte) => byte.toString(16).padStart(2, '0').toUpperCase())
-			.join(':');
-	}
-	return String(macaddr);
+    // If it's already a string with base64: prefix, decode it
+    if (typeof macaddr === 'string') {
+        if (macaddr.startsWith('base64:')) {
+            macaddr = base64ToUint8Array(macaddr);
+        } else {
+            // Already in some format, return as is
+            return macaddr;
+        }
+    }
+    // Convert Uint8Array to hex format
+    if (macaddr instanceof Uint8Array) {
+        return Array.from(macaddr)
+            .map((byte) => byte.toString(16).padStart(2, '0').toUpperCase())
+            .join(':');
+    }
+    return String(macaddr);
 }
 /**
  * Convert camelCase to snake_case
  * Example: ledHeartbeatDisabled -> led_heartbeat_disabled
  */
 export function convertToSnakeCase(obj: any): any {
-	if (obj === null || typeof obj !== 'object') {
-		return obj;
-	}
-	if (Array.isArray(obj)) {
-		return obj.map((item) => convertToSnakeCase(item));
-	}
-	const result: any = {};
-	for (const [key, value] of Object.entries(obj)) {
-		// Convert camelCase to snake_case
-		const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, '');
-		result[snakeKey] = convertToSnakeCase(value);
-	}
-	return result;
+    if (obj === null || typeof obj !== 'object') {
+        return obj;
+    }
+    if (Array.isArray(obj)) {
+        return obj.map((item) => convertToSnakeCase(item));
+    }
+    const result: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+        // Convert camelCase to snake_case
+        const snakeKey = key
+            .replace(/([A-Z])/g, '_$1')
+            .toLowerCase()
+            .replace(/^_/, '');
+        result[snakeKey] = convertToSnakeCase(value);
+    }
+    return result;
 }
 /**
  * Remove protobuf internal fields like $typeName, $case, payloadVariant, etc.
  * These are used by the protobuf library but shouldn't be in the exported config
  */
 export function cleanProtobufFields(obj: any): any {
-	if (obj === null || typeof obj !== 'object') {
-		return obj;
-	}
-	// Convert Uint8Array to base64 string immediately
-	if (obj instanceof Uint8Array) {
-		return uint8ArrayToBase64(obj);
-	}
-	if (Array.isArray(obj)) {
-		return obj.map((item) => cleanProtobufFields(item));
-	}
-	const result: any = {};
-	for (const [key, value] of Object.entries(obj)) {
-		// Skip protobuf internal fields
-		if (key.startsWith('$') || key === 'payloadVariant') {
-			continue;
-		}
-		// Recursively clean nested objects, convert Uint8Array to base64
-		if (value instanceof Uint8Array) {
-			result[key] = uint8ArrayToBase64(value);
-		} else if (typeof value === 'object' && value !== null) {
-			result[key] = cleanProtobufFields(value);
-		} else {
-			result[key] = value;
-		}
-	}
-	return result;
+    if (obj === null || typeof obj !== 'object') {
+        return obj;
+    }
+    // Convert Uint8Array to base64 string immediately
+    if (obj instanceof Uint8Array) {
+        return uint8ArrayToBase64(obj);
+    }
+    if (Array.isArray(obj)) {
+        return obj.map((item) => cleanProtobufFields(item));
+    }
+    const result: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+        // Skip protobuf internal fields
+        if (key.startsWith('$') || key === 'payloadVariant') {
+            continue;
+        }
+        // Recursively clean nested objects, convert Uint8Array to base64
+        if (value instanceof Uint8Array) {
+            result[key] = uint8ArrayToBase64(value);
+        } else if (typeof value === 'object' && value !== null) {
+            result[key] = cleanProtobufFields(value);
+        } else {
+            result[key] = value;
+        }
+    }
+    return result;
 }
 /**
  * Convert all Uint8Array values to base64 strings recursively
  * This must be done before YAML export since js-yaml doesn't support replacer function
  */
 export function convertUint8ArraysToBase64(obj: any): any {
-	if (obj === null || typeof obj !== 'object') {
-		return obj;
-	}
-	// Handle Uint8Array directly
-	if (obj instanceof Uint8Array) {
-		return uint8ArrayToBase64(obj);
-	}
-	if (Array.isArray(obj)) {
-		return obj.map((item) => convertUint8ArraysToBase64(item));
-	}
-	const result: any = {};
-	for (const [key, value] of Object.entries(obj)) {
-		if (value instanceof Uint8Array) {
-			result[key] = uint8ArrayToBase64(value);
-		} else if (typeof value === 'object' && value !== null) {
-			result[key] = convertUint8ArraysToBase64(value);
-		} else {
-			result[key] = value;
-		}
-	}
-	return result;
+    if (obj === null || typeof obj !== 'object') {
+        return obj;
+    }
+    // Handle Uint8Array directly
+    if (obj instanceof Uint8Array) {
+        return uint8ArrayToBase64(obj);
+    }
+    if (Array.isArray(obj)) {
+        return obj.map((item) => convertUint8ArraysToBase64(item));
+    }
+    const result: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+        if (value instanceof Uint8Array) {
+            result[key] = uint8ArrayToBase64(value);
+        } else if (typeof value === 'object' && value !== null) {
+            result[key] = convertUint8ArraysToBase64(value);
+        } else {
+            result[key] = value;
+        }
+    }
+    return result;
 }
 /**
  * Extract actual config data from protobuf wrapper structure
  * Handles both direct config objects and payloadVariant.value wrapped objects
  */
 export function extractConfigData(configWrapper: any): any {
-	if (!configWrapper || typeof configWrapper !== 'object') {
-		return configWrapper;
-	}
-	// If has payloadVariant.value structure, extract the value
-	if (configWrapper.payloadVariant?.value) {
-		return extractConfigData(configWrapper.payloadVariant.value);
-	}
-	// If has payload.payloadVariant.value structure, extract it
-	if (configWrapper.payload?.payloadVariant?.value) {
-		return extractConfigData(configWrapper.payload.payloadVariant.value);
-	}
-	// Otherwise, clean and return the object directly
-	return cleanProtobufFields(configWrapper);
+    if (!configWrapper || typeof configWrapper !== 'object') {
+        return configWrapper;
+    }
+    // If has payloadVariant.value structure, extract the value
+    if (configWrapper.payloadVariant?.value) {
+        return extractConfigData(configWrapper.payloadVariant.value);
+    }
+    // If has payload.payloadVariant.value structure, extract it
+    if (configWrapper.payload?.payloadVariant?.value) {
+        return extractConfigData(configWrapper.payload.payloadVariant.value);
+    }
+    // Otherwise, clean and return the object directly
+    return cleanProtobufFields(configWrapper);
 }
 // ==================== Python Client Format Conversion ====================
 /**
@@ -328,16 +352,16 @@ export function extractConfigData(configWrapper: any): any {
  * Matches the YAML export/import format for config file interoperability
  */
 export interface MeshtasticPythonConfig {
-	owner?: string;
-	owner_short?: string;
-	channel_url?: string;
-	location?: {
-		lat: number;
-		lon: number;
-		alt?: number;
-	};
-	config: Record<string, any>;  // LocalConfig sections: device, security, lora, etc.
-	module_config?: Record<string, any>;  // ModuleConfig sections: mqtt, serial, etc.
+    owner?: string;
+    owner_short?: string;
+    channel_url?: string;
+    location?: {
+        lat: number;
+        lon: number;
+        alt?: number;
+    };
+    config: Record<string, any>; // LocalConfig sections: device, security, lora, etc.
+    module_config?: Record<string, any>; // ModuleConfig sections: mqtt, serial, etc.
 }
 /**
  * Convert our internal config format to Python client compatible format
@@ -349,92 +373,90 @@ export interface MeshtasticPythonConfig {
  * This allows config files to be interoperable with Meshtastic Python client
  */
 export function transformToPythonFormat(fullConfig: any): MeshtasticPythonConfig {
-	const result: MeshtasticPythonConfig = {
-		config: {},
-		module_config: {}
-	};
-	// Ensure module_config is initialized to avoid TypeScript errors
-	if (!result.module_config) {
-		result.module_config = {};
-	}
-	// Extract owner information
-	if (fullConfig.owner) {
-		result.owner = fullConfig.owner.owner || fullConfig.owner.name || '';
-		// Generate short owner name (max 4 chars, trimmed)
-		result.owner_short = result.owner
-			? result.owner.substring(0, 4).trim()
-			: '';
-	}
-	// Extract location from position config if available
-	if (fullConfig.localConfig?.position) {
-		const pos = fullConfig.localConfig.position;
-		if (pos.latitude || pos.longitude || pos.altitude) {
-			result.location = {
-				lat: pos.latitude ?? 0,
-				lon: pos.longitude ?? 0
-			};
-			if (pos.altitude !== undefined && pos.altitude !== 0) {
-				result.location.alt = pos.altitude;
-			}
-		}
-	}
-	// Flatten localConfig sections into 'config' object
-	if (fullConfig.localConfig) {
-		for (const [sectionName, sectionData] of Object.entries(fullConfig.localConfig)) {
-			result.config[sectionName] = sectionData;
-		}
-	}
-	// Flatten moduleConfig sections into 'module_config' object
-	if (fullConfig.moduleConfig) {
-		for (const [sectionName, sectionData] of Object.entries(fullConfig.moduleConfig)) {
-			result.module_config[sectionName] = sectionData;
-		}
-	}
-	// Generate channel_url from primary channel if available
-	if (fullConfig.channels && fullConfig.channels.length > 0) {
-		const primaryChannel = fullConfig.channels[0];
-		if (primaryChannel.config && primaryChannel.config.settings) {
-			// Channel URL would need to be generated from channel settings
-			// For now, we'll skip this as it requires complex encoding
-			// result.channel_url = generateChannelUrl(primaryChannel.config);
-		}
-	}
-	return result;
+    const result: MeshtasticPythonConfig = {
+        config: {},
+        module_config: {}
+    };
+    // Ensure module_config is initialized to avoid TypeScript errors
+    if (!result.module_config) {
+        result.module_config = {};
+    }
+    // Extract owner information
+    if (fullConfig.owner) {
+        result.owner = fullConfig.owner.owner || fullConfig.owner.name || '';
+        // Generate short owner name (max 4 chars, trimmed)
+        result.owner_short = result.owner ? result.owner.substring(0, 4).trim() : '';
+    }
+    // Extract location from position config if available
+    if (fullConfig.localConfig?.position) {
+        const pos = fullConfig.localConfig.position;
+        if (pos.latitude || pos.longitude || pos.altitude) {
+            result.location = {
+                lat: pos.latitude ?? 0,
+                lon: pos.longitude ?? 0
+            };
+            if (pos.altitude !== undefined && pos.altitude !== 0) {
+                result.location.alt = pos.altitude;
+            }
+        }
+    }
+    // Flatten localConfig sections into 'config' object
+    if (fullConfig.localConfig) {
+        for (const [sectionName, sectionData] of Object.entries(fullConfig.localConfig)) {
+            result.config[sectionName] = sectionData;
+        }
+    }
+    // Flatten moduleConfig sections into 'module_config' object
+    if (fullConfig.moduleConfig) {
+        for (const [sectionName, sectionData] of Object.entries(fullConfig.moduleConfig)) {
+            result.module_config[sectionName] = sectionData;
+        }
+    }
+    // Generate channel_url from primary channel if available
+    if (fullConfig.channels && fullConfig.channels.length > 0) {
+        const primaryChannel = fullConfig.channels[0];
+        if (primaryChannel.config && primaryChannel.config.settings) {
+            // Channel URL would need to be generated from channel settings
+            // For now, we'll skip this as it requires complex encoding
+            // result.channel_url = generateChannelUrl(primaryChannel.config);
+        }
+    }
+    return result;
 }
 /**
  * Convert Python client config format back to our internal format
  * Used when importing a config file that was exported from Python client
  */
 export function transformFromPythonFormat(pythonConfig: MeshtasticPythonConfig): any {
-	const result: any = {
-		version: '1.0',
-		timestamp: new Date().toISOString(),
-		localConfig: {},
-		moduleConfig: {},
-		channels: [],
-		owner: null
-	};
-	// Reconstruct localConfig from 'config' sections
-	if (pythonConfig.config) {
-		for (const [sectionName, sectionData] of Object.entries(pythonConfig.config)) {
-			result.localConfig[sectionName] = sectionData;
-		}
-	}
-	// Reconstruct moduleConfig from 'module_config' sections
-	if (pythonConfig.module_config) {
-		for (const [sectionName, sectionData] of Object.entries(pythonConfig.module_config)) {
-			result.moduleConfig[sectionName] = sectionData;
-		}
-	}
-	// Reconstruct owner
-	if (pythonConfig.owner) {
-		result.owner = {
-			owner: pythonConfig.owner,
-			// owner_short is derived from owner
-		};
-	}
-	// Location is already stored in position config, no need to handle separately
-	return result;
+    const result: any = {
+        version: '1.0',
+        timestamp: new Date().toISOString(),
+        localConfig: {},
+        moduleConfig: {},
+        channels: [],
+        owner: null
+    };
+    // Reconstruct localConfig from 'config' sections
+    if (pythonConfig.config) {
+        for (const [sectionName, sectionData] of Object.entries(pythonConfig.config)) {
+            result.localConfig[sectionName] = sectionData;
+        }
+    }
+    // Reconstruct moduleConfig from 'module_config' sections
+    if (pythonConfig.module_config) {
+        for (const [sectionName, sectionData] of Object.entries(pythonConfig.module_config)) {
+            result.moduleConfig[sectionName] = sectionData;
+        }
+    }
+    // Reconstruct owner
+    if (pythonConfig.owner) {
+        result.owner = {
+            owner: pythonConfig.owner
+            // owner_short is derived from owner
+        };
+    }
+    // Location is already stored in position config, no need to handle separately
+    return result;
 }
 // ==================== Retry Helper ====================
 /**
@@ -446,40 +468,43 @@ export function transformFromPythonFormat(pythonConfig: MeshtasticPythonConfig):
  * @throws Last error if all retries fail
  */
 export async function withRetry<T>(
-	fn: () => Promise<T>,
-	retries: number = 3,
-	delayMs: number = 100
+    fn: () => Promise<T>,
+    retries: number = 3,
+    delayMs: number = 100
 ): Promise<T> {
-	let lastError: Error | undefined;
-	for (let attempt = 0; attempt <= retries; attempt++) {
-		try {
-			return await fn();
-		} catch (error) {
-			lastError = error instanceof Error ? error : new Error(String(error));
-			if (attempt < retries) {
-				// Wait before retry
-				await new Promise(resolve => setTimeout(resolve, delayMs));
-			}
-		}
-	}
-	throw lastError;
+    let lastError: Error | undefined;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            return await fn();
+        } catch (error) {
+            lastError = error instanceof Error ? error : new Error(String(error));
+            if (attempt < retries) {
+                // Wait before retry
+                await new Promise((resolve) => setTimeout(resolve, delayMs));
+            }
+        }
+    }
+    throw lastError;
 }
 /**
  * Validate Meshtastic configuration
  * Checks that at least one section has data
  */
 export function validateMeshtasticConfig(config: any): { valid: boolean; error?: string } {
-	if (!config || typeof config !== 'object') {
-		return { valid: false, error: 'Invalid configuration' };
-	}
-	const hasLocalConfig = config.localConfig && Object.keys(config.localConfig).length > 0;
-	const hasModuleConfig = config.moduleConfig && Object.keys(config.moduleConfig).length > 0;
-	const hasChannels = config.channels && config.channels.length > 0;
-	const hasOwner = config.owner;
-	if (!hasLocalConfig && !hasModuleConfig && !hasChannels && !hasOwner) {
-		return { valid: false, error: 'Configuration must contain at least one section: localConfig, moduleConfig, channels, or owner' };
-	}
-	return { valid: true };
+    if (!config || typeof config !== 'object') {
+        return { valid: false, error: 'Invalid configuration' };
+    }
+    const hasLocalConfig = config.localConfig && Object.keys(config.localConfig).length > 0;
+    const hasModuleConfig = config.moduleConfig && Object.keys(config.moduleConfig).length > 0;
+    const hasChannels = config.channels && config.channels.length > 0;
+    const hasOwner = config.owner;
+    if (!hasLocalConfig && !hasModuleConfig && !hasChannels && !hasOwner) {
+        return {
+            valid: false,
+            error: 'Configuration must contain at least one section: localConfig, moduleConfig, channels, or owner'
+        };
+    }
+    return { valid: true };
 }
 // ==================== Meshtastic Manager ====================
 /**
@@ -487,829 +512,907 @@ export function validateMeshtasticConfig(config: any): { valid: boolean; error?:
  * Factory function following project pattern from esp.ts
  */
 export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
-	// State management
-	let transport: any = null;
-	let device: any = null;
-	let serialPort: any = null; // Store SerialPort reference for direct closing
-	let eventCallbacks: MeshtasticEventCallbacks = {};
-	let connectionStatus: MeshtasticConnectionStatus = 'disconnected';
-	// Cached device info from various sources
-	let cachedMyNodeInfo: any = null;
-	let cachedNodeInfo: any = null;
-	let cachedDeviceMetadata: any = null;
-	let cachedOwner: any = null;
-	let cachedMetrics: MeshtasticNodeMetrics = {};
-	let networkNodes: Map<number, any> = new Map();  // All nodes in network
-	const heartbeatInterval = options?.heartbeatInterval ?? DEFAULT_HEARTBEAT_INTERVAL;
-	const autoConfigure = options?.autoConfigure ?? true;
-	/**
-	 * Connect to Meshtastic device
-	 * Returns device info (node name and firmware version)
-	 */
-	async function connect(): Promise<MeshtasticDeviceInfo> {
-		try {
-		// Reset flag for new connection
-			updateConnectionStatus('connecting');
-			// Ensure cleanup from any previous connection
-			if (transport || device || serialPort) {
-				console.log('[Meshtastic] Cleaning up previous connection...');
-				// Clear heartbeat first
-				if (device?._heartbeatIntervalId !== undefined) {
-					clearInterval(device._heartbeatIntervalId);
-				}
-				// Cancel transport streams
-				if (transport?._fromDevice) {
-					transport._fromDevice.cancel().catch(() => {});
-				}
-				if (transport?.toDevice) {
-					transport.toDevice.close().catch(() => {});
-				}
-				if (transport?.abortController) {
-					transport.abortController.abort();
-				}
-				// Forget the port - this releases all stream locks!
-				if (serialPort && typeof serialPort.forget === 'function') {
-					try {
-						await serialPort.forget();
-						console.log('[Meshtastic] Port forgotten');
-					} catch (err) {
-						console.warn('[Meshtastic] Forget error (ignoring):', err);
-					}
-				}
-				// Close serial port if still open
-				if (serialPort && (serialPort.readable || serialPort.writable)) {
-					try {
-						await serialPort.close();
-						console.log('[Meshtastic] Port closed');
-					} catch (err) {
-						console.warn('[Meshtastic] Close error (ignoring):', err);
-					}
-				}
-				cleanup();
-				// Reset all variables
-				transport = undefined;
-				device = undefined;
-				serialPort = undefined;
-				cachedMyNodeInfo = undefined;
-				cachedNodeInfo = undefined;
-				cachedOwner = undefined;
-				cachedDeviceMetadata = undefined;
-				cachedMetrics = {};
-				// Small delay to allow cleanup
-				await new Promise(resolve => setTimeout(resolve, 200));
-			}
-			// Request port from user first
-			const port = await (navigator as any).serial.requestPort({});
-			serialPort = port; // Store reference
-			// Create transport from the port
-			transport = await TransportWebSerial.createFromPort(port);
-			// Create MeshDevice instance
-			device = new MeshDevice(transport);
-			// Disable internal logging from @meshtastic library
-			// Log levels: TRACE=5, DEBUG=10, INFO=20, WARNING=30, ERROR=40, CRITICAL=50
-			// Set minLevel to WARNING (30) to show only warnings and errors
-			if (device.log?.settings) {
-				device.log.settings.minLevel = 30;
-			}
-			// Subscribe to device events
-			setupEventSubscriptions();
-			// Start configuration process (don't await - it will complete in background)
-			if (autoConfigure) {
-				device.configure().catch((err: Error) => console.error('[Meshtastic] Configure error:', err));
-			}
-			// Wait for onMyNodeInfo event which will update status to 'configured'
-			// The event is already subscribed, so we just need to wait a bit
-			console.log('[Meshtastic] Waiting for myNodeInfo event...');
-			// Wait up to 5 seconds for configured status
-			const maxWaitTime = 5000;
-			const startTime = Date.now();
-			let iterations = 0;
-			while (connectionStatus !== 'configured' && Date.now() - startTime < maxWaitTime) {
-				iterations++;
-				if (iterations % 10 === 0) { // Log every 500ms
-					console.log(`[Meshtastic] Still waiting... status: ${connectionStatus}, elapsed: ${Date.now() - startTime}ms`);
-				}
-				await new Promise(resolve => setTimeout(resolve, 50));
-			}
-			console.log(`[Meshtastic] Wait complete. Status: ${connectionStatus}, elapsed: ${Date.now() - startTime}ms, iterations: ${iterations}`);
-			if (connectionStatus !== 'configured') {
-				throw new Error('Device configuration timeout');
-			}
-			// Set up heartbeat to maintain connection
-			device.setHeartbeatInterval(heartbeatInterval);
-			// Request metadata for our own node to get firmware version and hardware model
-			if (cachedMyNodeInfo?.myNodeNum) {
-				console.log('[Meshtastic] Requesting metadata for node:', cachedMyNodeInfo.myNodeNum);
-				device.getMetadata(cachedMyNodeInfo.myNodeNum).catch(() => {
-					// Ignore timeout - will come via onDeviceMetadataPacket later
-				});
-			}
-			// Request owner information to get node name
-			console.log('[Meshtastic] Requesting owner information...');
-			device.getOwner().catch(() => {
-				// Ignore timeout - will come via onUserPacket later
-			});
-			return extractDeviceInfo();
-		} catch (error) {
-			updateConnectionStatus('disconnected');
-			cleanup();
-			throw new Error(`Failed to connect: ${error instanceof Error ? error.message : String(error)}`);
-		}
-	}
-	/**
-	 * Disconnect from Meshtastic device
-	 * Uses port.forget() to release locks (from web-flasher)
-	 */
-	async function disconnect(): Promise<void> {
-		console.log('[Meshtastic] Disconnecting...');
-		// Clear callbacks
-		eventCallbacks = {};
-		// Clear heartbeat
-		if (device?._heartbeatIntervalId !== undefined) {
-			clearInterval(device._heartbeatIntervalId);
-		}
-		// Cancel fromDevice stream
-		if (transport?._fromDevice) {
-			try {
-				await transport._fromDevice.cancel();
-				console.log('[Meshtastic] fromDevice stream cancelled');
-			} catch (err) {
-				console.warn('[Meshtastic] Cancel fromDevice error (ignoring):', err);
-			}
-		}
-		// Close toDevice stream
-		if (transport?.toDevice) {
-			try {
-				await transport.toDevice.close();
-				console.log('[Meshtastic] toDevice stream closed');
-			} catch (err) {
-				console.warn('[Meshtastic] Close toDevice error (ignoring):', err);
-			}
-		}
-		// Abort transport if present
-		if (transport?.abortController) {
-			transport.abortController.abort();
-		}
-		// Forget the port - this releases all locks!
-		if (serialPort && typeof serialPort.forget === 'function') {
-			try {
-				await serialPort.forget();
-				console.log('[Meshtastic] Port forgotten');
-			} catch (err) {
-				console.warn('[Meshtastic] Forget error (ignoring):', err);
-			}
-		}
-		// Close serial port if still open
-		if (serialPort && (serialPort.readable || serialPort.writable)) {
-			try {
-				await serialPort.close();
-				console.log('[Meshtastic] Port closed');
-			} catch (err) {
-				console.warn('[Meshtastic] Close error (ignoring):', err);
-			}
-		}
-		// Cleanup
-		cleanup();
-		// Reset all variables
-		transport = undefined;
-		device = undefined;
-		serialPort = undefined;
-		cachedMyNodeInfo = undefined;
-		cachedNodeInfo = undefined;
-		cachedOwner = undefined;
-		cachedDeviceMetadata = undefined;
-		cachedMetrics = {};
-		updateConnectionStatus('disconnected');
-		console.log('[Meshtastic] Disconnected');
-	}
-	/**
-	 * Set device owner name (simple test)
-	 */
-	async function setOwnerName(longName: string, shortName: string): Promise<void> {
-		ensureConfigured();
-		await device.setOwner({ longName, shortName });
-		await device.commitEditSettings();
-	}
-	/**
-	 * Write LocalConfig section to device
-	 * Automatically determines payloadVariant.case from config structure
-	 */
-	async function writeLocalConfig(config: any): Promise<void> {
-		ensureConfigured();
-		// Determine which config section this is based on structure
-		// Config should have exactly one top-level key (device, lora, security, etc.)
-		const sectionName = Object.keys(config)[0];
-		if (!sectionName) {
-			throw new Error('Invalid config: no section found');
-		}
-		// Extract the actual config data (without the section name wrapper)
-		const configData = config[sectionName];
-		console.log(`[Meshtastic] writeLocalConfig: sectionName=${sectionName}`);
-		console.log('[Meshtastic] configData before resolveEnumValues:', JSON.stringify(configData, (key, value) => {
-			if (value instanceof Uint8Array) {
-				return `Uint8Array(${value.length} bytes)`;
-			}
-			return value;
-		}, 2));
-		// Resolve enum values (e.g., "RU" -> 9, "LONG_FAST" -> 0)
-		// Use path with section name for enum resolution
-		const resolvedConfig = resolveEnumValues(configData, `localConfig.${sectionName}`);
-		console.log('[Meshtastic] resolvedConfig after resolveEnumValues:', JSON.stringify(resolvedConfig, (key, value) => {
-			if (value instanceof Uint8Array) {
-				return `Uint8Array(${value.length} bytes)`;
-			}
-			return value;
-		}, 2));
-		// Wrap in Config object with payloadVariant
-		// The library expects Config.Config which has a payloadVariant field
-		const configWithVariant = {
-			payloadVariant: { case: sectionName, value: resolvedConfig }
-		};
-		console.log(`[Meshtastic] Final configWithVariant for ${sectionName}:`, JSON.stringify(configWithVariant, (key, value) => {
-			if (value instanceof Uint8Array) {
-				return `Uint8Array(${value.length} bytes)`;
-			}
-			return value;
-		}, 2));
-		await device.setConfig(configWithVariant);
-	}
-	/**
-	 * Write ModuleConfig section to device
-	 * Automatically determines payloadVariant.case from config structure
-	 */
-	async function writeModuleConfig(config: any): Promise<void> {
-		ensureConfigured();
-		// Determine which module config section this is based on structure
-		// Config should have exactly one top-level key (mqtt, serial, etc.)
-		const sectionName = Object.keys(config)[0];
-		if (!sectionName) {
-			throw new Error('Invalid module config: no section found');
-		}
-		// Extract the actual config data (without the section name wrapper)
-		const configData = config[sectionName];
-		// Resolve enum values if any
-		// Use path with section name for enum resolution
-		const resolvedConfig = resolveEnumValues(configData, `moduleConfig.${sectionName}`);
-		// Wrap in ModuleConfig object with payloadVariant
-		const configWithVariant = {
-			payloadVariant: { case: sectionName, value: resolvedConfig }
-		};
-		console.log(`[Meshtastic] Writing ModuleConfig section: ${sectionName}`, configWithVariant);
-		await device.setModuleConfig(configWithVariant);
-	}
-	/**
-	 * Write channel to device
-	 */
-	async function writeChannel(config: any): Promise<void> {
-		ensureConfigured();
-		console.log('[Meshtastic] Writing channel:', config);
-		console.log('[Meshtastic] Channel psk:', config.settings?.psk);
-		await device.setChannel(config);
-	}
-	/**
-	 * Write owner to device
-	 */
-	async function writeOwner(config: any): Promise<void> {
-		ensureConfigured();
-		console.log('[Meshtastic] Writing owner:', config);
-		await device.setOwner(config);
-	}
-	/**
-	 * Commit all pending changes
-	 */
-	async function commitSettings(): Promise<void> {
-		ensureConfigured();
-		console.log('[Meshtastic] Committing settings changes...');
-		await device.commitEditSettings();
-		console.log('[Meshtastic] Settings committed successfully');
-	}
-	/**
-	 * Enter DFU (Device Firmware Update) mode
-	 * Device will reboot and disconnect
-	 */
-	async function enterDfuMode(): Promise<number> {
-		ensureConfigured();
-		console.log('[Meshtastic] Entering DFU mode...');
-		return await device.enterDfuMode();
-	}
-	/**
-	 * Read single channel from device
-	 */
-	async function readChannel(index: number, timeoutMs: number = 2000): Promise<MeshtasticChannelInfo> {
-		ensureConfigured();
-		return new Promise((resolve, reject) => {
-			const timeout = setTimeout(() => {
-				reject(new Error('Channel read timeout'));
-			}, timeoutMs);
-			const unsubscribe = device.events.onChannelPacket.subscribe((channel: any) => {
-				clearTimeout(timeout);
-				unsubscribe();
-				resolve({
-					index,
-					config: channel,
-					pending: device.pendingSettingsChanges
-				});
-			});
-			device.getChannel(index).catch((error: Error) => {
-				clearTimeout(timeout);
-				unsubscribe();
-				reject(error);
-			});
-		});
-	}
-	/**
-	 * Read owner from device
-	 */
-	async function readOwner(timeoutMs: number = 2000): Promise<MeshtasticOwnerInfo> {
-		ensureConfigured();
-		return new Promise((resolve, reject) => {
-			const timeout = setTimeout(() => {
-				reject(new Error('Owner read timeout'));
-			}, timeoutMs);
-			const unsubscribe = device.events.onUserPacket.subscribe((packet: any) => {
-				clearTimeout(timeout);
-				unsubscribe();
-				// Convert macaddr from base64/Uint8Array to hex format
-				const owner = packet.data;
-				if (owner?.macaddr) {
-					owner.macaddr = macaddrToHex(owner.macaddr);
-				}
-				resolve({
-					owner,
-					pending: device.pendingSettingsChanges
-				});
-			});
-			device.getOwner().catch((error: Error) => {
-				clearTimeout(timeout);
-				unsubscribe();
-				reject(error);
-			});
-		});
-	}
-	function setEventCallbacks(callbacks: MeshtasticEventCallbacks): void {
-		eventCallbacks = { ...callbacks };
-	}
-	function getConnectionStatus(): MeshtasticConnectionStatus {
-		return connectionStatus;
-	}
-	// ========== Helper functions ==========
-	function setupEventSubscriptions(): void {
-		if (!device) return;
-		// Log all available events
-		console.log('[Meshtastic] Available events:', Object.keys(device.events));
-		device.events.onDeviceStatus.subscribe((status: DeviceStatusEnum) => {
-			const newStatus = mapDeviceStatus(status);
-			updateConnectionStatus(newStatus);
-			eventCallbacks.onDeviceStatus?.(newStatus);
-		});
-		device.events.onMyNodeInfo.subscribe((myNodeInfo: any) => {
-			console.log('[Meshtastic] ========== onMyNodeInfo received ==========');
-			console.log('[Meshtastic] myNodeNum:', myNodeInfo.myNodeNum);
-			cachedMyNodeInfo = myNodeInfo;
-			const deviceInfo = extractDeviceInfo();
-			// When we receive myNodeInfo, device is ready
-			if (connectionStatus === 'connected' || connectionStatus === 'connecting') {
-				updateConnectionStatus('configured');
-			}
-			eventCallbacks.onMyNodeInfo?.(deviceInfo);
-		});
-		// Subscribe to ALL packet types for logging
-		const packetTypes = [
-			'onAtakForwarderPacket',
-			'onAtakPacket',
-			'onAtakPluginPacket',
-			'onAudioPacket',
-			'onCannedMessageModulePacket',
-			'onChannelPacket',
-			'onClientNotificationPacket',
-			'onConfigPacket',
-			'onDataPacket',
-			'onDetectionSensorPacket',
-			'onDeviceMetadataPacket',
-			'onIpTunnelPacket',
-			'onMapReportPacket',
-			'onMeshPacket',
-			'onMessagePacket',
-			'onModuleConfigPacket',
-			'onNeighborInfoPacket',
-			'onNodeInfoPacket',
-			'onPaxcounterPacket',
-			'onPingPacket',
-			'onPositionPacket',
-			'onPrivatePacket',
-			'onRangeTestPacket',
-			'onRemoteHardwarePacket',
-			'onRoutingPacket',
-			'onSerialPacket',
-			'onSimulatorPacket',
-			'onStoreForwardPacket',
-			'onTelemetryPacket',
-			'onTextPacket',
-			'onTraceRoutePacket',
-			'onUserPacket',
-			'onWaypointPacket',
-			'onZPSPacket',
-			'onZpsPacket'
-		];
-		packetTypes.forEach((eventType) => {
-			if (device.events[eventType]) {
-				device.events[eventType].subscribe((packet: any) => {
-					console.log(`[Meshtastic] ========== ${eventType} ==========`);
-					console.log('[Meshtastic] From:', packet.from);
-					console.log('[Meshtastic] To:', packet.to);
-					console.log('[Meshtastic] Data:', JSON.stringify(packet.data || packet, meshtasticJsonReplacer, 2));
-				});
-			}
-		});
-		// Actual processing handlers
-		device.events.onNodeInfoPacket.subscribe((packet: any) => {
-			// Collect all nodes in network
-			if (packet.data && packet.data.num) {
-				networkNodes.set(packet.data.num, packet.data);
-				updateNodeStats();
-				// NodeInfo for our own node
-				if (cachedMyNodeInfo && packet.data.num === cachedMyNodeInfo.myNodeNum) {
-					cachedNodeInfo = packet.data;
-					// Extract metrics from deviceMetrics
-					if (packet.data.deviceMetrics) {
-						extractMetrics(packet.data.deviceMetrics);
-					}
-					// Notify with updated device info
-					const deviceInfo = extractDeviceInfo();
-					eventCallbacks.onMyNodeInfo?.(deviceInfo);
-				}
-			}
-		});
-		device.events.onDeviceMetadataPacket.subscribe((packet: any) => {
-			if (packet.data) {
-				cachedDeviceMetadata = packet.data;
-				// Notify with updated device info
-				const deviceInfo = extractDeviceInfo();
-				eventCallbacks.onMyNodeInfo?.(deviceInfo);
-			}
-		});
-		device.events.onConfigPacket.subscribe((config: any) => {
-			eventCallbacks.onConfigPacket?.(config);
-		});
-		device.events.onModuleConfigPacket.subscribe((config: any) => {
-			eventCallbacks.onModuleConfigPacket?.(config);
-		});
-		device.events.onChannelPacket.subscribe((channel: any) => {
-			eventCallbacks.onChannelPacket?.(channel);
-		});
-		device.events.onMessagePacket.subscribe((data: any) => {
-			eventCallbacks.onMessagePacket?.(data);
-		});
-		device.events.onMeshPacket.subscribe((data: any) => {
-			eventCallbacks.onMeshPacket?.(data);
-		});
-		device.events.onUserPacket.subscribe((packet: any) => {
-			// User packet for our own node (owner info)
-			if (packet.data && cachedMyNodeInfo && packet.from === cachedMyNodeInfo.myNodeNum) {
-				cachedOwner = packet.data;
-				// Notify with updated device info
-				const deviceInfo = extractDeviceInfo();
-				eventCallbacks.onMyNodeInfo?.(deviceInfo);
-			}
-			eventCallbacks.onUserPacket?.(packet);
-		});
-		device.events.onTelemetryPacket.subscribe((packet: any) => {
-			console.log('[Meshtastic] ========== Telemetry packet received ==========');
-			console.log('[Meshtastic] From:', packet.from);
-			console.log('[Meshtastic] Data:', JSON.stringify(packet.data, null, 2));
-			if (!packet.data) {
-				console.log('[Meshtastic] No data in packet');
-				return;
-			}
-			const telemetry = packet.data;
-			const isFromOurNode = cachedMyNodeInfo && packet.from === cachedMyNodeInfo.myNodeNum;
-			console.log('[Meshtastic] isFromOurNode:', isFromOurNode, 'cachedMyNodeInfo:', cachedMyNodeInfo?.myNodeNum);
-			// Check for variant structure (newer protocol)
-			if (telemetry.variant && telemetry.variant.value) {
-				const variantType = telemetry.variant.case;
-				const variantData = telemetry.variant.value;
-				console.log('[Meshtastic] Variant type:', variantType);
-				// Extract metrics only from our own node
-				if (isFromOurNode) {
-					extractMetrics(variantData);
-				} else {
-					console.log('[Meshtastic] Skipping metrics from different node');
-				}
-			} else {
-				// Legacy structure - direct properties
-				console.log('[Meshtastic] Legacy telemetry structure');
-				// Device metrics (battery, voltage, channel utilization, air util)
-				if (telemetry.deviceMetrics) {
-					if (isFromOurNode) {
-						console.log('[Meshtastic] Extracting deviceMetrics from our own node');
-						extractMetrics(telemetry.deviceMetrics);
-					}
-				}
-				// Environment metrics (temperature, humidity, etc.)
-				if (telemetry.environmentMetrics) {
-					if (isFromOurNode) {
-						console.log('[Meshtastic] Extracting environmentMetrics from our own node');
-						extractMetrics(telemetry.environmentMetrics);
-					}
-				}
-				// Power metrics (voltage, current)
-				if (telemetry.powerMetrics) {
-					if (isFromOurNode) {
-						console.log('[Meshtastic] Extracting powerMetrics from our own node');
-						extractMetrics(telemetry.powerMetrics);
-					}
-				}
-			}
-		});
-	}
-	/**
-	 * Decode hardware model number to human-readable name
-	 */
-	function decodeHardwareModel(hwModel: number): string {
-		// HardwareModel enum has reverse mapping: HardwareModel[94] = "HELTEC_MESH_POCKET"
-		if (HardwareModel && HardwareModel[hwModel]) {
-			return HardwareModel[hwModel];
-		}
-		// Fallback to showing the number
-		return `Unknown (${hwModel})`;
-	}
-	function extractDeviceInfo(): MeshtasticDeviceInfo {
-		if (!device?.myNodeInfo) {
-			throw new Error('Device not initialized');
-		}
-		console.log('[Meshtastic] extractDeviceInfo myNodeInfo:', device.myNodeInfo);
-		console.log('[Meshtastic] cachedNodeInfo:', cachedNodeInfo);
-		console.log('[Meshtastic] cachedOwner:', cachedOwner);
-		console.log('[Meshtastic] cachedDeviceMetadata:', cachedDeviceMetadata);
-		const myNodeInfo = device.myNodeInfo;
-		// Extract long and short names from Owner packet (has highest priority)
-		let longName = cachedOwner?.longName;
-		let shortName = cachedOwner?.shortName;
-		// Fallback to NodeInfo user if Owner not available
-		if (!longName && !shortName && cachedNodeInfo?.user) {
-			longName = cachedNodeInfo.user.longName;
-			shortName = cachedNodeInfo.user.shortName;
-		}
-		// nodeName for backward compatibility - use longName or shortName or 'Unknown'
-		const nodeName = longName || shortName || 'Unknown';
-		// Extract firmware version from DeviceMetadata
-		let firmwareVersion = 'Unknown';
-		if (cachedDeviceMetadata?.firmwareVersion) {
-			firmwareVersion = cachedDeviceMetadata.firmwareVersion;
-		} else if (myNodeInfo.minAppVersion) {
-			firmwareVersion = `${myNodeInfo.minAppVersion}`;
-		}
-		// Extract hardware model from DeviceMetadata or pioEnv
-		let hardwareModel = 'Unknown';
-		if (cachedDeviceMetadata?.hwModel) {
-			hardwareModel = decodeHardwareModel(cachedDeviceMetadata.hwModel);
-		} else if (myNodeInfo.pioEnv) {
-			hardwareModel = myNodeInfo.pioEnv;
-		}
-		return {
-			nodeName,
-			longName,
-			shortName,
-			nodeNum: myNodeInfo.myNodeNum || 0,
-			firmwareVersion,
-			hardwareModel,
-			pioEnv: myNodeInfo.pioEnv || 'Unknown'
-		};
-	}
-	function mapDeviceStatus(status: DeviceStatusEnum): MeshtasticConnectionStatus {
-		switch (status) {
-			case DeviceStatusEnum.DeviceDisconnected:
-				return 'disconnected';
-			case DeviceStatusEnum.DeviceConnecting:
-				return 'connecting';
-			case DeviceStatusEnum.DeviceConnected:
-				return 'connected';
-			case DeviceStatusEnum.DeviceConfiguring:
-				return 'configuring';
-			case DeviceStatusEnum.DeviceConfigured:
-				return 'configured';
-			case DeviceStatusEnum.DeviceReconnecting:
-				return 'reconnecting';
-			case DeviceStatusEnum.DeviceRestarting:
-				return 'restarting';
-			default:
-				return 'disconnected';
-		}
-	}
-	function updateConnectionStatus(status: MeshtasticConnectionStatus): void {
-		connectionStatus = status;
-	}
-	/**
-	 * Update node statistics (total and online nodes)
-	 * Online = node has been heard from in the last 30 minutes
-	 */
-	function updateNodeStats(): void {
-		const totalNodes = networkNodes.size;
-		const now = Math.floor(Date.now() / 1000); // Current time in seconds
-		const onlineThreshold = 30 * 60; // 30 minutes
-		let onlineNodes = 0;
-		for (const [, nodeInfo] of networkNodes.entries()) {
-			if (nodeInfo.lastHeard && (now - nodeInfo.lastHeard) < onlineThreshold) {
-				onlineNodes++;
-			}
-		}
-		const stats: MeshtasticNodeStats = {
-			totalNodes,
-			onlineNodes
-		};
-		eventCallbacks.onNodeStatsUpdate?.(stats);
-	}
-	/**
-	 * Extract metrics from device metrics data
-	 * Handles DeviceMetrics, LocalStats, PowerMetrics, and EnvironmentMetrics
-	 */
-	function extractMetrics(data: any): void {
-		const newMetrics: MeshtasticNodeMetrics = {};
-		// DeviceMetrics fields
-		if (data.batteryLevel !== undefined) newMetrics.batteryLevel = data.batteryLevel;
-		if (data.voltage !== undefined) newMetrics.voltage = data.voltage;
-		if (data.channelUtilization !== undefined) newMetrics.chUtil = data.channelUtilization;
-		if (data.airUtilTx !== undefined) newMetrics.airUtil = data.airUtilTx;
-		// LocalStats fields (includes deviceMetrics + more)
-		if (data.time !== undefined) newMetrics.time = data.time;
-		if (data.uptimeSeconds !== undefined) newMetrics.uptimeSeconds = data.uptimeSeconds;
-		if (data.numPacketsTx !== undefined) newMetrics.numPacketsTx = data.numPacketsTx;
-		if (data.numPacketsRx !== undefined) newMetrics.numPacketsRx = data.numPacketsRx;
-		if (data.numPacketsRxBad !== undefined) newMetrics.numPacketsRxBad = data.numPacketsRxBad;
-		if (data.numRxDupe !== undefined) newMetrics.numRxDupe = data.numRxDupe;
-		if (data.numTxRelay !== undefined) newMetrics.numTxRelay = data.numTxRelay;
-		if (data.numTxRelayCanceled !== undefined) newMetrics.numTxRelayCanceled = data.numTxRelayCanceled;
-		if (data.numTxDropped !== undefined) newMetrics.numTxDropped = data.numTxDropped;
-		if (data.heapFreeBytes !== undefined) newMetrics.heapFreeBytes = data.heapFreeBytes;
-		if (data.heapTotalBytes !== undefined) newMetrics.heapTotalBytes = data.heapTotalBytes;
-		// Node stats from LocalStats
-		if (data.numOnlineNodes !== undefined || data.numTotalNodes !== undefined) {
-			const nodeStats = {
-				onlineNodes: data.numOnlineNodes ?? 0,
-				totalNodes: data.numTotalNodes ?? 0
-			};
-			eventCallbacks.onNodeStatsUpdate?.(nodeStats);
-		}
-		// PowerMetrics fields (already covered: voltage, channelUtilization, airUtilTx)
-		if (data.chanelUtilization !== undefined) newMetrics.chUtil = data.chanelUtilization; // typo in protobuf
-		// EnvironmentMetrics fields
-		if (data.temperature !== undefined) newMetrics.temperature = data.temperature;
-		if (data.relativeHumidity !== undefined) newMetrics.relativeHumidity = data.relativeHumidity;
-		if (data.barometricPressure !== undefined) newMetrics.barometricPressure = data.barometricPressure;
-		if (data.gasResistance !== undefined) newMetrics.gasResistance = data.gasResistance;
-		if (data.voltage !== undefined) newMetrics.voltage = data.voltage;
-		if (data.current !== undefined) newMetrics.current = data.current;
-		if (data.iaq !== undefined) newMetrics.iaq = data.iaq;
-		// Update metrics if we found any
-		if (Object.keys(newMetrics).length > 0) {
-			cachedMetrics = { ...cachedMetrics, ...newMetrics };
-			eventCallbacks.onMetricsUpdate?.(cachedMetrics);
-		}
-	}
-	async function waitForPendingSettings(): Promise<void> {
-		return new Promise((resolve, reject) => {
-			const timeout = setTimeout(() => {
-				reject(new Error('Timeout waiting for pending settings to clear'));
-			}, 10000); // 10 second timeout
-			const checkPending = () => {
-				if (!device?.pendingSettingsChanges) {
-					clearTimeout(timeout);
-					resolve();
-				} else {
-					setTimeout(checkPending, 100);
-				}
-			};
-			checkPending();
-		});
-	}
-	function ensureConfigured(): void {
-		if (connectionStatus !== 'configured') {
-			throw new Error('Device not configured. Please connect first.');
-		}
-	}
-	function cleanup(): void {
-		transport = null;
-		device = null;
-		serialPort = null;
-	}
-	/**
-	 * Read all LocalConfig sections with retry
-	 * Sections are read sequentially to avoid event subscription conflicts
-	 */
-	async function readAllLocalConfig(): Promise<Record<string, any>> {
-		ensureConfigured();
-		const results: Record<string, any> = {};
-		// Get all numeric enum values
-		const configTypes = Object.values(ConfigType).filter((v): v is number => typeof v === 'number');
-		// Read configs sequentially
-		for (const configNum of configTypes) {
-			const result = await withRetry(
-				() => new Promise<MeshtasticConfigReadResult<any>>((resolve, reject) => {
-					const timeout = setTimeout(() => reject(new Error('Config read timeout')), 2000);
-					const unsubscribe = device.events.onConfigPacket.subscribe((config: any) => {
-						clearTimeout(timeout);
-						unsubscribe();
-						// Log config structure to see what we get
-						console.log('[Meshtastic] Raw config packet received:');
-						console.log('[Meshtastic] config.payloadVariant.case:', config.payloadVariant?.case);
-						if (config.payloadVariant?.case === 'security') {
-							console.log('[Meshtastic] Security config value type:', typeof config.payloadVariant.value);
-							console.log('[Meshtastic] publicKey type:', typeof config.payloadVariant.value?.publicKey);
-							console.log('[Meshtastic] publicKey instanceof Uint8Array:', config.payloadVariant.value?.publicKey instanceof Uint8Array);
-							console.log('[Meshtastic] publicKey:', config.payloadVariant.value?.publicKey);
-						}
-						resolve({ config, pending: device.pendingSettingsChanges });
-					});
-					device.getConfig(configNum).catch((error: Error) => {
-						clearTimeout(timeout);
-						unsubscribe();
-						reject(error);
-					});
-				}),
-				3,
-				100
-			);
-			const caseName = result.config?.payloadVariant?.case;
-			if (caseName) {
-				const extractedData = extractConfigData(result.config);
-				// Convert numeric enums to string names for readability
-				results[caseName] = resolveEnumNames(extractedData, `localConfig.${caseName}`);
-			}
-		}
-		return results;
-	}
-	/**
-	 * Read all ModuleConfig sections with retry
-	 * Sections are read sequentially to avoid event subscription conflicts
-	 */
-	async function readAllModuleConfig(): Promise<Record<string, any>> {
-		ensureConfigured();
-		const results: Record<string, any> = {};
-		// Get all numeric enum values
-		const moduleConfigTypes = Object.values(ModuleConfigType).filter((v): v is number => typeof v === 'number');
-		// Read configs sequentially
-		for (const configNum of moduleConfigTypes) {
-			const result = await withRetry(
-				() => new Promise<MeshtasticConfigReadResult<any>>((resolve, reject) => {
-					const timeout = setTimeout(() => reject(new Error('Module config read timeout')), 2000);
-					const unsubscribe = device.events.onModuleConfigPacket.subscribe((config: any) => {
-						clearTimeout(timeout);
-						unsubscribe();
-						resolve({ config, pending: device.pendingSettingsChanges });
-					});
-					device.getModuleConfig(configNum).catch((error: Error) => {
-						clearTimeout(timeout);
-						unsubscribe();
-						reject(error);
-					});
-				}),
-				3,
-				100
-			);
-			const caseName = result.config?.payloadVariant?.case;
-			if (caseName) {
-				const extractedData = extractConfigData(result.config);
-				// Convert numeric enums to string names for readability
-				results[caseName] = resolveEnumNames(extractedData, `moduleConfig.${caseName}`);
-			}
-		}
-		return results;
-	}
-	/**
-	 * Read all channels (up to 8) with retry
-	 * Stops at first failure (no more channels)
-	 */
-	async function readAllChannels(): Promise<MeshtasticChannelInfo[]> {
-		ensureConfigured();
-		const channels: MeshtasticChannelInfo[] = [];
-		for (let i = 0; i < 8; i++) {
-			try {
-				const channel = await readChannel(i);
-				channels.push(channel);
-			} catch {
-				// No more channels
-				break;
-			}
-		}
-		return channels;
-	}
-	return {
-		connect,
-		disconnect,
-		setOwnerName,
-		writeLocalConfig,
-		writeModuleConfig,
-		writeChannel,
-		writeOwner,
-		commitSettings,
-		enterDfuMode,
-		readAllLocalConfig,
-		readAllModuleConfig,
-		readAllChannels,
-		readOwner,
-		setEventCallbacks,
-		getConnectionStatus
-	};
+    // State management
+    let transport: any = null;
+    let device: any = null;
+    let serialPort: any = null; // Store SerialPort reference for direct closing
+    let eventCallbacks: MeshtasticEventCallbacks = {};
+    let connectionStatus: MeshtasticConnectionStatus = 'disconnected';
+    // Cached device info from various sources
+    let cachedMyNodeInfo: any = null;
+    let cachedNodeInfo: any = null;
+    let cachedDeviceMetadata: any = null;
+    let cachedOwner: any = null;
+    let cachedMetrics: MeshtasticNodeMetrics = {};
+    let networkNodes: Map<number, any> = new Map(); // All nodes in network
+    const heartbeatInterval = options?.heartbeatInterval ?? DEFAULT_HEARTBEAT_INTERVAL;
+    const autoConfigure = options?.autoConfigure ?? true;
+    /**
+     * Connect to Meshtastic device
+     * Returns device info (node name and firmware version)
+     */
+    async function connect(): Promise<MeshtasticDeviceInfo> {
+        try {
+            // Reset flag for new connection
+            updateConnectionStatus('connecting');
+            // Ensure cleanup from any previous connection
+            if (transport || device || serialPort) {
+                console.log('[Meshtastic] Cleaning up previous connection...');
+                // Clear heartbeat first
+                if (device?._heartbeatIntervalId !== undefined) {
+                    clearInterval(device._heartbeatIntervalId);
+                }
+                // Cancel transport streams
+                if (transport?._fromDevice) {
+                    transport._fromDevice.cancel().catch(() => {});
+                }
+                if (transport?.toDevice) {
+                    transport.toDevice.close().catch(() => {});
+                }
+                if (transport?.abortController) {
+                    transport.abortController.abort();
+                }
+                // Forget the port - this releases all stream locks!
+                if (serialPort && typeof serialPort.forget === 'function') {
+                    try {
+                        await serialPort.forget();
+                        console.log('[Meshtastic] Port forgotten');
+                    } catch (err) {
+                        console.warn('[Meshtastic] Forget error (ignoring):', err);
+                    }
+                }
+                // Close serial port if still open
+                if (serialPort && (serialPort.readable || serialPort.writable)) {
+                    try {
+                        await serialPort.close();
+                        console.log('[Meshtastic] Port closed');
+                    } catch (err) {
+                        console.warn('[Meshtastic] Close error (ignoring):', err);
+                    }
+                }
+                cleanup();
+                // Reset all variables
+                transport = undefined;
+                device = undefined;
+                serialPort = undefined;
+                cachedMyNodeInfo = undefined;
+                cachedNodeInfo = undefined;
+                cachedOwner = undefined;
+                cachedDeviceMetadata = undefined;
+                cachedMetrics = {};
+                // Small delay to allow cleanup
+                await new Promise((resolve) => setTimeout(resolve, 200));
+            }
+            // Request port from user first
+            const port = await (navigator as any).serial.requestPort({});
+            serialPort = port; // Store reference
+            // Create transport from the port
+            transport = await TransportWebSerial.createFromPort(port);
+            // Create MeshDevice instance
+            device = new MeshDevice(transport);
+            // Disable internal logging from @meshtastic library
+            // Log levels: TRACE=5, DEBUG=10, INFO=20, WARNING=30, ERROR=40, CRITICAL=50
+            // Set minLevel to WARNING (30) to show only warnings and errors
+            if (device.log?.settings) {
+                device.log.settings.minLevel = 30;
+            }
+            // Subscribe to device events
+            setupEventSubscriptions();
+            // Start configuration process (don't await - it will complete in background)
+            if (autoConfigure) {
+                device
+                    .configure()
+                    .catch((err: Error) => console.error('[Meshtastic] Configure error:', err));
+            }
+            // Wait for onMyNodeInfo event which will update status to 'configured'
+            // The event is already subscribed, so we just need to wait a bit
+            console.log('[Meshtastic] Waiting for myNodeInfo event...');
+            // Wait up to 5 seconds for configured status
+            const maxWaitTime = 5000;
+            const startTime = Date.now();
+            let iterations = 0;
+            while (connectionStatus !== 'configured' && Date.now() - startTime < maxWaitTime) {
+                iterations++;
+                if (iterations % 10 === 0) {
+                    // Log every 500ms
+                    console.log(
+                        `[Meshtastic] Still waiting... status: ${connectionStatus}, elapsed: ${Date.now() - startTime}ms`
+                    );
+                }
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+            console.log(
+                `[Meshtastic] Wait complete. Status: ${connectionStatus}, elapsed: ${Date.now() - startTime}ms, iterations: ${iterations}`
+            );
+            if (connectionStatus !== 'configured') {
+                throw new Error('Device configuration timeout');
+            }
+            // Set up heartbeat to maintain connection
+            device.setHeartbeatInterval(heartbeatInterval);
+            // Request metadata for our own node to get firmware version and hardware model
+            if (cachedMyNodeInfo?.myNodeNum) {
+                console.log(
+                    '[Meshtastic] Requesting metadata for node:',
+                    cachedMyNodeInfo.myNodeNum
+                );
+                device.getMetadata(cachedMyNodeInfo.myNodeNum).catch(() => {
+                    // Ignore timeout - will come via onDeviceMetadataPacket later
+                });
+            }
+            // Request owner information to get node name
+            console.log('[Meshtastic] Requesting owner information...');
+            device.getOwner().catch(() => {
+                // Ignore timeout - will come via onUserPacket later
+            });
+            return extractDeviceInfo();
+        } catch (error) {
+            updateConnectionStatus('disconnected');
+            cleanup();
+            throw new Error(
+                `Failed to connect: ${error instanceof Error ? error.message : String(error)}`
+            );
+        }
+    }
+    /**
+     * Disconnect from Meshtastic device
+     * Uses port.forget() to release locks (from web-flasher)
+     */
+    async function disconnect(): Promise<void> {
+        console.log('[Meshtastic] Disconnecting...');
+        // Clear callbacks
+        eventCallbacks = {};
+        // Clear heartbeat
+        if (device?._heartbeatIntervalId !== undefined) {
+            clearInterval(device._heartbeatIntervalId);
+        }
+        // Cancel fromDevice stream
+        if (transport?._fromDevice) {
+            try {
+                await transport._fromDevice.cancel();
+                console.log('[Meshtastic] fromDevice stream cancelled');
+            } catch (err) {
+                console.warn('[Meshtastic] Cancel fromDevice error (ignoring):', err);
+            }
+        }
+        // Close toDevice stream
+        if (transport?.toDevice) {
+            try {
+                await transport.toDevice.close();
+                console.log('[Meshtastic] toDevice stream closed');
+            } catch (err) {
+                console.warn('[Meshtastic] Close toDevice error (ignoring):', err);
+            }
+        }
+        // Abort transport if present
+        if (transport?.abortController) {
+            transport.abortController.abort();
+        }
+        // Forget the port - this releases all locks!
+        if (serialPort && typeof serialPort.forget === 'function') {
+            try {
+                await serialPort.forget();
+                console.log('[Meshtastic] Port forgotten');
+            } catch (err) {
+                console.warn('[Meshtastic] Forget error (ignoring):', err);
+            }
+        }
+        // Close serial port if still open
+        if (serialPort && (serialPort.readable || serialPort.writable)) {
+            try {
+                await serialPort.close();
+                console.log('[Meshtastic] Port closed');
+            } catch (err) {
+                console.warn('[Meshtastic] Close error (ignoring):', err);
+            }
+        }
+        // Cleanup
+        cleanup();
+        // Reset all variables
+        transport = undefined;
+        device = undefined;
+        serialPort = undefined;
+        cachedMyNodeInfo = undefined;
+        cachedNodeInfo = undefined;
+        cachedOwner = undefined;
+        cachedDeviceMetadata = undefined;
+        cachedMetrics = {};
+        updateConnectionStatus('disconnected');
+        console.log('[Meshtastic] Disconnected');
+    }
+    /**
+     * Set device owner name (simple test)
+     */
+    async function setOwnerName(longName: string, shortName: string): Promise<void> {
+        ensureConfigured();
+        await device.setOwner({ longName, shortName });
+        await device.commitEditSettings();
+    }
+    /**
+     * Write LocalConfig section to device
+     * Automatically determines payloadVariant.case from config structure
+     */
+    async function writeLocalConfig(config: any): Promise<void> {
+        ensureConfigured();
+        // Determine which config section this is based on structure
+        // Config should have exactly one top-level key (device, lora, security, etc.)
+        const sectionName = Object.keys(config)[0];
+        if (!sectionName) {
+            throw new Error('Invalid config: no section found');
+        }
+        // Extract the actual config data (without the section name wrapper)
+        const configData = config[sectionName];
+        console.log(`[Meshtastic] writeLocalConfig: sectionName=${sectionName}`);
+        console.log(
+            '[Meshtastic] configData before resolveEnumValues:',
+            JSON.stringify(
+                configData,
+                (key, value) => {
+                    if (value instanceof Uint8Array) {
+                        return `Uint8Array(${value.length} bytes)`;
+                    }
+                    return value;
+                },
+                2
+            )
+        );
+        // Resolve enum values (e.g., "RU" -> 9, "LONG_FAST" -> 0)
+        // Use path with section name for enum resolution
+        const resolvedConfig = resolveEnumValues(configData, `localConfig.${sectionName}`);
+        console.log(
+            '[Meshtastic] resolvedConfig after resolveEnumValues:',
+            JSON.stringify(
+                resolvedConfig,
+                (key, value) => {
+                    if (value instanceof Uint8Array) {
+                        return `Uint8Array(${value.length} bytes)`;
+                    }
+                    return value;
+                },
+                2
+            )
+        );
+        // Wrap in Config object with payloadVariant
+        // The library expects Config.Config which has a payloadVariant field
+        const configWithVariant = {
+            payloadVariant: { case: sectionName, value: resolvedConfig }
+        };
+        console.log(
+            `[Meshtastic] Final configWithVariant for ${sectionName}:`,
+            JSON.stringify(
+                configWithVariant,
+                (key, value) => {
+                    if (value instanceof Uint8Array) {
+                        return `Uint8Array(${value.length} bytes)`;
+                    }
+                    return value;
+                },
+                2
+            )
+        );
+        await device.setConfig(configWithVariant);
+    }
+    /**
+     * Write ModuleConfig section to device
+     * Automatically determines payloadVariant.case from config structure
+     */
+    async function writeModuleConfig(config: any): Promise<void> {
+        ensureConfigured();
+        // Determine which module config section this is based on structure
+        // Config should have exactly one top-level key (mqtt, serial, etc.)
+        const sectionName = Object.keys(config)[0];
+        if (!sectionName) {
+            throw new Error('Invalid module config: no section found');
+        }
+        // Extract the actual config data (without the section name wrapper)
+        const configData = config[sectionName];
+        // Resolve enum values if any
+        // Use path with section name for enum resolution
+        const resolvedConfig = resolveEnumValues(configData, `moduleConfig.${sectionName}`);
+        // Wrap in ModuleConfig object with payloadVariant
+        const configWithVariant = {
+            payloadVariant: { case: sectionName, value: resolvedConfig }
+        };
+        console.log(`[Meshtastic] Writing ModuleConfig section: ${sectionName}`, configWithVariant);
+        await device.setModuleConfig(configWithVariant);
+    }
+    /**
+     * Write channel to device
+     */
+    async function writeChannel(config: any): Promise<void> {
+        ensureConfigured();
+        console.log('[Meshtastic] Writing channel:', config);
+        console.log('[Meshtastic] Channel psk:', config.settings?.psk);
+        await device.setChannel(config);
+    }
+    /**
+     * Write owner to device
+     */
+    async function writeOwner(config: any): Promise<void> {
+        ensureConfigured();
+        console.log('[Meshtastic] Writing owner:', config);
+        await device.setOwner(config);
+    }
+    /**
+     * Commit all pending changes
+     */
+    async function commitSettings(): Promise<void> {
+        ensureConfigured();
+        console.log('[Meshtastic] Committing settings changes...');
+        await device.commitEditSettings();
+        console.log('[Meshtastic] Settings committed successfully');
+    }
+    /**
+     * Enter DFU (Device Firmware Update) mode
+     * Device will reboot and disconnect
+     */
+    async function enterDfuMode(): Promise<number> {
+        ensureConfigured();
+        console.log('[Meshtastic] Entering DFU mode...');
+        return await device.enterDfuMode();
+    }
+    /**
+     * Read single channel from device
+     */
+    async function readChannel(
+        index: number,
+        timeoutMs: number = 2000
+    ): Promise<MeshtasticChannelInfo> {
+        ensureConfigured();
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject(new Error('Channel read timeout'));
+            }, timeoutMs);
+            const unsubscribe = device.events.onChannelPacket.subscribe((channel: any) => {
+                clearTimeout(timeout);
+                unsubscribe();
+                resolve({
+                    index,
+                    config: channel,
+                    pending: device.pendingSettingsChanges
+                });
+            });
+            device.getChannel(index).catch((error: Error) => {
+                clearTimeout(timeout);
+                unsubscribe();
+                reject(error);
+            });
+        });
+    }
+    /**
+     * Read owner from device
+     */
+    async function readOwner(timeoutMs: number = 2000): Promise<MeshtasticOwnerInfo> {
+        ensureConfigured();
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject(new Error('Owner read timeout'));
+            }, timeoutMs);
+            const unsubscribe = device.events.onUserPacket.subscribe((packet: any) => {
+                clearTimeout(timeout);
+                unsubscribe();
+                // Convert macaddr from base64/Uint8Array to hex format
+                const owner = packet.data;
+                if (owner?.macaddr) {
+                    owner.macaddr = macaddrToHex(owner.macaddr);
+                }
+                resolve({
+                    owner,
+                    pending: device.pendingSettingsChanges
+                });
+            });
+            device.getOwner().catch((error: Error) => {
+                clearTimeout(timeout);
+                unsubscribe();
+                reject(error);
+            });
+        });
+    }
+    function setEventCallbacks(callbacks: MeshtasticEventCallbacks): void {
+        eventCallbacks = { ...callbacks };
+    }
+    function getConnectionStatus(): MeshtasticConnectionStatus {
+        return connectionStatus;
+    }
+    // ========== Helper functions ==========
+    function setupEventSubscriptions(): void {
+        if (!device) return;
+        // Log all available events
+        console.log('[Meshtastic] Available events:', Object.keys(device.events));
+        device.events.onDeviceStatus.subscribe((status: DeviceStatusEnum) => {
+            const newStatus = mapDeviceStatus(status);
+            updateConnectionStatus(newStatus);
+            eventCallbacks.onDeviceStatus?.(newStatus);
+        });
+        device.events.onMyNodeInfo.subscribe((myNodeInfo: any) => {
+            console.log('[Meshtastic] ========== onMyNodeInfo received ==========');
+            console.log('[Meshtastic] myNodeNum:', myNodeInfo.myNodeNum);
+            cachedMyNodeInfo = myNodeInfo;
+            const deviceInfo = extractDeviceInfo();
+            // When we receive myNodeInfo, device is ready
+            if (connectionStatus === 'connected' || connectionStatus === 'connecting') {
+                updateConnectionStatus('configured');
+            }
+            eventCallbacks.onMyNodeInfo?.(deviceInfo);
+        });
+        // Subscribe to ALL packet types for logging
+        const packetTypes = [
+            'onAtakForwarderPacket',
+            'onAtakPacket',
+            'onAtakPluginPacket',
+            'onAudioPacket',
+            'onCannedMessageModulePacket',
+            'onChannelPacket',
+            'onClientNotificationPacket',
+            'onConfigPacket',
+            'onDataPacket',
+            'onDetectionSensorPacket',
+            'onDeviceMetadataPacket',
+            'onIpTunnelPacket',
+            'onMapReportPacket',
+            'onMeshPacket',
+            'onMessagePacket',
+            'onModuleConfigPacket',
+            'onNeighborInfoPacket',
+            'onNodeInfoPacket',
+            'onPaxcounterPacket',
+            'onPingPacket',
+            'onPositionPacket',
+            'onPrivatePacket',
+            'onRangeTestPacket',
+            'onRemoteHardwarePacket',
+            'onRoutingPacket',
+            'onSerialPacket',
+            'onSimulatorPacket',
+            'onStoreForwardPacket',
+            'onTelemetryPacket',
+            'onTextPacket',
+            'onTraceRoutePacket',
+            'onUserPacket',
+            'onWaypointPacket',
+            'onZPSPacket',
+            'onZpsPacket'
+        ];
+        packetTypes.forEach((eventType) => {
+            if (device.events[eventType]) {
+                device.events[eventType].subscribe((packet: any) => {
+                    console.log(`[Meshtastic] ========== ${eventType} ==========`);
+                    console.log('[Meshtastic] From:', packet.from);
+                    console.log('[Meshtastic] To:', packet.to);
+                    console.log(
+                        '[Meshtastic] Data:',
+                        JSON.stringify(packet.data || packet, meshtasticJsonReplacer, 2)
+                    );
+                });
+            }
+        });
+        // Actual processing handlers
+        device.events.onNodeInfoPacket.subscribe((packet: any) => {
+            // Collect all nodes in network
+            if (packet.data && packet.data.num) {
+                networkNodes.set(packet.data.num, packet.data);
+                updateNodeStats();
+                // NodeInfo for our own node
+                if (cachedMyNodeInfo && packet.data.num === cachedMyNodeInfo.myNodeNum) {
+                    cachedNodeInfo = packet.data;
+                    // Extract metrics from deviceMetrics
+                    if (packet.data.deviceMetrics) {
+                        extractMetrics(packet.data.deviceMetrics);
+                    }
+                    // Notify with updated device info
+                    const deviceInfo = extractDeviceInfo();
+                    eventCallbacks.onMyNodeInfo?.(deviceInfo);
+                }
+            }
+        });
+        device.events.onDeviceMetadataPacket.subscribe((packet: any) => {
+            if (packet.data) {
+                cachedDeviceMetadata = packet.data;
+                // Notify with updated device info
+                const deviceInfo = extractDeviceInfo();
+                eventCallbacks.onMyNodeInfo?.(deviceInfo);
+            }
+        });
+        device.events.onConfigPacket.subscribe((config: any) => {
+            eventCallbacks.onConfigPacket?.(config);
+        });
+        device.events.onModuleConfigPacket.subscribe((config: any) => {
+            eventCallbacks.onModuleConfigPacket?.(config);
+        });
+        device.events.onChannelPacket.subscribe((channel: any) => {
+            eventCallbacks.onChannelPacket?.(channel);
+        });
+        device.events.onMessagePacket.subscribe((data: any) => {
+            eventCallbacks.onMessagePacket?.(data);
+        });
+        device.events.onMeshPacket.subscribe((data: any) => {
+            eventCallbacks.onMeshPacket?.(data);
+        });
+        device.events.onUserPacket.subscribe((packet: any) => {
+            // User packet for our own node (owner info)
+            if (packet.data && cachedMyNodeInfo && packet.from === cachedMyNodeInfo.myNodeNum) {
+                cachedOwner = packet.data;
+                // Notify with updated device info
+                const deviceInfo = extractDeviceInfo();
+                eventCallbacks.onMyNodeInfo?.(deviceInfo);
+            }
+            eventCallbacks.onUserPacket?.(packet);
+        });
+        device.events.onTelemetryPacket.subscribe((packet: any) => {
+            console.log('[Meshtastic] ========== Telemetry packet received ==========');
+            console.log('[Meshtastic] From:', packet.from);
+            console.log('[Meshtastic] Data:', JSON.stringify(packet.data, null, 2));
+            if (!packet.data) {
+                console.log('[Meshtastic] No data in packet');
+                return;
+            }
+            const telemetry = packet.data;
+            const isFromOurNode = cachedMyNodeInfo && packet.from === cachedMyNodeInfo.myNodeNum;
+            console.log(
+                '[Meshtastic] isFromOurNode:',
+                isFromOurNode,
+                'cachedMyNodeInfo:',
+                cachedMyNodeInfo?.myNodeNum
+            );
+            // Check for variant structure (newer protocol)
+            if (telemetry.variant && telemetry.variant.value) {
+                const variantType = telemetry.variant.case;
+                const variantData = telemetry.variant.value;
+                console.log('[Meshtastic] Variant type:', variantType);
+                // Extract metrics only from our own node
+                if (isFromOurNode) {
+                    extractMetrics(variantData);
+                } else {
+                    console.log('[Meshtastic] Skipping metrics from different node');
+                }
+            } else {
+                // Legacy structure - direct properties
+                console.log('[Meshtastic] Legacy telemetry structure');
+                // Device metrics (battery, voltage, channel utilization, air util)
+                if (telemetry.deviceMetrics) {
+                    if (isFromOurNode) {
+                        console.log('[Meshtastic] Extracting deviceMetrics from our own node');
+                        extractMetrics(telemetry.deviceMetrics);
+                    }
+                }
+                // Environment metrics (temperature, humidity, etc.)
+                if (telemetry.environmentMetrics) {
+                    if (isFromOurNode) {
+                        console.log('[Meshtastic] Extracting environmentMetrics from our own node');
+                        extractMetrics(telemetry.environmentMetrics);
+                    }
+                }
+                // Power metrics (voltage, current)
+                if (telemetry.powerMetrics) {
+                    if (isFromOurNode) {
+                        console.log('[Meshtastic] Extracting powerMetrics from our own node');
+                        extractMetrics(telemetry.powerMetrics);
+                    }
+                }
+            }
+        });
+    }
+    /**
+     * Decode hardware model number to human-readable name
+     */
+    function decodeHardwareModel(hwModel: number): string {
+        // HardwareModel enum has reverse mapping: HardwareModel[94] = "HELTEC_MESH_POCKET"
+        if (HardwareModel && HardwareModel[hwModel]) {
+            return HardwareModel[hwModel];
+        }
+        // Fallback to showing the number
+        return `Unknown (${hwModel})`;
+    }
+    function extractDeviceInfo(): MeshtasticDeviceInfo {
+        if (!device?.myNodeInfo) {
+            throw new Error('Device not initialized');
+        }
+        console.log('[Meshtastic] extractDeviceInfo myNodeInfo:', device.myNodeInfo);
+        console.log('[Meshtastic] cachedNodeInfo:', cachedNodeInfo);
+        console.log('[Meshtastic] cachedOwner:', cachedOwner);
+        console.log('[Meshtastic] cachedDeviceMetadata:', cachedDeviceMetadata);
+        const myNodeInfo = device.myNodeInfo;
+        // Extract long and short names from Owner packet (has highest priority)
+        let longName = cachedOwner?.longName;
+        let shortName = cachedOwner?.shortName;
+        // Fallback to NodeInfo user if Owner not available
+        if (!longName && !shortName && cachedNodeInfo?.user) {
+            longName = cachedNodeInfo.user.longName;
+            shortName = cachedNodeInfo.user.shortName;
+        }
+        // nodeName for backward compatibility - use longName or shortName or 'Unknown'
+        const nodeName = longName || shortName || 'Unknown';
+        // Extract firmware version from DeviceMetadata
+        let firmwareVersion = 'Unknown';
+        if (cachedDeviceMetadata?.firmwareVersion) {
+            firmwareVersion = cachedDeviceMetadata.firmwareVersion;
+        } else if (myNodeInfo.minAppVersion) {
+            firmwareVersion = `${myNodeInfo.minAppVersion}`;
+        }
+        // Extract hardware model from DeviceMetadata or pioEnv
+        let hardwareModel = 'Unknown';
+        if (cachedDeviceMetadata?.hwModel) {
+            hardwareModel = decodeHardwareModel(cachedDeviceMetadata.hwModel);
+        } else if (myNodeInfo.pioEnv) {
+            hardwareModel = myNodeInfo.pioEnv;
+        }
+        return {
+            nodeName,
+            longName,
+            shortName,
+            nodeNum: myNodeInfo.myNodeNum || 0,
+            firmwareVersion,
+            hardwareModel,
+            pioEnv: myNodeInfo.pioEnv || 'Unknown'
+        };
+    }
+    function mapDeviceStatus(status: DeviceStatusEnum): MeshtasticConnectionStatus {
+        switch (status) {
+            case DeviceStatusEnum.DeviceDisconnected:
+                return 'disconnected';
+            case DeviceStatusEnum.DeviceConnecting:
+                return 'connecting';
+            case DeviceStatusEnum.DeviceConnected:
+                return 'connected';
+            case DeviceStatusEnum.DeviceConfiguring:
+                return 'configuring';
+            case DeviceStatusEnum.DeviceConfigured:
+                return 'configured';
+            case DeviceStatusEnum.DeviceReconnecting:
+                return 'reconnecting';
+            case DeviceStatusEnum.DeviceRestarting:
+                return 'restarting';
+            default:
+                return 'disconnected';
+        }
+    }
+    function updateConnectionStatus(status: MeshtasticConnectionStatus): void {
+        connectionStatus = status;
+    }
+    /**
+     * Update node statistics (total and online nodes)
+     * Online = node has been heard from in the last 30 minutes
+     */
+    function updateNodeStats(): void {
+        const totalNodes = networkNodes.size;
+        const now = Math.floor(Date.now() / 1000); // Current time in seconds
+        const onlineThreshold = 30 * 60; // 30 minutes
+        let onlineNodes = 0;
+        for (const [, nodeInfo] of networkNodes.entries()) {
+            if (nodeInfo.lastHeard && now - nodeInfo.lastHeard < onlineThreshold) {
+                onlineNodes++;
+            }
+        }
+        const stats: MeshtasticNodeStats = {
+            totalNodes,
+            onlineNodes
+        };
+        eventCallbacks.onNodeStatsUpdate?.(stats);
+    }
+    /**
+     * Extract metrics from device metrics data
+     * Handles DeviceMetrics, LocalStats, PowerMetrics, and EnvironmentMetrics
+     */
+    function extractMetrics(data: any): void {
+        const newMetrics: MeshtasticNodeMetrics = {};
+        // DeviceMetrics fields
+        if (data.batteryLevel !== undefined) newMetrics.batteryLevel = data.batteryLevel;
+        if (data.voltage !== undefined) newMetrics.voltage = data.voltage;
+        if (data.channelUtilization !== undefined) newMetrics.chUtil = data.channelUtilization;
+        if (data.airUtilTx !== undefined) newMetrics.airUtil = data.airUtilTx;
+        // LocalStats fields (includes deviceMetrics + more)
+        if (data.time !== undefined) newMetrics.time = data.time;
+        if (data.uptimeSeconds !== undefined) newMetrics.uptimeSeconds = data.uptimeSeconds;
+        if (data.numPacketsTx !== undefined) newMetrics.numPacketsTx = data.numPacketsTx;
+        if (data.numPacketsRx !== undefined) newMetrics.numPacketsRx = data.numPacketsRx;
+        if (data.numPacketsRxBad !== undefined) newMetrics.numPacketsRxBad = data.numPacketsRxBad;
+        if (data.numRxDupe !== undefined) newMetrics.numRxDupe = data.numRxDupe;
+        if (data.numTxRelay !== undefined) newMetrics.numTxRelay = data.numTxRelay;
+        if (data.numTxRelayCanceled !== undefined)
+            newMetrics.numTxRelayCanceled = data.numTxRelayCanceled;
+        if (data.numTxDropped !== undefined) newMetrics.numTxDropped = data.numTxDropped;
+        if (data.heapFreeBytes !== undefined) newMetrics.heapFreeBytes = data.heapFreeBytes;
+        if (data.heapTotalBytes !== undefined) newMetrics.heapTotalBytes = data.heapTotalBytes;
+        // Node stats from LocalStats
+        if (data.numOnlineNodes !== undefined || data.numTotalNodes !== undefined) {
+            const nodeStats = {
+                onlineNodes: data.numOnlineNodes ?? 0,
+                totalNodes: data.numTotalNodes ?? 0
+            };
+            eventCallbacks.onNodeStatsUpdate?.(nodeStats);
+        }
+        // PowerMetrics fields (already covered: voltage, channelUtilization, airUtilTx)
+        if (data.chanelUtilization !== undefined) newMetrics.chUtil = data.chanelUtilization; // typo in protobuf
+        // EnvironmentMetrics fields
+        if (data.temperature !== undefined) newMetrics.temperature = data.temperature;
+        if (data.relativeHumidity !== undefined)
+            newMetrics.relativeHumidity = data.relativeHumidity;
+        if (data.barometricPressure !== undefined)
+            newMetrics.barometricPressure = data.barometricPressure;
+        if (data.gasResistance !== undefined) newMetrics.gasResistance = data.gasResistance;
+        if (data.voltage !== undefined) newMetrics.voltage = data.voltage;
+        if (data.current !== undefined) newMetrics.current = data.current;
+        if (data.iaq !== undefined) newMetrics.iaq = data.iaq;
+        // Update metrics if we found any
+        if (Object.keys(newMetrics).length > 0) {
+            cachedMetrics = { ...cachedMetrics, ...newMetrics };
+            eventCallbacks.onMetricsUpdate?.(cachedMetrics);
+        }
+    }
+    async function waitForPendingSettings(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject(new Error('Timeout waiting for pending settings to clear'));
+            }, 10000); // 10 second timeout
+            const checkPending = () => {
+                if (!device?.pendingSettingsChanges) {
+                    clearTimeout(timeout);
+                    resolve();
+                } else {
+                    setTimeout(checkPending, 100);
+                }
+            };
+            checkPending();
+        });
+    }
+    function ensureConfigured(): void {
+        if (connectionStatus !== 'configured') {
+            throw new Error('Device not configured. Please connect first.');
+        }
+    }
+    function cleanup(): void {
+        transport = null;
+        device = null;
+        serialPort = null;
+    }
+    /**
+     * Read all LocalConfig sections with retry
+     * Sections are read sequentially to avoid event subscription conflicts
+     */
+    async function readAllLocalConfig(): Promise<Record<string, any>> {
+        ensureConfigured();
+        const results: Record<string, any> = {};
+        // Get all numeric enum values
+        const configTypes = Object.values(ConfigType).filter(
+            (v): v is number => typeof v === 'number'
+        );
+        // Read configs sequentially
+        for (const configNum of configTypes) {
+            const result = await withRetry(
+                () =>
+                    new Promise<MeshtasticConfigReadResult<any>>((resolve, reject) => {
+                        const timeout = setTimeout(
+                            () => reject(new Error('Config read timeout')),
+                            2000
+                        );
+                        const unsubscribe = device.events.onConfigPacket.subscribe(
+                            (config: any) => {
+                                clearTimeout(timeout);
+                                unsubscribe();
+                                // Log config structure to see what we get
+                                console.log('[Meshtastic] Raw config packet received:');
+                                console.log(
+                                    '[Meshtastic] config.payloadVariant.case:',
+                                    config.payloadVariant?.case
+                                );
+                                if (config.payloadVariant?.case === 'security') {
+                                    console.log(
+                                        '[Meshtastic] Security config value type:',
+                                        typeof config.payloadVariant.value
+                                    );
+                                    console.log(
+                                        '[Meshtastic] publicKey type:',
+                                        typeof config.payloadVariant.value?.publicKey
+                                    );
+                                    console.log(
+                                        '[Meshtastic] publicKey instanceof Uint8Array:',
+                                        config.payloadVariant.value?.publicKey instanceof Uint8Array
+                                    );
+                                    console.log(
+                                        '[Meshtastic] publicKey:',
+                                        config.payloadVariant.value?.publicKey
+                                    );
+                                }
+                                resolve({ config, pending: device.pendingSettingsChanges });
+                            }
+                        );
+                        device.getConfig(configNum).catch((error: Error) => {
+                            clearTimeout(timeout);
+                            unsubscribe();
+                            reject(error);
+                        });
+                    }),
+                3,
+                100
+            );
+            const caseName = result.config?.payloadVariant?.case;
+            if (caseName) {
+                const extractedData = extractConfigData(result.config);
+                // Convert numeric enums to string names for readability
+                results[caseName] = resolveEnumNames(extractedData, `localConfig.${caseName}`);
+            }
+        }
+        return results;
+    }
+    /**
+     * Read all ModuleConfig sections with retry
+     * Sections are read sequentially to avoid event subscription conflicts
+     */
+    async function readAllModuleConfig(): Promise<Record<string, any>> {
+        ensureConfigured();
+        const results: Record<string, any> = {};
+        // Get all numeric enum values
+        const moduleConfigTypes = Object.values(ModuleConfigType).filter(
+            (v): v is number => typeof v === 'number'
+        );
+        // Read configs sequentially
+        for (const configNum of moduleConfigTypes) {
+            const result = await withRetry(
+                () =>
+                    new Promise<MeshtasticConfigReadResult<any>>((resolve, reject) => {
+                        const timeout = setTimeout(
+                            () => reject(new Error('Module config read timeout')),
+                            2000
+                        );
+                        const unsubscribe = device.events.onModuleConfigPacket.subscribe(
+                            (config: any) => {
+                                clearTimeout(timeout);
+                                unsubscribe();
+                                resolve({ config, pending: device.pendingSettingsChanges });
+                            }
+                        );
+                        device.getModuleConfig(configNum).catch((error: Error) => {
+                            clearTimeout(timeout);
+                            unsubscribe();
+                            reject(error);
+                        });
+                    }),
+                3,
+                100
+            );
+            const caseName = result.config?.payloadVariant?.case;
+            if (caseName) {
+                const extractedData = extractConfigData(result.config);
+                // Convert numeric enums to string names for readability
+                results[caseName] = resolveEnumNames(extractedData, `moduleConfig.${caseName}`);
+            }
+        }
+        return results;
+    }
+    /**
+     * Read all channels (up to 8) with retry
+     * Stops at first failure (no more channels)
+     */
+    async function readAllChannels(): Promise<MeshtasticChannelInfo[]> {
+        ensureConfigured();
+        const channels: MeshtasticChannelInfo[] = [];
+        for (let i = 0; i < 8; i++) {
+            try {
+                const channel = await readChannel(i);
+                channels.push(channel);
+            } catch {
+                // No more channels
+                break;
+            }
+        }
+        return channels;
+    }
+    return {
+        connect,
+        disconnect,
+        setOwnerName,
+        writeLocalConfig,
+        writeModuleConfig,
+        writeChannel,
+        writeOwner,
+        commitSettings,
+        enterDfuMode,
+        readAllLocalConfig,
+        readAllModuleConfig,
+        readAllChannels,
+        readOwner,
+        setEventCallbacks,
+        getConnectionStatus
+    };
 }
 // ==================== Enum Resolution Utilities ====================
 /**
@@ -1317,10 +1420,10 @@ export function createMeshtasticManager(options?: MeshtasticConnectionOptions) {
  * Maps config field paths to enum objects (lazy getter)
  */
 const ENUM_PATHS: Record<string, () => any> = {
-	'localConfig.lora.region': () => getEnums().Config_LoRaConfig_RegionCode,
-	'localConfig.device.role': () => getEnums().Config_DeviceConfig_Role,
-	'localConfig.lora.modemPreset': () => getEnums().Config_LoRaConfig_ModemPreset,
-	'channels.config.role': () => null  // TODO: add Channel.ChannelRole if needed
+    'localConfig.lora.region': () => getEnums().Config_LoRaConfig_RegionCode,
+    'localConfig.device.role': () => getEnums().Config_DeviceConfig_Role,
+    'localConfig.lora.modemPreset': () => getEnums().Config_LoRaConfig_ModemPreset,
+    'channels.config.role': () => null // TODO: add Channel.ChannelRole if needed
 };
 /**
  * Resolve enum string names to numeric values in config object
@@ -1330,46 +1433,46 @@ const ENUM_PATHS: Record<string, () => any> = {
  * @param path - Current path in the config (for tracking nested fields)
  */
 export function resolveEnumValues(config: any, path: string = ''): any {
-	if (typeof config !== 'object' || config === null) {
-		return config;
-	}
-	// Keep Uint8Array as is - don't process it
-	if (config instanceof Uint8Array) {
-		return config;
-	}
-	if (Array.isArray(config)) {
-		return config.map((item, index) => resolveEnumValues(item, `${path}[${index}]`));
-	}
-	const result: any = {};
-	for (const [key, value] of Object.entries(config)) {
-		const currentPath = path ? `${path}.${key}` : key;
-		// CRITICAL: Check Uint8Array FIRST before any other processing!
-		if (value instanceof Uint8Array) {
-			result[key] = value;
-			continue;
-		}
-		if (typeof value === 'string') {
-			// Check if this field has an enum mapping
-			const enumGetter = ENUM_PATHS[currentPath];
-			const enumValues = enumGetter ? enumGetter() : undefined;
-			if (enumValues && enumValues[value] !== undefined) {
-				result[key] = enumValues[value];
-				continue;
-			}
-			// Try case-insensitive match
-			const upperKey = value.toUpperCase();
-			if (enumValues && enumValues[upperKey] !== undefined) {
-				result[key] = enumValues[upperKey];
-				continue;
-			}
-			result[key] = value;
-		} else if (typeof value === 'object' && value !== null) {
-			result[key] = resolveEnumValues(value, currentPath);
-		} else {
-			result[key] = value;
-		}
-	}
-	return result;
+    if (typeof config !== 'object' || config === null) {
+        return config;
+    }
+    // Keep Uint8Array as is - don't process it
+    if (config instanceof Uint8Array) {
+        return config;
+    }
+    if (Array.isArray(config)) {
+        return config.map((item, index) => resolveEnumValues(item, `${path}[${index}]`));
+    }
+    const result: any = {};
+    for (const [key, value] of Object.entries(config)) {
+        const currentPath = path ? `${path}.${key}` : key;
+        // CRITICAL: Check Uint8Array FIRST before any other processing!
+        if (value instanceof Uint8Array) {
+            result[key] = value;
+            continue;
+        }
+        if (typeof value === 'string') {
+            // Check if this field has an enum mapping
+            const enumGetter = ENUM_PATHS[currentPath];
+            const enumValues = enumGetter ? enumGetter() : undefined;
+            if (enumValues && enumValues[value] !== undefined) {
+                result[key] = enumValues[value];
+                continue;
+            }
+            // Try case-insensitive match
+            const upperKey = value.toUpperCase();
+            if (enumValues && enumValues[upperKey] !== undefined) {
+                result[key] = enumValues[upperKey];
+                continue;
+            }
+            result[key] = value;
+        } else if (typeof value === 'object' && value !== null) {
+            result[key] = resolveEnumValues(value, currentPath);
+        } else {
+            result[key] = value;
+        }
+    }
+    return result;
 }
 /**
  * Resolve numeric enum values to string names in config object
@@ -1380,33 +1483,249 @@ export function resolveEnumValues(config: any, path: string = ''): any {
  * @param path - Current path in the config (for tracking nested fields)
  */
 export function resolveEnumNames(config: any, path: string = ''): any {
-	if (typeof config !== 'object' || config === null) {
-		return config;
-	}
-	if (Array.isArray(config)) {
-		return config.map((item, index) => resolveEnumNames(item, `${path}[${index}]`));
-	}
-	const result: any = {};
-	for (const [key, value] of Object.entries(config)) {
-		const currentPath = path ? `${path}.${key}` : key;
-		if (typeof value === 'number') {
-			// Check if this field has an enum mapping
-			const enumGetter = ENUM_PATHS[currentPath];
-			const enumValues = enumGetter ? enumGetter() : undefined;
-			if (enumValues) {
-				// Find enum name by numeric value
-				const enumName = Object.keys(enumValues).find(k => enumValues[k] === value);
-				if (enumName) {
-					result[key] = enumName;
-					continue;
-				}
-			}
-			result[key] = value;
-		} else if (typeof value === 'object' && value !== null) {
-			result[key] = resolveEnumNames(value, currentPath);
-		} else {
-			result[key] = value;
-		}
-	}
-	return result;
+    if (typeof config !== 'object' || config === null) {
+        return config;
+    }
+    if (Array.isArray(config)) {
+        return config.map((item, index) => resolveEnumNames(item, `${path}[${index}]`));
+    }
+    const result: any = {};
+    for (const [key, value] of Object.entries(config)) {
+        const currentPath = path ? `${path}.${key}` : key;
+        if (typeof value === 'number') {
+            // Check if this field has an enum mapping
+            const enumGetter = ENUM_PATHS[currentPath];
+            const enumValues = enumGetter ? enumGetter() : undefined;
+            if (enumValues) {
+                // Find enum name by numeric value
+                const enumName = Object.keys(enumValues).find((k) => enumValues[k] === value);
+                if (enumName) {
+                    result[key] = enumName;
+                    continue;
+                }
+            }
+            result[key] = value;
+        } else if (typeof value === 'object' && value !== null) {
+            result[key] = resolveEnumNames(value, currentPath);
+        } else {
+            result[key] = value;
+        }
+    }
+    return result;
+}
+
+// ==================== Config Diff Utilities ====================
+
+/**
+ * Deep equality check for two values
+ * Handles objects, arrays, Uint8Array, and primitives
+ */
+export function deepEqual(obj1: any, obj2: any): boolean {
+    if (obj1 === obj2) return true;
+    if (obj1 === null || obj2 === null) return false;
+    if (typeof obj1 !== typeof obj2) return false;
+
+    // Handle Uint8Array
+    if (obj1 instanceof Uint8Array && obj2 instanceof Uint8Array) {
+        if (obj1.length !== obj2.length) return false;
+        for (let i = 0; i < obj1.length; i++) {
+            if (obj1[i] !== obj2[i]) return false;
+        }
+        return true;
+    }
+    // One is Uint8Array, other is not
+    if (obj1 instanceof Uint8Array || obj2 instanceof Uint8Array) return false;
+
+    // Handle arrays
+    if (Array.isArray(obj1) && Array.isArray(obj2)) {
+        if (obj1.length !== obj2.length) return false;
+        return obj1.every((item, index) => deepEqual(item, obj2[index]));
+    }
+    if (Array.isArray(obj1) || Array.isArray(obj2)) return false;
+
+    // Handle objects
+    if (typeof obj1 === 'object') {
+        const keys1 = Object.keys(obj1);
+        const keys2 = Object.keys(obj2);
+        if (keys1.length !== keys2.length) return false;
+        return keys1.every((key) => deepEqual(obj1[key], obj2[key]));
+    }
+
+    return false;
+}
+
+/**
+ * Get list of changed keys between two objects
+ * Returns keys that are new, removed, or have different values
+ */
+export function getObjectDiff(oldObj: any, newObj: any): string[] {
+    if (!oldObj || !newObj) {
+        return Object.keys(newObj || {});
+    }
+
+    const changed: string[] = [];
+    const allKeys = new Set([...Object.keys(oldObj), ...Object.keys(newObj)]);
+
+    for (const key of allKeys) {
+        if (!(key in oldObj)) {
+            changed.push(key);
+        } else if (!(key in newObj)) {
+            changed.push(key);
+        } else if (!deepEqual(oldObj[key], newObj[key])) {
+            changed.push(key);
+        }
+    }
+
+    return changed;
+}
+
+/**
+ * Format a value for display in tooltip
+ */
+export function formatValue(value: any): string {
+    if (value instanceof Uint8Array) {
+        return `Uint8Array(${value.length} bytes)`;
+    }
+    if (typeof value === 'object' && value !== null) {
+        return JSON.stringify(value).slice(0, 50);
+    }
+    return String(value);
+}
+
+/**
+ * Mark all sections of a config as changed ('all')
+ * Used when config is loaded from file (no original to compare against)
+ */
+export function getAllSectionsAsChanged(
+    config: any
+): import('$lib/types.js').MeshtasticConfigChanges {
+    const result: import('$lib/types.js').MeshtasticConfigChanges = {
+        localConfig: {},
+        moduleConfig: {},
+        channels: null,
+        owner: null
+    };
+
+    if (config?.localConfig && typeof config.localConfig === 'object') {
+        for (const section of Object.keys(config.localConfig)) {
+            result.localConfig[section] = 'all';
+        }
+    }
+    if (config?.moduleConfig && typeof config.moduleConfig === 'object') {
+        for (const section of Object.keys(config.moduleConfig)) {
+            result.moduleConfig[section] = 'all';
+        }
+    }
+    if (config?.channels && config.channels.length > 0) {
+        result.channels = 'all';
+    }
+    if (config?.owner) {
+        result.owner = 'all';
+    }
+
+    return result;
+}
+
+/**
+ * Compute config diff between original and current config
+ * Returns which sections and parameters have changed
+ */
+export function computeConfigDiff(
+    originalConfig: import('$lib/types.js').MeshtasticFullConfig | null,
+    currentConfig: import('$lib/types.js').MeshtasticFullConfig | null
+): import('$lib/types.js').MeshtasticConfigChanges | null {
+    if (!currentConfig) return null;
+
+    // No original config - everything is changed (loaded from file)
+    if (!originalConfig) {
+        return getAllSectionsAsChanged(currentConfig);
+    }
+
+    const result: import('$lib/types.js').MeshtasticConfigChanges = {
+        localConfig: {},
+        moduleConfig: {},
+        channels: null,
+        owner: null
+    };
+
+    // Compare localConfig sections
+    const localSections = new Set([
+        ...Object.keys(originalConfig.localConfig || {}),
+        ...Object.keys(currentConfig.localConfig || {})
+    ]);
+    for (const section of localSections) {
+        const oldSection = (originalConfig.localConfig as any)?.[section];
+        const newSection = (currentConfig.localConfig as any)?.[section];
+        if (!oldSection) {
+            // New section
+            result.localConfig[section] = 'all';
+        } else if (!newSection) {
+            // Removed section - skip
+        } else if (!deepEqual(oldSection, newSection)) {
+            result.localConfig[section] = getObjectDiff(oldSection, newSection);
+        }
+    }
+
+    // Compare moduleConfig sections
+    const moduleSections = new Set([
+        ...Object.keys(originalConfig.moduleConfig || {}),
+        ...Object.keys(currentConfig.moduleConfig || {})
+    ]);
+    for (const section of moduleSections) {
+        const oldSection = (originalConfig.moduleConfig as any)?.[section];
+        const newSection = (currentConfig.moduleConfig as any)?.[section];
+        if (!oldSection) {
+            result.moduleConfig[section] = 'all';
+        } else if (!newSection) {
+            // Removed section - skip
+        } else if (!deepEqual(oldSection, newSection)) {
+            result.moduleConfig[section] = getObjectDiff(oldSection, newSection);
+        }
+    }
+
+    // Compare channels - list which channels changed
+    if (originalConfig.channels?.length && currentConfig.channels?.length) {
+        const changedChannels: string[] = [];
+        const maxLength = Math.max(originalConfig.channels.length, currentConfig.channels.length);
+
+        for (let i = 0; i < maxLength; i++) {
+            const oldChannel = originalConfig.channels[i];
+            const newChannel = currentConfig.channels[i];
+
+            if (!oldChannel && newChannel) {
+                // New channel
+                changedChannels.push(`Channel ${i} (new)`);
+            } else if (oldChannel && !newChannel) {
+                // Removed channel
+                changedChannels.push(`Channel ${i} (removed)`);
+            } else if (!deepEqual(oldChannel, newChannel)) {
+                // Changed channel - use name or index
+                const channelName = newChannel?.config?.name || oldChannel?.config?.name;
+                changedChannels.push(channelName || `Channel ${i}`);
+            }
+        }
+
+        if (changedChannels.length > 0) {
+            result.channels = changedChannels;
+        }
+    } else if (
+        (!originalConfig.channels || originalConfig.channels.length === 0) &&
+        currentConfig.channels &&
+        currentConfig.channels.length > 0
+    ) {
+        result.channels = 'all'; // All channels are new
+    }
+
+    // Compare owner - show changed parameters instead of 'all'
+    if (
+        originalConfig.owner &&
+        currentConfig.owner &&
+        !deepEqual(originalConfig.owner, currentConfig.owner)
+    ) {
+        result.owner = getObjectDiff(originalConfig.owner, currentConfig.owner);
+    } else if (!originalConfig.owner && currentConfig.owner) {
+        result.owner = 'all'; // New owner
+    }
+
+    return result;
 }

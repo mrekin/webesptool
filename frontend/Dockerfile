@@ -16,6 +16,9 @@ COPY local-packages ./local-packages
 # Install dependencies using pnpm with optimizations
 RUN pnpm install --frozen-lockfile --prod=false
 
+# Update browserslist database for accurate targeting
+RUN npx update-browserslist-db@latest
+
 # Copy the rest of the application files (excluding .dockerignore patterns)
 COPY . .
 

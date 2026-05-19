@@ -1,6 +1,6 @@
 // ======== Constants ========
-const PARTITION_MAGIC = 0x50AA;
-const PARTITION_END_MARKER = 0xEBEB;
+const PARTITION_MAGIC = 0x50aa;
+const PARTITION_END_MARKER = 0xebeb;
 const PARTITION_ENTRY_SIZE = 32;
 const MD5_SIZE = 16;
 const PARTITION_ALIGNMENT = 0x1000; // 4KB
@@ -25,17 +25,17 @@ const PARTITION_SUBTYPE_DATA_ESPHTTPD = 0x06;
 const PARTITION_SUBTYPE_DATA_FAT = 0x07;
 const PARTITION_SUBTYPE_DATA_SPIFFS = 0x08;
 const PARTITION_SUBTYPE_DATA_DESCRIPTORS = 0x09;
-const PARTITION_SUBTYPE_DATA_COREDUMP = 0xFE;
+const PARTITION_SUBTYPE_DATA_COREDUMP = 0xfe;
 
 // Type and subtype name mappings
 const TYPE_NAMES: Record<number, string> = {
-    [PARTITION_TYPE_APP]: "app",
-    [PARTITION_TYPE_DATA]: "data",
+    [PARTITION_TYPE_APP]: 'app',
+    [PARTITION_TYPE_DATA]: 'data'
 };
 
 const APP_SUBTYPE_NAMES: Record<number, string> = {
-    [PARTITION_SUBTYPE_APP_FACTORY]: "factory",
-    [PARTITION_SUBTYPE_APP_TEST]: "test",
+    [PARTITION_SUBTYPE_APP_FACTORY]: 'factory',
+    [PARTITION_SUBTYPE_APP_TEST]: 'test'
 };
 
 // Generate OTA subtype names (ota_0 through ota_15)
@@ -44,18 +44,18 @@ for (let i = 0; i < 16; i++) {
 }
 
 const DATA_SUBTYPE_NAMES: Record<number, string> = {
-    [PARTITION_SUBTYPE_DATA_OTA]: "ota",
-    [PARTITION_SUBTYPE_DATA_PHY]: "phy",
-    [PARTITION_SUBTYPE_DATA_NVS]: "nvs",
-    [PARTITION_SUBTYPE_DATA_EFUSE]: "efuse",
-    [PARTITION_SUBTYPE_DATA_UNDEFINED]: "undefined",
-    [PARTITION_SUBTYPE_DATA_ESPHTTPD]: "esphttpd",
-    [PARTITION_SUBTYPE_DATA_FAT]: "fat",
-    [PARTITION_SUBTYPE_DATA_SPIFFS]: "spiffs",
-    [PARTITION_SUBTYPE_DATA_DESCRIPTORS]: "descriptors",
-    [PARTITION_SUBTYPE_DATA_COREDUMP]: "coredump",
+    [PARTITION_SUBTYPE_DATA_OTA]: 'ota',
+    [PARTITION_SUBTYPE_DATA_PHY]: 'phy',
+    [PARTITION_SUBTYPE_DATA_NVS]: 'nvs',
+    [PARTITION_SUBTYPE_DATA_EFUSE]: 'efuse',
+    [PARTITION_SUBTYPE_DATA_UNDEFINED]: 'undefined',
+    [PARTITION_SUBTYPE_DATA_ESPHTTPD]: 'esphttpd',
+    [PARTITION_SUBTYPE_DATA_FAT]: 'fat',
+    [PARTITION_SUBTYPE_DATA_SPIFFS]: 'spiffs',
+    [PARTITION_SUBTYPE_DATA_DESCRIPTORS]: 'descriptors',
+    [PARTITION_SUBTYPE_DATA_COREDUMP]: 'coredump',
     // Custom/legacy values found in some partition tables
-    0x82: "spiffs", // spiffs with flag bit set
+    0x82: 'spiffs' // spiffs with flag bit set
 };
 
 // Note: 0x03 is used for both nvs_keys and legacy coredump in different tables
@@ -87,14 +87,14 @@ export interface PartitionAnalysis {
 export class ParseError extends Error {
     constructor(message: string) {
         super(message);
-        this.name = "ParseError";
+        this.name = 'ParseError';
     }
 }
 
 export class ValidationError extends ParseError {
     constructor(message: string) {
         super(message);
-        this.name = "ValidationError";
+        this.name = 'ValidationError';
     }
 }
 
@@ -111,10 +111,10 @@ function getSubtypeName(type_val: number, subtype: number): string {
         // Special handling for 0x03 which can be either nvs_keys or legacy coredump
         // Use coredump for legacy tables as per Python implementation
         if (subtype === 0x03) {
-            return "coredump"; // Legacy value
+            return 'coredump'; // Legacy value
         }
         if (subtype === PARTITION_SUBTYPE_DATA_NVS_KEYS) {
-            return "nvs_keys";
+            return 'nvs_keys';
         }
         return DATA_SUBTYPE_NAMES[subtype] || `0x${subtype.toString(16).padStart(2, '0')}`;
     }
@@ -164,7 +164,7 @@ export function parsePartitions(data: ArrayBuffer | Uint8Array): PartitionTable 
     const dataView = new DataView(uint8Array.buffer, uint8Array.byteOffset, uint8Array.byteLength);
     const table: PartitionTable = {
         md5: null,
-        entries: [],
+        entries: []
     };
 
     let offset = 0;
@@ -184,11 +184,11 @@ export function parsePartitions(data: ArrayBuffer | Uint8Array): PartitionTable 
             const md5Offset = offset + PARTITION_ENTRY_SIZE;
             if (md5Offset + MD5_SIZE <= uint8Array.length) {
                 const md5Bytes = uint8Array.slice(md5Offset, md5Offset + MD5_SIZE);
-                const allFF = md5Bytes.every(b => b === 0xFF);
+                const allFF = md5Bytes.every((b) => b === 0xff);
 
                 if (!allFF) {
                     table.md5 = Array.from(md5Bytes)
-                        .map(b => b.toString(16).padStart(2, '0'))
+                        .map((b) => b.toString(16).padStart(2, '0'))
                         .join('');
                 }
             }
@@ -199,7 +199,7 @@ export function parsePartitions(data: ArrayBuffer | Uint8Array): PartitionTable 
         if (magic !== PARTITION_MAGIC) {
             throw new ParseError(
                 `Invalid magic number 0x${magic.toString(16).padStart(4, '0')} at offset ${offset}, ` +
-                `expected 0x${PARTITION_MAGIC.toString(16).padStart(4, '0')}`
+                    `expected 0x${PARTITION_MAGIC.toString(16).padStart(4, '0')}`
             );
         }
 
@@ -224,7 +224,7 @@ export function parsePartitions(data: ArrayBuffer | Uint8Array): PartitionTable 
             subtype,
             offset: offset_val,
             size: size_val,
-            flags,
+            flags
         };
 
         table.entries.push(entry);
@@ -244,7 +244,7 @@ export function parsePartitions(data: ArrayBuffer | Uint8Array): PartitionTable 
  */
 export function validatePartitionTable(table: PartitionTable, checkOverlaps: boolean = true): void {
     if (table.entries.length === 0) {
-        throw new ValidationError("Partition table is empty");
+        throw new ValidationError('Partition table is empty');
     }
 
     // Validate each entry
@@ -269,7 +269,7 @@ export function validatePartitionTable(table: PartitionTable, checkOverlaps: boo
             );
         }
 
-        if (entry.size !== 0xFFFFFFFF && entry.size % PARTITION_ALIGNMENT !== 0) {
+        if (entry.size !== 0xffffffff && entry.size % PARTITION_ALIGNMENT !== 0) {
             throw new ValidationError(
                 `Entry ${i} (${entry.name}): size ${entry.size} is not aligned to ${PARTITION_ALIGNMENT} bytes`
             );
@@ -279,21 +279,21 @@ export function validatePartitionTable(table: PartitionTable, checkOverlaps: boo
     // Check for overlaps if requested
     if (checkOverlaps) {
         const sortedEntries = table.entries
-            .filter(e => e.offset > 0)
+            .filter((e) => e.offset > 0)
             .sort((a, b) => a.offset - b.offset);
 
         for (let i = 0; i < sortedEntries.length - 1; i++) {
             const current = sortedEntries[i];
             const next = sortedEntries[i + 1];
 
-            if (current.size === 0xFFFFFFFF) continue;
+            if (current.size === 0xffffffff) continue;
 
             const currentEnd = current.offset + current.size;
             if (currentEnd > next.offset) {
                 throw new ValidationError(
                     `Partition overlap: '${current.name}' (offset=0x${current.offset.toString(16)}, ` +
-                    `size=0x${current.size.toString(16)}, end=0x${currentEnd.toString(16)}) overlaps with ` +
-                    `'${next.name}' (offset=0x${next.offset.toString(16)})`
+                        `size=0x${current.size.toString(16)}, end=0x${currentEnd.toString(16)}) overlaps with ` +
+                        `'${next.name}' (offset=0x${next.offset.toString(16)})`
                 );
             }
         }
@@ -309,15 +309,19 @@ export function validatePartitionTable(table: PartitionTable, checkOverlaps: boo
  * @param indent - JSON indentation level (default: 2)
  * @returns JSON formatted string
  */
-export function formatJson(table: PartitionTable, humanReadable: boolean = true, indent: number = 2): string {
-    const partitions = table.entries.map(entry => {
+export function formatJson(
+    table: PartitionTable,
+    humanReadable: boolean = true,
+    indent: number = 2
+): string {
+    const partitions = table.entries.map((entry) => {
         const result: Record<string, any> = {
             name: entry.name,
             type: getTypeName(entry.type_val),
             subtype: getSubtypeName(entry.type_val, entry.subtype),
             offset: entry.offset,
             size: entry.size,
-            flags: entry.flags,
+            flags: entry.flags
         };
 
         if (humanReadable) {
@@ -354,14 +358,16 @@ export function formatCsv(table: PartitionTable): string {
 
     // Entries
     for (const entry of table.entries) {
-        lines.push([
-            entry.name,
-            getTypeName(entry.type_val),
-            getSubtypeName(entry.type_val, entry.subtype),
-            `0x${entry.offset.toString(16)}`,
-            `0x${entry.size.toString(16)}`,
-            `0x${entry.flags.toString(16)}`,
-        ].join(','));
+        lines.push(
+            [
+                entry.name,
+                getTypeName(entry.type_val),
+                getSubtypeName(entry.type_val, entry.subtype),
+                `0x${entry.offset.toString(16)}`,
+                `0x${entry.size.toString(16)}`,
+                `0x${entry.flags.toString(16)}`
+            ].join(',')
+        );
     }
 
     return lines.join('\n');
@@ -384,8 +390,12 @@ export function formatText(table: PartitionTable, verbose: boolean = false): str
         lines.push(`\nPartition: ${entry.name}`);
         lines.push(`  Type:      ${getTypeName(entry.type_val)}`);
         lines.push(`  SubType:   ${getSubtypeName(entry.type_val, entry.subtype)}`);
-        lines.push(`  Offset:    ${getOffsetHex(entry.offset)} (${getSizeKb(entry.offset).toFixed(2)} KB)`);
-        lines.push(`  Size:      0x${entry.size.toString(16)} (${getSizeMb(entry.size).toFixed(2)} MB)`);
+        lines.push(
+            `  Offset:    ${getOffsetHex(entry.offset)} (${getSizeKb(entry.offset).toFixed(2)} KB)`
+        );
+        lines.push(
+            `  Size:      0x${entry.size.toString(16)} (${getSizeMb(entry.size).toFixed(2)} MB)`
+        );
         lines.push(`  Flags:     0x${entry.flags.toString(16).padStart(2, '0')}`);
 
         if (verbose && isEncrypted(entry.flags)) {
@@ -434,7 +444,7 @@ export function formatAnalysis(
         flash_size_mb: flashSizeStr,
         flash_size_bytes: flashSizeBytes,
         partition_count: table.entries.length,
-        partitions,
+        partitions
     };
 
     // Backward compatibility: return JSON string if requested (default)

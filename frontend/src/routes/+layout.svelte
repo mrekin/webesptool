@@ -1,39 +1,39 @@
 <script lang="ts">
-	import '../app.css';
-	import Settings from '$lib/components/Settings.svelte';
-	import { setupI18n } from '$lib/i18n/index.js';
-	import { onMount } from 'svelte';
-	import { locale, isLoading } from 'svelte-i18n';
+    import '../app.css';
+    import Settings from '$lib/components/Settings.svelte';
+    import { setupI18n } from '$lib/i18n/index.js';
+    import { onMount } from 'svelte';
+    import { locale, isLoading } from 'svelte-i18n';
 
-	let { children } = $props();
-	let i18nReady = $state(false);
+    let { children } = $props();
+    let i18nReady = $state(false);
 
-	// Initialize i18n on client side as early as possible
-	onMount(async () => {
-		try {
-			console.log('[LAYOUT] Initializing i18n...');
-			await setupI18n();
-			i18nReady = true;
-			console.log('[LAYOUT] i18n initialized successfully');
-		} catch (error) {
-			console.error('Failed to initialize i18n:', error);
-			i18nReady = true; // Still show content even if i18n fails
-		}
-	});
+    // Initialize i18n on client side as early as possible
+    onMount(async () => {
+        try {
+            console.log('[LAYOUT] Initializing i18n...');
+            await setupI18n();
+            i18nReady = true;
+            console.log('[LAYOUT] i18n initialized successfully');
+        } catch (error) {
+            console.error('Failed to initialize i18n:', error);
+            i18nReady = true; // Still show content even if i18n fails
+        }
+    });
 </script>
 
 {#if !i18nReady}
-	<div class="min-h-screen bg-gray-900 flex items-center justify-center">
-		<div class="text-white text-xl">Loading...</div>
-	</div>
+    <div class="flex min-h-screen items-center justify-center bg-gray-900">
+        <div class="text-xl text-white">Loading...</div>
+    </div>
 {:else}
-	<div class="min-h-screen bg-gray-900 relative">
-		<!-- Settings - sticky floating button -->
-		<div class="fixed top-4 right-2 z-50">
-			<Settings />
-		</div>
+    <div class="relative min-h-screen bg-gray-900">
+        <!-- Settings - sticky floating button -->
+        <div class="fixed top-4 right-2 z-50">
+            <Settings />
+        </div>
 
-		<!-- Main content -->
-		{@render children()}
-	</div>
+        <!-- Main content -->
+        {@render children()}
+    </div>
 {/if}

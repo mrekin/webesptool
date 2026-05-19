@@ -2,22 +2,22 @@ import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
 import { getCookie, setCookie } from '$lib/utils/cookies.js';
 import type {
-  DeviceSelection,
-  LoadingState,
-  VersionsResponse,
-  FirmwareInfo,
-  AvailableFirmwares,
-  SourceInfo,
-  UIState,
-  DownloadEvent,
-  FirmwareRequest,
-  UpdateMode,
-  DeviceCategoryType,
-  DeviceDisplayInfo,
-  SelectionState,
-  Device,
-  PinoutData,
-  TerminalMode
+    DeviceSelection,
+    LoadingState,
+    VersionsResponse,
+    FirmwareInfo,
+    AvailableFirmwares,
+    SourceInfo,
+    UIState,
+    DownloadEvent,
+    FirmwareRequest,
+    UpdateMode,
+    DeviceCategoryType,
+    DeviceDisplayInfo,
+    SelectionState,
+    Device,
+    PinoutData,
+    TerminalMode
 } from './types.js';
 import { InterfaceMode } from './types.js';
 import { mapCategoryToDeviceType } from './utils/deviceTypeUtils.js';
@@ -25,44 +25,44 @@ import { apiService } from './api.js';
 
 // Initial state values
 const initialDeviceSelection: DeviceSelection = {
-  category: null,
-  devicePioTarget: null,
-  version: null,
-  source: ''
+    category: null,
+    devicePioTarget: null,
+    version: null,
+    source: ''
 };
 
 const initialLoadingState: LoadingState = {
-  isLoadingAvailable: false,    // Loading available devices list
-  isLoadingVersions: false,   // Loading versions for selected device
-  isLoadingInfo: false,        // Loading device/firmware info
-  isDownloading: false,
-  error: null
+    isLoadingAvailable: false, // Loading available devices list
+    isLoadingVersions: false, // Loading versions for selected device
+    isLoadingInfo: false, // Loading device/firmware info
+    isDownloading: false,
+    error: null
 };
 
 // Get interface mode from cookie or default to 'full'
 const getInitialInterfaceMode = (): InterfaceMode => {
-  if (browser) {
-    const savedMode = getCookie('meshtastic-interface-mode');
-    return savedMode === 'minimal' ? InterfaceMode.MINIMAL : InterfaceMode.FULL;
-  }
-  return InterfaceMode.FULL;
+    if (browser) {
+        const savedMode = getCookie('meshtastic-interface-mode');
+        return savedMode === 'minimal' ? InterfaceMode.MINIMAL : InterfaceMode.FULL;
+    }
+    return InterfaceMode.FULL;
 };
 
 // Get experimental features from cookie or default to false
 const getInitialExperimentalFeatures = (): boolean => {
-  if (browser) {
-    const savedValue = getCookie('meshtastic-experimental-features');
-    return savedValue === 'true';
-  }
-  return false;
+    if (browser) {
+        const savedValue = getCookie('meshtastic-experimental-features');
+        return savedValue === 'true';
+    }
+    return false;
 };
 
 const initialUIState: UIState = {
-  showAdvancedOptions: false,
-  selectedDownloadMode: null,
-  showSecurityWarning: true,
-  interfaceMode: getInitialInterfaceMode(),
-  experimentalFeatures: getInitialExperimentalFeatures()
+    showAdvancedOptions: false,
+    selectedDownloadMode: null,
+    showSecurityWarning: true,
+    interfaceMode: getInitialInterfaceMode(),
+    experimentalFeatures: getInitialExperimentalFeatures()
 };
 
 // Device selection store - manages the current device/selection state
@@ -70,10 +70,10 @@ export const deviceSelection = writable<DeviceSelection>(initialDeviceSelection)
 
 // Unified selection store - Single source of truth for repository/device/version
 export const selectionState = writable<SelectionState>({
-  repository: null,
-  device: null,
-  version: null,
-  isValid: false
+    repository: null,
+    device: null,
+    version: null,
+    isValid: false
 });
 
 // Loading state store - manages all loading and error states
@@ -87,28 +87,28 @@ export const availableSources = writable<SourceInfo[]>([]);
 
 // Current source store - derived from availableSources and deviceSelection
 export const currentSource = derived(
-  [availableSources, deviceSelection],
-  ([$sources, $selection]) => {
-    return $sources.find(s => s.src === $selection.source) || null;
-  }
+    [availableSources, deviceSelection],
+    ([$sources, $selection]) => {
+        return $sources.find((s) => s.src === $selection.source) || null;
+    }
 );
 
 // Available firmwares store - manages device categories and names
 export const availableFirmwares = writable<AvailableFirmwares>({
-  espdevices: [],
-  uf2devices: [],
-  rp2040devices: [],
-  versions: [],
-  device_names: {},
-  srcs: []
+    espdevices: [],
+    uf2devices: [],
+    rp2040devices: [],
+    versions: [],
+    device_names: {},
+    srcs: []
 });
 
 // Versions data store - manages available versions for selected device
 export const versionsData = writable<VersionsResponse>({
-  versions: [],
-  dates: {},
-  latestTags: {},
-  notes: {}
+    versions: [],
+    dates: {},
+    latestTags: {},
+    notes: {}
 });
 
 // Firmware info store - manages firmware information for selected device/version
@@ -119,706 +119,729 @@ export const downloadHistory = writable<DownloadEvent[]>([]);
 
 // Device names store - derived from available firmwares for easy access
 export const deviceNames = derived(
-  availableFirmwares,
-  ($availableFirmwares) => $availableFirmwares.device_names
+    availableFirmwares,
+    ($availableFirmwares) => $availableFirmwares.device_names
 );
 
 // Current device category devices - derived for UI components
 export const currentCategoryDevices = derived(
-  [deviceSelection, availableFirmwares],
-  ([$deviceSelection, $availableFirmwares]) => {
-    if (!$deviceSelection.category) return [];
+    [deviceSelection, availableFirmwares],
+    ([$deviceSelection, $availableFirmwares]) => {
+        if (!$deviceSelection.category) return [];
 
-    switch ($deviceSelection.category) {
-      case 'esp':
-        return $availableFirmwares.espdevices;
-      case 'uf2':
-        return $availableFirmwares.uf2devices;
-      case 'rp2040':
-        return $availableFirmwares.rp2040devices;
-      default:
-        return [];
+        switch ($deviceSelection.category) {
+            case 'esp':
+                return $availableFirmwares.espdevices;
+            case 'uf2':
+                return $availableFirmwares.uf2devices;
+            case 'rp2040':
+                return $availableFirmwares.rp2040devices;
+            default:
+                return [];
+        }
     }
-  }
 );
 
 // All devices organized by category - for single dropdown with optgroups
-export const allDevicesWithCategories = derived(
-  availableFirmwares,
-  ($availableFirmwares) => ({
+export const allDevicesWithCategories = derived(availableFirmwares, ($availableFirmwares) => ({
     esp: $availableFirmwares.espdevices,
     uf2: $availableFirmwares.uf2devices,
     rp2040: $availableFirmwares.rp2040devices,
     device_names: $availableFirmwares.device_names
-  })
-);
+}));
 
 // All devices as flat list with category info - for filtering
-export const allDevicesFlat = derived(
-  availableFirmwares,
-  ($availableFirmwares) => {
-    const devices: Array<{device: string; category: DeviceCategoryType; displayName: string}> = [];
+export const allDevicesFlat = derived(availableFirmwares, ($availableFirmwares) => {
+    const devices: Array<{ device: string; category: DeviceCategoryType; displayName: string }> =
+        [];
 
     $availableFirmwares.espdevices.forEach((device: string) => {
-      devices.push({
-        device,
-        category: 'esp',
-        displayName: $availableFirmwares.device_names[device] || device
-      });
+        devices.push({
+            device,
+            category: 'esp',
+            displayName: $availableFirmwares.device_names[device] || device
+        });
     });
 
     $availableFirmwares.uf2devices.forEach((device: string) => {
-      devices.push({
-        device,
-        category: 'uf2',
-        displayName: $availableFirmwares.device_names[device] || device
-      });
+        devices.push({
+            device,
+            category: 'uf2',
+            displayName: $availableFirmwares.device_names[device] || device
+        });
     });
 
     $availableFirmwares.rp2040devices.forEach((device: string) => {
-      devices.push({
-        device,
-        category: 'rp2040',
-        displayName: $availableFirmwares.device_names[device] || device
-      });
+        devices.push({
+            device,
+            category: 'rp2040',
+            displayName: $availableFirmwares.device_names[device] || device
+        });
     });
     return devices.sort((a, b) => a.displayName.localeCompare(b.displayName));
-  }
-);
+});
 
 // Is device selected - derived boolean for UI state
 export const isDeviceSelected = derived(
-  deviceSelection,
-  ($deviceSelection) => $deviceSelection.devicePioTarget !== null
+    deviceSelection,
+    ($deviceSelection) => $deviceSelection.devicePioTarget !== null
 );
 
 // Is version selected - derived boolean for UI state
 export const isVersionSelected = derived(
-  deviceSelection,
-  ($deviceSelection) => $deviceSelection.version !== null
+    deviceSelection,
+    ($deviceSelection) => $deviceSelection.version !== null
 );
 
 // Current device name - derived for display
 export const currentDeviceName = derived(
-  [deviceSelection, deviceNames],
-  ([$deviceSelection, $deviceNames]) => {
-    if (!$deviceSelection.devicePioTarget || !$deviceNames[$deviceSelection.devicePioTarget]) {
-      return 'Select Device';
+    [deviceSelection, deviceNames],
+    ([$deviceSelection, $deviceNames]) => {
+        if (!$deviceSelection.devicePioTarget || !$deviceNames[$deviceSelection.devicePioTarget]) {
+            return 'Select Device';
+        }
+        return $deviceNames[$deviceSelection.devicePioTarget];
     }
-    return $deviceNames[$deviceSelection.devicePioTarget];
-  }
 );
 
 // Device display info - shows device info regardless of version selection
 export const deviceDisplayInfo = derived(
-  [deviceSelection, firmwareInfo, deviceNames, availableFirmwares, versionsData],
-  ([$deviceSelection, $firmwareInfo, $deviceNames, $availableFirmwares, $versionsData]) => {
-    if (!$deviceSelection.devicePioTarget) {
-      return null;
+    [deviceSelection, firmwareInfo, deviceNames, availableFirmwares, versionsData],
+    ([$deviceSelection, $firmwareInfo, $deviceNames, $availableFirmwares, $versionsData]) => {
+        if (!$deviceSelection.devicePioTarget) {
+            return null;
+        }
+
+        // Determine device type category
+        const deviceTypeCategory =
+            $deviceSelection.category ||
+            detectCategoryFromDeviceTypeAvailableData(
+                $deviceSelection.devicePioTarget,
+                $availableFirmwares
+            );
+
+        // Determine unified device type using utility function
+        const deviceType = mapCategoryToDeviceType(deviceTypeCategory || 'esp');
+
+        return {
+            devicePioTarget: $deviceSelection.devicePioTarget,
+            deviceName:
+                $deviceNames[$deviceSelection.devicePioTarget] || $deviceSelection.devicePioTarget,
+            deviceType, // Unified device type
+            deviceTypeCategory: deviceTypeCategory || 'esp', // Temporary for API
+            availableVersions: $versionsData.versions || [],
+            deviceInfo: $firmwareInfo
+        } as DeviceDisplayInfo;
     }
-
-    // Determine device type category
-    const deviceTypeCategory = $deviceSelection.category || detectCategoryFromDeviceTypeAvailableData($deviceSelection.devicePioTarget, $availableFirmwares);
-
-    // Determine unified device type using utility function
-    const deviceType = mapCategoryToDeviceType(deviceTypeCategory || 'esp');
-
-    return {
-      devicePioTarget: $deviceSelection.devicePioTarget,
-      deviceName: $deviceNames[$deviceSelection.devicePioTarget] || $deviceSelection.devicePioTarget,
-      deviceType,  // Unified device type
-      deviceTypeCategory: deviceTypeCategory || 'esp',  // Temporary for API
-      availableVersions: $versionsData.versions || [],
-      deviceInfo: $firmwareInfo
-    } as DeviceDisplayInfo;
-  }
 );
 
 // Firmware display info - derived complex object for UI
 export const firmwareDisplayInfo = derived(
-  [versionsData, deviceSelection, firmwareInfo],
-  ([$versionsData, $deviceSelection, $firmwareInfo]) => {
-    if (!$deviceSelection.version || !$versionsData.versions.includes($deviceSelection.version)) {
-      return null;
-    }
+    [versionsData, deviceSelection, firmwareInfo],
+    ([$versionsData, $deviceSelection, $firmwareInfo]) => {
+        if (
+            !$deviceSelection.version ||
+            !$versionsData.versions.includes($deviceSelection.version)
+        ) {
+            return null;
+        }
 
-    return {
-      version: $deviceSelection.version,
-      buildDate: $versionsData.dates[$deviceSelection.version] || 'Unknown',
-      notes: $versionsData.notes[$deviceSelection.version] || '',
-      latestTag: $versionsData.latestTags[$deviceSelection.version] || null,
-      deviceInfo: $firmwareInfo
-    };
-  }
+        return {
+            version: $deviceSelection.version,
+            buildDate: $versionsData.dates[$deviceSelection.version] || 'Unknown',
+            notes: $versionsData.notes[$deviceSelection.version] || '',
+            latestTag: $versionsData.latestTags[$deviceSelection.version] || null,
+            deviceInfo: $firmwareInfo
+        };
+    }
 );
 
 // NEW: Available devices derived store for unified selection
 export const availableDevicesForSelection = derived(
-  [selectionState, availableFirmwares],
-  ([$selectionState, $availableFirmwares]): Device[] => {
-    if (!$selectionState.repository) return [];
+    [selectionState, availableFirmwares],
+    ([$selectionState, $availableFirmwares]): Device[] => {
+        if (!$selectionState.repository) return [];
 
-    const devices: Device[] = [];
+        const devices: Device[] = [];
 
-    // Convert existing device lists to new Device interface
-    $availableFirmwares.espdevices.forEach((devicePioTarget: string) => {
-      devices.push({
-        device: devicePioTarget,
-        displayName: $availableFirmwares.device_names[devicePioTarget] || devicePioTarget,
-        category: 'esp'
-      });
-    });
+        // Convert existing device lists to new Device interface
+        $availableFirmwares.espdevices.forEach((devicePioTarget: string) => {
+            devices.push({
+                device: devicePioTarget,
+                displayName: $availableFirmwares.device_names[devicePioTarget] || devicePioTarget,
+                category: 'esp'
+            });
+        });
 
-    $availableFirmwares.uf2devices.forEach((devicePioTarget: string) => {
-      devices.push({
-        device: devicePioTarget,
-        displayName: $availableFirmwares.device_names[devicePioTarget] || devicePioTarget,
-        category: 'uf2'
-      });
-    });
+        $availableFirmwares.uf2devices.forEach((devicePioTarget: string) => {
+            devices.push({
+                device: devicePioTarget,
+                displayName: $availableFirmwares.device_names[devicePioTarget] || devicePioTarget,
+                category: 'uf2'
+            });
+        });
 
-    $availableFirmwares.rp2040devices.forEach((devicePioTarget: string) => {
-      devices.push({
-        device: devicePioTarget,
-        displayName: $availableFirmwares.device_names[devicePioTarget] || devicePioTarget,
-        category: 'rp2040'
-      });
-    });
+        $availableFirmwares.rp2040devices.forEach((devicePioTarget: string) => {
+            devices.push({
+                device: devicePioTarget,
+                displayName: $availableFirmwares.device_names[devicePioTarget] || devicePioTarget,
+                category: 'rp2040'
+            });
+        });
 
-    return devices.sort((a, b) => a.displayName.localeCompare(b.displayName));
-  }
+        return devices.sort((a, b) => a.displayName.localeCompare(b.displayName));
+    }
 );
 
 // NEW: Available versions derived store for unified selection
 export const availableVersionsForSelection = derived(
-  [selectionState, versionsData],
-  ([$selectionState, $versionsData]): string[] => {
-    // FIX: Check both repository and device
-    if (!$selectionState.repository || !$selectionState.device) return [];
-    return $versionsData.versions || [];
-  }
+    [selectionState, versionsData],
+    ([$selectionState, $versionsData]): string[] => {
+        // FIX: Check both repository and device
+        if (!$selectionState.repository || !$selectionState.device) return [];
+        return $versionsData.versions || [];
+    }
 );
 
-
-
 // Helper function to detect category from device type using provided firmwares data
-function detectCategoryFromDeviceTypeAvailableData(devicePioTarget: string, firmwares: AvailableFirmwares): DeviceCategoryType | null {
-  // Check if device is in espdevices
-  if (firmwares.espdevices.includes(devicePioTarget)) {
-    return 'esp';
-  }
-  // Check if device is in uf2devices
-  if (firmwares.uf2devices.includes(devicePioTarget)) {
-    return 'uf2';
-  }
-  // Check if device is in rp2040devices
-  if (firmwares.rp2040devices.includes(devicePioTarget)) {
-    return 'rp2040';
-  }
+function detectCategoryFromDeviceTypeAvailableData(
+    devicePioTarget: string,
+    firmwares: AvailableFirmwares
+): DeviceCategoryType | null {
+    // Check if device is in espdevices
+    if (firmwares.espdevices.includes(devicePioTarget)) {
+        return 'esp';
+    }
+    // Check if device is in uf2devices
+    if (firmwares.uf2devices.includes(devicePioTarget)) {
+        return 'uf2';
+    }
+    // Check if device is in rp2040devices
+    if (firmwares.rp2040devices.includes(devicePioTarget)) {
+        return 'rp2040';
+    }
 
-  return null;
+    return null;
 }
 
 // Actions for device selection
 export const deviceActions = {
-  // Set device category
-  setCategory: (category: DeviceCategoryType | null) => {
-    deviceSelection.update(selection => ({
-      ...selection,
-      category,
-      devicePioTarget: null,
-      version: null
-    }));
-  },
+    // Set device category
+    setCategory: (category: DeviceCategoryType | null) => {
+        deviceSelection.update((selection) => ({
+            ...selection,
+            category,
+            devicePioTarget: null,
+            version: null
+        }));
+    },
 
-  // Set device type (original method)
-  setDeviceType: (devicePioTarget: string | null) => {
-    deviceSelection.update(selection => ({
-      ...selection,
-      devicePioTarget,
-      version: null
-    }));
-  },
+    // Set device type (original method)
+    setDeviceType: (devicePioTarget: string | null) => {
+        deviceSelection.update((selection) => ({
+            ...selection,
+            devicePioTarget,
+            version: null
+        }));
+    },
 
-  // Set device directly (new method for simplified interface)
-  setDeviceDirectly: (devicePioTarget: string | null) => {
-    deviceSelection.update(selection => {
-      let category: DeviceCategoryType | null = null;
-      if (devicePioTarget) {
-        // Get current availableFirmwares data
-        let currentFirmwares: AvailableFirmwares | null = null;
-        const unsubscribe = availableFirmwares.subscribe(firmwares => {
-          currentFirmwares = firmwares;
+    // Set device directly (new method for simplified interface)
+    setDeviceDirectly: (devicePioTarget: string | null) => {
+        deviceSelection.update((selection) => {
+            let category: DeviceCategoryType | null = null;
+            if (devicePioTarget) {
+                // Get current availableFirmwares data
+                let currentFirmwares: AvailableFirmwares | null = null;
+                const unsubscribe = availableFirmwares.subscribe((firmwares) => {
+                    currentFirmwares = firmwares;
+                });
+                unsubscribe();
+
+                if (currentFirmwares) {
+                    category = detectCategoryFromDeviceTypeAvailableData(
+                        devicePioTarget,
+                        currentFirmwares
+                    );
+                }
+            }
+
+            return {
+                ...selection,
+                devicePioTarget,
+                category,
+                version: null
+            };
         });
-        unsubscribe();
+    },
 
-        if (currentFirmwares) {
-          category = detectCategoryFromDeviceTypeAvailableData(devicePioTarget, currentFirmwares);
-        }
-      }
+    // Set version
+    setVersion: (version: string | null) => {
+        deviceSelection.update((selection) => ({
+            ...selection,
+            version
+        }));
+    },
 
-      return {
-        ...selection,
-        devicePioTarget,
-        category,
-        version: null
-      };
-    });
-  },
+    // Set source
+    setSource: (source: string | null) => {
+        deviceSelection.update((selection) => ({
+            ...selection,
+            source,
+            devicePioTarget: null, // Reset device type when source changes
+            category: null, // Reset category when source changes
+            version: null // Reset version when source changes
+        }));
 
-  // Set version
-  setVersion: (version: string | null) => {
-    deviceSelection.update(selection => ({
-      ...selection,
-      version
-    }));
-  },
+        // FIX: Update unified selection state (handle circular dependency)
+        // Use direct update to avoid triggering setRepository cascade
+        selectionState.update((s) => ({
+            repository: source,
+            device: null,
+            version: null,
+            isValid: false
+        }));
 
-  // Set source
-  setSource: (source: string | null) => {
-    deviceSelection.update(selection => ({
-      ...selection,
-      source,
-      devicePioTarget: null,    // Reset device type when source changes
-      category: null,      // Reset category when source changes
-      version: null        // Reset version when source changes
-    }));
+        // FIX: Reset previousDevice to trigger version reload when selecting same device in new repository
+        previousDevice = null;
 
-    // FIX: Update unified selection state (handle circular dependency)
-    // Use direct update to avoid triggering setRepository cascade
-    selectionState.update(s => ({
-      repository: source,
-      device: null,
-      version: null,
-      isValid: false
-    }));
+        // Reload available firmwares for the new source
+        apiActions.loadAvailableFirmwares(source || '');
+    },
 
-    // FIX: Reset previousDevice to trigger version reload when selecting same device in new repository
-    previousDevice = null;
+    // Update source only (used when backend returns the actual source where firmware was found)
+    updateSourceOnly: (source: string) => {
+        console.log('updateSourceOnly called with:', source);
+        deviceSelection.update((selection) => ({
+            ...selection,
+            source
+        }));
 
-    // Reload available firmwares for the new source
-    apiActions.loadAvailableFirmwares(source || '');
-  },
+        // Reload available firmwares for the new source
+        console.log('Calling loadAvailableFirmwares with:', source);
+        apiActions.loadAvailableFirmwares(source);
+    },
 
-  // Update source only (used when backend returns the actual source where firmware was found)
-  updateSourceOnly: (source: string) => {
-    console.log('updateSourceOnly called with:', source);
-    deviceSelection.update(selection => ({
-      ...selection,
-      source
-    }));
-
-    // Reload available firmwares for the new source
-    console.log('Calling loadAvailableFirmwares with:', source);
-    apiActions.loadAvailableFirmwares(source);
-  },
-
-  // Reset all selections
-  resetSelection: () => {
-    deviceSelection.set(initialDeviceSelection);
-  }
+    // Reset all selections
+    resetSelection: () => {
+        deviceSelection.set(initialDeviceSelection);
+    }
 };
 
 // NEW: Unified selection actions with cascade validation
 export const selectionActions = {
-  // Set repository with cascade reset
-  setRepository: (repo: string | null) => {
-    selectionState.update(() => ({
-      repository: repo,
-      device: null,    // cascade reset
-      version: null,   // cascade reset
-      isValid: false
-    }));
+    // Set repository with cascade reset
+    setRepository: (repo: string | null) => {
+        selectionState.update(() => ({
+            repository: repo,
+            device: null, // cascade reset
+            version: null, // cascade reset
+            isValid: false
+        }));
 
-    // FIX: Reset previousDevice to trigger version reload when selecting same device in new repository
-    previousDevice = null;
-  },
+        // FIX: Reset previousDevice to trigger version reload when selecting same device in new repository
+        previousDevice = null;
+    },
 
-  // Update repository ONLY (without cascade reset) - for backend response
-  updateRepositoryOnly: (repo: string) => {
-    selectionState.update(s => ({
-      ...s,
-      repository: repo,
-      // DO NOT reset device and version!
-      isValid: !!s.device && !!s.version
-    }));
-  },
+    // Update repository ONLY (without cascade reset) - for backend response
+    updateRepositoryOnly: (repo: string) => {
+        selectionState.update((s) => ({
+            ...s,
+            repository: repo,
+            // DO NOT reset device and version!
+            isValid: !!s.device && !!s.version
+        }));
+    },
 
-  // Set device with validation and cascade reset
-  setDevice: (device: string | null) => {
-    selectionState.update(s => {
-      if (!device) {
-        return {
-          ...s,
-          device: null,
-          version: null,
-          isValid: !!s.repository
-        };
-      }
+    // Set device with validation and cascade reset
+    setDevice: (device: string | null) => {
+        selectionState.update((s) => {
+            if (!device) {
+                return {
+                    ...s,
+                    device: null,
+                    version: null,
+                    isValid: !!s.repository
+                };
+            }
 
-      // Validate device is available for current repository
-      let availableDevices: Device[] = [];
-      const unsubscribe = availableDevicesForSelection.subscribe(devices => {
-        availableDevices = devices;
-      });
-      unsubscribe();
+            // Validate device is available for current repository
+            let availableDevices: Device[] = [];
+            const unsubscribe = availableDevicesForSelection.subscribe((devices) => {
+                availableDevices = devices;
+            });
+            unsubscribe();
 
-      const validDevice = availableDevices.some(d => d.device === device);
+            const validDevice = availableDevices.some((d) => d.device === device);
 
-      return {
-        ...s,
-        device: validDevice ? device : null,
-        version: null,   // always reset when changing device
-        isValid: validDevice && !!s.repository
-      };
-    });
-  },
+            return {
+                ...s,
+                device: validDevice ? device : null,
+                version: null, // always reset when changing device
+                isValid: validDevice && !!s.repository
+            };
+        });
+    },
 
-  // Set version with validation
-  setVersion: (version: string | null) => {
-    selectionState.update(s => {
-      if (!version) {
-        return {
-          ...s,
-          version: null,
-          isValid: !!s.device && !!s.repository
-        };
-      }
+    // Set version with validation
+    setVersion: (version: string | null) => {
+        selectionState.update((s) => {
+            if (!version) {
+                return {
+                    ...s,
+                    version: null,
+                    isValid: !!s.device && !!s.repository
+                };
+            }
 
-      // Validate version is available for current device
-      // Use versionsData instead of availableVersionsForSelection to avoid dependency on repository
-      let availableVersions: string[] = [];
-      const unsubscribe = versionsData.subscribe(versions => {
-        availableVersions = versions.versions;
-      });
-      unsubscribe();
+            // Validate version is available for current device
+            // Use versionsData instead of availableVersionsForSelection to avoid dependency on repository
+            let availableVersions: string[] = [];
+            const unsubscribe = versionsData.subscribe((versions) => {
+                availableVersions = versions.versions;
+            });
+            unsubscribe();
 
-      const validVersion = availableVersions.includes(version);
+            const validVersion = availableVersions.includes(version);
 
-      return {
-        ...s,
-        version: validVersion ? version : null,
-        isValid: validVersion && !!s.device && !!s.repository
-      };
-    });
-  },
+            return {
+                ...s,
+                version: validVersion ? version : null,
+                isValid: validVersion && !!s.device && !!s.repository
+            };
+        });
+    },
 
-  // Reset all selections
-  resetAll: () => {
-    selectionState.set({
-      repository: null,
-      device: null,
-      version: null,
-      isValid: false
-    });
-  }
+    // Reset all selections
+    resetAll: () => {
+        selectionState.set({
+            repository: null,
+            device: null,
+            version: null,
+            isValid: false
+        });
+    }
 };
 
 // Actions for loading state
 export const loadingActions = {
-  // Set loading state for available devices
-  setLoadingAvailable: (loading: boolean) => {
-    loadingState.update(state => ({
-      ...state,
-      isLoadingAvailable: loading,
-      error: loading ? null : state.error
-    }));
-  },
+    // Set loading state for available devices
+    setLoadingAvailable: (loading: boolean) => {
+        loadingState.update((state) => ({
+            ...state,
+            isLoadingAvailable: loading,
+            error: loading ? null : state.error
+        }));
+    },
 
-  // Set loading state for versions
-  setLoadingVersions: (loading: boolean) => {
-    loadingState.update(state => ({
-      ...state,
-      isLoadingVersions: loading,
-      error: loading ? null : state.error
-    }));
-  },
+    // Set loading state for versions
+    setLoadingVersions: (loading: boolean) => {
+        loadingState.update((state) => ({
+            ...state,
+            isLoadingVersions: loading,
+            error: loading ? null : state.error
+        }));
+    },
 
-  // Set loading state for info
-  setLoadingInfo: (loading: boolean) => {
-    loadingState.update(state => ({
-      ...state,
-      isLoadingInfo: loading,
-      error: loading ? null : state.error
-    }));
-  },
+    // Set loading state for info
+    setLoadingInfo: (loading: boolean) => {
+        loadingState.update((state) => ({
+            ...state,
+            isLoadingInfo: loading,
+            error: loading ? null : state.error
+        }));
+    },
 
-  // Set downloading state
-  setDownloading: (downloading: boolean) => {
-    loadingState.update(state => ({
-      ...state,
-      isDownloading: downloading,
-      error: downloading ? null : state.error
-    }));
-  },
+    // Set downloading state
+    setDownloading: (downloading: boolean) => {
+        loadingState.update((state) => ({
+            ...state,
+            isDownloading: downloading,
+            error: downloading ? null : state.error
+        }));
+    },
 
-  // Set error message
-  setError: (error: string | null) => {
-    loadingState.update(state => ({
-      ...state,
-      error
-    }));
-  },
+    // Set error message
+    setError: (error: string | null) => {
+        loadingState.update((state) => ({
+            ...state,
+            error
+        }));
+    },
 
-  // Clear all loading states
-  clearLoading: () => {
-    loadingState.set(initialLoadingState);
-  }
+    // Clear all loading states
+    clearLoading: () => {
+        loadingState.set(initialLoadingState);
+    }
 };
 
 // Actions for UI state
 export const uiActions = {
-  // Toggle advanced options
-  toggleAdvancedOptions: () => {
-    uiState.update(state => ({
-      ...state,
-      showAdvancedOptions: !state.showAdvancedOptions
-    }));
-  },
+    // Toggle advanced options
+    toggleAdvancedOptions: () => {
+        uiState.update((state) => ({
+            ...state,
+            showAdvancedOptions: !state.showAdvancedOptions
+        }));
+    },
 
-  // Set download mode
-  setDownloadMode: (mode: string | null) => {
-    uiState.update(state => ({
-      ...state,
-      selectedDownloadMode: mode
-    }));
-  },
+    // Set download mode
+    setDownloadMode: (mode: string | null) => {
+        uiState.update((state) => ({
+            ...state,
+            selectedDownloadMode: mode
+        }));
+    },
 
-  // Dismiss security warning
-  dismissSecurityWarning: () => {
-    uiState.update(state => ({
-      ...state,
-      showSecurityWarning: false
-    }));
-  },
+    // Dismiss security warning
+    dismissSecurityWarning: () => {
+        uiState.update((state) => ({
+            ...state,
+            showSecurityWarning: false
+        }));
+    },
 
-  // Set interface mode
-  setInterfaceMode: (mode: InterfaceMode) => {
-    uiState.update(state => ({
-      ...state,
-      interfaceMode: mode
-    }));
-    // Save to cookie for persistence
-    if (browser) {
-      setCookie('meshtastic-interface-mode', mode, 365);
+    // Set interface mode
+    setInterfaceMode: (mode: InterfaceMode) => {
+        uiState.update((state) => ({
+            ...state,
+            interfaceMode: mode
+        }));
+        // Save to cookie for persistence
+        if (browser) {
+            setCookie('meshtastic-interface-mode', mode, 365);
+        }
+    },
+
+    // Set experimental features
+    setExperimentalFeatures: (enabled: boolean) => {
+        uiState.update((state) => ({
+            ...state,
+            experimentalFeatures: enabled
+        }));
+        // Save to cookie for persistence
+        if (browser) {
+            setCookie('meshtastic-experimental-features', String(enabled), 365);
+        }
     }
-  },
-
-  // Set experimental features
-  setExperimentalFeatures: (enabled: boolean) => {
-    uiState.update(state => ({
-      ...state,
-      experimentalFeatures: enabled
-    }));
-    // Save to cookie for persistence
-    if (browser) {
-      setCookie('meshtastic-experimental-features', String(enabled), 365);
-    }
-  }
 };
 
 // Async actions for API operations
 export const apiActions = {
-  // Load available repositories
-  async loadSrcs() {
-    try {
-      const sources = await apiService.getSrcs();
-      availableSources.set(sources);
+    // Load available repositories
+    async loadSrcs() {
+        try {
+            const sources = await apiService.getSrcs();
+            availableSources.set(sources);
 
-      if (sources.length > 0) {
-        // FIX: Set repository in unified selection state FIRST (without cascade reset)
-        selectionActions.updateRepositoryOnly(sources[0].src);
+            if (sources.length > 0) {
+                // FIX: Set repository in unified selection state FIRST (without cascade reset)
+                selectionActions.updateRepositoryOnly(sources[0].src);
 
-        // Then set source in old deviceSelection (this will also trigger deviceActions.setRepository)
-        deviceActions.setSource(sources[0].src);
-      }
-    } catch (error) {
-      loadingActions.setError(error instanceof Error ? error.message : 'Failed to load repositories');
-    }
-  },
-
-  // Load available versions for device type
-  async loadVersions(devicePioTarget: string) {
-    if (!devicePioTarget) return;
-
-    loadingActions.setLoadingVersions(true);
-    try {
-      // FIX: Get source from unified selection state with fallback to deviceSelection
-      let source: string = '';
-
-      // Try to get from new selectionState first
-      const unsubscribeSelection = selectionState.subscribe(s => {
-        source = s.repository || '';
-      });
-      unsubscribeSelection();
-
-      // Fallback to old deviceSelection if needed
-      if (!source) {
-        const unsubscribeDevice = deviceSelection.subscribe(s => {
-          source = s.source || '';
-        });
-        unsubscribeDevice();
-      }
-
-      const versions = await apiService.getVersions(devicePioTarget, source);
-
-      // If backend returns src field, update repository selection without resetting device
-      if (versions.src) {
-        deviceActions.updateSourceOnly(versions.src);
-        // FIX: Use safe update that doesn't reset device/version
-        selectionActions.updateRepositoryOnly(versions.src);
-      }
-
-      versionsData.set(versions);
-    } catch (error) {
-      loadingActions.setError(error instanceof Error ? error.message : 'Failed to load versions');
-    } finally {
-      loadingActions.setLoadingVersions(false);
-    }
-  },
-
-  // Load device information (without version)
-  async loadDeviceInfo(devicePioTarget: string) {
-    if (!devicePioTarget) return;
-
-    loadingActions.setLoadingInfo(true);
-    try {
-      let source: string = '';
-      const unsubscribe = deviceSelection.subscribe(s => {
-        source = s.source || source;
-      });
-      unsubscribe();
-
-      // Use 'latest' as version to fetch device info instead of requesting versions
-      const latestVersion = 'latest';
-
-      // Load device info using latest version
-      const infoBlock = await apiService.getInfoBlock(devicePioTarget, latestVersion, source);
-
-      // Update firmwareInfo with device info (version-agnostic)
-      firmwareInfo.set({
-        devicePioTarget,
-        version: '', // No specific version selected
-        buildDate: '',
-        notes: '',
-        markdownInfo: infoBlock.info,
-        markdownError: infoBlock.error
-      });
-    } catch (error) {
-      loadingActions.setError(error instanceof Error ? error.message : 'Failed to load device info');
-    } finally {
-      loadingActions.setLoadingInfo(false);
-    }
-  },
-
-  // Load firmware information
-  async loadFirmwareInfo(devicePioTarget: string, version: string) {
-    if (!devicePioTarget || !version) return;
-
-    loadingActions.setLoadingInfo(true);
-    try {
-      let source: string = 'https://github.com/meshtastic/firmware';
-      const unsubscribe = deviceSelection.subscribe(s => {
-        source = s.source || source;
-      });
-      unsubscribe();
-
-      // Get versions data from the store instead of making another API call
-      let versionsDataResponse: VersionsResponse = { versions: [], dates: {}, notes: {}, latestTags: {} };
-      const unsubscribeVersions = versionsData.subscribe(v => {
-        versionsDataResponse = v;
-      });
-      unsubscribeVersions();
-
-      const infoBlock = await apiService.getInfoBlock(devicePioTarget, version, source);
-
-      firmwareInfo.set({
-        devicePioTarget,
-        version,
-        buildDate: versionsDataResponse.dates[version] || 'Unknown',
-        notes: versionsDataResponse.notes[version] || '',
-        markdownInfo: infoBlock.info,
-        markdownError: infoBlock.error
-      });
-    } catch (error) {
-      loadingActions.setError(error instanceof Error ? error.message : 'Failed to load firmware info');
-    } finally {
-      loadingActions.setLoadingInfo(false);
-    }
-  },
-
-  // Download firmware
-  async downloadFirmware(
-    devicePioTarget: string,
-    version: string,
-    mode: UpdateMode,
-    part?: string
-  ) {
-    loadingActions.setDownloading(true);
-    const timestamp = new Date();
-
-    try {
-      let source: string = '';
-      let category = 'esp'
-      const unsubscribe = deviceSelection.subscribe(s => {
-        source = s.source || source;
-        category = s.category || category;
-      });
-      unsubscribe();
-      const request: FirmwareRequest = {
-        t: devicePioTarget,
-        v: version,
-        u: mode,
-        ...(part && { p: part as 'fw' | 'littlefs' | 'bleota' }),
-        src: source,
-        e: category == 'esp' ? true : false
-      };
-
-      const response = await apiService.downloadFirmware(request);
-      apiService.triggerDownload(response.blob, response.filename);
-
-      // Record successful download
-      downloadHistory.update(history => [
-        ...history,
-        {
-          devicePioTarget,
-          version,
-          mode,
-          timestamp,
-          success: true
+                // Then set source in old deviceSelection (this will also trigger deviceActions.setRepository)
+                deviceActions.setSource(sources[0].src);
+            }
+        } catch (error) {
+            loadingActions.setError(
+                error instanceof Error ? error.message : 'Failed to load repositories'
+            );
         }
-      ]);
-    } catch (error) {
-      loadingActions.setError(error instanceof Error ? error.message : 'Download failed');
+    },
 
-      // Record failed download
-      downloadHistory.update(history => [
-        ...history,
-        {
-          devicePioTarget,
-          version,
-          mode,
-          timestamp,
-          success: false
+    // Load available versions for device type
+    async loadVersions(devicePioTarget: string) {
+        if (!devicePioTarget) return;
+
+        loadingActions.setLoadingVersions(true);
+        try {
+            // FIX: Get source from unified selection state with fallback to deviceSelection
+            let source: string = '';
+
+            // Try to get from new selectionState first
+            const unsubscribeSelection = selectionState.subscribe((s) => {
+                source = s.repository || '';
+            });
+            unsubscribeSelection();
+
+            // Fallback to old deviceSelection if needed
+            if (!source) {
+                const unsubscribeDevice = deviceSelection.subscribe((s) => {
+                    source = s.source || '';
+                });
+                unsubscribeDevice();
+            }
+
+            const versions = await apiService.getVersions(devicePioTarget, source);
+
+            // If backend returns src field, update repository selection without resetting device
+            if (versions.src) {
+                deviceActions.updateSourceOnly(versions.src);
+                // FIX: Use safe update that doesn't reset device/version
+                selectionActions.updateRepositoryOnly(versions.src);
+            }
+
+            versionsData.set(versions);
+        } catch (error) {
+            loadingActions.setError(
+                error instanceof Error ? error.message : 'Failed to load versions'
+            );
+        } finally {
+            loadingActions.setLoadingVersions(false);
         }
-      ]);
-    } finally {
-      loadingActions.setDownloading(false);
-    }
-  },
+    },
 
-  // Load initial available firmwares
-  async loadAvailableFirmwares(source: string = '') {
-    loadingActions.setLoadingAvailable(true);
-    try {
-      const firmwares = await apiService.getAvailableFirmwares(source = source);
-      availableFirmwares.set(firmwares);
-    } catch (error) {
-      loadingActions.setError(error instanceof Error ? error.message : 'Failed to load available firmwares');
-    } finally {
-      loadingActions.setLoadingAvailable(false);
+    // Load device information (without version)
+    async loadDeviceInfo(devicePioTarget: string) {
+        if (!devicePioTarget) return;
+
+        loadingActions.setLoadingInfo(true);
+        try {
+            let source: string = '';
+            const unsubscribe = deviceSelection.subscribe((s) => {
+                source = s.source || source;
+            });
+            unsubscribe();
+
+            // Use 'latest' as version to fetch device info instead of requesting versions
+            const latestVersion = 'latest';
+
+            // Load device info using latest version
+            const infoBlock = await apiService.getInfoBlock(devicePioTarget, latestVersion, source);
+
+            // Update firmwareInfo with device info (version-agnostic)
+            firmwareInfo.set({
+                devicePioTarget,
+                version: '', // No specific version selected
+                buildDate: '',
+                notes: '',
+                markdownInfo: infoBlock.info,
+                markdownError: infoBlock.error
+            });
+        } catch (error) {
+            loadingActions.setError(
+                error instanceof Error ? error.message : 'Failed to load device info'
+            );
+        } finally {
+            loadingActions.setLoadingInfo(false);
+        }
+    },
+
+    // Load firmware information
+    async loadFirmwareInfo(devicePioTarget: string, version: string) {
+        if (!devicePioTarget || !version) return;
+
+        loadingActions.setLoadingInfo(true);
+        try {
+            let source: string = 'https://github.com/meshtastic/firmware';
+            const unsubscribe = deviceSelection.subscribe((s) => {
+                source = s.source || source;
+            });
+            unsubscribe();
+
+            // Get versions data from the store instead of making another API call
+            let versionsDataResponse: VersionsResponse = {
+                versions: [],
+                dates: {},
+                notes: {},
+                latestTags: {}
+            };
+            const unsubscribeVersions = versionsData.subscribe((v) => {
+                versionsDataResponse = v;
+            });
+            unsubscribeVersions();
+
+            const infoBlock = await apiService.getInfoBlock(devicePioTarget, version, source);
+
+            firmwareInfo.set({
+                devicePioTarget,
+                version,
+                buildDate: versionsDataResponse.dates[version] || 'Unknown',
+                notes: versionsDataResponse.notes[version] || '',
+                markdownInfo: infoBlock.info,
+                markdownError: infoBlock.error
+            });
+        } catch (error) {
+            loadingActions.setError(
+                error instanceof Error ? error.message : 'Failed to load firmware info'
+            );
+        } finally {
+            loadingActions.setLoadingInfo(false);
+        }
+    },
+
+    // Download firmware
+    async downloadFirmware(
+        devicePioTarget: string,
+        version: string,
+        mode: UpdateMode,
+        part?: string
+    ) {
+        loadingActions.setDownloading(true);
+        const timestamp = new Date();
+
+        try {
+            let source: string = '';
+            let category = 'esp';
+            const unsubscribe = deviceSelection.subscribe((s) => {
+                source = s.source || source;
+                category = s.category || category;
+            });
+            unsubscribe();
+            const request: FirmwareRequest = {
+                t: devicePioTarget,
+                v: version,
+                u: mode,
+                ...(part && { p: part as 'fw' | 'littlefs' | 'bleota' }),
+                src: source,
+                e: category == 'esp' ? true : false
+            };
+
+            const response = await apiService.downloadFirmware(request);
+            apiService.triggerDownload(response.blob, response.filename);
+
+            // Record successful download
+            downloadHistory.update((history) => [
+                ...history,
+                {
+                    devicePioTarget,
+                    version,
+                    mode,
+                    timestamp,
+                    success: true
+                }
+            ]);
+        } catch (error) {
+            loadingActions.setError(error instanceof Error ? error.message : 'Download failed');
+
+            // Record failed download
+            downloadHistory.update((history) => [
+                ...history,
+                {
+                    devicePioTarget,
+                    version,
+                    mode,
+                    timestamp,
+                    success: false
+                }
+            ]);
+        } finally {
+            loadingActions.setDownloading(false);
+        }
+    },
+
+    // Load initial available firmwares
+    async loadAvailableFirmwares(source: string = '') {
+        loadingActions.setLoadingAvailable(true);
+        try {
+            const firmwares = await apiService.getAvailableFirmwares((source = source));
+            availableFirmwares.set(firmwares);
+        } catch (error) {
+            loadingActions.setError(
+                error instanceof Error ? error.message : 'Failed to load available firmwares'
+            );
+        } finally {
+            loadingActions.setLoadingAvailable(false);
+        }
     }
-  }
 };
 
 // NEW: Simple reactive behavior for unified selection store with race condition protection
@@ -828,145 +851,149 @@ let isLoadingVersions = false; // Flag to prevent race conditions
 
 // Subscribe to unified selection state changes
 selectionState.subscribe(async (selection) => {
-  const { device, version } = selection;
+    const { device, version } = selection;
 
-  // Get current interface mode
-  let currentInterfaceMode: InterfaceMode = InterfaceMode.FULL;
-  const unsubscribeUI = uiState.subscribe(state => {
-    currentInterfaceMode = state.interfaceMode;
-  });
-  unsubscribeUI();
+    // Get current interface mode
+    let currentInterfaceMode: InterfaceMode = InterfaceMode.FULL;
+    const unsubscribeUI = uiState.subscribe((state) => {
+        currentInterfaceMode = state.interfaceMode;
+    });
+    unsubscribeUI();
 
-  // Load device info when device changes - with race condition protection
-  if (device && device !== previousDevice && !isLoadingVersions) {
-    isLoadingVersions = true;
+    // Load device info when device changes - with race condition protection
+    if (device && device !== previousDevice && !isLoadingVersions) {
+        isLoadingVersions = true;
 
-    try {
-      // Load versions for the new device
-      await apiActions.loadVersions(device);
+        try {
+            // Load versions for the new device
+            await apiActions.loadVersions(device);
 
-      // Load device info only in full mode
-      if (currentInterfaceMode === InterfaceMode.FULL) {
-        await apiActions.loadDeviceInfo(device);
-      }
-    } finally {
-      isLoadingVersions = false;
-      previousDevice = device;
+            // Load device info only in full mode
+            if (currentInterfaceMode === InterfaceMode.FULL) {
+                await apiActions.loadDeviceInfo(device);
+            }
+        } finally {
+            isLoadingVersions = false;
+            previousDevice = device;
+        }
     }
-  }
 
-  // Load firmware info when version changes
-  if (device && version && version !== previousVersion && !isLoadingVersions) {
-    await apiActions.loadFirmwareInfo(device, version);
-    previousVersion = version;
-  }
+    // Load firmware info when version changes
+    if (device && version && version !== previousVersion && !isLoadingVersions) {
+        await apiActions.loadFirmwareInfo(device, version);
+        previousVersion = version;
+    }
 });
 
 // TEMP: Keep old deviceSelection in sync with new selectionState for backward compatibility
 // Only sync what's actually needed to avoid circular dependencies
 selectionState.subscribe((selection) => {
-  deviceSelection.update(oldSelection => {
-    // Only update if values actually changed to prevent infinite loops
-    if (oldSelection.devicePioTarget !== selection.device ||
-        oldSelection.version !== selection.version ||
-        oldSelection.source !== selection.repository) {
+    deviceSelection.update((oldSelection) => {
+        // Only update if values actually changed to prevent infinite loops
+        if (
+            oldSelection.devicePioTarget !== selection.device ||
+            oldSelection.version !== selection.version ||
+            oldSelection.source !== selection.repository
+        ) {
+            // Get current availableFirmwares data for proper category detection
+            let currentFirmwares: AvailableFirmwares | null = null;
+            const unsubscribeFirmwares = availableFirmwares.subscribe((firmwares) => {
+                currentFirmwares = firmwares;
+            });
+            unsubscribeFirmwares();
 
-      // Get current availableFirmwares data for proper category detection
-      let currentFirmwares: AvailableFirmwares | null = null;
-      const unsubscribeFirmwares = availableFirmwares.subscribe(firmwares => {
-        currentFirmwares = firmwares;
-      });
-      unsubscribeFirmwares();
-
-      return {
-        ...oldSelection,
-        devicePioTarget: selection.device,
-        version: selection.version,
-        source: selection.repository || oldSelection.source,
-        category: selection.device && currentFirmwares
-          ? detectCategoryFromDeviceTypeAvailableData(selection.device, currentFirmwares)
-          : null
-      };
-    }
-    return oldSelection;
-  });
+            return {
+                ...oldSelection,
+                devicePioTarget: selection.device,
+                version: selection.version,
+                source: selection.repository || oldSelection.source,
+                category:
+                    selection.device && currentFirmwares
+                        ? detectCategoryFromDeviceTypeAvailableData(
+                              selection.device,
+                              currentFirmwares
+                          )
+                        : null
+            };
+        }
+        return oldSelection;
+    });
 });
 
 // Initialize on app start
 if (browser) {
-  // Check if URL has device parameter first
-  const url = new URL(window.location.href);
-  const deviceFromUrl = url.searchParams.get('t');
+    // Check if URL has device parameter first
+    const url = new URL(window.location.href);
+    const deviceFromUrl = url.searchParams.get('t');
 
-  if (deviceFromUrl) {
-    // Load versions for specific device from URL to discover src
-    await initializeFromDeviceParam(deviceFromUrl);
-  } else {
-    // No device in URL - load repositories and select first one
-    apiActions.loadSrcs();
-  }
-
-  // Initialize URL synchronization
-  (async () => {
-    try {
-      const { initializeUrlSync } = await import('$lib/utils/urlSync.js');
-      initializeUrlSync(deviceFromUrl);
-    } catch (error) {
-      console.error('Failed to initialize URL sync:', error);
+    if (deviceFromUrl) {
+        // Load versions for specific device from URL to discover src
+        await initializeFromDeviceParam(deviceFromUrl);
+    } else {
+        // No device in URL - load repositories and select first one
+        apiActions.loadSrcs();
     }
-  })();
+
+    // Initialize URL synchronization
+    (async () => {
+        try {
+            const { initializeUrlSync } = await import('$lib/utils/urlSync.js');
+            initializeUrlSync(deviceFromUrl);
+        } catch (error) {
+            console.error('Failed to initialize URL sync:', error);
+        }
+    })();
 }
 
 // Initialize app when device parameter is provided in URL
 async function initializeFromDeviceParam(devicePioTarget: string) {
-  try {
-    // First, call versions API without source to discover the repository
-    const versions = await apiService.getVersions(devicePioTarget, '');
+    try {
+        // First, call versions API without source to discover the repository
+        const versions = await apiService.getVersions(devicePioTarget, '');
 
-    // If backend returned src, device was found
-    if (versions.src) {
-      // Load available sources list (without selecting any)
-      const sources = await apiService.getSrcs();
-      availableSources.set(sources);
+        // If backend returned src, device was found
+        if (versions.src) {
+            // Load available sources list (without selecting any)
+            const sources = await apiService.getSrcs();
+            availableSources.set(sources);
 
-      // Find the correct source from loaded list
-      const matchedSource = sources.find(s => s.src === versions.src);
+            // Find the correct source from loaded list
+            const matchedSource = sources.find((s) => s.src === versions.src);
 
-      if (matchedSource) {
-        // Update selection state without triggering setSource (which would reset device)
-        selectionActions.updateRepositoryOnly(matchedSource.src);
+            if (matchedSource) {
+                // Update selection state without triggering setSource (which would reset device)
+                selectionActions.updateRepositoryOnly(matchedSource.src);
 
-        // Update deviceSelection source directly without reset
-        deviceSelection.update(selection => ({
-          ...selection,
-          source: matchedSource.src
-        }));
+                // Update deviceSelection source directly without reset
+                deviceSelection.update((selection) => ({
+                    ...selection,
+                    source: matchedSource.src
+                }));
 
-        // Load available firmwares for the discovered source (ONE call only)
-        await apiActions.loadAvailableFirmwares(matchedSource.src);
-      }
+                // Load available firmwares for the discovered source (ONE call only)
+                await apiActions.loadAvailableFirmwares(matchedSource.src);
+            }
 
-      // Update versions data with the response we already have
-      versionsData.set(versions);
+            // Update versions data with the response we already have
+            versionsData.set(versions);
 
-      // Set device selection after data is loaded
-      deviceActions.setDeviceDirectly(devicePioTarget);
+            // Set device selection after data is loaded
+            deviceActions.setDeviceDirectly(devicePioTarget);
 
-      // Set previousDevice BEFORE calling setDevice to prevent duplicate loadVersions call
-      previousDevice = devicePioTarget;
+            // Set previousDevice BEFORE calling setDevice to prevent duplicate loadVersions call
+            previousDevice = devicePioTarget;
 
-      // Update unified selection state device
-      selectionActions.setDevice(devicePioTarget);
-    } else {
-      // No src returned - device not found, load default repositories
-      apiActions.loadSrcs();
+            // Update unified selection state device
+            selectionActions.setDevice(devicePioTarget);
+        } else {
+            // No src returned - device not found, load default repositories
+            apiActions.loadSrcs();
+        }
+    } catch (error) {
+        console.error('Failed to initialize from device parameter:', error);
+        // Fallback to loading repositories
+        apiActions.loadSrcs();
     }
-
-  } catch (error) {
-    console.error('Failed to initialize from device parameter:', error);
-    // Fallback to loading repositories
-    apiActions.loadSrcs();
-  }
 }
 
 // ==================== PINOUT STORE ====================
@@ -974,55 +1001,55 @@ async function initializeFromDeviceParam(devicePioTarget: string) {
 import { loadPinoutData, mapDeviceToPinout } from '$lib/utils/pinoutUtils.js';
 
 interface PinoutState {
-  data: PinoutData | null;
-  isLoading: boolean;
-  error: string | null;
+    data: PinoutData | null;
+    isLoading: boolean;
+    error: string | null;
 }
 
 const initialPinoutState: PinoutState = {
-  data: null,
-  isLoading: false,
-  error: null
+    data: null,
+    isLoading: false,
+    error: null
 };
 
 export const pinoutStore = writable<PinoutState>(initialPinoutState);
 
 // Actions для pinout store
 export const pinoutActions = {
-  async loadPinoutData() {
-    pinoutStore.update(state => ({ ...state, isLoading: true, error: null }));
+    async loadPinoutData() {
+        pinoutStore.update((state) => ({ ...state, isLoading: true, error: null }));
 
-    try {
-      const data = await loadPinoutData();
-      pinoutStore.set({ data, isLoading: false, error: null });
-    } catch (error) {
-      pinoutStore.update(state => ({
-        ...state,
-        isLoading: false,
-        error: error instanceof Error ? error.message : 'Failed to load pinout data'
-      }));
+        try {
+            const data = await loadPinoutData();
+            pinoutStore.set({ data, isLoading: false, error: null });
+        } catch (error) {
+            pinoutStore.update((state) => ({
+                ...state,
+                isLoading: false,
+                error: error instanceof Error ? error.message : 'Failed to load pinout data'
+            }));
+        }
+    },
+
+    clearError() {
+        pinoutStore.update((state) => ({ ...state, error: null }));
     }
-  },
-
-  clearError() {
-    pinoutStore.update(state => ({ ...state, error: null }));
-  }
 };
 
 // Derived store для проверки наличия pinout данных для выбранного устройства
 export const hasPinoutData = derived(
-  [pinoutStore, selectionState],
-  ([$pinoutState, $selectionState]) => {
-    if (!$pinoutState.data || !$selectionState.device) return false;
+    [pinoutStore, selectionState],
+    ([$pinoutState, $selectionState]) => {
+        if (!$pinoutState.data || !$selectionState.device) return false;
 
-    const mapping = mapDeviceToPinout($selectionState.device, $pinoutState.data);
-    return mapping !== null;
-  }
+        const mapping = mapDeviceToPinout($selectionState.device, $pinoutState.data);
+        return mapping !== null;
+    }
 );
 
 // Инициализация - загрузить pinout данные при старте приложения
 if (browser) {
-  pinoutActions.loadPinoutData();
+    pinoutActions.loadPinoutData();
 }
 
 // ==================== TERMINAL MODE STORE ====================
@@ -1032,5 +1059,5 @@ export const terminalMode = writable<TerminalMode>('normal');
 
 // Reset terminal mode to normal
 export function resetTerminalMode() {
-  terminalMode.set('normal');
+    terminalMode.set('normal');
 }

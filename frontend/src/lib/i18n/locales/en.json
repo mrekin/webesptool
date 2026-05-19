@@ -394,7 +394,11 @@
     "dfu_entering": "Entering DFU mode...",
     "dfu_success": "Device entered DFU mode and disconnected",
     "dfu_error": "Failed to enter DFU mode: {error}",
-    "dfu_not_supported": "DFU mode is not supported by this device"
+    "dfu_not_supported": "DFU mode is not supported by this device",
+    "changed_params": "Parameters that will be written:",
+    "too_many_parameters": "This section has many parameters",
+    "check_in_editor": "View parameters in the editor (Preview button)",
+    "was": "was"
   },
   "memorymap": {
     "layout": "Memory Layout",

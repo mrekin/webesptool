@@ -394,7 +394,11 @@
     "dfu_entering": "Włączanie trybu DFU...",
     "dfu_success": "Urządzenie weszło w tryb DFU i zostało odłączone",
     "dfu_error": "Nie udało się wejść w tryb DFU: {error}",
-    "dfu_not_supported": "To urządzenie nie obsługuje trybu DFU"
+    "dfu_not_supported": "To urządzenie nie obsługuje trybu DFU",
+    "changed_params": "Parametry, które zostaną zapisane:",
+    "too_many_parameters": "Ta sekcja ma wiele parametrów",
+    "check_in_editor": "Zobacz parametry w edytorze (przycisk Podgląd)",
+    "was": "było"
   },
   "memorymap": {
     "layout": "Układ pamięci",

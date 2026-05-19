@@ -4,163 +4,161 @@
 
 // Repository Level
 export interface Repository {
-  name: string;
-  url: string;
+    name: string;
+    url: string;
 }
 
 // Device Level
 export interface Device {
-  device: string;      // ← Corresponds to legacy code
-  displayName: string;
-  category: 'esp' | 'uf2' | 'rp2040';
+    device: string; // ← Corresponds to legacy code
+    displayName: string;
+    category: 'esp' | 'uf2' | 'rp2040';
 }
-
 
 // Version Level
 export interface Version {
-  version: string;
-  buildDate: string;
-  notes?: string;
-  latestTag?: string;
+    version: string;
+    buildDate: string;
+    notes?: string;
+    latestTag?: string;
 }
 
 // Selection State (Single source of truth)
 export interface SelectionState {
-  repository: string | null;
-  device: string | null;      // pioTarget
-  version: string | null;     // only from versions[] list
-  isValid: boolean;           // true if all dependencies are met
+    repository: string | null;
+    device: string | null; // pioTarget
+    version: string | null; // only from versions[] list
+    isValid: boolean; // true if all dependencies are met
 }
 
-
 export interface VersionsResponse {
-  versions: string[];
-  dates: {
-    [version: string]: string;
-  };
-  latestTags: {
-    [version: string]: string;
-  };
-  notes: {
-    [version: string]: string;
-  };
-  src?: string; // Repository where firmware was found
+    versions: string[];
+    dates: {
+        [version: string]: string;
+    };
+    latestTags: {
+        [version: string]: string;
+    };
+    notes: {
+        [version: string]: string;
+    };
+    src?: string; // Repository where firmware was found
 }
 
 export interface InfoBlockResponse {
-  info: string;
-  error?: string;
+    info: string;
+    error?: string;
 }
 
 export interface FirmwareRequest {
-  t: string; // device type
-  v: string; // version
-  u: UpdateMode; // update mode: 1=update, 2=install/wipe, 4=OTA, 5=ZIP
-  p?: 'fw' | 'littlefs' | 'bleota' | 'bleota-s3'; // part
-  e?: boolean; // ESP32 flag
-  src?: string; // source repository
+    t: string; // device type
+    v: string; // version
+    u: UpdateMode; // update mode: 1=update, 2=install/wipe, 4=OTA, 5=ZIP
+    p?: 'fw' | 'littlefs' | 'bleota' | 'bleota-s3'; // part
+    e?: boolean; // ESP32 flag
+    src?: string; // source repository
 }
 
 export interface FirmwareDownloadResponse {
-  blob: Blob;
-  filename: string;
+    blob: Blob;
+    filename: string;
 }
 
 export interface ManifestBuild {
-  chipFamily: ChipFamily;
-  parts: ManifestPart[];
+    chipFamily: ChipFamily;
+    parts: ManifestPart[];
 }
 
 export interface ManifestPart {
-  path: string;
-  offset: number;
+    path: string;
+    offset: number;
 }
 
 export interface ManifestResponse {
-  name: string;
-  version: string;
-  new_install_improv_wait_time: number;
-  new_install_prompt_erase: boolean;
-  builds: ManifestBuild[];
-  pathfw: string;
-  pathota: string;
+    name: string;
+    version: string;
+    new_install_improv_wait_time: number;
+    new_install_prompt_erase: boolean;
+    builds: ManifestBuild[];
+    pathfw: string;
+    pathota: string;
 }
 
 // Source repository information
 export enum RepositoryType {
-  MESHTASTIC = 'meshtastic',
-  MESHCORE = 'meshcore'
+    MESHTASTIC = 'meshtastic',
+    MESHCORE = 'meshcore'
 }
 
 export interface SourceInfo {
-  src: string;
-  desc: string;
-  type: RepositoryType;
+    src: string;
+    desc: string;
+    type: RepositoryType;
 }
 
 export interface AvailableFirmwares {
-  espdevices: string[];
-  uf2devices: string[];
-  rp2040devices: string[];
-  versions: string[];
-  device_names: { [key: string]: string };
-  srcs: SourceInfo[];
+    espdevices: string[];
+    uf2devices: string[];
+    rp2040devices: string[];
+    versions: string[];
+    device_names: { [key: string]: string };
+    srcs: SourceInfo[];
 }
 
 export interface DeviceSelection {
-  category: DeviceCategoryType | null;
-  devicePioTarget: string | null;
-  version: string | null;
-  source: string | null;
+    category: DeviceCategoryType | null;
+    devicePioTarget: string | null;
+    version: string | null;
+    source: string | null;
 }
 
 export interface LoadingState {
-  isLoadingAvailable: boolean;  // Loading available devices list
-  isLoadingVersions: boolean;   // Loading versions for selected device
-  isLoadingInfo: boolean;        // Loading device/firmware info
-  isDownloading: boolean;
-  error: string | null;
+    isLoadingAvailable: boolean; // Loading available devices list
+    isLoadingVersions: boolean; // Loading versions for selected device
+    isLoadingInfo: boolean; // Loading device/firmware info
+    isDownloading: boolean;
+    error: string | null;
 }
 
 export interface FirmwareInfo {
-  devicePioTarget: string;
-  version: string;
-  buildDate: string;
-  notes: string;
-  markdownInfo: string;
-  markdownError?: string;
+    devicePioTarget: string;
+    version: string;
+    buildDate: string;
+    notes: string;
+    markdownInfo: string;
+    markdownError?: string;
 }
 
 export interface DownloadOption {
-  id: string;
-  label: string;
-  mode: UpdateMode;
-  available: boolean;
-  icon?: string;
-  description?: string;
-  url?: string;
-  openInNewTab?: boolean;
+    id: string;
+    label: string;
+    mode: UpdateMode;
+    available: boolean;
+    icon?: string;
+    description?: string;
+    url?: string;
+    openInNewTab?: boolean;
 }
 
 export interface UIState {
-  showAdvancedOptions: boolean;
-  selectedDownloadMode: string | null;
-  showSecurityWarning: boolean;
-  interfaceMode: InterfaceMode;
-  experimentalFeatures: boolean;
+    showAdvancedOptions: boolean;
+    selectedDownloadMode: string | null;
+    showSecurityWarning: boolean;
+    interfaceMode: InterfaceMode;
+    experimentalFeatures: boolean;
 }
 
 // Interface mode enum
 export enum InterfaceMode {
-  FULL = 'full',
-  MINIMAL = 'minimal'
+    FULL = 'full',
+    MINIMAL = 'minimal'
 }
 
 // API Error types
 export interface APIError {
-  error: string;
-  status?: number;
-  details?: any;
+    error: string;
+    status?: number;
+    details?: any;
 }
 
 // Update modes for firmware downloads
@@ -169,142 +167,141 @@ export type UpdateMode = '1' | '2' | '4' | '5';
 // Device type categories for UI organization
 export type DeviceCategoryType = 'esp' | 'uf2' | 'rp2040';
 
-
 // Chip families for manifest generation
 export type ChipFamily = 'ESP32' | 'ESP32-S3' | 'ESP32-C3' | 'NRF52' | 'RP2040';
 
 // Unified device type enum
 export enum DeviceType {
-  ESP32 = 'esp32',
-  NRF52 = 'nrf52',
-  RP2040 = 'rp2040'
+    ESP32 = 'esp32',
+    NRF52 = 'nrf52',
+    RP2040 = 'rp2040'
 }
 
 // Configuration interface
 export interface AppConfig {
-  apiBaseUrl: string;
-  defaultSource: string;
-  timeout: number;
-  retryAttempts: number;
+    apiBaseUrl: string;
+    defaultSource: string;
+    timeout: number;
+    retryAttempts: number;
 }
 
 // Event types for analytics/logging
 export interface DownloadEvent {
-  devicePioTarget: string;
-  version: string;
-  mode: UpdateMode;
-  timestamp: Date;
-  success: boolean;
+    devicePioTarget: string;
+    version: string;
+    mode: UpdateMode;
+    timestamp: Date;
+    success: boolean;
 }
 
 export interface SelectionChangeEvent {
-  category: DeviceCategoryType | null;
-  devicePioTarget: string | null;
-  previousDevicePioTarget: string | null;
+    category: DeviceCategoryType | null;
+    devicePioTarget: string | null;
+    previousDevicePioTarget: string | null;
 }
 
 export interface DeviceDisplayInfo {
-  devicePioTarget: string;  // Previously deviceType - the PIO target from firmware
-  deviceName: string;       // Human-readable device name
-  deviceType: DeviceType;   // Unified device type
-  deviceTypeCategory: DeviceCategoryType;  // Device category type (temporary for API)
-  availableVersions: string[];  // List of available firmware versions
-  deviceInfo: FirmwareInfo | null;  // Device firmware information
+    devicePioTarget: string; // Previously deviceType - the PIO target from firmware
+    deviceName: string; // Human-readable device name
+    deviceType: DeviceType; // Unified device type
+    deviceTypeCategory: DeviceCategoryType; // Device category type (temporary for API)
+    availableVersions: string[]; // List of available firmware versions
+    deviceInfo: FirmwareInfo | null; // Device firmware information
 }
 
 // ESP Flasher types
 export interface ESPDeviceInfo {
-  chip: string;
-  flashSize: string;
-  psramSize?: string;
-  mac: string;
-  features: string;
-  crystal: string;
-  revision: string;
-  flashId: string;
-  baudrate: number;
+    chip: string;
+    flashSize: string;
+    psramSize?: string;
+    mac: string;
+    features: string;
+    crystal: string;
+    revision: string;
+    flashId: string;
+    baudrate: number;
 }
 
 export interface FlashProgress {
-  progress: number;
-  status: string;
-  error: string;
+    progress: number;
+    status: string;
+    error: string;
 }
 
 export interface FirmwareFile {
-  file: File;
-  content: string;
-  size: number;
-  name: string;
+    file: File;
+    content: string;
+    size: number;
+    name: string;
 }
 
 export interface SelectedFirmwareFile {
-  filename: string;
-  address: string;
-  file: FirmwareFile;
-  hasError?: boolean;
-  errorMessage?: string;
-  isDownloading?: boolean;
-  downloadProgress?: number;
-  fileSize?: number;
-  isEnabled?: boolean; // If false, file is ignored during flashing and validation
-  userEdited?: boolean; // If true, address was manually edited and should not be auto-recalculated
+    filename: string;
+    address: string;
+    file: FirmwareFile;
+    hasError?: boolean;
+    errorMessage?: string;
+    isDownloading?: boolean;
+    downloadProgress?: number;
+    fileSize?: number;
+    isEnabled?: boolean; // If false, file is ignored during flashing and validation
+    userEdited?: boolean; // If true, address was manually edited and should not be auto-recalculated
 }
 
 export interface ZipExtractionResult {
-  extractedFiles: File[];
-  totalFiles: number;
-  extractedCount: number;
-  skippedCount: number;
+    extractedFiles: File[];
+    totalFiles: number;
+    extractedCount: number;
+    skippedCount: number;
 }
 
 export interface FlashOptions {
-  baudrate: number;
-  address: string;
-  onProgress?: (progress: FlashProgress) => void;
+    baudrate: number;
+    address: string;
+    onProgress?: (progress: FlashProgress) => void;
 }
 
 // Firmware metadata types
 export interface FirmwareMetadataFile {
-  name: string;
-  md5: string;
-  bytes: number;
+    name: string;
+    md5: string;
+    bytes: number;
 }
 
 export interface FirmwareMetadataPartition {
-  name: string;
-  type: string;
-  subtype: string;
-  offset: string;
-  size: string;
-  flags: string;
+    name: string;
+    type: string;
+    subtype: string;
+    offset: string;
+    size: string;
+    flags: string;
 }
 
 export interface FirmwareMetadata {
-  version: string;
-  build_epoch: number;
-  board: string;
-  mcu: string;
-  repo: string;
-  files: FirmwareMetadataFile[];
-  part: FirmwareMetadataPartition[];
-  has_mui: boolean;
-  has_inkhud: boolean;
+    version: string;
+    build_epoch: number;
+    board: string;
+    mcu: string;
+    repo: string;
+    files: FirmwareMetadataFile[];
+    part: FirmwareMetadataPartition[];
+    has_mui: boolean;
+    has_inkhud: boolean;
 }
 
 // Extended manifest part with classification for internal use
 export interface ManifestPartExtended extends ManifestPart {
-  partType: 'firmware' | 'ota' | 'filesystem';
+    partType: 'firmware' | 'ota' | 'filesystem';
 }
 
 // Extended manifest build for internal processing
 export interface ManifestBuildExtended extends ManifestBuild {
-  parts: ManifestPartExtended[];
+    parts: ManifestPartExtended[];
 }
 
 // Extended manifest response for internal processing
 export interface ManifestMetadata extends Omit<ManifestResponse, 'builds'> {
-  builds: ManifestBuildExtended[];
+    builds: ManifestBuildExtended[];
 }
 
 // Union type for both metadata formats
@@ -312,258 +309,292 @@ export type FirmwareMetadataExtended = FirmwareMetadata | ManifestMetadata;
 
 // Flash address result
 export interface FlashAddressResult {
-  address: string;
-  type: 'firmware' | 'ota' | 'filesystem';
-  description: string;
-  filename?: string; // Optional filename for the flash operation
+    address: string;
+    type: 'firmware' | 'ota' | 'filesystem';
+    description: string;
+    filename?: string; // Optional filename for the flash operation
 }
 
 // Validation error codes
 export const ValidationErrors = {
-  UNKNOWN_ERROR: -1,
-  FILES_CONFLICT: -2,
-  CHIP_MISMATCH: -3
+    UNKNOWN_ERROR: -1,
+    FILES_CONFLICT: -2,
+    CHIP_MISMATCH: -3
 } as const;
 
-export type ValidationError = typeof ValidationErrors[keyof typeof ValidationErrors];
+export type ValidationError = (typeof ValidationErrors)[keyof typeof ValidationErrors];
 
 // Memory map segment types
 export interface MemorySegment {
-  address: number;      // Starting address in bytes
-  size: number;         // Size in bytes
-  type: 'firmware' | 'ota' | 'filesystem';
-  filename: string;
-  color: string;        // Segment color
+    address: number; // Starting address in bytes
+    size: number; // Size in bytes
+    type: 'firmware' | 'ota' | 'filesystem';
+    filename: string;
+    color: string; // Segment color
 }
 
 // ==================== FOOTER TYPES ====================
 
 // Footer link with optional language filter
 export interface FooterLink {
-  name: string;
-  href: string;
-  description: string;
-  langFilter?: string;  // Optional: comma-separated list of locales (e.g., 'ru' or 'ru,en')
+    name: string;
+    href: string;
+    description: string;
+    langFilter?: string; // Optional: comma-separated list of locales (e.g., 'ru' or 'ru,en')
 }
 
 // Useful link for external resources
 export interface UsefullLink {
-  url: string;
-  title: string;
-  description: string;
-  icon: string;
+    url: string;
+    title: string;
+    description: string;
+    icon: string;
 }
 
 // ==================== PINOUT TYPES ====================
 
-export type PinCategory = 'button' | 'lora' | 'lora_power' | 'power' | 'led' | 'audio' | 'i2c' | 'uart' | 'gps' | 'gps_config' | 'led_config' | 'spi' | 'other';
+export type PinCategory =
+    | 'button'
+    | 'lora'
+    | 'lora_power'
+    | 'power'
+    | 'led'
+    | 'audio'
+    | 'i2c'
+    | 'uart'
+    | 'gps'
+    | 'gps_config'
+    | 'led_config'
+    | 'spi'
+    | 'other';
 
 export interface PinDefine {
-  [key: string]: string;  // e.g., "LORA_SCK": "10"
+    [key: string]: string; // e.g., "LORA_SCK": "10"
 }
 
 export interface PinDefines {
-  button?: PinDefine;
-  lora?: PinDefine;
-  lora_power?: PinDefine;
-  power?: PinDefine;
-  led?: PinDefine;
-  audio?: PinDefine;
-  i2c?: PinDefine;
-  uart?: PinDefine;
-  gps?: PinDefine;
-  gps_config?: PinDefine;
-  led_config?: PinDefine;
-  spi?: PinDefine;
-  other?: PinDefine;
+    button?: PinDefine;
+    lora?: PinDefine;
+    lora_power?: PinDefine;
+    power?: PinDefine;
+    led?: PinDefine;
+    audio?: PinDefine;
+    i2c?: PinDefine;
+    uart?: PinDefine;
+    gps?: PinDefine;
+    gps_config?: PinDefine;
+    led_config?: PinDefine;
+    spi?: PinDefine;
+    other?: PinDefine;
 }
 
 export interface PinSummary {
-  button?: number;
-  lora?: number;
-  lora_power?: number;
-  power?: number;
-  led?: number;
-  audio?: number;
-  i2c?: number;
-  uart?: number;
-  gps?: number;
-  gps_config?: number;
-  led_config?: number;
-  other?: number;
+    button?: number;
+    lora?: number;
+    lora_power?: number;
+    power?: number;
+    led?: number;
+    audio?: number;
+    i2c?: number;
+    uart?: number;
+    gps?: number;
+    gps_config?: number;
+    led_config?: number;
+    other?: number;
 }
 
 export interface BoardVariantConfig {
-  [key: string]: Record<string, string>;  // Config categories like system, battery, lora, etc.
+    [key: string]: Record<string, string>; // Config categories like system, battery, lora, etc.
 }
 
 export interface BoardVariant {
-  file: string;
-  board: string;
-  family: string;
-  pins: PinDefines;
-  config?: BoardVariantConfig;
+    file: string;
+    board: string;
+    family: string;
+    pins: PinDefines;
+    config?: BoardVariantConfig;
 }
 
 export interface PinoutVariant {
-  [boardName: string]: BoardVariant;
+    [boardName: string]: BoardVariant;
 }
 
 export interface PinoutData {
-  metadata: {
-    total_variants: number;
-    generated_date: string;
-    format_version: string;
-    source_dir: string;
-    total_variants_including_aliases?: number;
-  };
-  variants: PinoutVariant;  // Flat structure: boardName -> BoardVariant (v2.0)
+    metadata: {
+        total_variants: number;
+        generated_date: string;
+        format_version: string;
+        source_dir: string;
+        total_variants_including_aliases?: number;
+    };
+    variants: PinoutVariant; // Flat structure: boardName -> BoardVariant (v2.0)
 }
 
 // UI Types for pinout visualization
 export interface PinInfo {
-  name: string;          // e.g., "LORA_SCK"
-  pinNumber: string;     // e.g., "10" or "P1.04" for NRF52
-  category: PinCategory;
-  description?: string;
+    name: string; // e.g., "LORA_SCK"
+    pinNumber: string; // e.g., "10" or "P1.04" for NRF52
+    category: PinCategory;
+    description?: string;
 }
 
 export interface ConfigInfo {
-  name: string;      // Config key, e.g., "HAS_WIFI"
-  value: string;     // Config value, e.g., "1"
-  category: string;  // Category, e.g., "system", "battery"
+    name: string; // Config key, e.g., "HAS_WIFI"
+    value: string; // Config value, e.g., "1"
+    category: string; // Category, e.g., "system", "battery"
 }
 
 // ==================== MESHTASTIC TYPES ====================
 
 export interface MeshtasticDeviceInfo {
-  nodeName: string;
-  longName?: string;
-  shortName?: string;
-  nodeNum: number;
-  firmwareVersion: string;
-  hardwareModel: string;
-  pioEnv: string;
-  macAddress?: string;
+    nodeName: string;
+    longName?: string;
+    shortName?: string;
+    nodeNum: number;
+    firmwareVersion: string;
+    hardwareModel: string;
+    pioEnv: string;
+    macAddress?: string;
 }
 
 export interface MeshtasticNodeMetrics {
-  batteryLevel?: number;  // 0-100
-  voltage?: number;       // in volts
-  chUtil?: number;        // Channel utilization (0-100)
-  airUtil?: number;       // Air utilization (0-100)
-  time?: number;          // Timestamp
+    batteryLevel?: number; // 0-100
+    voltage?: number; // in volts
+    chUtil?: number; // Channel utilization (0-100)
+    airUtil?: number; // Air utilization (0-100)
+    time?: number; // Timestamp
 
-	// LocalStats fields
-	uptimeSeconds?: number;
-	numPacketsTx?: number;
-	numPacketsRx?: number;
-	numPacketsRxBad?: number;
-	numRxDupe?: number;
-	numTxRelay?: number;
-	numTxRelayCanceled?: number;
-	numTxDropped?: number;
-	heapFreeBytes?: number;
-	heapTotalBytes?: number;
+    // LocalStats fields
+    uptimeSeconds?: number;
+    numPacketsTx?: number;
+    numPacketsRx?: number;
+    numPacketsRxBad?: number;
+    numRxDupe?: number;
+    numTxRelay?: number;
+    numTxRelayCanceled?: number;
+    numTxDropped?: number;
+    heapFreeBytes?: number;
+    heapTotalBytes?: number;
 
-	// EnvironmentMetrics fields
-	temperature?: number;
-	relativeHumidity?: number;
-	barometricPressure?: number;
-	gasResistance?: number;
-	current?: number;
-	iaq?: number;
+    // EnvironmentMetrics fields
+    temperature?: number;
+    relativeHumidity?: number;
+    barometricPressure?: number;
+    gasResistance?: number;
+    current?: number;
+    iaq?: number;
 }
 
 export interface MeshtasticNodeStats {
-  totalNodes: number;
-  onlineNodes: number;
+    totalNodes: number;
+    onlineNodes: number;
 }
 
 export type MeshtasticConnectionStatus =
-  | 'disconnected'
-  | 'connecting'
-  | 'connected'
-  | 'configuring'
-  | 'configured'
-  | 'reconnecting'
-  | 'restarting';
+    | 'disconnected'
+    | 'connecting'
+    | 'connected'
+    | 'configuring'
+    | 'configured'
+    | 'reconnecting'
+    | 'restarting';
 
 export interface MeshtasticConnectionOptions {
-  baudRate?: number;
-  heartbeatInterval?: number;
-  autoConfigure?: boolean;
+    baudRate?: number;
+    heartbeatInterval?: number;
+    autoConfigure?: boolean;
 }
 
 export interface MeshtasticConfigReadResult<T> {
-  config: T;
-  pending: boolean;
+    config: T;
+    pending: boolean;
 }
 
 export interface MeshtasticChannelInfo {
-  index: number;
-  config: any;
-  pending: boolean;
+    index: number;
+    config: any;
+    pending: boolean;
 }
 
 export interface MeshtasticOwnerInfo {
-  owner: any;
-  pending: boolean;
+    owner: any;
+    pending: boolean;
 }
 
 export interface MeshtasticEventCallbacks {
-  onDeviceStatus?: (status: MeshtasticConnectionStatus) => void;
-  onMyNodeInfo?: (nodeInfo: MeshtasticDeviceInfo) => void;
-  onNodeStatsUpdate?: (stats: MeshtasticNodeStats) => void;
-  onMetricsUpdate?: (metrics: MeshtasticNodeMetrics) => void;
-  onConfigPacket?: (config: any) => void;
-  onModuleConfigPacket?: (config: any) => void;
-  onChannelPacket?: (channel: any) => void;
-  onUserPacket?: (user: any) => void;
-  onMessagePacket?: (data: any) => void;
-  onMeshPacket?: (data: any) => void;
-  onError?: (error: Error) => void;
+    onDeviceStatus?: (status: MeshtasticConnectionStatus) => void;
+    onMyNodeInfo?: (nodeInfo: MeshtasticDeviceInfo) => void;
+    onNodeStatsUpdate?: (stats: MeshtasticNodeStats) => void;
+    onMetricsUpdate?: (metrics: MeshtasticNodeMetrics) => void;
+    onConfigPacket?: (config: any) => void;
+    onModuleConfigPacket?: (config: any) => void;
+    onChannelPacket?: (channel: any) => void;
+    onUserPacket?: (user: any) => void;
+    onMessagePacket?: (data: any) => void;
+    onMeshPacket?: (data: any) => void;
+    onError?: (error: Error) => void;
 }
 
 export interface MeshtasticFullConfig {
-  version?: string;
-  timestamp?: string;
-  deviceInfo?: MeshtasticDeviceInfo;
-  localConfig?: Record<string, any>;
-  moduleConfig?: Record<string, any>;
-  channels?: MeshtasticChannelInfo[];
-  owner?: any;
+    version?: string;
+    timestamp?: string;
+    deviceInfo?: MeshtasticDeviceInfo;
+    localConfig?: Record<string, any>;
+    moduleConfig?: Record<string, any>;
+    channels?: MeshtasticChannelInfo[];
+    owner?: any;
 }
 
 // Configuration selection for partial upload
 export interface MeshtasticConfigSelection {
-  localConfig: {
-    enabled: boolean;
-    sections: string[];
-  };
-  moduleConfig: {
-    enabled: boolean;
-    sections: string[];
-  };
-  includeChannels: boolean;
-  includeOwner: boolean;
+    localConfig: {
+        enabled: boolean;
+        sections: string[];
+    };
+    moduleConfig: {
+        enabled: boolean;
+        sections: string[];
+    };
+    includeChannels: boolean;
+    includeOwner: boolean;
+}
+
+/**
+ * Configuration changes tracking
+ * Represents which sections and parameters have been modified
+ */
+export interface MeshtasticConfigChanges {
+    localConfig: Record<string, string[] | 'all'>;
+    moduleConfig: Record<string, string[] | 'all'>;
+    channels: string[] | 'all' | null;
+    owner: string[] | 'all' | null;
+}
+
+/**
+ * Tooltip state for showing parameter changes
+ */
+export interface TooltipState {
+    visible: boolean;
+    x: number;
+    y: number;
+    content: string;
 }
 
 // ==================== NEWS FEED TYPES ====================
 
 export interface NewsItem {
-  id: number;
-  start_date: string;
-  seq_id: number;
-  end_date: string | null;
-  title_markdown: string;
-  body_markdown: string;
-  is_pinned: boolean;
-  pin_order: number;
+    id: number;
+    start_date: string;
+    seq_id: number;
+    end_date: string | null;
+    title_markdown: string;
+    body_markdown: string;
+    is_pinned: boolean;
+    pin_order: number;
 }
 
 export interface NewsResponse {
-  news: NewsItem[];
+    news: NewsItem[];
 }
 
 // News pagination configuration (must match backend config.yml: news.max_items_on_main)
@@ -573,78 +604,78 @@ export const NEWS_PAGE_SIZE = 5;
 
 // Token type enum for type safety
 export enum TokenType {
-  STR = 'str',
-  BOOL = 'bool',
-  STATIC = 'static',
-  AVG = 'avg'
+    STR = 'str',
+    BOOL = 'bool',
+    STATIC = 'static',
+    AVG = 'avg'
 }
 
 // Token behavior rule (firstEntrance, dropAfter)
 export interface TokenBehaviorRule {
-  type?: string;  // Optional behavior type (e.g., 'firstEntrance')
-  dropAfter?: string;      // Optional regex for resetting token
+    type?: string; // Optional behavior type (e.g., 'firstEntrance')
+    dropAfter?: string; // Optional regex for resetting token
 }
 
 // Parsing rule from JSON configuration
 export interface ParsingRule {
-  name: string;                    // Token name (required)
-  type: TokenType;                 // Token type (required)
-  regexp?: string;                 // Regex for extracting value (for str, avg)
-  value?: string | boolean;        // Static value (for bool, static)
-  rules?: TokenBehaviorRule[];     // Behavior rules (optional)
-  maxIterations?: number;          // Max iterations for averaging (for avg)
-  ndigits?: number;                // Decimal places for rounding (for avg)
+    name: string; // Token name (required)
+    type: TokenType; // Token type (required)
+    regexp?: string; // Regex for extracting value (for str, avg)
+    value?: string | boolean; // Static value (for bool, static)
+    rules?: TokenBehaviorRule[]; // Behavior rules (optional)
+    maxIterations?: number; // Max iterations for averaging (for avg)
+    ndigits?: number; // Decimal places for rounding (for avg)
 }
 
 // Parsed token with current value
 export interface ParsedToken {
-  name: string;                    // Token name
-  value: string | number | boolean | null;  // Current value
-  type: TokenType;                 // Token type
-  timestamp: Date;                 // Last update time
+    name: string; // Token name
+    value: string | number | boolean | null; // Current value
+    type: TokenType; // Token type
+    timestamp: Date; // Last update time
 }
 
 // Averaging variable state
 export interface AvgVarState {
-  avg: number;                     // Current average
-  iterations: number;              // Current iteration count
-  maxIterations: number;           // Maximum iterations (depth)
+    avg: number; // Current average
+    iterations: number; // Current iteration count
+    maxIterations: number; // Maximum iterations (depth)
 }
 
 // Token parser state
 export interface TokenParserState {
-  tokens: Map<string, ParsedToken>;      // All parsed tokens
-  avgVars: Map<string, AvgVarState>;     // Averaging states for type=avg
-  lastUpdate: Date | null;               // Last parser update
+    tokens: Map<string, ParsedToken>; // All parsed tokens
+    avgVars: Map<string, AvgVarState>; // Averaging states for type=avg
+    lastUpdate: Date | null; // Last parser update
 }
 
 // Token category for UI grouping
 export enum TokenCategory {
-  FIRST_ENTRANCE = 'firstEntrance',  // Static device info
-  DYNAMIC = 'dynamic',                // Dynamic values (str, bool)
-  AVG = 'avg',                        // Averaged values
-  STATIC = 'static'                   // Static values
+    FIRST_ENTRANCE = 'firstEntrance', // Static device info
+    DYNAMIC = 'dynamic', // Dynamic values (str, bool)
+    AVG = 'avg', // Averaged values
+    STATIC = 'static' // Static values
 }
 
 // Configuration structure for JSON parsing rules
 export interface ParsingRuleConfig {
-  labels: ParsingRule[];
+    labels: ParsingRule[];
 }
 
 // Raw parsing rule from JSON (with string type instead of enum)
 export interface RawParsingRule {
-  name: string;
-  type: string;  // 'str' | 'bool' | 'static' | 'avg'
-  regexp?: string;
-  value?: string | boolean;
-  rules?: TokenBehaviorRule[];
-  maxIterations?: number;
-  ndigits?: number;
+    name: string;
+    type: string; // 'str' | 'bool' | 'static' | 'avg'
+    regexp?: string;
+    value?: string | boolean;
+    rules?: TokenBehaviorRule[];
+    maxIterations?: number;
+    ndigits?: number;
 }
 
 // Raw configuration structure for JSON parsing rules
 export interface RawParsingRuleConfig {
-  labels: RawParsingRule[];
+    labels: RawParsingRule[];
 }
 
 // ==================== MESHCORE AUTOCOMPLETE TYPES ====================
@@ -654,39 +685,39 @@ export type MeshcoreCommandSeparator = 'space' | 'comma' | null;
 
 // Single command parameter definition
 export interface MeshcoreCommandParam {
-  name: string;
-  type: 'string' | 'number' | 'enum';
-  options?: string[];  // For enum type
-  maxLength?: number;
+    name: string;
+    type: 'string' | 'number' | 'enum';
+    options?: string[]; // For enum type
+    maxLength?: number;
 }
 
 // Meshcore command definition
 export interface MeshcoreCommand {
-  command: string;
-  params: MeshcoreCommandParam[];
-  separator: MeshcoreCommandSeparator;
-  interactive?: boolean;  // Commands with multi-line input (no autocomplete)
-  shortDescription?: string;  // Brief description of the command (1-10 words)
+    command: string;
+    params: MeshcoreCommandParam[];
+    separator: MeshcoreCommandSeparator;
+    interactive?: boolean; // Commands with multi-line input (no autocomplete)
+    shortDescription?: string; // Brief description of the command (1-10 words)
 }
 
 // Result of parsing user input
 export interface ParsedCommandInput {
-  command: string;
-  params: string[];
-  paramCount: number;
-  inQuotes: boolean;
+    command: string;
+    params: string[];
+    paramCount: number;
+    inQuotes: boolean;
 }
 
 // Autocomplete suggestion
 export interface AutocompleteSuggestion {
-  text: string;           // Suggestion suffix text
-  type: 'command' | 'param' | 'enum';  // Suggestion type
-  command: string;        // Full command name
-  paramName?: string;     // Param name for enum suggestions
-  enumValue?: string;     // Full enum value
-  matchedValues?: string[]; // All matched enum values for cycling
-  paramPrefix?: string;   // The partial input that was matched (for cycling replacement)
-  shortDescription?: string;  // Brief description of the command (1-10 words)
+    text: string; // Suggestion suffix text
+    type: 'command' | 'param' | 'enum'; // Suggestion type
+    command: string; // Full command name
+    paramName?: string; // Param name for enum suggestions
+    enumValue?: string; // Full enum value
+    matchedValues?: string[]; // All matched enum values for cycling
+    paramPrefix?: string; // The partial input that was matched (for cycling replacement)
+    shortDescription?: string; // Brief description of the command (1-10 words)
 }
 
 // Terminal mode type

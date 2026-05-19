@@ -3,136 +3,557 @@ import type { MeshcoreCommand } from '$lib/types';
 
 // All known meshcore commands with their parameters, separators, and short descriptions (sorted alphabetically)
 export const meshcoreCommandData: MeshcoreCommand[] = [
-  { command: 'advert', params: [], separator: null, shortDescription: 'Send flood advert' },
-  { command: 'advert.zerohop', params: [], separator: null, shortDescription: 'Send zero-hop advert' },
-  { command: 'board', params: [], separator: null, shortDescription: 'Show hardware name' },
-  { command: 'clock', params: [], separator: null, shortDescription: 'Display current time' },
-  { command: 'clock sync', params: [], separator: null, shortDescription: 'Sync clock with device' },
-  { command: 'clear stats', params: [], separator: null, shortDescription: 'Clear statistics' },
-  { command: 'clkreboot', params: [], separator: null, shortDescription: 'Reset clock and reboot' },
-  { command: 'erase', params: [], separator: null, shortDescription: 'Factory reset' },
-  { command: 'get acl', params: [], separator: null, shortDescription: 'View access control list' },
-  { command: 'get adc.multiplier', params: [], separator: null, shortDescription: 'View ADC multiplier' },
-  { command: 'get advert.interval', params: [], separator: null, shortDescription: 'View advert interval' },
-  { command: 'get af', params: [], separator: null, shortDescription: 'View airtime factor' },
-  { command: 'get agc.reset.interval', params: [], separator: null, shortDescription: 'View AGC reset interval' },
-  { command: 'get allow.read.only', params: [], separator: null, shortDescription: 'View read-only flag' },
-  { command: 'get bridge.baud', params: [], separator: null, shortDescription: 'View bridge baud rate' },
-  { command: 'get bridge.channel', params: [], separator: null, shortDescription: 'View bridge channel' },
-  { command: 'get bridge.delay', params: [], separator: null, shortDescription: 'View bridge delay' },
-  { command: 'get bridge.enabled', params: [], separator: null, shortDescription: 'View bridge enabled state' },
-  { command: 'get bridge.secret', params: [], separator: null, shortDescription: 'View bridge secret' },
-  { command: 'get bridge.source', params: [], separator: null, shortDescription: 'View bridge source' },
-  { command: 'get bridge.type', params: [], separator: null, shortDescription: 'View bridge type' },
-  { command: 'get bootloader.ver', params: [], separator: null, shortDescription: 'View bootloader version' },
-  { command: 'get direct.txdelay', params: [], separator: null, shortDescription: 'View direct transmit delay' },
-  { command: 'get flood.advert.interval', params: [], separator: null, shortDescription: 'View flood advert interval' },
-  { command: 'get flood.max', params: [], separator: null, shortDescription: 'View max flood hops' },
-  { command: 'get freq', params: [], separator: null, shortDescription: 'View frequency' },
-  { command: 'get guest.password', params: [], separator: null, shortDescription: 'View guest password' },
-  { command: 'get int.thresh', params: [], separator: null, shortDescription: 'View interference threshold' },
-  { command: 'get lat', params: [], separator: null, shortDescription: 'View latitude' },
-  { command: 'get loop.detect', params: [], separator: null, shortDescription: 'View loop detection' },
-  { command: 'get lon', params: [], separator: null, shortDescription: 'View longitude' },
-  { command: 'get multi.acks', params: [], separator: null, shortDescription: 'View multi-acks support' },
-  { command: 'get name', params: [], separator: null, shortDescription: 'View node name' },
-  { command: 'get owner.info', params: [], separator: null, shortDescription: 'View owner info' },
-  { command: 'get path.hash.mode', params: [], separator: null, shortDescription: 'View path hash mode' },
-  { command: 'get prv.key', params: [], separator: null, shortDescription: 'View private key' },
-  { command: 'get public.key', params: [], separator: null, shortDescription: 'View public key' },
-  { command: 'get pwrmgt.bootmv', params: [], separator: null, shortDescription: 'View boot voltage' },
-  { command: 'get pwrmgt.bootreason', params: [], separator: null, shortDescription: 'View boot reason' },
-  { command: 'get pwrmgt.source', params: [], separator: null, shortDescription: 'View power source' },
-  { command: 'get pwrmgt.support', params: [], separator: null, shortDescription: 'View power management support' },
-  { command: 'get radio', params: [], separator: null, shortDescription: 'View radio parameters' },
-  { command: 'get repeat', params: [], separator: null, shortDescription: 'View repeat flag' },
-  { command: 'get role', params: [], separator: null, shortDescription: 'View node role' },
-  { command: 'get rxdelay', params: [], separator: null, shortDescription: 'View receive delay' },
-  { command: 'get txdelay', params: [], separator: null, shortDescription: 'View transmit delay' },
-  { command: 'get tx', params: [], separator: null, shortDescription: 'View transmit power' },
-  { command: 'gps {on|off}', params: [{ name: 'state', type: 'enum', options: ['on', 'off'] }], separator: 'space', shortDescription: 'View or change GPS state' },
-  { command: 'gps advert {none|share|prefs}', params: [{ name: 'policy', type: 'enum', options: ['none', 'share', 'prefs'] }], separator: 'space', shortDescription: 'View or change GPS advert policy' },
-  { command: 'gps setloc', params: [], separator: null, shortDescription: 'Set location from GPS' },
-  { command: 'gps sync', params: [], separator: null, shortDescription: 'Sync clock with GPS' },
-  { command: 'log', params: [], separator: null, shortDescription: 'Print captured log' },
-  { command: 'log erase', params: [], separator: null, shortDescription: 'Erase captured log' },
-  { command: 'log start', params: [], separator: null, shortDescription: 'Start log capture' },
-  { command: 'log stop', params: [], separator: null, shortDescription: 'Stop log capture' },
-  { command: 'neighbor.remove {pubkey_prefix}', params: [{ name: 'pubkey_prefix', type: 'string' }], separator: 'space', shortDescription: 'Remove neighbor' },
-  { command: 'neighbors', params: [], separator: null, shortDescription: 'List nearby neighbors' },
-  { command: 'password {new_password}', params: [{ name: 'new_password', type: 'string' }], separator: 'space', shortDescription: 'Change admin password' },
-  { command: 'powersaving', params: [], separator: null, shortDescription: 'View power saving state' },
-  { command: 'powersaving off', params: [], separator: null, shortDescription: 'Disable power saving' },
-  { command: 'powersaving on', params: [], separator: null, shortDescription: 'Enable power saving' },
-  { command: 'region', params: [], separator: null, shortDescription: 'View all regions' },
-  { command: 'region allowf {name}', params: [{ name: 'name', type: 'string' }], separator: 'space', shortDescription: 'Allow region' },
-  { command: 'region denyf {name}', params: [{ name: 'name', type: 'string' }], separator: 'space', shortDescription: 'Block region' },
-  { command: 'region get {name}', params: [{ name: 'name', type: 'string' }], separator: 'space', shortDescription: 'Show region info' },
-  { command: 'region home', params: [], separator: null, shortDescription: 'View home region' },
-  { command: 'region list {filter}', params: [{ name: 'filter', type: 'string' }], separator: 'space', shortDescription: 'View all regions' },
-  { command: 'region load', params: [], separator: null, interactive: true, shortDescription: 'Bulk-load regions' },
-  { command: 'region put {name} {parent_name}', params: [
-    { name: 'name', type: 'string' },
-    { name: 'parent_name', type: 'string' }
-  ], separator: 'space', shortDescription: 'Create new region' },
-  { command: 'region remove {name}', params: [{ name: 'name', type: 'string' }], separator: 'space', shortDescription: 'Remove region' },
-  { command: 'region save', params: [], separator: null, shortDescription: 'Save region changes' },
-  { command: 'reboot', params: [], separator: null, shortDescription: 'Reboot the node' },
-  { command: 'sensor get {key}', params: [{ name: 'key', type: 'string' }], separator: 'space', shortDescription: 'View sensor value' },
-  { command: 'sensor list {start}', params: [{ name: 'start', type: 'number' }], separator: 'space', shortDescription: 'List sensors' },
-  { command: 'sensor set {key} {value}', params: [
-    { name: 'key', type: 'string' },
-    { name: 'value', type: 'string' }
-  ], separator: 'space', shortDescription: 'Set sensor value' },
-  { command: 'set adc.multiplier {value}', params: [{ name: 'value', type: 'number' }], separator: 'space', shortDescription: 'Set ADC multiplier' },
-  { command: 'set advert.interval {minutes}', params: [{ name: 'minutes', type: 'number' }], separator: 'space', shortDescription: 'Set advert interval' },
-  { command: 'set af {value}', params: [{ name: 'value', type: 'number' }], separator: 'space', shortDescription: 'Set airtime factor' },
-  { command: 'set agc.reset.interval {value}', params: [{ name: 'value', type: 'number' }], separator: 'space', shortDescription: 'Set AGC reset interval' },
-  { command: 'set allow.read.only {state}', params: [{ name: 'state', type: 'string' }], separator: 'space', shortDescription: 'Set read-only flag' },
-  { command: 'set bridge.baud {rate}', params: [{ name: 'rate', type: 'number' }], separator: 'space', shortDescription: 'Set bridge baud rate' },
-  { command: 'set bridge.channel {channel}', params: [{ name: 'channel', type: 'string' }], separator: 'space', shortDescription: 'Set bridge channel' },
-  { command: 'set bridge.delay {ms}', params: [{ name: 'ms', type: 'number' }], separator: 'space', shortDescription: 'Set bridge delay' },
-  { command: 'set bridge.enabled {state}', params: [{ name: 'state', type: 'string' }], separator: 'space', shortDescription: 'Set bridge enabled' },
-  { command: 'set bridge.secret {secret}', params: [{ name: 'secret', type: 'string' }], separator: 'space', shortDescription: 'Set bridge secret' },
-  { command: 'set bridge.source {source}', params: [{ name: 'source', type: 'string' }], separator: 'space', shortDescription: 'Set bridge source' },
-  { command: 'set direct.txdelay {value}', params: [{ name: 'value', type: 'number' }], separator: 'space', shortDescription: 'Set direct transmit delay' },
-  { command: 'set flood.advert.interval {hours}', params: [{ name: 'hours', type: 'number' }], separator: 'space', shortDescription: 'Set flood advert interval' },
-  { command: 'set flood.max {value}', params: [{ name: 'value', type: 'number' }], separator: 'space', shortDescription: 'Set max flood hops' },
-  { command: 'set freq {frequency}', params: [{ name: 'frequency', type: 'number' }], separator: 'space', shortDescription: 'Set frequency' },
-  { command: 'set guest.password {password}', params: [{ name: 'password', type: 'string' }], separator: 'space', shortDescription: 'Set guest password' },
-  { command: 'set lat {degrees}', params: [{ name: 'degrees', type: 'number' }], separator: 'space', shortDescription: 'Set latitude' },
-  { command: 'set loop.detect {state}', params: [{ name: 'state', type: 'string' }], separator: 'space', shortDescription: 'Set loop detection' },
-  { command: 'set lon {degrees}', params: [{ name: 'degrees', type: 'number' }], separator: 'space', shortDescription: 'Set longitude' },
-  { command: 'set multi.acks {state}', params: [{ name: 'state', type: 'string' }], separator: 'space', shortDescription: 'Set multi-acks support' },
-  { command: 'set name {name}', params: [{ name: 'name', type: 'string', maxLength: 32 }], separator: 'space', shortDescription: 'Set node name' },
-  { command: 'set owner.info {text}', params: [{ name: 'text', type: 'string' }], separator: 'space', shortDescription: 'Set owner info' },
-  { command: 'set path.hash.mode {value}', params: [{ name: 'value', type: 'string' }], separator: 'space', shortDescription: 'Set path hash mode' },
-  { command: 'set prv.key {private_key}', params: [{ name: 'private_key', type: 'string' }], separator: 'space', shortDescription: 'Set private key' },
-  { command: 'set radio {freq},{bw},{sf},{cr}', params: [
-    { name: 'freq', type: 'number' },
-    { name: 'bw', type: 'number' },
-    { name: 'sf', type: 'number' },
-    { name: 'cr', type: 'number' }
-  ], separator: 'comma', shortDescription: 'Configure radio parameters' },
-  { command: 'set repeat {state}', params: [{ name: 'state', type: 'string' }], separator: 'space', shortDescription: 'Set repeat flag' },
-  { command: 'set rxdelay {value}', params: [{ name: 'value', type: 'number' }], separator: 'space', shortDescription: 'Set receive delay' },
-  { command: 'set txdelay {value}', params: [{ name: 'value', type: 'number' }], separator: 'space', shortDescription: 'Set transmit delay' },
-  { command: 'set tx {dbm}', params: [{ name: 'dbm', type: 'number' }], separator: 'space', shortDescription: 'Set transmit power' },
-  { command: 'setperm {pubkey} {0|1|2|3}', params: [
-    { name: 'pubkey', type: 'string' },
-    { name: 'permissions', type: 'enum', options: ['0', '1', '2', '3'] }
-  ], separator: 'space', shortDescription: 'Set node permissions' },
-  { command: 'start ota', params: [], separator: null, shortDescription: 'Start OTA firmware update' },
-  { command: 'stats-core', params: [], separator: null, shortDescription: 'Show system stats' },
-  { command: 'stats-packets', params: [], separator: null, shortDescription: 'Show packet stats' },
-  { command: 'stats-radio', params: [], separator: null, shortDescription: 'Show radio stats' },
-  { command: 'tempradio {freq},{bw},{sf},{cr},{timeout_mins}', params: [
-    { name: 'freq', type: 'number' },
-    { name: 'bw', type: 'number' },
-    { name: 'sf', type: 'number' },
-    { name: 'cr', type: 'number' },
-    { name: 'timeout_mins', type: 'number' }
-  ], separator: 'comma', shortDescription: 'Set temporary radio config' },
-  { command: 'time {epoch_seconds}', params: [{ name: 'epoch_seconds', type: 'number' }], separator: 'space', shortDescription: 'Set specific time' },
-  { command: 'ver', params: [], separator: null, shortDescription: 'Get version' }
+    { command: 'advert', params: [], separator: null, shortDescription: 'Send flood advert' },
+    {
+        command: 'advert.zerohop',
+        params: [],
+        separator: null,
+        shortDescription: 'Send zero-hop advert'
+    },
+    { command: 'board', params: [], separator: null, shortDescription: 'Show hardware name' },
+    { command: 'clock', params: [], separator: null, shortDescription: 'Display current time' },
+    {
+        command: 'clock sync',
+        params: [],
+        separator: null,
+        shortDescription: 'Sync clock with device'
+    },
+    { command: 'clear stats', params: [], separator: null, shortDescription: 'Clear statistics' },
+    {
+        command: 'clkreboot',
+        params: [],
+        separator: null,
+        shortDescription: 'Reset clock and reboot'
+    },
+    { command: 'erase', params: [], separator: null, shortDescription: 'Factory reset' },
+    {
+        command: 'get acl',
+        params: [],
+        separator: null,
+        shortDescription: 'View access control list'
+    },
+    {
+        command: 'get adc.multiplier',
+        params: [],
+        separator: null,
+        shortDescription: 'View ADC multiplier'
+    },
+    {
+        command: 'get advert.interval',
+        params: [],
+        separator: null,
+        shortDescription: 'View advert interval'
+    },
+    { command: 'get af', params: [], separator: null, shortDescription: 'View airtime factor' },
+    {
+        command: 'get agc.reset.interval',
+        params: [],
+        separator: null,
+        shortDescription: 'View AGC reset interval'
+    },
+    {
+        command: 'get allow.read.only',
+        params: [],
+        separator: null,
+        shortDescription: 'View read-only flag'
+    },
+    {
+        command: 'get bridge.baud',
+        params: [],
+        separator: null,
+        shortDescription: 'View bridge baud rate'
+    },
+    {
+        command: 'get bridge.channel',
+        params: [],
+        separator: null,
+        shortDescription: 'View bridge channel'
+    },
+    {
+        command: 'get bridge.delay',
+        params: [],
+        separator: null,
+        shortDescription: 'View bridge delay'
+    },
+    {
+        command: 'get bridge.enabled',
+        params: [],
+        separator: null,
+        shortDescription: 'View bridge enabled state'
+    },
+    {
+        command: 'get bridge.secret',
+        params: [],
+        separator: null,
+        shortDescription: 'View bridge secret'
+    },
+    {
+        command: 'get bridge.source',
+        params: [],
+        separator: null,
+        shortDescription: 'View bridge source'
+    },
+    {
+        command: 'get bridge.type',
+        params: [],
+        separator: null,
+        shortDescription: 'View bridge type'
+    },
+    {
+        command: 'get bootloader.ver',
+        params: [],
+        separator: null,
+        shortDescription: 'View bootloader version'
+    },
+    {
+        command: 'get direct.txdelay',
+        params: [],
+        separator: null,
+        shortDescription: 'View direct transmit delay'
+    },
+    {
+        command: 'get flood.advert.interval',
+        params: [],
+        separator: null,
+        shortDescription: 'View flood advert interval'
+    },
+    {
+        command: 'get flood.max',
+        params: [],
+        separator: null,
+        shortDescription: 'View max flood hops'
+    },
+    { command: 'get freq', params: [], separator: null, shortDescription: 'View frequency' },
+    {
+        command: 'get guest.password',
+        params: [],
+        separator: null,
+        shortDescription: 'View guest password'
+    },
+    {
+        command: 'get int.thresh',
+        params: [],
+        separator: null,
+        shortDescription: 'View interference threshold'
+    },
+    { command: 'get lat', params: [], separator: null, shortDescription: 'View latitude' },
+    {
+        command: 'get loop.detect',
+        params: [],
+        separator: null,
+        shortDescription: 'View loop detection'
+    },
+    { command: 'get lon', params: [], separator: null, shortDescription: 'View longitude' },
+    {
+        command: 'get multi.acks',
+        params: [],
+        separator: null,
+        shortDescription: 'View multi-acks support'
+    },
+    { command: 'get name', params: [], separator: null, shortDescription: 'View node name' },
+    { command: 'get owner.info', params: [], separator: null, shortDescription: 'View owner info' },
+    {
+        command: 'get path.hash.mode',
+        params: [],
+        separator: null,
+        shortDescription: 'View path hash mode'
+    },
+    { command: 'get prv.key', params: [], separator: null, shortDescription: 'View private key' },
+    { command: 'get public.key', params: [], separator: null, shortDescription: 'View public key' },
+    {
+        command: 'get pwrmgt.bootmv',
+        params: [],
+        separator: null,
+        shortDescription: 'View boot voltage'
+    },
+    {
+        command: 'get pwrmgt.bootreason',
+        params: [],
+        separator: null,
+        shortDescription: 'View boot reason'
+    },
+    {
+        command: 'get pwrmgt.source',
+        params: [],
+        separator: null,
+        shortDescription: 'View power source'
+    },
+    {
+        command: 'get pwrmgt.support',
+        params: [],
+        separator: null,
+        shortDescription: 'View power management support'
+    },
+    {
+        command: 'get radio',
+        params: [],
+        separator: null,
+        shortDescription: 'View radio parameters'
+    },
+    { command: 'get repeat', params: [], separator: null, shortDescription: 'View repeat flag' },
+    { command: 'get role', params: [], separator: null, shortDescription: 'View node role' },
+    { command: 'get rxdelay', params: [], separator: null, shortDescription: 'View receive delay' },
+    {
+        command: 'get txdelay',
+        params: [],
+        separator: null,
+        shortDescription: 'View transmit delay'
+    },
+    { command: 'get tx', params: [], separator: null, shortDescription: 'View transmit power' },
+    {
+        command: 'gps {on|off}',
+        params: [{ name: 'state', type: 'enum', options: ['on', 'off'] }],
+        separator: 'space',
+        shortDescription: 'View or change GPS state'
+    },
+    {
+        command: 'gps advert {none|share|prefs}',
+        params: [{ name: 'policy', type: 'enum', options: ['none', 'share', 'prefs'] }],
+        separator: 'space',
+        shortDescription: 'View or change GPS advert policy'
+    },
+    {
+        command: 'gps setloc',
+        params: [],
+        separator: null,
+        shortDescription: 'Set location from GPS'
+    },
+    { command: 'gps sync', params: [], separator: null, shortDescription: 'Sync clock with GPS' },
+    { command: 'log', params: [], separator: null, shortDescription: 'Print captured log' },
+    { command: 'log erase', params: [], separator: null, shortDescription: 'Erase captured log' },
+    { command: 'log start', params: [], separator: null, shortDescription: 'Start log capture' },
+    { command: 'log stop', params: [], separator: null, shortDescription: 'Stop log capture' },
+    {
+        command: 'neighbor.remove {pubkey_prefix}',
+        params: [{ name: 'pubkey_prefix', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'Remove neighbor'
+    },
+    {
+        command: 'neighbors',
+        params: [],
+        separator: null,
+        shortDescription: 'List nearby neighbors'
+    },
+    {
+        command: 'password {new_password}',
+        params: [{ name: 'new_password', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'Change admin password'
+    },
+    {
+        command: 'powersaving',
+        params: [],
+        separator: null,
+        shortDescription: 'View power saving state'
+    },
+    {
+        command: 'powersaving off',
+        params: [],
+        separator: null,
+        shortDescription: 'Disable power saving'
+    },
+    {
+        command: 'powersaving on',
+        params: [],
+        separator: null,
+        shortDescription: 'Enable power saving'
+    },
+    { command: 'region', params: [], separator: null, shortDescription: 'View all regions' },
+    {
+        command: 'region allowf {name}',
+        params: [{ name: 'name', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'Allow region'
+    },
+    {
+        command: 'region denyf {name}',
+        params: [{ name: 'name', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'Block region'
+    },
+    {
+        command: 'region get {name}',
+        params: [{ name: 'name', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'Show region info'
+    },
+    { command: 'region home', params: [], separator: null, shortDescription: 'View home region' },
+    {
+        command: 'region list {filter}',
+        params: [{ name: 'filter', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'View all regions'
+    },
+    {
+        command: 'region load',
+        params: [],
+        separator: null,
+        interactive: true,
+        shortDescription: 'Bulk-load regions'
+    },
+    {
+        command: 'region put {name} {parent_name}',
+        params: [
+            { name: 'name', type: 'string' },
+            { name: 'parent_name', type: 'string' }
+        ],
+        separator: 'space',
+        shortDescription: 'Create new region'
+    },
+    {
+        command: 'region remove {name}',
+        params: [{ name: 'name', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'Remove region'
+    },
+    {
+        command: 'region save',
+        params: [],
+        separator: null,
+        shortDescription: 'Save region changes'
+    },
+    { command: 'reboot', params: [], separator: null, shortDescription: 'Reboot the node' },
+    {
+        command: 'sensor get {key}',
+        params: [{ name: 'key', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'View sensor value'
+    },
+    {
+        command: 'sensor list {start}',
+        params: [{ name: 'start', type: 'number' }],
+        separator: 'space',
+        shortDescription: 'List sensors'
+    },
+    {
+        command: 'sensor set {key} {value}',
+        params: [
+            { name: 'key', type: 'string' },
+            { name: 'value', type: 'string' }
+        ],
+        separator: 'space',
+        shortDescription: 'Set sensor value'
+    },
+    {
+        command: 'set adc.multiplier {value}',
+        params: [{ name: 'value', type: 'number' }],
+        separator: 'space',
+        shortDescription: 'Set ADC multiplier'
+    },
+    {
+        command: 'set advert.interval {minutes}',
+        params: [{ name: 'minutes', type: 'number' }],
+        separator: 'space',
+        shortDescription: 'Set advert interval'
+    },
+    {
+        command: 'set af {value}',
+        params: [{ name: 'value', type: 'number' }],
+        separator: 'space',
+        shortDescription: 'Set airtime factor'
+    },
+    {
+        command: 'set agc.reset.interval {value}',
+        params: [{ name: 'value', type: 'number' }],
+        separator: 'space',
+        shortDescription: 'Set AGC reset interval'
+    },
+    {
+        command: 'set allow.read.only {state}',
+        params: [{ name: 'state', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'Set read-only flag'
+    },
+    {
+        command: 'set bridge.baud {rate}',
+        params: [{ name: 'rate', type: 'number' }],
+        separator: 'space',
+        shortDescription: 'Set bridge baud rate'
+    },
+    {
+        command: 'set bridge.channel {channel}',
+        params: [{ name: 'channel', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'Set bridge channel'
+    },
+    {
+        command: 'set bridge.delay {ms}',
+        params: [{ name: 'ms', type: 'number' }],
+        separator: 'space',
+        shortDescription: 'Set bridge delay'
+    },
+    {
+        command: 'set bridge.enabled {state}',
+        params: [{ name: 'state', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'Set bridge enabled'
+    },
+    {
+        command: 'set bridge.secret {secret}',
+        params: [{ name: 'secret', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'Set bridge secret'
+    },
+    {
+        command: 'set bridge.source {source}',
+        params: [{ name: 'source', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'Set bridge source'
+    },
+    {
+        command: 'set direct.txdelay {value}',
+        params: [{ name: 'value', type: 'number' }],
+        separator: 'space',
+        shortDescription: 'Set direct transmit delay'
+    },
+    {
+        command: 'set flood.advert.interval {hours}',
+        params: [{ name: 'hours', type: 'number' }],
+        separator: 'space',
+        shortDescription: 'Set flood advert interval'
+    },
+    {
+        command: 'set flood.max {value}',
+        params: [{ name: 'value', type: 'number' }],
+        separator: 'space',
+        shortDescription: 'Set max flood hops'
+    },
+    {
+        command: 'set freq {frequency}',
+        params: [{ name: 'frequency', type: 'number' }],
+        separator: 'space',
+        shortDescription: 'Set frequency'
+    },
+    {
+        command: 'set guest.password {password}',
+        params: [{ name: 'password', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'Set guest password'
+    },
+    {
+        command: 'set lat {degrees}',
+        params: [{ name: 'degrees', type: 'number' }],
+        separator: 'space',
+        shortDescription: 'Set latitude'
+    },
+    {
+        command: 'set loop.detect {state}',
+        params: [{ name: 'state', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'Set loop detection'
+    },
+    {
+        command: 'set lon {degrees}',
+        params: [{ name: 'degrees', type: 'number' }],
+        separator: 'space',
+        shortDescription: 'Set longitude'
+    },
+    {
+        command: 'set multi.acks {state}',
+        params: [{ name: 'state', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'Set multi-acks support'
+    },
+    {
+        command: 'set name {name}',
+        params: [{ name: 'name', type: 'string', maxLength: 32 }],
+        separator: 'space',
+        shortDescription: 'Set node name'
+    },
+    {
+        command: 'set owner.info {text}',
+        params: [{ name: 'text', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'Set owner info'
+    },
+    {
+        command: 'set path.hash.mode {value}',
+        params: [{ name: 'value', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'Set path hash mode'
+    },
+    {
+        command: 'set prv.key {private_key}',
+        params: [{ name: 'private_key', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'Set private key'
+    },
+    {
+        command: 'set radio {freq},{bw},{sf},{cr}',
+        params: [
+            { name: 'freq', type: 'number' },
+            { name: 'bw', type: 'number' },
+            { name: 'sf', type: 'number' },
+            { name: 'cr', type: 'number' }
+        ],
+        separator: 'comma',
+        shortDescription: 'Configure radio parameters'
+    },
+    {
+        command: 'set repeat {state}',
+        params: [{ name: 'state', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'Set repeat flag'
+    },
+    {
+        command: 'set rxdelay {value}',
+        params: [{ name: 'value', type: 'number' }],
+        separator: 'space',
+        shortDescription: 'Set receive delay'
+    },
+    {
+        command: 'set txdelay {value}',
+        params: [{ name: 'value', type: 'number' }],
+        separator: 'space',
+        shortDescription: 'Set transmit delay'
+    },
+    {
+        command: 'set tx {dbm}',
+        params: [{ name: 'dbm', type: 'number' }],
+        separator: 'space',
+        shortDescription: 'Set transmit power'
+    },
+    {
+        command: 'setperm {pubkey} {0|1|2|3}',
+        params: [
+            { name: 'pubkey', type: 'string' },
+            { name: 'permissions', type: 'enum', options: ['0', '1', '2', '3'] }
+        ],
+        separator: 'space',
+        shortDescription: 'Set node permissions'
+    },
+    {
+        command: 'start ota',
+        params: [],
+        separator: null,
+        shortDescription: 'Start OTA firmware update'
+    },
+    { command: 'stats-core', params: [], separator: null, shortDescription: 'Show system stats' },
+    {
+        command: 'stats-packets',
+        params: [],
+        separator: null,
+        shortDescription: 'Show packet stats'
+    },
+    { command: 'stats-radio', params: [], separator: null, shortDescription: 'Show radio stats' },
+    {
+        command: 'tempradio {freq},{bw},{sf},{cr},{timeout_mins}',
+        params: [
+            { name: 'freq', type: 'number' },
+            { name: 'bw', type: 'number' },
+            { name: 'sf', type: 'number' },
+            { name: 'cr', type: 'number' },
+            { name: 'timeout_mins', type: 'number' }
+        ],
+        separator: 'comma',
+        shortDescription: 'Set temporary radio config'
+    },
+    {
+        command: 'time {epoch_seconds}',
+        params: [{ name: 'epoch_seconds', type: 'number' }],
+        separator: 'space',
+        shortDescription: 'Set specific time'
+    },
+    { command: 'ver', params: [], separator: null, shortDescription: 'Get version' }
 ];
