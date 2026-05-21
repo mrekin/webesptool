@@ -22,3 +22,4 @@ mempalace.yaml
 entities.json
 build-backend-new.sh
 build-frontend-new.sh
+valkey-data/

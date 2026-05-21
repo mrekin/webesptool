@@ -146,6 +146,7 @@ export interface UIState {
     showSecurityWarning: boolean;
     interfaceMode: InterfaceMode;
     experimentalFeatures: boolean;
+    statsEnabled: boolean;
 }
 
 // Interface mode enum
@@ -183,6 +184,17 @@ export interface AppConfig {
     defaultSource: string;
     timeout: number;
     retryAttempts: number;
+}
+
+// Stats API types
+export interface StatsDataItem {
+    key: string;
+    count: number;
+}
+
+export interface StatsResponse {
+    data: StatsDataItem[];
+    period: number;
 }
 
 // Event types for analytics/logging

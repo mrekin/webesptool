@@ -57,14 +57,6 @@
 	"keywords": [
 		"svelte"
 	],
-	"pnpm": {
-		"onlyBuiltDependencies": [
-			"esbuild"
-		],
-		"ignoredBuiltDependencies": [
-			"@meshtastic/core"
-		]
-	},
 	"dependencies": {
 		"@battlefieldduck/xterm-svelte": "^2.2.0",
 		"@humanspeak/svelte-markdown": "^0.8.13",

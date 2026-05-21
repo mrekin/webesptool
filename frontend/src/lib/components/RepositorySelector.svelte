@@ -1,11 +1,16 @@
 <script lang="ts">
-    import { deviceSelection, availableSources } from '$lib/stores.js';
+    import { _ as locales } from 'svelte-i18n';
+    import { deviceSelection, availableSources, uiState } from '$lib/stores.js';
     import { deviceActions } from '$lib/stores.js';
     import MarkdownRenderer from '$lib/components/MarkdownRenderer.svelte';
+
+    export let onOpenStats: (() => void) | undefined = undefined;
 
     // Subscribe to stores
     $: deviceSelectionStore = $deviceSelection;
     $: availableSourcesStore = $availableSources;
+    $: experimentalFeatures = $uiState.experimentalFeatures;
+    $: statsEnabled = $uiState.statsEnabled;
 
     // Get current repository description
     $: currentRepoDesc =
@@ -18,8 +23,8 @@
 </script>
 
 <!-- Compact Source Repository Selection -->
-<div class="space-y-2">
-    <div class="flex flex-wrap gap-2">
+<div class="w-full space-y-2">
+    <div class="flex w-full flex-wrap items-center gap-2">
         {#each availableSourcesStore as source}
             <button
                 type="button"
@@ -32,6 +37,18 @@
                 {(source as any).src}
             </button>
         {/each}
+        {#if statsEnabled && experimentalFeatures && onOpenStats}
+            <button
+                type="button"
+                on:click={onOpenStats}
+                class="ml-auto rounded-md border border-gray-600 bg-gray-700 p-1.5 text-orange-300 transition-colors hover:bg-gray-600 hover:text-orange-200 focus:ring-1 focus:ring-orange-500 focus:outline-none"
+                title={$locales('stats.open_stats')}
+            >
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+            </button>
+        {/if}
     </div>
 
     <!-- Repository Description -->

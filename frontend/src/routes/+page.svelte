@@ -14,6 +14,7 @@
     let Footer: any = null;
     let MinimalFooter: any = null;
     let MeshtasticDeviceModal: any = null;
+    let StatsModal: any = null;
     let NewsFeed: any = null;
     import { loadingState, availableFirmwares, uiState, deviceSelection } from '$lib/stores.js';
     import { onMount } from 'svelte';
@@ -38,6 +39,20 @@
 
     // Meshtastic device modal state
     let showMeshtasticModal = false;
+
+    // Stats modal state
+    let showStatsModal = false;
+
+    async function openStatsModal() {
+        if (!StatsModal) {
+            StatsModal = (await import('$lib/components/StatsModal.svelte')).default;
+        }
+        showStatsModal = true;
+    }
+
+    function closeStatsModal() {
+        showStatsModal = false;
+    }
 
     async function openMeshtasticModal() {
         if (!MeshtasticDeviceModal) {
@@ -174,7 +189,7 @@
                     </span>
                     {$locales('page.source_repository')}
                 </h2>
-                <RepositorySelector />
+                <RepositorySelector onOpenStats={openStatsModal} />
             </div>
 
             <!-- Device Selection -->
@@ -260,7 +275,7 @@
                             class="bg-opacity-90 rounded-lg border border-orange-600 bg-gray-800 p-4"
                         >
                             <div class="flex flex-wrap items-center justify-between gap-4">
-                                <div class="flex items-center space-x-3">
+                                <div class="flex flex-1 items-center space-x-3">
                                     <span class="flex items-center font-medium text-orange-200">
                                         <span class="mr-2 inline-block w-5 text-center">
                                             {#if $loadingState.isLoadingAvailable}
@@ -273,7 +288,7 @@
                                         </span>
                                         {$locales('page.source_repository')}
                                     </span>
-                                    <RepositorySelector />
+                                    <RepositorySelector onOpenStats={openStatsModal} />
                                 </div>
                             </div>
                         </div>
@@ -395,6 +410,14 @@
         this={MeshtasticDeviceModal}
         isOpen={showMeshtasticModal}
         onClose={closeMeshtasticModal}
+    />
+{/if}
+
+{#if showStatsModal && StatsModal}
+    <svelte:component
+        this={StatsModal}
+        isOpen={showStatsModal}
+        onClose={closeStatsModal}
     />
 {/if}
 

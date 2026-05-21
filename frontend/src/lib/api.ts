@@ -9,7 +9,8 @@ import type {
     APIError,
     AppConfig,
     UpdateMode,
-    NewsResponse
+    NewsResponse,
+    StatsResponse
 } from './types.ts';
 
 class APIService {
@@ -277,8 +278,8 @@ class APIService {
     }
 
     // Get available repositories
-    async getSrcs(): Promise<SourceInfo[]> {
-        return this.request<SourceInfo[]>('/srcs');
+    async getSrcs(): Promise<{ sources: SourceInfo[]; stats_enabled: boolean }> {
+        return this.request<{ sources: SourceInfo[]; stats_enabled: boolean }>('/srcs');
     }
 
     // Download file content for processing (returns ArrayBuffer)
@@ -560,6 +561,21 @@ class APIService {
         };
 
         return await this.downloadFileWithFilename('/files', params);
+    }
+
+    async getStatsDownloads(
+        groupBy: string,
+        period: number,
+        limit?: number
+    ): Promise<StatsResponse> {
+        const params = new URLSearchParams({
+            group_by: groupBy,
+            period: period.toString()
+        });
+        if (limit) {
+            params.set('limit', limit.toString());
+        }
+        return await this.request<StatsResponse>(`/stats/downloads?${params.toString()}`);
     }
 
     // Clear cache

@@ -1,5 +1,6 @@
 import asyncio
 import json
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
@@ -27,6 +28,9 @@ from jsonmerge import merge
 
 # News module
 from apps.news.routes import router as news_router
+
+# Stats module
+from apps.stats.routes import router as stats_router
 
 import aiofiles.ospath
 import aiofiles.os
@@ -778,8 +782,23 @@ async def lifespan(app: FastAPI):
         log.info("News database initialized successfully")
     except Exception as e:
         log.warning(f"Failed to initialize news database: {e}")
+    # Initialize stats module (Valkey)
+    try:
+        stats_config = config.get('stats', {})
+        if stats_config.get('enabled', False):
+            from apps.stats.storage import init_valkey, close_valkey, rebuild_missing_aggregates
+            await init_valkey(stats_config['valkey_url'])
+            await rebuild_missing_aggregates()
+            log.info("Stats module initialized, aggregates verified")
+    except Exception as e:
+        log.warning(f"Stats module failed to initialize: {e}")
     yield
-    # Shutdown: cleanup if needed
+    # Shutdown: close Valkey connection
+    try:
+        from apps.stats.storage import close_valkey
+        await close_valkey()
+    except Exception:
+        pass
 
 
 app = FastAPI(lifespan=lifespan)
@@ -788,6 +807,8 @@ app = FastAPI(lifespan=lifespan)
 #app.include_router(router)
 # Include news router
 app.include_router(news_router, tags=["news"])
+# Include stats router
+app.include_router(stats_router, tags=["stats"])
 
 templates = Jinja2Templates(directory="templates")
 
@@ -810,7 +831,33 @@ async def getSources(request: Request):
         logMsg += f", country: {ipInfo.get('country')}, city: {ipInfo.get('city')}"
 
     log.debug(logMsg)
-    return JSONResponse(content= await getSrcs())
+
+    # Record visit event for stats
+    stats_config = config.get('stats', {})
+    visits_cfg = stats_config.get('visits', {})
+    if stats_config.get('enabled', False) and visits_cfg.get('record', False):
+        try:
+            from apps.stats.storage import record_visit_event, parse_user_agent
+            ua_raw = request.headers.get("user-agent", "")
+            browser, os_name = parse_user_agent(ua_raw)
+            data = {
+                "ts": datetime.now(timezone.utc).isoformat(),
+                "country": ipInfo.get("country") if ipInfo else None,
+                "city": ipInfo.get("city") if ipInfo else None,
+                "browser": browser,
+                "os": os_name,
+                "ua": ua_raw,
+                "referer": request.headers.get("referer"),
+            }
+            await record_visit_event(data, stats_config.get("ttl_days", 90))
+        except Exception as e:
+            log.warning(f"Failed to record visit event: {e}")
+
+    sources = await getSrcs()
+    return JSONResponse(content={
+        'sources': sources,
+        'stats_enabled': stats_config.get('enabled', False),
+    })
 
 # availableFirmwares.json
 @app.get("/api/availableFirmwares", status_code=200)
@@ -922,6 +969,28 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
             version=v,
             path=path
         )
+        # Record download event for stats
+        try:
+            stats_config = config.get('stats', {})
+            dl_cfg = stats_config.get('downloads', {})
+            if stats_config.get('enabled', False) and dl_cfg.get('record', True):
+                from apps.stats.routes import build_download_event_data
+                from apps.stats.storage import record_download_event
+                clientIp = getClientIp(request)
+                ipInfo = await getIpInfo(clientIp) if clientIp else None
+                event_data = build_download_event_data(
+                    request=request,
+                    device=t,
+                    version=v,
+                    src=src,
+                    u=u,
+                    e=e,
+                    fw_type=fw_type.value if fw_type else None,
+                    ip_info=ipInfo,
+                )
+                await record_download_event(event_data, stats_config.get('ttl_days', 90))
+        except Exception as ex:
+            log.warning(f"Failed to record download event: {ex}")
     return FileResponse(path=path, filename=filename, media_type=await getMimeType(path))
 
 @app.get("/api/files")

@@ -2120,7 +2120,6 @@
 
                 <!-- Terminal button -->
                 <button
-                    <button
                     on:click={async () => {
                         // Close the current connection properly
                         await espManager.resetPort();

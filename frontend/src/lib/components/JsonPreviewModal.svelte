@@ -55,7 +55,7 @@
     }
 
     // Disable context menu
-    function handleRenderContextMenu() {
+    function handleRenderContextMenu(_items: any, _context: any): false {
         return false;
     }
 </script>

@@ -1,2 +1,7 @@
 packages:
   - 'local-packages/**'
+allowBuilds:
+  esbuild: true
+  "@parcel/watcher": true
+  es5-ext: true
+  "@meshtastic/core": true

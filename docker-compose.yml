@@ -1,7 +1,19 @@
 services:
+  valkey:
+    image: valkey/valkey:9.1-alpine
+    restart: unless-stopped
+    command: valkey-server --save 300 1 --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - ./valkey-data:/data
+
   webesptool:
     build: webesptool/
     restart: unless-stopped
+    depends_on:
+      - valkey
+    environment:
+      - VALKEY_HOST=valkey
+      - VALKEY_PORT=6379
     volumes:
       - ./webesptool/log:/home/webesptool/log
       - /home/user/meshfw:/home/webesptool/data

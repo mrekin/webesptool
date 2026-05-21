@@ -62,7 +62,8 @@ const initialUIState: UIState = {
     selectedDownloadMode: null,
     showSecurityWarning: true,
     interfaceMode: getInitialInterfaceMode(),
-    experimentalFeatures: getInitialExperimentalFeatures()
+    experimentalFeatures: getInitialExperimentalFeatures(),
+    statsEnabled: false
 };
 
 // Device selection store - manages the current device/selection state
@@ -630,15 +631,19 @@ export const apiActions = {
     // Load available repositories
     async loadSrcs() {
         try {
-            const sources = await apiService.getSrcs();
-            availableSources.set(sources);
+            const response = await apiService.getSrcs();
+            availableSources.set(response.sources);
+            uiState.update((state) => ({
+                ...state,
+                statsEnabled: response.stats_enabled,
+            }));
 
-            if (sources.length > 0) {
+            if (response.sources.length > 0) {
                 // FIX: Set repository in unified selection state FIRST (without cascade reset)
-                selectionActions.updateRepositoryOnly(sources[0].src);
+                selectionActions.updateRepositoryOnly(response.sources[0].src);
 
                 // Then set source in old deviceSelection (this will also trigger deviceActions.setRepository)
-                deviceActions.setSource(sources[0].src);
+                deviceActions.setSource(response.sources[0].src);
             }
         } catch (error) {
             loadingActions.setError(
@@ -954,11 +959,15 @@ async function initializeFromDeviceParam(devicePioTarget: string) {
         // If backend returned src, device was found
         if (versions.src) {
             // Load available sources list (without selecting any)
-            const sources = await apiService.getSrcs();
-            availableSources.set(sources);
+            const srcsResponse = await apiService.getSrcs();
+            availableSources.set(srcsResponse.sources);
+            uiState.update((state) => ({
+                ...state,
+                statsEnabled: srcsResponse.stats_enabled,
+            }));
 
             // Find the correct source from loaded list
-            const matchedSource = sources.find((s) => s.src === versions.src);
+            const matchedSource = srcsResponse.sources.find((s) => s.src === versions.src);
 
             if (matchedSource) {
                 // Update selection state without triggering setSource (which would reset device)

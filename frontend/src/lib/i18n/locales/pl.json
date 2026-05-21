@@ -434,5 +434,17 @@
     "archive_title": "Archiwum wiadomości",
     "no_news": "Brak dostępnych wiadomości",
     "expired": "Wygasło"
+  },
+  "stats": {
+    "title": "Statystyki pobierań",
+    "period_7": "7 dni",
+    "period_30": "30 dni",
+    "period_90": "90 dni",
+    "top_repositories": "Top repozytoriów",
+    "top_devices": "Top urządzeń",
+    "top_versions": "Top wersji oprogramowania",
+    "no_data": "Brak danych dla wybranego okresu",
+    "error_loading": "Nie udało się załadować statystyk",
+    "open_stats": "Zobacz statystyki pobierań"
   }
 }

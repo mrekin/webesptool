@@ -16,6 +16,21 @@ base:
     url: "http://192.168.1.115:3080/ip"
     timeout: 0.2
 
+  stats:
+    enabled: true
+    ttl_days: 90
+    valkey_url: "valkey://valkey:6379/0"
+    downloads:
+      record: true
+      stats: true
+      public_group_by:
+        - repository
+        - device
+        - version
+    visits:
+      record: true
+      stats: false
+
   news:
     max_items_on_main: 5
     archive_page_size: 50

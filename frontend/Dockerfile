@@ -8,7 +8,7 @@ WORKDIR /app
 RUN corepack enable pnpm
 
 # Copy package.json and pnpm-lock.yaml to leverage Docker's caching
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml .npmrc pnpm-workspace.yaml ./
 
 # Copy local packages directory (required for @meshtastic/* packages)
 COPY local-packages ./local-packages
@@ -50,6 +50,8 @@ RUN corepack enable pnpm
 # Copy only necessary files from builder
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/pnpm-lock.yaml ./
+COPY --from=builder /app/.npmrc ./
+COPY --from=builder /app/pnpm-workspace.yaml ./
 COPY --from=builder /app/build ./build/
 COPY --from=builder /app/.svelte-kit/output/server ./server/
 COPY --from=builder /app/local-packages ./local-packages/

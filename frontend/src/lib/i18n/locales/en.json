@@ -434,5 +434,17 @@
     "archive_title": "News Archive",
     "no_news": "No news available",
     "expired": "Expired"
+  },
+  "stats": {
+    "title": "Download Statistics",
+    "period_7": "7 days",
+    "period_30": "30 days",
+    "period_90": "90 days",
+    "top_repositories": "Top Repositories",
+    "top_devices": "Top Devices",
+    "top_versions": "Top Firmware Versions",
+    "no_data": "No data available for this period",
+    "error_loading": "Failed to load statistics",
+    "open_stats": "View download statistics"
   }
 }
