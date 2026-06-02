@@ -907,6 +907,7 @@
     // Update flash addresses using metadata and/or partition table
     function updateFlashAddresses() {
         if (selectedFirmwareFiles.length === 0) return;
+        if (isAutoSelectMode) return; // Don't override manifest addresses in AutoSelect mode
 
         // Get partitions table from enabled partitions.bin file (no hardcoded filename)
         const partitionsBin = selectedFirmwareFiles.find(
