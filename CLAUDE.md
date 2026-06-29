@@ -18,4 +18,6 @@
 
 * * You have MemPalace agents. Run mempalace_list_agents to see them. use them when needed.
 
+* * Для поиска кода используй в первую очередь mcp func-graph
+
 * * Задания предпочтительно выполнять силами соответсвующих агентов при их наличии.
