@@ -75,19 +75,14 @@
 
     $: mirrorLinks = [
         {
-            name: $locales('footer.primary_mirror_name'),
-            href: EXTERNAL_LINKS.MIRRORS.PRIMARY_1,
-            description: $locales('footer.primary_mirror_desc')
+            name: $locales('footer.main_mirror_name'),
+            href: EXTERNAL_LINKS.MIRRORS.MAIN,
+            description: $locales('footer.main_mirror_desc')
         },
         {
-            name: $locales('footer.primary_mirror_name'),
-            href: EXTERNAL_LINKS.MIRRORS.PRIMARY_2,
-            description: $locales('footer.primary_mirror_desc')
-        },
-        {
-            name: $locales('footer.european_mirror_name'),
-            href: EXTERNAL_LINKS.MIRRORS.EUROPEAN,
-            description: $locales('footer.european_mirror_desc')
+            name: $locales('footer.mirror_name'),
+            href: EXTERNAL_LINKS.MIRRORS.MIRROR,
+            description: $locales('footer.mirror_desc')
         }
     ];
 

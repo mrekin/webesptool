@@ -734,3 +734,13 @@ export interface AutocompleteSuggestion {
 
 // Terminal mode type
 export type TerminalMode = 'normal' | 'meshcore';
+
+// Header disclaimer — deploy-time runtime env value (server-only, see
+// routes/+layout.server.ts). Not localized: a single instance marker appended
+// to the page title (H1, <title>, og:title).
+export type Disclaimer = string;
+
+// Root layout server data shape — exposed to the client through App.PageData.
+export interface LayoutServerData {
+    disclaimer: Disclaimer;
+}

@@ -21,6 +21,10 @@
     import { _ as locales, locale } from 'svelte-i18n';
     import { InterfaceMode } from '$lib/types.js';
 
+    // Merged layout server data — carries the deploy-time header disclaimer
+    // (see routes/+layout.server.ts). Empty string on the primary instance.
+    export let data: App.PageData;
+
     // Subscribe to stores
     $: currentInterfaceMode = $uiState.interfaceMode;
     $: deviceSelectionStore = $deviceSelection;
@@ -133,8 +137,11 @@
         }
     }
 
-    // Local state with i18n
-    $: pageTitle = $locales('page.main_title');
+    // Page title: localized base + optional deploy-time disclaimer suffix.
+    // Disclaimer is a single non-localized instance marker (e.g. "(mirror");
+    // when empty (primary instance) the title is exactly the base, no artifacts.
+    $: disclaimer = data.disclaimer ?? '';
+    $: pageTitle = $locales('page.main_title') + (disclaimer ? ` ${disclaimer}` : '');
 
     // Subscribe to stores
     $: error = $loadingState.error;
@@ -155,10 +162,10 @@
 </script>
 
 <svelte:head>
-    <title>{$locales('page.main_title')}</title>
+    <title>{pageTitle}</title>
     <meta name="description" content={$locales('page.meta_description')} />
     <meta name="keywords" content="meshtastic, firmware, esp32, lora, mesh network" />
-    <meta property="og:title" content={$locales('page.main_title')} />
+    <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={$locales('page.main_description')} />
     <meta property="og:type" content="website" />
 </svelte:head>
@@ -170,7 +177,7 @@
             <!-- Title -->
             <div class="text-center">
                 <h1 class="text-2xl font-bold text-orange-200">
-                    {$locales('page.main_title')}
+                    {pageTitle}
                 </h1>
             </div>
 
@@ -230,7 +237,7 @@
         <!-- Header Section -->
         <div slot="head" class="space-y-4 text-center">
             <h1 class="mb-4 text-3xl font-bold text-orange-200 md:text-4xl">
-                {$locales('page.main_title')}
+                {pageTitle}
             </h1>
 
             <div class="mx-auto max-w-2xl">

@@ -18,9 +18,8 @@ export const EXTERNAL_LINKS = {
         ESPRESSIF_ESPTOOL: 'https://github.com/espressif/esptool-js'
     },
     MIRRORS: {
-        PRIMARY_1: 'https://mrekin.duckdns.org/flasher/',
-        PRIMARY_2: 'https://flashmesh.ru',
-        EUROPEAN: 'https://de2-vardas.duckdns.org'
+        MAIN: 'https://flashmesh.ru',
+        MIRROR: 'https://flashmesh.mooo.com'
     },
     OTHER: {
         MESHCORE: 'https://meshcore.co.uk'
