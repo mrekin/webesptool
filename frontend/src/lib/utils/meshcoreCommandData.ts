@@ -25,6 +25,12 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         separator: null,
         shortDescription: 'Reset clock and reboot'
     },
+    {
+        command: 'discover.neighbors',
+        params: [],
+        separator: null,
+        shortDescription: 'Discover zero-hop neighbors'
+    },
     { command: 'erase', params: [], separator: null, shortDescription: 'Factory reset' },
     {
         command: 'get acl',
@@ -44,7 +50,7 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         separator: null,
         shortDescription: 'View advert interval'
     },
-    { command: 'get af', params: [], separator: null, shortDescription: 'View airtime factor' },
+    { command: 'get af', params: [], separator: null, shortDescription: 'View airtime factor (deprecated v1.15.0, use dutycycle)' },
     {
         command: 'get agc.reset.interval',
         params: [],
@@ -110,6 +116,12 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         params: [],
         separator: null,
         shortDescription: 'View direct transmit delay'
+    },
+    {
+        command: 'get dutycycle',
+        params: [],
+        separator: null,
+        shortDescription: 'View duty cycle limit'
     },
     {
         command: 'get flood.advert.interval',
@@ -190,6 +202,12 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         separator: null,
         shortDescription: 'View radio parameters'
     },
+    {
+        command: 'get radio.rxgain',
+        params: [],
+        separator: null,
+        shortDescription: 'View boosted receive gain'
+    },
     { command: 'get repeat', params: [], separator: null, shortDescription: 'View repeat flag' },
     { command: 'get role', params: [], separator: null, shortDescription: 'View node role' },
     { command: 'get rxdelay', params: [], separator: null, shortDescription: 'View receive delay' },
@@ -267,6 +285,18 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         shortDescription: 'Allow region'
     },
     {
+        command: 'region default',
+        params: [],
+        separator: null,
+        shortDescription: 'View default scope region'
+    },
+    {
+        command: 'region default {name}',
+        params: [{ name: 'name', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'Set default scope region'
+    },
+    {
         command: 'region denyf {name}',
         params: [{ name: 'name', type: 'string' }],
         separator: 'space',
@@ -279,6 +309,12 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         shortDescription: 'Show region info'
     },
     { command: 'region home', params: [], separator: null, shortDescription: 'View home region' },
+    {
+        command: 'region home {name}',
+        params: [{ name: 'name', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'Set home region'
+    },
     {
         command: 'region list {filter}',
         params: [{ name: 'filter', type: 'string' }],
@@ -351,7 +387,7 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         command: 'set af {value}',
         params: [{ name: 'value', type: 'number' }],
         separator: 'space',
-        shortDescription: 'Set airtime factor'
+        shortDescription: 'Set airtime factor (deprecated v1.15.0, use dutycycle)'
     },
     {
         command: 'set agc.reset.interval {value}',
@@ -406,6 +442,12 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         params: [{ name: 'value', type: 'number' }],
         separator: 'space',
         shortDescription: 'Set direct transmit delay'
+    },
+    {
+        command: 'set dutycycle {value}',
+        params: [{ name: 'value', type: 'number' }],
+        separator: 'space',
+        shortDescription: 'Set duty cycle limit'
     },
     {
         command: 'set flood.advert.interval {hours}',
@@ -489,6 +531,12 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         ],
         separator: 'comma',
         shortDescription: 'Configure radio parameters'
+    },
+    {
+        command: 'set radio.rxgain {state}',
+        params: [{ name: 'state', type: 'enum', options: ['on', 'off'] }],
+        separator: 'space',
+        shortDescription: 'Set boosted receive gain'
     },
     {
         command: 'set repeat {state}',
