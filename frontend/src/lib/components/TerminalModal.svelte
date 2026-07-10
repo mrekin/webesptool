@@ -17,7 +17,8 @@
     import TokenSidebar from './TokenSidebar.svelte';
     import CommandInput from './CommandInput.svelte';
     import MultilineControls from './MultilineControls.svelte';
-    import { resetTerminalMode, terminalMode, toggleTerminalMode, uiState } from '$lib/stores.js';
+    import { resetTerminalMode, setTerminalMode, terminalMode, toggleTerminalMode, uiState } from '$lib/stores.js';
+    import type { TerminalMode } from '$lib/types.js';
     import { TERMINAL_CONFIG } from '$lib/config/terminalConfig.js';
     import { ResponseDetector } from '$lib/utils/responseDetector.js';
     import {
@@ -27,7 +28,11 @@
         isModeSwitchLine
     } from '$lib/utils/multilineCommands.js';
 
-    let { isOpen = false, onClose = () => {} } = $props();
+    let {
+        isOpen = false,
+        onClose = () => {},
+        initialMode = 'normal'
+    }: { isOpen?: boolean; onClose?: () => void; initialMode?: TerminalMode } = $props();
 
     // State
     let terminal: Terminal | null = null;
@@ -103,6 +108,21 @@
     $effect(() => {
         const count = splitIntoCommandLines(commandInput).length;
         multilineLimitExceeded = count > TERMINAL_CONFIG.maxCommandLines;
+    });
+
+    // Apply initialMode exactly on the isOpen false→true transition.
+    // Plain `let` (not $state) for the previous-value tracker so updating it
+    // doesn't retrigger this effect. The rising-edge guard is mandatory: it
+    // prevents the auto-mode from overwriting a manual /mc toggle performed
+    // during the open session (PRD scenarios 3/4). Closing logic (reset in
+    // handleClose) is untouched.
+    let prevIsOpen = false;
+    $effect(() => {
+        const open = isOpen;
+        if (open && !prevIsOpen) {
+            setTerminalMode(initialMode);
+        }
+        prevIsOpen = open;
     });
 
     // Terminal options

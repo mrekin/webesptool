@@ -1075,3 +1075,8 @@ export function resetTerminalMode() {
 export function toggleTerminalMode() {
     terminalMode.update((m) => (m === 'normal' ? 'meshcore' : 'normal'));
 }
+
+// Set terminal mode explicitly (completes the set/reset/toggle trio).
+export function setTerminalMode(mode: TerminalMode) {
+    terminalMode.set(mode);
+}

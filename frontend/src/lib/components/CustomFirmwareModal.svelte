@@ -30,6 +30,7 @@
     import { uiState, selectionState, availableSources } from '$lib/stores.js';
     import { RepositoryType } from '$lib/types.js';
     import { EXTERNAL_LINKS } from '$lib/utils/externalLinks.js';
+    import { getRepositoryType } from '$lib/utils/repository.js';
 
     // External links
     const MESHCORE_CONFIGURATOR_URL = 'https://config.meshcore.io';
@@ -2147,7 +2148,7 @@
 
                 {#if experimentalFeatures}
                     <!-- Meshtastic device config button - experimental feature -->
-                    {#if !isAutoSelectMode || $availableSources.find((s) => s.src === $selectionState.repository)?.type === RepositoryType.MESHTASTIC}
+                    {#if !isAutoSelectMode || getRepositoryType($availableSources, $selectionState.repository) === RepositoryType.MESHTASTIC}
                         <button
                             on:click={openMeshtasticModal}
                             class="flex items-center justify-center rounded-md bg-gray-700 px-3 py-2 text-orange-300 transition-colors hover:bg-gray-600"
@@ -2159,7 +2160,7 @@
                 {/if}
 
                 <!-- Meshcore configurator button -->
-                {#if !isAutoSelectMode || $availableSources.find((s) => s.src === $selectionState.repository)?.type === RepositoryType.MESHCORE}
+                {#if !isAutoSelectMode || getRepositoryType($availableSources, $selectionState.repository) === RepositoryType.MESHCORE}
                     <button
                         on:click={() =>
                             window.open(MESHCORE_CONFIGURATOR_URL, '_blank', 'noopener,noreferrer')}
@@ -2219,7 +2220,13 @@
     />
 
     <!-- Terminal Modal -->
-    <TerminalModal isOpen={showTerminalModal} onClose={() => (showTerminalModal = false)} />
+    <TerminalModal
+        isOpen={showTerminalModal}
+        onClose={() => (showTerminalModal = false)}
+        initialMode={getRepositoryType($availableSources, $selectionState.repository) === RepositoryType.MESHCORE
+            ? 'meshcore'
+            : 'normal'}
+    />
 
     <!-- Meshtastic Device Modal -->
     {#if showMeshtasticModal && MeshtasticDeviceModal}
