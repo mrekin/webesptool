@@ -317,6 +317,12 @@
     "terminal_send_tooltip": "Wyślij polecenie do urządzenia (Enter)",
     "terminal_line_ending_title": "Format końca linii",
     "terminal_meshcore_mode_indicator": "Tryb MeshCore",
+    "terminal_multiline_send_all": "Wyślij wszystko",
+    "terminal_multiline_send_all_tooltip": "Wyślij wszystkie wiersze po kolei (Enter / Ctrl+Enter)",
+    "terminal_multiline_stop": "Zatrzymaj",
+    "terminal_multiline_newline_tooltip": "Nowy wiersz (Shift+Enter)",
+    "terminal_multiline_limit_exceeded": "Przekroczono limit poleceń ({max}). Dodatkowe wiersze nie zostaną wysłane.",
+    "terminal_multiline_progress": "Wysłano {sent} z {total}",
     "meshcore_configurator": "Konfigurator Meshcore"
   },
   "backupconfirm": {

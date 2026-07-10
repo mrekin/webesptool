@@ -317,6 +317,12 @@
     "terminal_send_tooltip": "Отправить команду устройству (Enter)",
     "terminal_line_ending_title": "Формат переноса строки",
     "terminal_meshcore_mode_indicator": "Режим MeshCore",
+    "terminal_multiline_send_all": "Отправить все",
+    "terminal_multiline_send_all_tooltip": "Отправить все строки последовательно (Enter / Ctrl+Enter)",
+    "terminal_multiline_stop": "Остановить",
+    "terminal_multiline_newline_tooltip": "Новая строка (Shift+Enter)",
+    "terminal_multiline_limit_exceeded": "Превышен лимит команд ({max}). Лишние строки не будут отправлены.",
+    "terminal_multiline_progress": "Отправлено {sent} из {total}",
     "meshcore_configurator": "Конфигуратор Meshcore"
   },
   "backupconfirm": {

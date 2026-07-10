@@ -16,13 +16,24 @@
     } from '$lib/utils/logParser.js';
     import TokenSidebar from './TokenSidebar.svelte';
     import CommandInput from './CommandInput.svelte';
-    import { resetTerminalMode, uiState } from '$lib/stores.js';
+    import MultilineControls from './MultilineControls.svelte';
+    import { resetTerminalMode, terminalMode, toggleTerminalMode, uiState } from '$lib/stores.js';
+    import { TERMINAL_CONFIG } from '$lib/config/terminalConfig.js';
+    import { ResponseDetector } from '$lib/utils/responseDetector.js';
+    import {
+        splitIntoCommandLines,
+        applyCommandLimit,
+        trimTrailingEmptyLine,
+        isModeSwitchLine
+    } from '$lib/utils/multilineCommands.js';
 
     let { isOpen = false, onClose = () => {} } = $props();
 
     // State
     let terminal: Terminal | null = null;
     let fitAddon: any = null;
+    // Window resize listener cleanup ref (kept here instead of monkey-patching the terminal).
+    let resizeHandler: (() => void) | null = null;
     let isConnecting = $state(false);
     let isConnected = $state(false);
 
@@ -45,10 +56,19 @@
 
     // Command input state
     let commandInput = $state('');
+    let currentLine = $state(''); // line at the caret (for per-line Send in multiline)
     let commandHistory: string[] = [];
     let historyIndex = $state(-1);
-    const MAX_HISTORY = 50;
     let selectedLineEnding = $state('crlf'); // 'lf', 'crlf', 'cr'
+
+    // Multiline command state (session-local, reset on close).
+    // Source of truth is `commandInput` (the textarea text); lines are derived on demand.
+    let responseDetector: ResponseDetector | null = null;
+    let isInFlight = false; // defensive guard, used only inside runMassSend loop
+    let isMassRunning = $state(false);
+    let massStopRequested = false;
+    let lastSentIndex = $state(-1);
+    let multilineLimitExceeded = $state(false);
 
     // Experimental features flag
     let experimentalFeatures = $state($uiState.experimentalFeatures);
@@ -77,6 +97,12 @@
         if (!experimentalFeatures) {
             showTokensSidebar = false;
         }
+    });
+
+    // Update limit warning reactively as the user edits the textarea.
+    $effect(() => {
+        const count = splitIntoCommandLines(commandInput).length;
+        multilineLimitExceeded = count > TERMINAL_CONFIG.maxCommandLines;
     });
 
     // Terminal options
@@ -156,8 +182,8 @@
 
                     window.addEventListener('resize', handleResize);
 
-                    // Store cleanup function
-                    (terminal as any)._resizeHandler = handleResize;
+                    // Keep the cleanup ref for handleClose/onDestroy.
+                    resizeHandler = handleResize;
                 })
                 .catch((error) => {
                     console.error('Failed to load fit addon:', error);
@@ -235,6 +261,9 @@
                 if (value && terminal) {
                     // Decode the received bytes to text
                     const decodedValue = textDecoder.decode(value, { stream: true });
+
+                    // Notify response detector that device produced output (silence-timeout heuristic)
+                    responseDetector?.notifyData();
 
                     // Parse logs for token extraction - split into complete lines
                     if (tokenParser && decodedValue) {
@@ -336,6 +365,9 @@
         isConnected = false;
         shouldContinueReading = false;
 
+        // Abort any in-flight response detection (mass run / manual await) -> stops the run
+        responseDetector?.cancel();
+
         if (reader) {
             try {
                 await reader.cancel();
@@ -402,52 +434,39 @@
         }
     }
 
-    // Send command to serial port (called from CommandInput or Send button)
-    async function sendCommand(command?: string): Promise<void> {
-        if (!port || !isConnected || !terminal) return;
-
-        const cmd = (command || commandInput).trim();
-        if (!cmd) return;
+    // Core write: encode + write to port + echo + history. Returns success.
+    // Does NOT clear the input field and does NOT trim-skip empty lines (multiline needs empty lines sent as-is, OQ-4).
+    async function writeCommand(line: string): Promise<boolean> {
+        if (!port || !isConnected || !terminal) return false;
 
         let writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
         try {
-            // Get writer from writable stream
             if (!port.writable) {
-                if (terminal) {
-                    terminal.writeln('\x1b[1;31mPort is not writable\x1b[0m');
-                }
-                return;
+                terminal.writeln('\x1b[1;31mPort is not writable\x1b[0m');
+                return false;
             }
             writer = port.writable.getWriter();
 
-            // Encode command with line ending
-            const encoder = new TextEncoder();
-            const data = cmd + getLineEndingChars();
-            await writer.write(encoder.encode(data));
-
-            // Release writer lock
+            const data = line + getLineEndingChars();
+            await writer.write(new TextEncoder().encode(data));
             writer.releaseLock();
             writer = null;
 
-            // Echo command to terminal with prefix
-            terminal.writeln(`\x1b[1;36m>> ${cmd}\x1b[0m`);
+            // Per-line echo with prefix
+            terminal.writeln(`\x1b[1;36m>> ${line}\x1b[0m`);
 
-            // Add to history
-            commandHistory.push(cmd);
-            if (commandHistory.length > MAX_HISTORY) {
+            // Add to history (FIFO cap)
+            commandHistory.push(line);
+            if (commandHistory.length > TERMINAL_CONFIG.maxHistory) {
                 commandHistory.shift();
             }
             historyIndex = commandHistory.length;
 
-            // Clear input
-            commandInput = '';
-
-            // Auto-scroll to bottom
             if (autoScroll) {
                 terminal.scrollToBottom();
             }
+            return true;
         } catch (error) {
-            // Ensure writer is released on error
             if (writer) {
                 try {
                     writer.releaseLock();
@@ -458,12 +477,99 @@
             if (terminal) {
                 terminal.writeln(`\x1b[1;31mFailed to send command: ${error}\x1b[0m`);
             }
+            return false;
+        }
+    }
+
+    // Send command to serial port (called from CommandInput or Send button) — single-line path.
+    async function sendCommand(command?: string): Promise<void> {
+        const cmd = (command ?? commandInput).trim();
+        if (!cmd) return;
+        const ok = await writeCommand(cmd);
+        if (ok) {
+            commandInput = '';
         }
     }
 
     // Handle command submission from CommandInput
     function handleSubmitCommand(cmd: string): void {
         sendCommand(cmd);
+    }
+
+    // Send a single line and await device response completion (silence-timeout heuristic).
+    async function sendLineAndAwait(line: string): Promise<boolean> {
+        if (isInFlight) return false; // writer must not be grabbed twice
+        isInFlight = true;
+        responseDetector = new ResponseDetector({
+            silenceTimeoutMs: TERMINAL_CONFIG.silenceTimeoutMs
+        });
+        try {
+            const ok = await writeCommand(line);
+            if (!ok) return false;
+            await responseDetector.start(); // resolves on silence timeout
+            return true;
+        } catch {
+            return false; // aborted (disconnect / stop)
+        } finally {
+            responseDetector = null;
+            isInFlight = false;
+        }
+    }
+
+    /** Lines to process for a mass send (trim + limit applied; /mc lines kept
+     *  so runMassSend can still toggle them). */
+    function computeMultilineLines(): string[] {
+        return applyCommandLimit(
+            trimTrailingEmptyLine(splitIntoCommandLines(commandInput)),
+            TERMINAL_CONFIG.maxCommandLines
+        ).lines;
+    }
+
+    /** Number of lines that will actually be sent to the device (excludes /mc). */
+    function sendableLineCount(): number {
+        return computeMultilineLines().filter((line) => !isModeSwitchLine(line)).length;
+    }
+
+    /** Mass send: split commandInput into lines and send sequentially, awaiting
+     *  response completion between sends. Triggers: Enter in multiline textarea,
+     *  "Send all" button, Ctrl/Cmd+Enter. */
+    async function runMassSend(): Promise<void> {
+        if (isMassRunning) return;
+        const lines = computeMultilineLines();
+        if (lines.length === 0) return;
+
+        isMassRunning = true;
+        massStopRequested = false;
+        lastSentIndex = -1;
+        let sendableIndex = -1; // 0-based position among device-bound lines (for progress)
+        try {
+            for (let i = 0; i < lines.length; i++) {
+                if (massStopRequested || !isConnected) break;
+                const line = lines[i];
+                // /mc acts on the whole block, not sent to device (OQ-3)
+                if (isModeSwitchLine(line)) {
+                    toggleTerminalMode();
+                    continue;
+                }
+                sendableIndex++;
+                lastSentIndex = sendableIndex;
+                const ok = await sendLineAndAwait(line);
+                if (!ok) break; // write error / no response / disconnect (OQ-6)
+            }
+        } finally {
+            isMassRunning = false;
+        }
+    }
+
+    /** Whether the textarea currently holds multiple lines. */
+    function isMultilineState(): boolean {
+        return commandInput.includes('\n');
+    }
+
+    // Stop the running mass send: remaining lines are not sent.
+    function stopMassSend(): void {
+        massStopRequested = true;
+        responseDetector?.cancel(); // unblock the awaited start()
     }
 
     // Cleanup
@@ -485,12 +591,18 @@
 
         // Clear terminal reference
         // Clean up resize handler
-        if (terminal && (terminal as any)._resizeHandler) {
-            window.removeEventListener('resize', (terminal as any)._resizeHandler);
-            delete (terminal as any)._resizeHandler;
+        if (resizeHandler) {
+            window.removeEventListener('resize', resizeHandler);
+            resizeHandler = null;
         }
 
         terminal = null;
+        // Stop any running mass send and clear multiline state
+        stopMassSend();
+        isMassRunning = false;
+        multilineLimitExceeded = false;
+        lastSentIndex = -1;
+
         // Clear command input
         commandInput = '';
 
@@ -500,6 +612,10 @@
 
     onDestroy(async () => {
         shouldContinueReading = false;
+        if (resizeHandler) {
+            window.removeEventListener('resize', resizeHandler);
+            resizeHandler = null;
+        }
         await disconnect();
     });
 
@@ -563,7 +679,8 @@
             </div>
 
             <!-- Command Input Area -->
-            <div class="flex flex-shrink-0 items-center space-x-2 border-t border-gray-700 p-4">
+            <div class="flex flex-shrink-0 flex-col gap-2 border-t border-gray-700 p-4">
+                <div class="flex items-start space-x-2">
                 <!-- Line Ending Selector -->
                 <select
                     bind:value={selectedLineEnding}
@@ -576,26 +693,43 @@
                     <option value="cr">CR</option>
                 </select>
 
-                <!-- Command Input Component -->
+                <!-- Meshcore mode badge (kept out of the textarea so its right edge is free for the ▶ Send button) -->
+                {#if $terminalMode === 'meshcore'}
+                    <span
+                        class="mt-2 flex h-5 items-center justify-center rounded bg-green-600/80 px-1.5 text-[0.625rem] font-bold tracking-tight text-white select-none"
+                        title="MeshCore mode"
+                    >MC</span>
+                {/if}
+
+                <!-- Always-rendered textarea (single + multiline). The ▶ Send button is rendered inside, at the caret line. -->
                 <CommandInput
                     bind:value={commandInput}
                     {isConnected}
+                    isMassRunning={isMassRunning}
                     onSubmit={handleSubmitCommand}
+                    onsendall={runMassSend}
+                    onsendline={(line: string) => writeCommand(line)}
                     placeholder={$locales('customfirmware.terminal_input_placeholder')}
                     {commandHistory}
                     {showCommandShortDescriptions}
                     bind:historyIndex
+                    bind:currentLine
                 />
 
-                <!-- Send Button -->
-                <button
-                    onclick={() => sendCommand()}
-                    disabled={!isConnected || !commandInput.trim()}
-                    class="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    title={$locales('customfirmware.terminal_send_tooltip')}
-                >
-                    {$locales('customfirmware.terminal_send')}
-                </button>
+                {#if isMultilineState()}
+                    <!-- Multiline: mass-send controls inline (no separate row). Enter in textarea also triggers runMassSend. -->
+                    <MultilineControls
+                        isMultiline={true}
+                        {isConnected}
+                        {isMassRunning}
+                        {lastSentIndex}
+                        totalLines={sendableLineCount()}
+                        limitExceeded={multilineLimitExceeded}
+                        onsendall={runMassSend}
+                        onstop={stopMassSend}
+                    />
+                {/if}
+                </div>
             </div>
 
             <!-- Footer with Controls (responsive) -->

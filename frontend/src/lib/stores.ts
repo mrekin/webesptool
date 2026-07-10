@@ -1070,3 +1070,8 @@ export const terminalMode = writable<TerminalMode>('normal');
 export function resetTerminalMode() {
     terminalMode.set('normal');
 }
+
+// Toggle terminal mode between normal and meshcore (DRY helper for /mc).
+export function toggleTerminalMode() {
+    terminalMode.update((m) => (m === 'normal' ? 'meshcore' : 'normal'));
+}

@@ -317,6 +317,12 @@
     "terminal_send_tooltip": "Send command to device (Enter)",
     "terminal_line_ending_title": "Line ending format",
     "terminal_meshcore_mode_indicator": "MeshCore mode",
+    "terminal_multiline_send_all": "Send all",
+    "terminal_multiline_send_all_tooltip": "Send all lines sequentially (Enter / Ctrl+Enter)",
+    "terminal_multiline_stop": "Stop",
+    "terminal_multiline_newline_tooltip": "New line (Shift+Enter)",
+    "terminal_multiline_limit_exceeded": "Command limit exceeded ({max}). Extra lines will not be sent.",
+    "terminal_multiline_progress": "Sent {sent} of {total}",
     "meshcore_configurator": "Meshcore Configurator"
   },
   "backupconfirm": {
