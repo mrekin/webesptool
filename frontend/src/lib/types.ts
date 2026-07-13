@@ -732,6 +732,50 @@ export interface AutocompleteSuggestion {
     shortDescription?: string; // Brief description of the command (1-10 words)
 }
 
+// MeshCore command set tree (built from the static catalog under config/mc_command_sets/).
+
+// A single INI-style block inside a command set file: name from the `[name]`
+// header and the lines that belong to it (header excluded).
+export interface McCommandSection {
+    /** Section name from the header (text between [ and ]). */
+    name: string;
+    /** Command lines of this section (header excluded), in source order. */
+    lines: string[];
+}
+
+// Result of parsing a command set file into optional preamble + named sections.
+export interface McCommandFileParsed {
+    /** True if at least one header line was found. */
+    hasSections: boolean;
+    /** Lines before the first header (preamble). Empty if file starts with a header. */
+    preamble: string[];
+    /** Named sections in source order. Repeated names are kept as separate entries. */
+    sections: McCommandSection[];
+}
+
+// Common shape of a tree node (group or file leaf).
+interface McCommandBaseNode {
+    /** Display name (last path segment). */
+    name: string;
+    /** Path from the sets root, e.g. 'RU/MSK/1.16+'. Empty for the root group. */
+    path: string;
+}
+
+// Intermediate group node (directory); nests further groups and file leaves.
+export interface McCommandGroupNode extends McCommandBaseNode {
+    type: 'group';
+    children: McCommandTreeNode[];
+}
+
+// File leaf; carries the full glob key to resolve its raw loader.
+export interface McCommandFileNode extends McCommandBaseNode {
+    type: 'file';
+    /** Full glob key to resolve the raw loader, e.g. '/src/lib/config/mc_command_sets/RU/MSK/1.16+/default'. */
+    fullPath: string;
+}
+
+export type McCommandTreeNode = McCommandGroupNode | McCommandFileNode;
+
 // Terminal mode type
 export type TerminalMode = 'normal' | 'meshcore';
 

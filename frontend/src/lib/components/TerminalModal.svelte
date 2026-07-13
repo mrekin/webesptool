@@ -17,6 +17,7 @@
     import TokenSidebar from './TokenSidebar.svelte';
     import CommandInput from './CommandInput.svelte';
     import MultilineControls from './MultilineControls.svelte';
+    import McCommandSetPicker from './McCommandSetPicker.svelte';
     import { resetTerminalMode, setTerminalMode, terminalMode, toggleTerminalMode, uiState } from '$lib/stores.js';
     import type { TerminalMode } from '$lib/types.js';
     import { TERMINAL_CONFIG } from '$lib/config/terminalConfig.js';
@@ -592,6 +593,11 @@
         responseDetector?.cancel(); // unblock the awaited start()
     }
 
+    /** Replace the command input with a selected MeshCore command set/section (pure replacement). */
+    function handleSelectMcCommandSet(content: string) {
+        commandInput = content;
+    }
+
     // Cleanup
     async function handleClose() {
         // Stop reading and disconnect properly, always closing the port
@@ -719,6 +725,7 @@
                         class="mt-2 flex h-5 items-center justify-center rounded bg-green-600/80 px-1.5 text-[0.625rem] font-bold tracking-tight text-white select-none"
                         title="MeshCore mode"
                     >MC</span>
+                    <McCommandSetPicker onselect={handleSelectMcCommandSet} />
                 {/if}
 
                 <!-- Always-rendered textarea (single + multiline). The ▶ Send button is rendered inside, at the caret line. -->

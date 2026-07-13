@@ -1,0 +1,10 @@
+[radio]
+set radio 868.731,62.5,7,7
+set path.hash.mode 1
+
+[region]
+region
+region allowf *
+region def ru mow msk <cao|sao|svao|vao|uvao|uao|uzao|zao|szao>
+region
+region save
