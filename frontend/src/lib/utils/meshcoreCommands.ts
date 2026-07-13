@@ -308,6 +308,40 @@ function getBaseCommandName(fullCommand: string): string {
 }
 
 /**
+ * Resolve a single input line to a MeshCore command's short description.
+ * A line matches a command when it equals the command's base name or starts
+ * with "base + ' '" (i.e. params are being/already entered). When several
+ * commands match, the longest (most specific) base name wins — so
+ * "region allowf *" resolves to "region allowf", not "region".
+ *
+ * Unlike `getAutocompleteSuggestion`, this is independent of the autocomplete
+ * completion state, so fully-entered commands (incl. params) still resolve.
+ * Returns undefined for non-meshcore mode, empty lines, or unrecognized input.
+ */
+export function getLineCommandDescription(
+    line: string,
+    mode: 'normal' | 'meshcore'
+): string | undefined {
+    if (mode !== 'meshcore') return undefined;
+    const trimmed = line.trim();
+    if (!trimmed) return undefined;
+
+    let bestBaseLen = -1;
+    let bestDesc: string | undefined;
+    for (const cmd of meshcoreCommandData) {
+        const base = getBaseCommandName(cmd.command);
+        if (!base) continue;
+        if (trimmed === base || trimmed.startsWith(base + ' ')) {
+            if (base.length > bestBaseLen) {
+                bestBaseLen = base.length;
+                bestDesc = cmd.shortDescription;
+            }
+        }
+    }
+    return bestDesc;
+}
+
+/**
  * Determine the current parameter context for a command with params.
  * Returns the index of the param being entered and its partial value.
  */

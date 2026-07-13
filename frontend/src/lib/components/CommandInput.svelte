@@ -5,7 +5,8 @@
         getAutocompleteSuggestion,
         acceptSuggestionToNextSeparator,
         getNextSuggestion,
-        getPreviousSuggestion
+        getPreviousSuggestion,
+        getLineCommandDescription
     } from '$lib/utils/meshcoreCommands.js';
     import { getCaretCoordinates, type CaretCoordinates } from '$lib/utils/textareaCaret.js';
     import { TERMINAL_CONFIG } from '$lib/config/terminalConfig.js';
@@ -33,6 +34,31 @@
     // Cached textarea line metrics for cheap repositioning on scroll.
     let lineMetrics = $state({ lineHeight: 20, paddingTop: 8, borderTop: 1 });
     let caretPos = $state(0);
+
+    // Per-line command descriptions rendered for every line at its end
+    // (not only the caret line), so each recognized command shows its description.
+    type LineDescription = {
+        top: number;
+        left: number;
+        desc: string | undefined;
+        isCaret: boolean;
+    };
+    let lineDescriptions = $state<LineDescription[]>([]);
+
+    // Recompute per-line descriptions on content/mode/flag changes — including
+    // programmatic value changes (e.g. loading a command set), which do not
+    // fire textarea input events. Caret/scroll-driven refreshes (isCaret, tops)
+    // are handled by updateOverlay()/handleScroll().
+    $effect(() => {
+        value;
+        mode;
+        showCommandShortDescriptions;
+        // Defer to the next frame so the textarea has reflowed for the new
+        // content (field-sizing: content); otherwise positions are measured
+        // against a stale layout and only snap into place on first interaction.
+        const raf = requestAnimationFrame(() => recomputeLineDescriptions());
+        return () => cancelAnimationFrame(raf);
+    });
 
     /** Whether the field contains more than one line. */
     function isMultiline(): boolean {
@@ -94,6 +120,38 @@
         updateOverlay(); // refresh suggestion for the new line + reposition the ▶ button
     }
 
+    /** Recompute per-line command descriptions (every line at its end). Self-contained:
+     *  reads DOM metrics + caret line index, writes lineDescriptions. Called on
+     *  content/mode/flag changes ($effect) and on user interaction (updateOverlay). */
+    function recomputeLineDescriptions(): void {
+        if (!textareaElement) {
+            lineDescriptions = [];
+            return;
+        }
+        const cs = getComputedStyle(textareaElement);
+        const lineHeight = parseFloat(cs.lineHeight) || 20;
+        const paddingTop = parseFloat(cs.paddingTop) || 0;
+        const borderTop = parseFloat(cs.borderTopWidth) || 0;
+        const caretLineIndex = (
+            value.slice(0, textareaElement.selectionStart ?? value.length).match(/\n/g) || []
+        ).length;
+        const allLines = value.split('\n');
+        const next: LineDescription[] = [];
+        let lineOffset = 0;
+        for (let i = 0; i < allLines.length; i++) {
+            const lineText = allLines[i];
+            const lineEndOffset = lineOffset + lineText.length;
+            const lineTop = paddingTop + borderTop + i * lineHeight - textareaElement.scrollTop;
+            const lineLeft = getCaretCoordinates(textareaElement, lineEndOffset).left;
+            const desc = showCommandShortDescriptions
+                ? getLineCommandDescription(lineText, mode)
+                : undefined;
+            next.push({ top: lineTop, left: lineLeft, desc, isCaret: i === caretLineIndex });
+            lineOffset = lineEndOffset + 1; // +1 for '\n'
+        }
+        lineDescriptions = next;
+    }
+
     /** Recompute caret line position + autocomplete suggestion (based on the current line). */
     function updateOverlay(): void {
         caretPos = textareaElement?.selectionStart ?? value.length;
@@ -116,6 +174,8 @@
             const mirror = getCaretCoordinates(textareaElement, lineEnd);
             caretCoords = { top, left: mirror.left, height: lineHeight };
         }
+
+        recomputeLineDescriptions();
         // No ghost on an empty line: it would overlap the placeholder ("Введите команду...").
         if (!line) {
             suggestion = null;
@@ -144,6 +204,15 @@
             lineIndex * lineMetrics.lineHeight -
             textareaElement.scrollTop;
         caretCoords = { ...caretCoords, top };
+        // Reposition per-line description overlays vertically (only top depends on scrollTop).
+        lineDescriptions = lineDescriptions.map((d, i) => ({
+            ...d,
+            top:
+                lineMetrics.paddingTop +
+                lineMetrics.borderTop +
+                i * lineMetrics.lineHeight -
+                textareaElement.scrollTop
+        }));
     }
 
     function handleInput() {
@@ -338,20 +407,24 @@
             style="font-family: Consolas, 'Courier New', monospace; field-sizing: content; max-height: {TERMINAL_CONFIG.maxVisibleLines * TERMINAL_CONFIG.approxLineHeightRem}rem; overflow-y: auto;"
         ></textarea>
 
-        <!-- Autocomplete ghost overlay, positioned at the caret (multiline-aware) -->
-        {#if suggestion}
-            <div
-                class="autocomplete-overlay pointer-events-none absolute overflow-visible"
-                style="top: {caretCoords.top}px; left: {caretCoords.left}px; line-height: {caretCoords.height}px; font-family: Consolas, 'Courier New', monospace; font-size: 0.875rem;"
-            >
-                <span class="whitespace-pre text-gray-400">{suggestion.text}</span>
-                {#if suggestion.shortDescription}
-                    <span class="ml-2 overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 italic"
-                        >- {suggestion.shortDescription}</span
-                    >
-                {/if}
-            </div>
-        {/if}
+        <!-- Autocomplete ghost + per-line command descriptions (every line at its end). -->
+        {#each lineDescriptions as d, i (i)}
+            {#if d.desc || (d.isCaret && suggestion?.text)}
+                <div
+                    class="autocomplete-overlay pointer-events-none absolute overflow-visible"
+                    style="top: {d.top}px; left: {d.left}px; line-height: {caretCoords.height}px; font-family: Consolas, 'Courier New', monospace; font-size: 0.875rem;"
+                >
+                    {#if d.isCaret && suggestion?.text}
+                        <span class="whitespace-pre text-gray-400">{suggestion.text}</span>
+                    {/if}
+                    {#if d.desc}
+                        <span class="ml-2 overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 italic"
+                            >- {d.desc}</span
+                        >
+                    {/if}
+                </div>
+            {/if}
+        {/each}
 
         <!-- Floating per-line Send button: one button at the right edge of the caret's line.
              Follows the line being edited; click sends that line only (manual per-command, OQ-7). -->

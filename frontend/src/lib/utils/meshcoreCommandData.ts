@@ -25,6 +25,8 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         separator: null,
         shortDescription: 'Reset clock and reboot'
     },
+    { command: 'shutdown', params: [], separator: null, shortDescription: 'Power-off the node' },
+    { command: 'poweroff', params: [], separator: null, shortDescription: 'Power-off the node' },
     {
         command: 'discover.neighbors',
         params: [],
@@ -134,6 +136,18 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         params: [],
         separator: null,
         shortDescription: 'View max flood hops'
+    },
+    {
+        command: 'get flood.max.advert',
+        params: [],
+        separator: null,
+        shortDescription: 'View max advert flood hops'
+    },
+    {
+        command: 'get flood.max.unscoped',
+        params: [],
+        separator: null,
+        shortDescription: 'View max unscoped flood hops'
     },
     { command: 'get freq', params: [], separator: null, shortDescription: 'View frequency' },
     {
@@ -283,6 +297,12 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         params: [{ name: 'name', type: 'string' }],
         separator: 'space',
         shortDescription: 'Allow region'
+    },
+    {
+        command: 'region def {token} [{token} ...]',
+        params: [{ name: 'token', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'Define region hierarchy'
     },
     {
         command: 'region default',
@@ -462,10 +482,28 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         shortDescription: 'Set max flood hops'
     },
     {
+        command: 'set flood.max.advert {value}',
+        params: [{ name: 'value', type: 'number' }],
+        separator: 'space',
+        shortDescription: 'Set max advert flood hops'
+    },
+    {
+        command: 'set flood.max.unscoped {value}',
+        params: [{ name: 'value', type: 'number' }],
+        separator: 'space',
+        shortDescription: 'Set max unscoped flood hops'
+    },
+    {
         command: 'set freq {frequency}',
         params: [{ name: 'frequency', type: 'number' }],
         separator: 'space',
         shortDescription: 'Set frequency'
+    },
+    {
+        command: 'set int.thresh {value}',
+        params: [{ name: 'value', type: 'number' }],
+        separator: 'space',
+        shortDescription: 'Set interference threshold'
     },
     {
         command: 'set guest.password {password}',
