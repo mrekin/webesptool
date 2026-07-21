@@ -270,6 +270,7 @@
     "preparing": "Preparing...",
     "no_file": "No file",
     "download_error": "Download error",
+    "empty_file": "Empty file",
     "retry_download": "Retry",
     "instructions_title": "Instructions",
     "show_instructions": "Show Instructions",

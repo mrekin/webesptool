@@ -270,6 +270,7 @@
     "preparing": "Подготовка...",
     "no_file": "Нет файла",
     "download_error": "Ошибка скачивания",
+    "empty_file": "Пустой файл",
     "retry_download": "Повторить",
     "instructions_title": "Инструкции",
     "show_instructions": "Показать инструкции",

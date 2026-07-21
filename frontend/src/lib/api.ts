@@ -383,6 +383,9 @@ class APIService {
             if (!onProgress || total === 0) {
                 // No progress callback or unknown size - use simple method
                 const content = await response.arrayBuffer();
+                if (content.byteLength === 0) {
+                    throw new Error('Empty response body');
+                }
                 return { content, filename };
             }
 
@@ -420,6 +423,10 @@ class APIService {
             for (const chunk of chunks) {
                 content.set(chunk, offset);
                 offset += chunk.length;
+            }
+
+            if (content.byteLength === 0) {
+                throw new Error('Empty response body');
             }
 
             return { content: content.buffer, filename };

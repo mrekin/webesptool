@@ -270,6 +270,7 @@
     "preparing": "Przygotowywanie...",
     "no_file": "Brak pliku",
     "download_error": "Błąd pobierania",
+    "empty_file": "Pusty plik",
     "retry_download": "Ponów",
     "instructions_title": "Instrukcje",
     "show_instructions": "Pokaż instrukcje",

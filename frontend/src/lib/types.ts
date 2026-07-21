@@ -251,8 +251,12 @@ export interface SelectedFirmwareFile {
     filename: string;
     address: string;
     file: FirmwareFile;
-    hasError?: boolean;
-    errorMessage?: string;
+    hasDownloadError?: boolean; // Download error or empty/0-byte file (written only by download source / handleFileSelect)
+    downloadErrorMessage?: string; // Generic user-facing message (NOT raw throws text)
+    downloadErrorCode?: string; // Technical error reason (HTTP status / exception text), shown near the file
+    hasValidationError?: boolean; // Compatibility validation error (written only by reactive validation)
+    validationErrorMessage?: string;
+    isRetryable?: boolean; // true: network error (retry makes sense); false: local 0-byte file
     isDownloading?: boolean;
     downloadProgress?: number;
     fileSize?: number;

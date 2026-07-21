@@ -162,6 +162,45 @@ export function classifyFile(filename: string): FirmwareFileType {
 }
 
 /**
+ * Mapping of manifest query parameter `p` values to canonical firmware filenames.
+ * Used to derive a meaningful filename from a query-style manifest path when the
+ * real filename from Content-Disposition is unavailable (e.g. on download error).
+ * Matches the naming scheme returned by the backend on successful downloads.
+ */
+const PART_TYPE_TO_FILENAME: Record<string, string> = {
+    fw: 'firmware.bin',
+    littlefs: 'littlefs.bin',
+    bleota: 'bleota.bin',
+    'bleota-s3': 'bleota-s3.bin'
+};
+
+/**
+ * Extract a meaningful filename from a manifest part path.
+ *
+ * Manifest paths produced by the backend are query-style endpoints without slashes
+ * (e.g. `firmware?v=...&t=...&u=...&p=fw&src=...`). The `p` query parameter
+ * identifies the part type and is mapped to the canonical binary filename that
+ * matches what Content-Disposition returns on a successful download.
+ *
+ * Fallback: for paths that do contain slashes (legacy/external URLs) the last
+ * segment after `/` is returned; if everything fails, `firmware.bin` is used.
+ */
+export function extractFilenameFromManifestPath(path: string): string {
+    try {
+        const url = new URL(path, window.location.origin);
+        const p = url.searchParams.get('p');
+        if (p && PART_TYPE_TO_FILENAME[p]) return PART_TYPE_TO_FILENAME[p];
+        if (p) return `${p}.bin`;
+        // u=1 path without `p` is plain firmware (webesptool/service.py)
+        return 'firmware.bin';
+    } catch {
+        // fallback: legacy/external path with slashes
+        const segments = path.split('/');
+        return segments[segments.length - 1] || 'firmware.bin';
+    }
+}
+
+/**
  * Get address from metadata (manifest.json or .mt.json)
  * Returns null if no metadata or file not found in metadata
  */

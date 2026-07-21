@@ -7,6 +7,7 @@
         validateFirmwareSelection,
         parseFirmwareMetadata,
         classifyFile,
+        extractFilenameFromManifestPath,
         FirmwareFileType
     } from '$lib/utils/esp.js';
     import { createFirmwareFileHandler } from '$lib/utils/fileHandler.js';
@@ -98,7 +99,6 @@
     let downloadError = '';
     let downloadAbortController: AbortController | null = null;
     let downloadCompleted = false;
-    let downloadErrors: string[] = []; // Collect individual file download errors
 
     // Validation state
     let validationResult: {
@@ -172,8 +172,11 @@
                 filename: item.filename,
                 address: item.address,
                 file: item.file, // File object
-                hasError: false,
-                errorMessage: '',
+                hasDownloadError: false,
+                downloadErrorMessage: '',
+                hasValidationError: false,
+                validationErrorMessage: '',
+                isRetryable: false,
                 isEnabled: true, // File is enabled by default
                 userEdited: false
             }));
@@ -364,23 +367,37 @@
                 }
 
                 // Add partitions.bin to the flash list (it should be flashed to 0x8000)
+                const partitionsFirmwareFile = fileHandler.createFirmwareFile(file);
+                const partitionsIsEmpty = partitionsFirmwareFile.size === 0;
                 selectedFirmwareFiles.push({
                     filename: file.name,
                     address: '0x8000', // Default partitions offset
-                    file: fileHandler.createFirmwareFile(file),
-                    hasError: false,
-                    errorMessage: '',
+                    file: partitionsFirmwareFile,
+                    hasDownloadError: partitionsIsEmpty,
+                    downloadErrorMessage: partitionsIsEmpty
+                        ? $locales('customfirmware.empty_file')
+                        : '',
+                    hasValidationError: false,
+                    validationErrorMessage: '',
+                    isRetryable: false, // Local 0-byte file is NOT retryable
                     isEnabled: true,
                     userEdited: false
                 });
             } else if (fileHandler.isFirmwareFile(file)) {
                 // Handle firmware file
+                const firmwareFirmwareFile = fileHandler.createFirmwareFile(file);
+                const firmwareIsEmpty = firmwareFirmwareFile.size === 0;
                 selectedFirmwareFiles.push({
                     filename: file.name,
                     address: '0x0', // Default address in hex format
-                    file: fileHandler.createFirmwareFile(file),
-                    hasError: false,
-                    errorMessage: '',
+                    file: firmwareFirmwareFile,
+                    hasDownloadError: firmwareIsEmpty,
+                    downloadErrorMessage: firmwareIsEmpty
+                        ? $locales('customfirmware.empty_file')
+                        : '',
+                    hasValidationError: false,
+                    validationErrorMessage: '',
+                    isRetryable: false, // Local 0-byte file is NOT retryable
                     isEnabled: true, // File is enabled by default
                     userEdited: false
                 });
@@ -800,41 +817,80 @@
         }
     }
 
-    // Start file download for AutoSelect mode
+    // Start file download for AutoSelect mode.
+    // On retry path, successful files are preserved (not re-downloaded);
+    // only entries with `hasDownloadError` or empty content are re-fetched.
     async function startFileDownload() {
         if (!manifestData || isDownloadingFiles) return;
 
         isDownloadingFiles = true;
         downloadError = '';
-        downloadErrors = []; // Reset errors
         downloadCompleted = false; // Reset for retry
         downloadAbortController = new AbortController();
 
         try {
             const parts = manifestData.builds[0].parts;
 
-            // Create file entries immediately with downloading status
-            selectedFirmwareFiles = parts.map((part: any) => {
-                // Extract filename from path for immediate display
-                const pathSegments = part.path.split('/');
-                const extractedFilename = pathSegments[pathSegments.length - 1] || 'firmware.bin';
+            // Build placeholder list ONLY when there are no entries yet (initial run).
+            // On retry, preserve successful entries and reset only the failed/empty ones.
+            if (selectedFirmwareFiles.length !== parts.length) {
+                selectedFirmwareFiles = parts.map((part: any) => {
+                    const extractedFilename = extractFilenameFromManifestPath(part.path);
+                    return {
+                        filename: extractedFilename,
+                        address: `0x${part.offset.toString(16)}`,
+                        file: {
+                            file: new File([], ''),
+                            content: '',
+                            size: 0,
+                            name: extractedFilename
+                        }, // Placeholder
+                        hasDownloadError: false,
+                        downloadErrorMessage: '',
+                        hasValidationError: false,
+                        validationErrorMessage: '',
+                        isRetryable: false,
+                        isDownloading: true,
+                        downloadProgress: 0,
+                        fileSize: 0,
+                        isEnabled: true, // File is enabled by default
+                        userEdited: false
+                    };
+                });
+            } else {
+                // Retry path: reset only entries that need re-download
+                // (failed with hasDownloadError or empty content); keep successful ones untouched.
+                selectedFirmwareFiles = selectedFirmwareFiles.map((entry, index) => {
+                    const part = parts[index];
+                    const needsRedownload = entry.hasDownloadError || entry.file?.size === 0;
+                    if (!needsRedownload) {
+                        return entry;
+                    }
+                    const extractedFilename = extractFilenameFromManifestPath(part.path);
+                    return {
+                        ...entry,
+                        filename: extractedFilename,
+                        hasDownloadError: false,
+                        downloadErrorMessage: '',
+                        isRetryable: false,
+                        isDownloading: true,
+                        downloadProgress: 0,
+                        fileSize: 0
+                    };
+                });
+            }
 
-                return {
-                    filename: extractedFilename,
-                    address: `0x${part.offset.toString(16)}`,
-                    file: { file: new File([], ''), content: '', size: 0, name: extractedFilename }, // Placeholder
-                    hasError: false,
-                    errorMessage: '',
-                    isDownloading: true,
-                    downloadProgress: 0,
-                    fileSize: 0,
-                    isEnabled: true, // File is enabled by default
-                    userEdited: false
-                };
-            });
-
-            // Download each file individually with progress tracking
+            // Download each file individually, skipping already-successful entries (on retry)
             const downloadPromises = parts.map(async (part: any, index: number) => {
+                const current = selectedFirmwareFiles[index];
+                if (
+                    !current.isDownloading &&
+                    current.file?.size > 0 &&
+                    !current.hasDownloadError
+                ) {
+                    return; // Skip already-downloaded files on retry
+                }
+
                 try {
                     // Check if aborted before starting download
                     if (downloadAbortController?.signal.aborted) return;
@@ -867,6 +923,9 @@
                         ...selectedFirmwareFiles[index],
                         filename: filename,
                         file: firmwareFile,
+                        hasDownloadError: false,
+                        downloadErrorMessage: '',
+                        isRetryable: false,
                         isDownloading: false,
                         downloadProgress: 100,
                         fileSize: content.byteLength
@@ -874,12 +933,13 @@
                 } catch (error) {
                     // Mark this file as failed but continue with others
                     const errorMessage = error instanceof Error ? error.message : String(error);
-                    downloadErrors.push(`${part.path}: ${errorMessage}`);
 
                     selectedFirmwareFiles[index] = {
                         ...selectedFirmwareFiles[index],
-                        hasError: true,
-                        errorMessage: errorMessage,
+                        hasDownloadError: true,
+                        downloadErrorMessage: $locales('customfirmware.download_error'),
+                        downloadErrorCode: errorMessage,
+                        isRetryable: true, // Network errors are retryable
                         isDownloading: false
                     };
                 }
@@ -889,10 +949,14 @@
             await Promise.allSettled(downloadPromises);
 
             // Check if any files failed to download
-            const failedCount = selectedFirmwareFiles.filter((f) => f.hasError).length;
+            const failedCount = selectedFirmwareFiles.filter((f) => f.hasDownloadError).length;
             if (failedCount > 0) {
                 downloadError = $locales('customfirmware.download_failed_details', {
-                    values: { error: `${failedCount} files failed` }
+                    values: {
+                        error: `${failedCount} ${$locales('customfirmware.file_details_count', {
+                            values: { count: failedCount }
+                        })}`
+                    }
                 });
             } else {
                 downloadCompleted = true;
@@ -902,6 +966,81 @@
             downloadError = error instanceof Error ? error.message : String(error);
         } finally {
             isDownloadingFiles = false;
+        }
+    }
+
+    // Retry downloading a single manifest part without touching other files.
+    // Available only when the entry is marked retryable (network error, not a local 0-byte file).
+    async function retrySingleFile(index: number) {
+        if (!manifestData || isDownloadingFiles) return;
+        const target = selectedFirmwareFiles[index];
+        if (!target || !target.isRetryable) return;
+
+        isDownloadingFiles = true;
+        const part = manifestData.builds[0].parts[index];
+        const abortController = new AbortController();
+        downloadAbortController = abortController;
+
+        // Reset target entry to placeholder state, keep address
+        const extractedFilename = extractFilenameFromManifestPath(part.path);
+        selectedFirmwareFiles[index] = {
+            ...selectedFirmwareFiles[index],
+            filename: extractedFilename,
+            hasDownloadError: false,
+            downloadErrorMessage: '',
+            isRetryable: false,
+            isDownloading: true,
+            downloadProgress: 0,
+            fileSize: 0
+        };
+        // Reassign array to guarantee reactive re-render in Svelte 5 legacy mode
+        selectedFirmwareFiles = [...selectedFirmwareFiles];
+
+        try {
+            const { content, filename } = await apiService.downloadFromFileWithFilename(
+                part.path,
+                (progress, total) => {
+                    selectedFirmwareFiles[index].downloadProgress = progress;
+                    if (total && total > 0) {
+                        selectedFirmwareFiles[index].fileSize = total;
+                    }
+                },
+                abortController as any
+            );
+
+            const file = new File([content], filename, {
+                type: 'application/octet-stream'
+            });
+            const firmwareFile = fileHandler.createFirmwareFile(file);
+
+            selectedFirmwareFiles[index] = {
+                ...selectedFirmwareFiles[index],
+                filename: filename,
+                file: firmwareFile,
+                hasDownloadError: false,
+                downloadErrorMessage: '',
+                isRetryable: false,
+                isDownloading: false,
+                downloadProgress: 100,
+                fileSize: content.byteLength
+            };
+            selectedFirmwareFiles = [...selectedFirmwareFiles];
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`Retry download error for part ${index}:`, errorMessage);
+
+            selectedFirmwareFiles[index] = {
+                ...selectedFirmwareFiles[index],
+                hasDownloadError: true,
+                downloadErrorMessage: $locales('customfirmware.download_error'),
+                downloadErrorCode: errorMessage,
+                isRetryable: true,
+                isDownloading: false
+            };
+            selectedFirmwareFiles = [...selectedFirmwareFiles];
+        } finally {
+            isDownloadingFiles = false;
+            downloadAbortController = null;
         }
     }
 
@@ -1111,7 +1250,26 @@
     // Calculate file count for File Details display
     $: fileCount = selectedFirmwareFiles.length;
 
-    // Reactive: Validate files for conflicts and chip compatibility
+    // Number of files with download errors (for spoiler header badge)
+    $: failedFileCount = selectedFirmwareFiles.filter((f) => f.hasDownloadError).length;
+
+    // Any enabled file with download or validation error blocks flashing
+    $: hasBlockingError = selectedFirmwareFiles.some(
+        (f) => f.isEnabled !== false && (f.hasDownloadError || f.hasValidationError)
+    );
+
+    // Number of enabled, ready-to-flash files (no download/validation error)
+    $: enabledNonEmptyCount = selectedFirmwareFiles.filter(
+        (f) =>
+            f.isEnabled !== false && !f.hasDownloadError && !f.hasValidationError
+    ).length;
+
+    // Reactive: Validate files for conflicts and chip compatibility.
+    // IMPORTANT: this block writes ONLY to hasValidationError / validationErrorMessage.
+    // It MUST NOT overwrite hasDownloadError / downloadErrorMessage / isRetryable —
+    // those are owned by the download source (handleFileSelect / startFileDownload / retrySingleFile).
+    // Previously, this block reused a single `hasError`/`errorMessage` pair and erased
+    // the download-error state on every successful validation pass.
     $: if (selectedFirmwareFiles.length > 0) {
         // Only validate enabled files
         const enabledFiles = selectedFirmwareFiles.filter((f) => f.isEnabled !== false);
@@ -1125,8 +1283,8 @@
         validationResult = validation;
 
         selectedFirmwareFiles = selectedFirmwareFiles.map((file) => {
-            let hasError = false;
-            let errorMessage = '';
+            let hasValidationError = false;
+            let validationErrorMessage = '';
 
             // Only validate enabled files
             if (file.isEnabled !== false && !validation.isValid) {
@@ -1135,23 +1293,26 @@
                     validation.conflictingFiles
                 ) {
                     // Mark only conflicting files as having errors
-                    hasError = validation.conflictingFiles.includes(file.filename);
-                    errorMessage = hasError ? getErrorMessage(ValidationErrors.FILES_CONFLICT) : '';
+                    hasValidationError = validation.conflictingFiles.includes(file.filename);
+                    validationErrorMessage = hasValidationError
+                        ? getErrorMessage(ValidationErrors.FILES_CONFLICT)
+                        : '';
                 } else if (validation.errorCode === ValidationErrors.CHIP_MISMATCH) {
                     // For chip mismatch, don't mark individual files as error - this is a global validation issue
-                    hasError = false;
-                    errorMessage = '';
+                    hasValidationError = false;
+                    validationErrorMessage = '';
                 } else {
                     // For other validation errors, mark all files as having error
-                    hasError = true;
-                    errorMessage = validation.errorMessage || getErrorMessage(validation.errorCode);
+                    hasValidationError = true;
+                    validationErrorMessage =
+                        validation.errorMessage || getErrorMessage(validation.errorCode);
                 }
             }
 
             return {
                 ...file,
-                hasError,
-                errorMessage
+                hasValidationError,
+                validationErrorMessage
             };
         });
 
@@ -1172,6 +1333,141 @@
         <div
             class="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-orange-600 bg-gray-800 shadow-2xl shadow-orange-900/50"
         >
+            {#snippet fileCard(fileItem: SelectedFirmwareFile, index: number)}
+                <div
+                    class="flex items-center space-x-2 border p-2 {fileItem.hasDownloadError ||
+                    fileItem.hasValidationError ||
+                    fileItem.isEnabled === false
+                        ? fileItem.hasDownloadError || fileItem.hasValidationError
+                            ? 'border-red-600 bg-red-900/20'
+                            : 'border-gray-600 bg-gray-800 opacity-50'
+                        : 'border-gray-600 bg-gray-800'} group relative rounded-md"
+                >
+                    <!-- Checkbox to enable/disable file -->
+                    <div class="flex flex-shrink-0 items-center">
+                        <input
+                            type="checkbox"
+                            bind:checked={fileItem.isEnabled}
+                            disabled={isFlashing || isAutoSelectMode}
+                            class="h-4 w-4 rounded border-gray-300 text-orange-600 accent-blue-600 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
+                            title="Enable/disable this file for flashing"
+                        />
+                    </div>
+
+                    <!-- Download progress overlay -->
+                    {#if fileItem.isDownloading}
+                        <div
+                            class="absolute inset-0 z-10 rounded-md transition-all duration-300"
+                            style="
+                                background: linear-gradient(to right,
+                                    rgba(59, 130, 246, 0.3) 0%,
+                                    rgba(59, 130, 246, 0.3) {fileItem.downloadProgress || 0}%,
+                                    rgba(0, 0, 0, 0.3) {fileItem.downloadProgress || 0}%,
+                                    rgba(0, 0, 0, 0.3) 100%
+                                );
+                            "
+                        ></div>
+                    {/if}
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center space-x-2">
+                            <div
+                                class="truncate text-xs font-medium text-gray-300"
+                                title={fileItem.filename}
+                            >
+                                {fileItem.filename}
+                            </div>
+                            {#if fileItem.hasDownloadError || fileItem.hasValidationError}
+                                <div
+                                    class="cursor-help text-red-400"
+                                    title={fileItem.hasDownloadError
+                                        ? fileItem.downloadErrorCode || fileItem.downloadErrorMessage
+                                        : fileItem.validationErrorMessage}
+                                >
+                                    ⚠️
+                                </div>
+                                {#if fileItem.hasDownloadError && fileItem.isRetryable}
+                                    <button
+                                        on:click={() => retrySingleFile(index)}
+                                        disabled={isDownloadingFiles || isFlashing}
+                                        class="text-red-400 transition-colors hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                                        title={$locales('customfirmware.retry_download')}
+                                    >
+                                        ↻
+                                    </button>
+                                {/if}
+                            {/if}
+                        </div>
+                        <div
+                            class="text-xs {fileItem.hasDownloadError ? 'text-red-400' : 'text-gray-500'}"
+                        >
+                            {#if fileItem.isDownloading}
+                                {$locales('customfirmware.downloading')}
+                            {:else if fileItem.hasDownloadError}
+                                {fileItem.downloadErrorCode || fileItem.downloadErrorMessage}
+                            {:else if fileItem.fileSize && fileItem.fileSize > 0}
+                                {fileHandler.formatFileSize(fileItem.fileSize)}
+                            {:else if fileItem.file?.size}
+                                {fileHandler.formatFileSize(fileItem.file.size)}
+                            {:else}
+                                0 bytes
+                            {/if}
+                        </div>
+                    </div>
+                    <div class="flex flex-shrink-0 items-center space-x-2">
+                        <span class="text-xs text-gray-400"
+                            >{$locales('customfirmware.address')}:</span
+                        >
+                        <div class="relative flex items-center">
+                            <input
+                                type="text"
+                                value={fileItem.address}
+                                placeholder="0x0"
+                                disabled={isFlashing ||
+                                    isAutoSelectMode ||
+                                    fileItem.isEnabled === false}
+                                class="w-24 rounded-md {fileItem.userEdited
+                                    ? 'pr-8 '
+                                    : ''}{espManager.isValidFlashAddress(fileItem.address)
+                                    ? 'border-gray-600'
+                                    : 'border-red-500'} bg-gray-700 px-2 py-1 text-xs text-gray-200 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                                on:input={(e) => {
+                                    if (!isAutoSelectMode && fileItem.isEnabled !== false) {
+                                        const input = e.target as HTMLInputElement;
+                                        fileItem.address = input.value;
+                                    }
+                                }}
+                                on:change={(e) => {
+                                    if (!isAutoSelectMode && fileItem.isEnabled !== false) {
+                                        const input = e.target as HTMLInputElement;
+                                        const sanitized = espManager.sanitizeAddress(input.value);
+                                        // Only mark as userEdited if value actually changed
+                                        if (sanitized !== fileItem.address) {
+                                            fileItem.address = sanitized;
+                                            fileItem.userEdited = true;
+                                        }
+                                    }
+                                }}
+                                title={isAutoSelectMode || fileItem.isEnabled === false
+                                    ? 'Address locked'
+                                    : 'Enter address in hex (0x...) or decimal format'}
+                            />
+                            {#if fileItem.userEdited && !isAutoSelectMode && fileItem.isEnabled !== false}
+                                <button
+                                    on:click={() => {
+                                        fileItem.userEdited = false;
+                                        updateFlashAddresses();
+                                    }}
+                                    class="absolute right-1 text-gray-400 transition-colors hover:text-orange-400"
+                                    title={$locales('customfirmware.auto_detect_address')}
+                                >
+                                    ↻
+                                </button>
+                            {/if}
+                        </div>
+                    </div>
+                </div>
+            {/snippet}
+
             <!-- Header -->
             <div class="flex items-center justify-between border-b border-gray-700 p-6">
                 <h2 id="modal-title" class="text-xl font-semibold text-orange-200">
@@ -1396,6 +1692,14 @@
                                                 { values: { count: fileCount } }
                                             )})</span
                                         >
+                                        {#if failedFileCount > 0}
+                                            <span
+                                                class="ml-2 inline-flex items-center gap-1 rounded bg-red-600 px-2 py-0.5 text-xs font-medium text-white"
+                                                title={$locales('customfirmware.some_files_failed')}
+                                            >
+                                                ⚠️ {failedFileCount}
+                                            </span>
+                                        {/if}
                                     </span>
                                     <span class="text-xs">{showFileDetails ? '▼' : '▶'}</span>
                                 </button>
@@ -1477,159 +1781,7 @@
                                                 </div>
                                                 <div class="max-h-60 space-y-2 overflow-y-auto">
                                                     {#each selectedFirmwareFiles as fileItem, index}
-                                                        <div
-                                                            class="flex items-center space-x-2 border p-2 {fileItem.hasError ||
-                                                            fileItem.isEnabled === false
-                                                                ? fileItem.hasError
-                                                                    ? 'border-red-600 bg-red-900/20'
-                                                                    : 'border-gray-600 bg-gray-800 opacity-50'
-                                                                : 'border-gray-600 bg-gray-800'} group relative rounded-md"
-                                                        >
-                                                            <!-- Checkbox to enable/disable file -->
-                                                            <div
-                                                                class="flex flex-shrink-0 items-center"
-                                                            >
-                                                                <input
-                                                                    type="checkbox"
-                                                                    bind:checked={
-                                                                        fileItem.isEnabled
-                                                                    }
-                                                                    disabled={isFlashing ||
-                                                                        isAutoSelectMode}
-                                                                    class="h-4 w-4 rounded border-gray-300 text-orange-600 accent-blue-600 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
-                                                                    title="Enable/disable this file for flashing"
-                                                                />
-                                                            </div>
-
-                                                            <!-- Download progress overlay -->
-                                                            {#if fileItem.isDownloading}
-                                                                <div
-                                                                    class="absolute inset-0 z-10 rounded-md transition-all duration-300"
-                                                                    style="
-																		background: linear-gradient(to right,
-																			rgba(59, 130, 246, 0.3) 0%,
-																			rgba(59, 130, 246, 0.3) {fileItem.downloadProgress || 0}%,
-																			rgba(0, 0, 0, 0.3) {fileItem.downloadProgress || 0}%,
-																			rgba(0, 0, 0, 0.3) 100%
-																		);
-																	"
-                                                                ></div>
-                                                            {/if}
-                                                            <div class="min-w-0 flex-1">
-                                                                <div
-                                                                    class="flex items-center space-x-2"
-                                                                >
-                                                                    <div
-                                                                        class="truncate text-xs font-medium text-gray-300"
-                                                                        title={fileItem.filename}
-                                                                    >
-                                                                        {fileItem.filename}
-                                                                    </div>
-                                                                    {#if fileItem.hasError}
-                                                                        <div
-                                                                            class="cursor-help text-red-400"
-                                                                            title={fileItem.errorMessage}
-                                                                        >
-                                                                            ⚠️
-                                                                        </div>
-                                                                    {/if}
-                                                                </div>
-                                                                <div class="text-xs text-gray-500">
-                                                                    {fileItem.fileSize &&
-                                                                    fileItem.fileSize > 0
-                                                                        ? fileHandler.formatFileSize(
-                                                                              fileItem.fileSize
-                                                                          )
-                                                                        : fileItem.file?.size
-                                                                          ? fileHandler.formatFileSize(
-                                                                                fileItem.file.size
-                                                                            )
-                                                                          : '0 bytes'}
-                                                                </div>
-                                                            </div>
-                                                            <div
-                                                                class="flex flex-shrink-0 items-center space-x-2"
-                                                            >
-                                                                <span class="text-xs text-gray-400"
-                                                                    >{$locales(
-                                                                        'customfirmware.address'
-                                                                    )}:</span
-                                                                >
-                                                                <div
-                                                                    class="relative flex items-center"
-                                                                >
-                                                                    <input
-                                                                        type="text"
-                                                                        value={fileItem.address}
-                                                                        placeholder="0x0"
-                                                                        disabled={isFlashing ||
-                                                                            isAutoSelectMode ||
-                                                                            fileItem.isEnabled ===
-                                                                                false}
-                                                                        class="w-24 rounded-md {fileItem.userEdited
-                                                                            ? 'pr-8 '
-                                                                            : ''}{espManager.isValidFlashAddress(
-                                                                            fileItem.address
-                                                                        )
-                                                                            ? 'border-gray-600'
-                                                                            : 'border-red-500'} bg-gray-700 px-2 py-1 text-xs text-gray-200 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                                                                        on:input={(e) => {
-                                                                            if (
-                                                                                !isAutoSelectMode &&
-                                                                                fileItem.isEnabled !==
-                                                                                    false
-                                                                            ) {
-                                                                                const input =
-                                                                                    e.target as HTMLInputElement;
-                                                                                fileItem.address =
-                                                                                    input.value;
-                                                                            }
-                                                                        }}
-                                                                        on:change={(e) => {
-                                                                            if (
-                                                                                !isAutoSelectMode &&
-                                                                                fileItem.isEnabled !==
-                                                                                    false
-                                                                            ) {
-                                                                                const input =
-                                                                                    e.target as HTMLInputElement;
-                                                                                const sanitized =
-                                                                                    espManager.sanitizeAddress(
-                                                                                        input.value
-                                                                                    );
-                                                                                // Only mark as userEdited if value actually changed
-                                                                                if (
-                                                                                    sanitized !==
-                                                                                    fileItem.address
-                                                                                ) {
-                                                                                    fileItem.address =
-                                                                                        sanitized;
-                                                                                    fileItem.userEdited = true;
-                                                                                }
-                                                                            }
-                                                                        }}
-                                                                        title={isAutoSelectMode ||
-                                                                        fileItem.isEnabled === false
-                                                                            ? 'Address locked'
-                                                                            : 'Enter address in hex (0x...) or decimal format'}
-                                                                    />
-                                                                    {#if fileItem.userEdited && !isAutoSelectMode && fileItem.isEnabled !== false}
-                                                                        <button
-                                                                            on:click={() => {
-                                                                                fileItem.userEdited = false;
-                                                                                updateFlashAddresses();
-                                                                            }}
-                                                                            class="absolute right-1 text-gray-400 transition-colors hover:text-orange-400"
-                                                                            title={$locales(
-                                                                                'customfirmware.auto_detect_address'
-                                                                            )}
-                                                                        >
-                                                                            ↻
-                                                                        </button>
-                                                                    {/if}
-                                                                </div>
-                                                            </div>
-                                                        </div>
+                                                        {@render fileCard(fileItem, index)}
                                                     {/each}
                                                 </div>
                                             </div>
@@ -1712,141 +1864,7 @@
                                     </div>
                                     <div class="space-y-2">
                                         {#each selectedFirmwareFiles as fileItem, index}
-                                            <div
-                                                class="flex items-center space-x-2 border p-2 {fileItem.hasError ||
-                                                fileItem.isEnabled === false
-                                                    ? fileItem.hasError
-                                                        ? 'border-red-600 bg-red-900/20'
-                                                        : 'border-gray-600 bg-gray-800 opacity-50'
-                                                    : 'border-gray-600 bg-gray-800'} group relative rounded-md"
-                                            >
-                                                <!-- Checkbox to enable/disable file -->
-                                                <div class="flex flex-shrink-0 items-center">
-                                                    <input
-                                                        type="checkbox"
-                                                        bind:checked={fileItem.isEnabled}
-                                                        disabled={isFlashing || isAutoSelectMode}
-                                                        class="h-4 w-4 rounded border-gray-300 text-orange-600 accent-blue-600 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
-                                                        title="Enable/disable this file for flashing"
-                                                    />
-                                                </div>
-
-                                                <!-- Download progress overlay -->
-                                                {#if fileItem.isDownloading}
-                                                    <div
-                                                        class="absolute inset-0 z-10 rounded-md transition-all duration-300"
-                                                        style="
-															background: linear-gradient(to right,
-																rgba(59, 130, 246, 0.3) 0%,
-																rgba(59, 130, 246, 0.3) {fileItem.downloadProgress || 0}%,
-																rgba(0, 0, 0, 0.3) {fileItem.downloadProgress || 0}%,
-																rgba(0, 0, 0, 0.3) 100%
-															);
-														"
-                                                    ></div>
-                                                {/if}
-                                                <div class="min-w-0 flex-1">
-                                                    <div class="flex items-center space-x-2">
-                                                        <div
-                                                            class="truncate text-xs font-medium text-gray-300"
-                                                            title={fileItem.filename}
-                                                        >
-                                                            {fileItem.filename}
-                                                        </div>
-                                                        {#if fileItem.hasError}
-                                                            <div
-                                                                class="cursor-help text-red-400"
-                                                                title={fileItem.errorMessage}
-                                                            >
-                                                                ⚠️
-                                                            </div>
-                                                        {/if}
-                                                    </div>
-                                                    <div class="text-xs text-gray-500">
-                                                        {fileItem.fileSize && fileItem.fileSize > 0
-                                                            ? fileHandler.formatFileSize(
-                                                                  fileItem.fileSize
-                                                              )
-                                                            : fileHandler.formatFileSize(
-                                                                  fileItem.file.size
-                                                              )}
-                                                    </div>
-                                                </div>
-                                                <div
-                                                    class="flex flex-shrink-0 items-center space-x-2"
-                                                >
-                                                    <span class="text-xs text-gray-400"
-                                                        >{$locales('customfirmware.address')}:</span
-                                                    >
-                                                    <div class="relative flex items-center">
-                                                        <input
-                                                            type="text"
-                                                            value={fileItem.address}
-                                                            placeholder="0x0"
-                                                            disabled={isFlashing ||
-                                                                isAutoSelectMode ||
-                                                                fileItem.isEnabled === false}
-                                                            class="w-24 rounded-md {fileItem.userEdited
-                                                                ? 'pr-8 '
-                                                                : ''}{espManager.isValidFlashAddress(
-                                                                fileItem.address
-                                                            )
-                                                                ? 'border-gray-600'
-                                                                : 'border-red-500'} bg-gray-700 px-2 py-1 text-xs text-gray-200 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                                                            on:input={(e) => {
-                                                                if (
-                                                                    !isAutoSelectMode &&
-                                                                    fileItem.isEnabled !== false
-                                                                ) {
-                                                                    const input =
-                                                                        e.target as HTMLInputElement;
-                                                                    fileItem.address = input.value;
-                                                                }
-                                                            }}
-                                                            on:change={(e) => {
-                                                                if (
-                                                                    !isAutoSelectMode &&
-                                                                    fileItem.isEnabled !== false
-                                                                ) {
-                                                                    const input =
-                                                                        e.target as HTMLInputElement;
-                                                                    const sanitized =
-                                                                        espManager.sanitizeAddress(
-                                                                            input.value
-                                                                        );
-                                                                    // Only mark as userEdited if value actually changed
-                                                                    if (
-                                                                        sanitized !==
-                                                                        fileItem.address
-                                                                    ) {
-                                                                        fileItem.address =
-                                                                            sanitized;
-                                                                        fileItem.userEdited = true;
-                                                                    }
-                                                                }
-                                                            }}
-                                                            title={isAutoSelectMode ||
-                                                            fileItem.isEnabled === false
-                                                                ? 'Address locked'
-                                                                : 'Enter address in hex (0x...) or decimal format'}
-                                                        />
-                                                        {#if fileItem.userEdited && !isAutoSelectMode && fileItem.isEnabled !== false}
-                                                            <button
-                                                                on:click={() => {
-                                                                    fileItem.userEdited = false;
-                                                                    updateFlashAddresses();
-                                                                }}
-                                                                class="absolute right-1 text-gray-400 transition-colors hover:text-orange-400"
-                                                                title={$locales(
-                                                                    'customfirmware.auto_detect_address'
-                                                                )}
-                                                            >
-                                                                ↻
-                                                            </button>
-                                                        {/if}
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            {@render fileCard(fileItem, index)}
                                         {/each}
                                     </div>
                                 </div>
@@ -1910,37 +1928,6 @@
                         class="rounded-md border border-red-700 bg-red-900 p-3"
                     >
                         <div class="text-sm text-red-200">{zipExtractionError}</div>
-                    </div>
-                {/if}
-
-                <!-- File Download Error Status -->
-                {#if downloadError}
-                    <div
-                        role="alert"
-                        aria-live="assertive"
-                        class="rounded-md border border-red-700 bg-red-900 p-3"
-                    >
-                        <div class="mb-2 text-sm font-medium text-red-200">
-                            {$locales('customfirmware.download_files_error')}
-                        </div>
-                        <div class="text-sm text-red-300">{downloadError}</div>
-                        {#if downloadErrors.length > 0}
-                            <div class="mt-2 text-xs text-red-400">
-                                {#each downloadErrors.slice(0, 3) as error}
-                                    <div>{error}</div>
-                                {/each}
-                                {#if downloadErrors.length > 3}
-                                    <div>... and {downloadErrors.length - 3} more errors</div>
-                                {/if}
-                            </div>
-                        {/if}
-                        <button
-                            on:click={startFileDownload}
-                            disabled={isDownloadingFiles}
-                            class="mt-3 rounded-md bg-red-600 px-3 py-1 text-sm text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            {$locales('customfirmware.retry_download_all')}
-                        </button>
                     </div>
                 {/if}
 
@@ -2095,10 +2082,8 @@
                         disabled={!isPortSelected ||
                             isFlashing ||
                             !validationResult.isValid ||
-                            selectedFirmwareFiles.some((file) => file.hasError) ||
-                            (!eraseBeforeFlash &&
-                                selectedFirmwareFiles.filter((f) => f.isEnabled !== false)
-                                    .length === 0)}
+                            hasBlockingError ||
+                            (!eraseBeforeFlash && enabledNonEmptyCount === 0)}
                         class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {#if isFlashing}
