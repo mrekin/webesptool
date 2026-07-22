@@ -10,7 +10,7 @@ export function createFirmwareFileHandler() {
             if (validateFile(file)) {
                 return {
                     file: file,
-                    content: '', // Will be filled by readFileContent
+                    content: new Uint8Array(0), // Will be filled before flashing
                     size: file.size,
                     name: file.name
                 };
@@ -35,7 +35,7 @@ export function createFirmwareFileHandler() {
             if (validateFile(file)) {
                 return {
                     file: file,
-                    content: '', // Will be filled by readFileContent
+                    content: new Uint8Array(0), // Will be filled before flashing
                     size: file.size,
                     name: file.name
                 };
@@ -44,7 +44,7 @@ export function createFirmwareFileHandler() {
         return null;
     }
 
-    // Read file content
+    // Read file content as text (used for metadata JSON files)
     async function readFileContent(firmwareFile: FirmwareFile): Promise<string> {
         return new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
@@ -53,25 +53,15 @@ export function createFirmwareFileHandler() {
                 if (typeof result === 'string') {
                     resolve(result);
                 } else {
-                    // Convert ArrayBuffer to binary string for compatibility
-                    const bytes = new Uint8Array(result as ArrayBuffer);
-                    let binary = '';
-                    for (let i = 0; i < bytes.byteLength; i++) {
-                        binary += String.fromCharCode(bytes[i]);
-                    }
-                    resolve(binary);
+                    reject(new Error('Failed to read file as text'));
                 }
             };
             reader.onerror = () => {
                 reject(new Error('Failed to read file'));
             };
 
-            // Read JSON files as text, binary files as array buffer
-            if (isMetadataFile(firmwareFile.file)) {
-                reader.readAsText(firmwareFile.file);
-            } else {
-                reader.readAsArrayBuffer(firmwareFile.file);
-            }
+            // Read all metadata/text files as text
+            reader.readAsText(firmwareFile.file);
         });
     }
 
@@ -138,7 +128,7 @@ export function createFirmwareFileHandler() {
     function createFirmwareFile(file: File): FirmwareFile {
         return {
             file: file,
-            content: '', // Will be filled by readFileContent
+            content: new Uint8Array(0), // Will be filled before flashing
             size: file.size,
             name: file.name
         };

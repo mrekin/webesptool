@@ -1,6 +1,6 @@
 {
 	"name": "frontend",
-	"version": "0.14.2",
+	"version": "0.15.0",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
@@ -67,7 +67,7 @@
 		"@xterm/addon-search": "^0.16.0",
 		"buffer": "^6.0.3",
 		"crc": "^4.3.2",
-		"esptool-js": "^0.5.7",
+		"esptool-js": "^0.6.0",
 		"js-yaml": "^4.1.1",
 		"jszip": "^3.10.1",
 		"os-browserify": "^0.3.0",

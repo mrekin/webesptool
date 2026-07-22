@@ -242,7 +242,7 @@ export interface FlashProgress {
 
 export interface FirmwareFile {
     file: File;
-    content: string;
+    content: Uint8Array;
     size: number;
     name: string;
 }

@@ -670,8 +670,10 @@
 
                     flashStatus = `Flashing file ${i + 1}/${totalFiles}: ${fileItem.filename} @ ${fileItem.address}...`;
 
-                    // Read file content using utility
-                    const content = await fileHandler.readFileContent(fileItem.file);
+                    // Read file content as Uint8Array for the flash path
+                    const content = new Uint8Array(
+                        await fileHandler.readFileAsArrayBuffer(fileItem.file)
+                    );
                     const firmwareFile: FirmwareFile = {
                         ...fileItem.file,
                         content: content
@@ -841,7 +843,7 @@
                         address: `0x${part.offset.toString(16)}`,
                         file: {
                             file: new File([], ''),
-                            content: '',
+                            content: new Uint8Array(0),
                             size: 0,
                             name: extractedFilename
                         }, // Placeholder
