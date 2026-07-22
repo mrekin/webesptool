@@ -28,6 +28,8 @@
     import MemoryMap from '$lib/components/MemoryMap.svelte';
     import BackupConfirmModal from '$lib/components/BackupConfirmModal.svelte';
     import TerminalModal from '$lib/components/TerminalModal.svelte';
+    import FlashLog from '$lib/components/FlashLog.svelte';
+    import { createFlashLogger } from '$lib/utils/flashLog.js';
     import { uiState, selectionState, availableSources } from '$lib/stores.js';
     import { RepositoryType } from '$lib/types.js';
     import { EXTERNAL_LINKS } from '$lib/utils/externalLinks.js';
@@ -53,6 +55,8 @@
     // Create utility instances
     const espManager = createESPManager();
     const fileHandler = createFirmwareFileHandler();
+    // Flash log state + logic (factory follows createESPManager/createFirmwareFileHandler pattern)
+    const logger = createFlashLogger();
 
     // Component state
     let selectedFirmwareFiles: SelectedFirmwareFile[] = []; // Multiple files with addresses
@@ -78,6 +82,11 @@
                 console.log(`Changing baudrate from ${currentBaudrate} to ${newBaudrate}...`);
                 await espManager.changeBaudrate(newBaudrate);
                 console.log(`Baudrate changed to ${newBaudrate}`);
+                logger.info(
+                    $locales('customfirmware.log_baudrate_changed', {
+                        values: { from: currentBaudrate, to: newBaudrate }
+                    })
+                );
             }
         } catch (error) {
             console.error('Failed to change baudrate:', error);
@@ -228,6 +237,15 @@
         }
     }
 
+    // Copy full flash log to clipboard (for bug reports)
+    async function copyLogToClipboard() {
+        try {
+            await navigator.clipboard.writeText(logger.getCopyText());
+        } catch (error) {
+            console.error('Failed to copy flash log:', error);
+        }
+    }
+
     // Handle file selection (unified function for both file selection and drag & drop)
     async function handleFileSelect(files: FileList | null) {
         if (isAutoSelectMode) return; // Ignore file selection in AutoSelect mode
@@ -241,6 +259,10 @@
         zipExtractionError = '';
         validationResult = { isValid: true };
 
+        logger.info(
+            $locales('customfirmware.log_files_selected', { values: { count: files.length } })
+        );
+
         // Collect all files to process (including extracted from ZIPs)
         let allFiles: File[] = [];
 
@@ -252,10 +274,20 @@
                 // Extract ZIP archive
                 isExtractingZip = true;
                 zipExtractionProgress = 0;
+                logger.info($locales('customfirmware.log_zip_extracting'));
 
                 try {
                     const extractionResult = await fileHandler.processZipArchive(file);
                     allFiles = allFiles.concat(extractionResult.extractedFiles);
+
+                    logger.success(
+                        $locales('customfirmware.log_zip_extracted', {
+                            values: {
+                                extracted: extractionResult.extractedCount,
+                                skipped: extractionResult.skippedCount
+                            }
+                        })
+                    );
 
                     // Show info about extraction
                     if (extractionResult.skippedCount > 0) {
@@ -265,6 +297,11 @@
                     }
                 } catch (error) {
                     zipExtractionError = `Failed to extract ZIP file: ${error}`;
+                    logger.error(
+                        $locales('customfirmware.log_zip_extract_failed', {
+                            values: { error: String(error) }
+                        })
+                    );
                     isExtractingZip = false;
                     return;
                 } finally {
@@ -296,7 +333,13 @@
         // Check for multiple partitions.bin files
         if (partitionsFileCount > 1) {
             flashError = 'Only one partitions.bin file is allowed';
+            logger.error($locales('customfirmware.log_partitions_error_multiple'));
             return;
+        }
+
+        // Multiple metadata files are not allowed (only one wins, others must be flagged)
+        if (metadataFiles.length > 1) {
+            logger.error($locales('customfirmware.log_metadata_error_multiple'));
         }
 
         // Select metadata file: prioritize ManifestMetadata (manifest.json) over FirmwareMetadata (.mt.json)
@@ -317,15 +360,34 @@
                         // This is ManifestMetadata (manifest.json) - highest priority
                         metadataFile = tempFile;
                         metadata = parsedMetadata;
+                        logger.info(
+                            $locales('customfirmware.log_metadata_found', {
+                                values: {
+                                    summary: `manifest.json (${(parsedMetadata as any).name ?? ''} ${(parsedMetadata as any).version ?? ''})`.trim()
+                                }
+                            })
+                        );
                         break; // Stop searching, found highest priority
                     } else if (!metadata) {
                         // This is FirmwareMetadata (.mt.json) - use as fallback
                         metadataFile = tempFile;
                         metadata = parsedMetadata;
+                        logger.info(
+                            $locales('customfirmware.log_metadata_found', {
+                                values: {
+                                    summary: `${file.name} (${(parsedMetadata as any).board ?? ''} ${(parsedMetadata as any).mcu ?? ''})`.trim()
+                                }
+                            })
+                        );
                     }
                 } catch (error) {
                     // Skip invalid metadata files
                     console.error(`Failed to parse metadata file ${file.name}:`, error);
+                    logger.error(
+                        $locales('customfirmware.log_metadata_parse_error', {
+                            values: { error: String(error) }
+                        })
+                    );
                 }
             }
         }
@@ -362,6 +424,13 @@
                     // Graceful degradation on parse error
                     console.error(`[Partitions.bin] Failed to parse:`, error);
                     flashError = `⚠️ Failed to parse partitions.bin: ${error instanceof Error ? error.message : String(error)}. Using filename patterns.`;
+                    logger.error(
+                        $locales('customfirmware.log_partitions_parse_error', {
+                            values: {
+                                error: error instanceof Error ? error.message : String(error)
+                            }
+                        })
+                    );
                     partitionsTable = null;
                     // Continue processing - will fall back to filename patterns
                 }
@@ -406,6 +475,18 @@
 
         // Always trigger address update when files are selected (works with filename only)
         if (selectedFirmwareFiles.length > 0) {
+            logger.info(
+                $locales('customfirmware.log_firmware_files_found', {
+                    values: { count: selectedFirmwareFiles.length }
+                })
+            );
+            for (const f of selectedFirmwareFiles) {
+                logger.info(
+                    $locales('customfirmware.log_file_info', {
+                        values: { filename: f.filename, size: fileHandler.formatFileSize(f.file.size) }
+                    })
+                );
+            }
             updateFlashAddresses();
         }
     }
@@ -479,12 +560,14 @@
         isConnecting = true;
         flashStatus = 'Selecting port...';
         flashError = '';
+        logger.info($locales('customfirmware.log_selecting_port'));
 
         try {
             const connected = await espManager.connectToPort();
 
             if (connected) {
                 flashStatus = 'Connecting to device...';
+                logger.info($locales('customfirmware.log_connecting_to_device'));
 
                 // Get device info
                 const detectedDeviceInfo = await espManager.getDeviceInfo();
@@ -493,6 +576,25 @@
                     isPortSelected = true;
                     deviceInfo = detectedDeviceInfo;
                     flashStatus = 'Device connected successfully';
+                    logger.success(
+                        $locales('customfirmware.log_device_connected', {
+                            values: {
+                                chip: detectedDeviceInfo.chip,
+                                flashSize: detectedDeviceInfo.flashSize,
+                                psram: detectedDeviceInfo.psramSize
+                                    ? $locales('customfirmware.log_psram', {
+                                          values: { size: detectedDeviceInfo.psramSize }
+                                      })
+                                    : '',
+                                mac:
+                                    detectedDeviceInfo.mac !== 'Unknown'
+                                        ? $locales('customfirmware.log_mac', {
+                                              values: { mac: detectedDeviceInfo.mac }
+                                          })
+                                        : ''
+                            }
+                        })
+                    );
 
                     // Update addresses with device info
                     if (selectedFirmwareFiles.length > 0) {
@@ -502,11 +604,19 @@
                     // Device detection failed
                     isPortSelected = false;
                     deviceInfo = null;
+                    logger.error(
+                        flashError || $locales('customfirmware.log_device_not_detected')
+                    );
                     // flashError is already set in getDeviceInfo
                 }
             }
         } catch (error) {
             flashError = `Failed to connect: ${error}`;
+            logger.error(
+                $locales('customfirmware.log_connect_failed', {
+                    values: { error: String(error) }
+                })
+            );
         } finally {
             isConnecting = false;
         }
@@ -514,6 +624,9 @@
 
     // Reset file selection for flashing another file
     async function resetForAnotherFlash() {
+        // Insert session separator — keep history, do NOT clear
+        logger.addSeparator($locales('customfirmware.log_session_separator'));
+
         if (isAutoSelectMode) {
             // In AutoSelect mode, reset port and status but keep files
             isPortSelected = false;
@@ -561,6 +674,9 @@
         zipExtractionError = '';
         isExtractingZip = false;
 
+        // Full log clear on disconnect / modal close
+        logger.clear();
+
         await espManager.resetPort();
     }
 
@@ -592,11 +708,13 @@
 
         if (!isEraseOnly && enabledFiles.length === 0) {
             flashError = 'Please select at least one firmware file (.bin)';
+            logger.warning($locales('customfirmware.log_no_firmware_selected'));
             return;
         }
 
         if (!isPortSelected || !espManager.getCurrentPort()) {
             flashError = 'Please select a port first';
+            logger.warning($locales('customfirmware.log_no_port_selected'));
             return;
         }
 
@@ -606,6 +724,11 @@
                 const fileItem = enabledFiles[i];
                 if (!espManager.isValidFlashAddress(fileItem.address)) {
                     flashError = `Invalid address format for file "${fileItem.filename}": ${fileItem.address}. Please enter a valid address (e.g., 0x0, 0x1000, 4096)`;
+                    logger.warning(
+                        $locales('customfirmware.log_invalid_address', {
+                            values: { filename: fileItem.filename, address: fileItem.address }
+                        })
+                    );
                     return;
                 }
             }
@@ -615,6 +738,17 @@
         flashProgress = 0;
         flashStatus = 'Starting flash process...';
         flashError = '';
+
+        logger.info(
+            $locales('customfirmware.log_flash_start', {
+                values: {
+                    count: isEraseOnly ? 0 : enabledFiles.length,
+                    erase: eraseBeforeFlash
+                        ? $locales('customfirmware.log_flash_start_erase')
+                        : ''
+                }
+            })
+        );
 
         try {
             // Sort files by flash address before flashing
@@ -655,6 +789,7 @@
             if (eraseBeforeFlash && flashSizeBytes > 0) {
                 flashProgress = 5;
                 flashStatus = 'Erasing flash...';
+                logger.info($locales('customfirmware.log_erase_start'));
 
                 await espManager.eraseFlash({
                     onProgress: (progress: any) => {
@@ -663,12 +798,26 @@
                             (progress.progress / 100) * (flashSizeBytes / totalVolume);
                         flashProgress = Math.round(5 + eraseProgress * 90);
                         flashStatus = `Erasing flash... ${progress.progress}%`;
+                        // Throttled progress log (erase emits only 0% and 100%)
+                        logger.progress(
+                            'erase',
+                            progress.progress,
+                            $locales('customfirmware.log_erase_progress', {
+                                values: { percent: progress.progress }
+                            })
+                        );
                         if (progress.error) {
                             flashError = progress.error;
+                            logger.error(
+                                $locales('customfirmware.log_progress_error', {
+                                    values: { error: progress.error }
+                                })
+                            );
                         }
                     }
                 });
 
+                logger.success($locales('customfirmware.log_erase_done'));
                 cumulativeProcessed += flashSizeBytes;
             }
 
@@ -678,6 +827,17 @@
                     const fileItem = sortedFiles[i];
 
                     flashStatus = `Flashing file ${i + 1}/${totalFiles}: ${fileItem.filename} @ ${fileItem.address}...`;
+                    logger.info(
+                        $locales('customfirmware.log_flash_file_start', {
+                            values: {
+                                index: i + 1,
+                                total: totalFiles,
+                                filename: fileItem.filename,
+                                address: fileItem.address,
+                                size: fileHandler.formatFileSize(fileItem.file.size)
+                            }
+                        })
+                    );
 
                     // Read file content as Uint8Array for the flash path
                     const content = new Uint8Array(
@@ -698,14 +858,35 @@
                                 cumulativeProcessed + (progress.progress / 100) * fileSize;
                             flashProgress = Math.round(5 + (processedBytes / totalVolume) * 90);
                             flashStatus = `Flashing file ${i + 1}/${totalFiles}: ${fileItem.filename} @ ${fileItem.address} - ${progress.status}`;
+                            // Throttled progress log (10 p.p. step per-file key)
+                            logger.progress(
+                                `flash:${fileItem.filename}`,
+                                progress.progress,
+                                $locales('customfirmware.log_flash_file_progress', {
+                                    values: {
+                                        filename: fileItem.filename,
+                                        percent: progress.progress
+                                    }
+                                })
+                            );
                             if (progress.error) {
                                 flashError = progress.error;
+                                logger.error(
+                                    $locales('customfirmware.log_progress_error', {
+                                        values: { error: progress.error }
+                                    })
+                                );
                             }
                         }
                     };
 
                     // Use ESP manager to flash firmware
                     await espManager.flashFirmware(firmwareFile, flashOptions);
+                    logger.success(
+                        $locales('customfirmware.log_flash_file_done', {
+                            values: { filename: fileItem.filename }
+                        })
+                    );
 
                     // Add completed file to cumulative processed
                     cumulativeProcessed += fileItem.file.size;
@@ -720,9 +901,19 @@
             flashStatus = isEraseOnly
                 ? $locales('customfirmware.erase_success')
                 : 'All files flashed successfully!';
+            logger.success(
+                isEraseOnly
+                    ? $locales('customfirmware.log_erase_success')
+                    : $locales('customfirmware.log_flash_complete')
+            );
         } catch (error) {
             console.error('Flash error:', error);
             flashError = error instanceof Error ? error.message : String(error);
+            logger.error(
+                $locales('customfirmware.log_flash_failed', {
+                    values: { error: error instanceof Error ? error.message : String(error) }
+                })
+            );
         } finally {
             isFlashing = false;
         }
@@ -744,12 +935,14 @@
         isBackingUp = false;
         isFlashing = false;
         flashProgress = 0;
+        logger.warning($locales('customfirmware.log_backup_cancelled'));
     }
 
     // Backup device memory
     async function backupMemory() {
         if (!isPortSelected || !deviceInfo || !espManager.getCurrentPort()) {
             flashError = 'Please select a port first';
+            logger.warning($locales('customfirmware.log_no_port_selected'));
             return;
         }
 
@@ -769,6 +962,12 @@
         flashError = '';
         showBackupConfirm = false; // Close confirm dialog
 
+        logger.info(
+            $locales('customfirmware.log_backup_start', {
+                values: { size: deviceInfo.flashSize }
+            })
+        );
+
         try {
             // Read flash memory with progress tracking and abort signal
             const { data: flashData, flashId } = await espManager.readFlashMemory(flashSizeBytes, {
@@ -778,12 +977,31 @@
                     );
                     flashProgress = progress.progress;
                     flashStatus = progress.status;
+                    // Throttled progress log (10 p.p. step)
+                    logger.progress(
+                        'read:backup',
+                        progress.progress,
+                        $locales('customfirmware.log_backup_progress', {
+                            values: { percent: progress.progress }
+                        })
+                    );
                     if (progress.error) {
                         flashError = progress.error;
+                        logger.error(
+                            $locales('customfirmware.log_progress_error', {
+                                values: { error: progress.error }
+                            })
+                        );
                     }
                 },
                 abortSignal: backupAbortController.signal
             });
+
+            if (flashId && flashId !== 'Unknown') {
+                logger.info(
+                    $locales('customfirmware.log_backup_flash_id', { values: { id: flashId } })
+                );
+            }
 
             // Check if was cancelled during operation
             if (backupAbortController.signal.aborted) {
@@ -814,12 +1032,20 @@
 
             flashStatus = `Backup saved: ${filename}`;
             flashProgress = 100;
+            logger.success(
+                $locales('customfirmware.log_backup_saved', { values: { filename } })
+            );
         } catch (error) {
             console.error('Backup error:', error);
             const errorMessage = error instanceof Error ? error.message : String(error);
             // Don't show error if user cancelled
             if (errorMessage !== 'Backup cancelled' && errorMessage !== 'Backup cancelled') {
                 flashError = errorMessage;
+                logger.error(
+                    $locales('customfirmware.log_backup_failed', {
+                        values: { error: errorMessage }
+                    })
+                );
             }
         } finally {
             isBackingUp = false;
@@ -841,6 +1067,12 @@
 
         try {
             const parts = manifestData.builds[0].parts;
+
+            logger.info(
+                $locales('customfirmware.log_manifest_list_built', {
+                    values: { count: parts.length }
+                })
+            );
 
             // Build placeholder list ONLY when there are no entries yet (initial run).
             // On retry, preserve successful entries and reset only the failed/empty ones.
@@ -902,6 +1134,13 @@
                     return; // Skip already-downloaded files on retry
                 }
 
+                const downloadFilename = extractFilenameFromManifestPath(part.path);
+                logger.info(
+                    $locales('customfirmware.log_download_start', {
+                        values: { filename: downloadFilename }
+                    })
+                );
+
                 try {
                     // Check if aborted before starting download
                     if (downloadAbortController?.signal.aborted) return;
@@ -916,6 +1155,21 @@
                             if (total && total > 0) {
                                 selectedFirmwareFiles[index].fileSize = total;
                             }
+                            // Throttled progress log (percent of bytes; step 10 p.p.)
+                            const totalForLog = total && total > 0 ? total : 0;
+                            const percent = totalForLog
+                                ? Math.round((progress / totalForLog) * 100)
+                                : progress;
+                            // NOTE: use `downloadFilename` (known before download), NOT the
+                            // result `filename` — that const is in TDZ while this callback
+                            // fires during the await, which would throw and break the download.
+                            logger.progress(
+                                `download:${downloadFilename}`,
+                                percent,
+                                $locales('customfirmware.log_download_progress', {
+                                    values: { filename: downloadFilename, percent }
+                                })
+                            );
                         },
                         downloadAbortController as any
                     );
@@ -941,6 +1195,14 @@
                         downloadProgress: 100,
                         fileSize: content.byteLength
                     };
+                    logger.success(
+                        $locales('customfirmware.log_download_done', {
+                            values: {
+                                filename,
+                                size: fileHandler.formatFileSize(content.byteLength)
+                            }
+                        })
+                    );
                 } catch (error) {
                     // Mark this file as failed but continue with others
                     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -953,6 +1215,11 @@
                         isRetryable: true, // Network errors are retryable
                         isDownloading: false
                     };
+                    logger.error(
+                        $locales('customfirmware.log_download_failed', {
+                            values: { filename: downloadFilename, error: errorMessage }
+                        })
+                    );
                 }
             });
 
@@ -961,6 +1228,7 @@
 
             // Check if any files failed to download
             const failedCount = selectedFirmwareFiles.filter((f) => f.hasDownloadError).length;
+            const successCount = selectedFirmwareFiles.length - failedCount;
             if (failedCount > 0) {
                 downloadError = $locales('customfirmware.download_failed_details', {
                     values: {
@@ -969,8 +1237,18 @@
                         })}`
                     }
                 });
+                logger.warning(
+                    $locales('customfirmware.log_download_summary', {
+                        values: { success: successCount, failed: failedCount }
+                    })
+                );
             } else {
                 downloadCompleted = true;
+                logger.success(
+                    $locales('customfirmware.log_download_summary', {
+                        values: { success: successCount, failed: failedCount }
+                    })
+                );
             }
         } catch (error) {
             console.error('Download error:', error);
@@ -1065,6 +1343,7 @@
             (f) => classifyFile(f.filename) === FirmwareFileType.PARTITIONS && f.isEnabled !== false
         );
 
+        let addressesChanged = false;
         selectedFirmwareFiles = selectedFirmwareFiles.map((fileItem) => {
             // Skip address update if user manually edited this address
             if (fileItem.userEdited) {
@@ -1077,6 +1356,7 @@
                 partitionsBin ? partitionsTable : null
             );
             if (addressResult) {
+                addressesChanged = true;
                 return {
                     ...fileItem,
                     address: addressResult.address
@@ -1084,7 +1364,16 @@
             }
             return fileItem;
         });
+
+        if (addressesChanged) {
+            logger.info($locales('customfirmware.log_addresses_determined'));
+        }
     }
+
+    // Previous reactive-validation signature — used to log ONLY on result change
+    // (avoids spamming the log on every re-run when files/devices change).
+    let lastValidationErrorCode: number | undefined = undefined;
+    let lastValidationIsValid: boolean | undefined = undefined;
 
     // Helper functions for memory visualization and file handling
 
@@ -1292,6 +1581,37 @@
 
         // Store validation result for button state
         validationResult = validation;
+
+        // Log validation result ONLY when it changes (guard against spam on re-runs).
+        // Open Question #11: without this guard, every reactive re-run would add a line.
+        if (
+            validation.isValid !== lastValidationIsValid ||
+            validation.errorCode !== lastValidationErrorCode
+        ) {
+            lastValidationIsValid = validation.isValid;
+            lastValidationErrorCode = validation.errorCode;
+            if (validation.isValid) {
+                logger.info($locales('customfirmware.log_validation_ok'));
+            } else if (validation.errorCode === ValidationErrors.FILES_CONFLICT) {
+                logger.warning(
+                    $locales('customfirmware.log_validation_conflict', {
+                        values: {
+                            files: (validation.conflictingFiles ?? []).join(', ')
+                        }
+                    })
+                );
+            } else if (validation.errorCode === ValidationErrors.CHIP_MISMATCH) {
+                logger.error(
+                    $locales('customfirmware.log_validation_chip_mismatch', {
+                        values: {
+                            message:
+                                validation.errorMessage ||
+                                getErrorMessage(validation.errorCode)
+                        }
+                    })
+                );
+            }
+        }
 
         selectedFirmwareFiles = selectedFirmwareFiles.map((file) => {
             let hasValidationError = false;
@@ -1970,51 +2290,23 @@
                     </div>
                 {/if}
 
-                <!-- Flash Status -->
-                {#if isFlashing || flashStatus || flashError}
-                    <div class="space-y-2">
-                        <div class="text-sm font-medium text-orange-300">
-                            {$locales('customfirmware.status')}
+                <!-- Flash progress bar (status text and errors are shown in the FlashLog) -->
+                {#if isFlashing}
+                    <div role="status" aria-live="polite" class="rounded-md bg-gray-700 p-3">
+                        <div
+                            role="progressbar"
+                            aria-valuenow={flashProgress}
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                            aria-label={$locales('customfirmware.status')}
+                            class="h-2 w-full rounded-full bg-gray-600"
+                        >
+                            <div
+                                class="h-2 rounded-full bg-orange-500 transition-all duration-300"
+                                style="width: {flashProgress}%"
+                            ></div>
                         </div>
-
-                        {#if flashError}
-                            <div
-                                role="alert"
-                                aria-live="assertive"
-                                class="rounded-md border border-red-700 bg-red-900 p-3"
-                            >
-                                <div class="text-sm text-red-200">{flashError}</div>
-                            </div>
-                        {:else}
-                            <div
-                                role="status"
-                                aria-live="polite"
-                                class="rounded-md bg-gray-700 p-3"
-                            >
-                                <div class="text-sm text-orange-200">{flashStatus}</div>
-
-                                {#if isFlashing}
-                                    <div class="mt-2">
-                                        <div
-                                            role="progressbar"
-                                            aria-valuenow={flashProgress}
-                                            aria-valuemin="0"
-                                            aria-valuemax="100"
-                                            aria-label="Flashing progress"
-                                            class="h-2 w-full rounded-full bg-gray-600"
-                                        >
-                                            <div
-                                                class="h-2 rounded-full bg-orange-500 transition-all duration-300"
-                                                style="width: {flashProgress}%"
-                                            ></div>
-                                        </div>
-                                        <div class="mt-1 text-xs text-gray-400">
-                                            {flashProgress}%
-                                        </div>
-                                    </div>
-                                {/if}
-                            </div>
-                        {/if}
+                        <div class="mt-1 text-xs text-gray-400">{flashProgress}%</div>
                     </div>
                 {/if}
 
@@ -2023,38 +2315,8 @@
                     <MemoryMap totalSize={totalMemorySize} segments={memorySegments} />
                 {/if}
 
-                <!-- Instructions Spoiler -->
-                <div class="space-y-2">
-                    <button
-                        on:click={() => (showInstructions = !showInstructions)}
-                        class="flex items-center space-x-2 text-sm font-medium text-orange-300 transition-colors hover:text-orange-200"
-                    >
-                        <span>{$locales('customfirmware.instructions_title')}</span>
-                        <span class="text-xs">{showInstructions ? '▼' : '▶'}</span>
-                    </button>
-
-                    {#if showInstructions}
-                        <div class="space-y-2">
-                            <ol class="list-inside list-decimal space-y-1 text-xs text-gray-400">
-                                <li>{$locales('customfirmware.step1_connect')}</li>
-                                <li>
-                                    {$locales('customfirmware.put_device_download')}
-                                </li>
-                                <li>{$locales('customfirmware.step2_select')}</li>
-                                <li>{$locales('customfirmware.step3_flash')}</li>
-                            </ol>
-                            <div
-                                class="mt-2 rounded-md border border-yellow-700/50 bg-yellow-900/20 p-2 text-xs text-yellow-400"
-                            >
-                                ⚠️ {$locales('customfirmware.important_device_bootloader')}
-                            </div>
-                        </div>
-                    {/if}
-                </div>
-            </div>
-
-            <!-- Footer -->
-            <div class="flex justify-end space-x-3 border-t border-gray-700 p-6">
+            <!-- Action buttons (moved under memory map) -->
+            <div class="flex justify-end space-x-3 border-t border-gray-700 pt-4">
                 <button
                     on:click={async () => {
                         if (isBackingUp) {
@@ -2169,6 +2431,41 @@
                     </button>
                 {/if}
             </div>
+
+
+                <!-- Flash Operation Log (always visible; placed below memory map) -->
+                <FlashLog entries={$logger} onCopy={() => copyLogToClipboard()} />
+
+                <!-- Instructions Spoiler -->
+                <div class="space-y-2">
+                    <button
+                        on:click={() => (showInstructions = !showInstructions)}
+                        class="flex items-center space-x-2 text-sm font-medium text-orange-300 transition-colors hover:text-orange-200"
+                    >
+                        <span>{$locales('customfirmware.instructions_title')}</span>
+                        <span class="text-xs">{showInstructions ? '▼' : '▶'}</span>
+                    </button>
+
+                    {#if showInstructions}
+                        <div class="space-y-2">
+                            <ol class="list-inside list-decimal space-y-1 text-xs text-gray-400">
+                                <li>{$locales('customfirmware.step1_connect')}</li>
+                                <li>
+                                    {$locales('customfirmware.put_device_download')}
+                                </li>
+                                <li>{$locales('customfirmware.step2_select')}</li>
+                                <li>{$locales('customfirmware.step3_flash')}</li>
+                            </ol>
+                            <div
+                                class="mt-2 rounded-md border border-yellow-700/50 bg-yellow-900/20 p-2 text-xs text-yellow-400"
+                            >
+                                ⚠️ {$locales('customfirmware.important_device_bootloader')}
+                            </div>
+                        </div>
+                    {/if}
+                </div>
+            </div>
+
             {#if isPortSelected && deviceInfo}
                 <div class="rounded-lg border border-gray-700 bg-gray-800/50 p-4">
                     <div class="mb-3 text-sm font-medium text-orange-300">

@@ -812,24 +812,20 @@ export function createESPManager() {
                 }
             }
 
-            // Detect flash size using esploader's getFlashSize()
-            // This is more reliable than parsing terminal output, especially when PSRAM is present
+            // Detect flash size using esploader's detectFlashSize() (esptool-js 0.6.0 API).
+            // Returns an already-formatted string (e.g., "8MB"); more reliable than parsing
+            // terminal output, especially when PSRAM is present.
             try {
-                const flashSizeNum = await esploader.getFlashSize();
-                // getFlashSize() returns KB, convert to string format (e.g., 4096 -> "4MB", 8192 -> "8MB")
-                if (flashSizeNum && flashSizeNum > 0) {
-                    if (flashSizeNum >= 1024) {
-                        flashSize = `${flashSizeNum / 1024}MB`;
-                    } else {
-                        flashSize = `${flashSizeNum}KB`;
-                    }
+                const detected = await esploader.detectFlashSize();
+                if (detected) {
+                    flashSize = detected; // e.g., "4MB", "8MB", "16MB"
                 } else {
                     flashSize = 'Unknown';
                 }
-                console.log('Detected flash size via getFlashSize():', flashSize);
+                console.log('Detected flash size via detectFlashSize():', flashSize);
             } catch (error) {
-                console.warn('Failed to detect flash size using getFlashSize():', error);
-                // Fallback to parsing terminal output if getFlashSize fails
+                console.warn('Failed to detect flash size using detectFlashSize():', error);
+                // Fallback to parsing terminal output if detection fails
                 const flashSizeMatch = outputText.match(/Embedded Flash ([0-9]+MB) /);
                 if (flashSizeMatch) {
                     flashSize = flashSizeMatch[1];

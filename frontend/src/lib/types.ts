@@ -240,6 +240,18 @@ export interface FlashProgress {
     error: string;
 }
 
+// Flash log entry levels
+export type FlashLogLevel = 'info' | 'success' | 'warning' | 'error';
+
+// Single line of the flashing log shown in CustomFirmwareModal
+export interface FlashLogEntry {
+    id: number; // Monotonic counter; used as Svelte {:key} for stable rendering
+    timestamp: number; // Date.now() at the moment the entry was added
+    level: FlashLogLevel; // Visual severity (info/success/warning/error)
+    message: string; // Already-localized, ready-to-render text
+    isSeparator?: boolean; // True for the session-separator marker
+}
+
 export interface FirmwareFile {
     file: File;
     content: Uint8Array;
