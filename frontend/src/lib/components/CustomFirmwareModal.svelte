@@ -62,6 +62,11 @@
     let selectedFirmwareFiles: SelectedFirmwareFile[] = []; // Multiple files with addresses
     let isFlashing = false;
     let flashProgress = 0;
+    // Per-segment fill fraction (0..1) during flashing; key = segment filename.
+    // Updated in flashFirmware onProgress; reset on start / resetForAnotherFlash / resetPort.
+    let segmentFill: Map<string, number> = new Map();
+    // Throttle step for segment fill updates (percentage points of the current file)
+    const FILL_PROGRESS_STEP = 3;
     let flashStatus = '';
     let flashError = '';
     let eraseBeforeFlash = false; // New parameter for checkbox
@@ -633,6 +638,7 @@
             deviceInfo = null;
             isConnecting = false;
             flashProgress = 0;
+            segmentFill = new Map();
             flashStatus = '';
             flashError = '';
             eraseBeforeFlash = false;
@@ -648,6 +654,7 @@
             metadata = null;
             partitionsTable = null;
             flashProgress = 0;
+            segmentFill = new Map();
             flashStatus = '';
             flashError = '';
             zipExtractionProgress = 0;
@@ -662,6 +669,7 @@
     async function resetPort() {
         isFlashing = false;
         flashProgress = 0;
+        segmentFill = new Map();
         flashStatus = '';
         flashError = '';
         isPortSelected = false;
@@ -736,6 +744,7 @@
 
         isFlashing = true;
         flashProgress = 0;
+        segmentFill = new Map();
         flashStatus = 'Starting flash process...';
         flashError = '';
 
@@ -825,6 +834,8 @@
             if (!isEraseOnly) {
                 for (let i = 0; i < totalFiles; i++) {
                     const fileItem = sortedFiles[i];
+                    // Per-file throttling tracker for segment fill updates (reset for each file)
+                    let lastSegmentPercent: number | undefined;
 
                     flashStatus = `Flashing file ${i + 1}/${totalFiles}: ${fileItem.filename} @ ${fileItem.address}...`;
                     logger.info(
@@ -877,6 +888,22 @@
                                     })
                                 );
                             }
+
+                            // Throttled fill update: only on STEP boundary or at file start/end.
+                            // Assigning a new Map is required for legacy `$:` reactivity.
+                            const fraction = progress.progress / 100;
+                            if (
+                                lastSegmentPercent === undefined ||
+                                progress.progress - lastSegmentPercent >= FILL_PROGRESS_STEP ||
+                                progress.progress >= 100 ||
+                                progress.progress === 0
+                            ) {
+                                lastSegmentPercent = progress.progress;
+                                segmentFill = new Map(segmentFill).set(
+                                    fileItem.filename,
+                                    fraction
+                                );
+                            }
                         }
                     };
 
@@ -890,6 +917,8 @@
 
                     // Add completed file to cumulative processed
                     cumulativeProcessed += fileItem.file.size;
+                    // Ensure the completed file is fully filled (fraction = 1)
+                    segmentFill = new Map(segmentFill).set(fileItem.filename, 1);
                 }
             }
 
@@ -2290,29 +2319,13 @@
                     </div>
                 {/if}
 
-                <!-- Flash progress bar (status text and errors are shown in the FlashLog) -->
-                {#if isFlashing}
-                    <div role="status" aria-live="polite" class="rounded-md bg-gray-700 p-3">
-                        <div
-                            role="progressbar"
-                            aria-valuenow={flashProgress}
-                            aria-valuemin="0"
-                            aria-valuemax="100"
-                            aria-label={$locales('customfirmware.status')}
-                            class="h-2 w-full rounded-full bg-gray-600"
-                        >
-                            <div
-                                class="h-2 rounded-full bg-orange-500 transition-all duration-300"
-                                style="width: {flashProgress}%"
-                            ></div>
-                        </div>
-                        <div class="mt-1 text-xs text-gray-400">{flashProgress}%</div>
-                    </div>
-                {/if}
-
                 <!-- Memory Map Visualization -->
                 {#if selectedFirmwareFiles.length > 0}
-                    <MemoryMap totalSize={totalMemorySize} segments={memorySegments} />
+                    <MemoryMap
+                        totalSize={totalMemorySize}
+                        segments={memorySegments}
+                        segmentFill={segmentFill}
+                    />
                 {/if}
 
             <!-- Action buttons (moved under memory map) -->
@@ -2358,10 +2371,21 @@
                             !validationResult.isValid ||
                             hasBlockingError ||
                             (!eraseBeforeFlash && enabledNonEmptyCount === 0)}
-                        class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        class="min-w-[7.5rem] tabular-nums rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        role={isFlashing ? 'progressbar' : undefined}
+                        aria-valuenow={isFlashing ? flashProgress : undefined}
+                        aria-valuemin={isFlashing ? 0 : undefined}
+                        aria-valuemax={isFlashing ? 100 : undefined}
+                        aria-label={isFlashing
+                            ? $locales('customfirmware.flash_progress_aria', {
+                                  values: { percent: flashProgress }
+                              })
+                            : undefined}
                     >
                         {#if isFlashing}
-                            {$locales('customfirmware.flashing')}...
+                            {$locales('customfirmware.flashing_with_percent', {
+                                values: { percent: flashProgress }
+                            })}
                         {:else if eraseBeforeFlash && selectedFirmwareFiles.filter((f) => f.isEnabled !== false).length === 0}
                             {$locales('customfirmware.erase_flash')}
                         {:else}

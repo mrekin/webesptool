@@ -240,6 +240,8 @@
     "step2_select": "Wybierz swój plik firmware (.bin)",
     "step3_flash": "Kliknij \"Flashuj firmware\", aby rozpocząć proces flashowania",
     "flashing": "Flashowanie",
+    "flashing_with_percent": "Wgrywanie... {percent}%",
+    "flash_progress_aria": "Postęp wgrywania: {percent}%",
     "flash_firmware": "Flashuj firmware",
     "erase_flash": "Wyczyść flash",
     "erase_success": "Flash pomyślnie wyczyszczony!",

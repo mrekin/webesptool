@@ -240,6 +240,8 @@
     "step2_select": "Select your firmware file (.bin)",
     "step3_flash": "Click \"Flash Firmware\" to start the flashing process",
     "flashing": "Flashing",
+    "flashing_with_percent": "Flashing... {percent}%",
+    "flash_progress_aria": "Flashing progress: {percent}%",
     "flash_firmware": "Flash Firmware",
     "erase_flash": "Erase Flash",
     "erase_success": "Flash erased successfully!",

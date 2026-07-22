@@ -240,6 +240,8 @@
     "step2_select": "Выберите ваш файл прошивки (.bin)",
     "step3_flash": "Нажмите \"Прошить\" для начала процесса прошивки",
     "flashing": "Прошивка",
+    "flashing_with_percent": "Прошивка... {percent}%",
+    "flash_progress_aria": "Прогресс прошивки: {percent}%",
     "flash_firmware": "Прошить",
     "erase_flash": "Стереть флеш",
     "erase_success": "Флеш успешно очищен!",

@@ -4,6 +4,7 @@
 
     export let totalSize: number;
     export let segments: MemorySegment[];
+    export let segmentFill: Map<string, number> | undefined; // filename -> fillFraction 0..1
 
     // Check for overlapping segments
     function hasOverlaps(seg1: MemorySegment, seg2: MemorySegment): boolean {
@@ -77,6 +78,7 @@
 
             <!-- File segments -->
             {#each processedSegments as segment}
+                {@const fillFraction = segmentFill?.get(segment.filename) ?? 0}
                 <div
                     class="memory-segment absolute flex h-full cursor-pointer items-center justify-center text-xs font-medium text-white transition-all duration-300 hover:z-10 hover:shadow-lg"
                     style="left: {(segment.address / totalSize) * 100}%; width: {Math.max(
@@ -89,11 +91,18 @@
 {$locales('memorymap.type')}: {segment.type}"
                 >
                     {#if (segment.size / totalSize) * 100 > 5}
-                        <span class="segment-label truncate px-1">
+                        <span class="segment-label relative z-10 truncate px-1">
                             {segment.filename.length > 12
                                 ? segment.filename.substring(0, 12) + '...'
                                 : segment.filename}
                         </span>
+                    {/if}
+                    <!-- Progress fill overlay (inside the segment, proportional to the file write fraction) -->
+                    {#if segmentFill && fillFraction > 0}
+                        <div
+                            class="pointer-events-none absolute inset-y-0 left-0 transition-all duration-300"
+                            style="width: {Math.min(fillFraction * 100, 100)}%; background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.6) 0 6px, rgba(255, 255, 255, 0) 6px 12px);"
+                        ></div>
                     {/if}
                 </div>
             {/each}
