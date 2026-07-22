@@ -439,6 +439,15 @@
         flashError = '';
     }
 
+    // Toggle file enabled/disabled state for flashing.
+    // Reassigns the array to trigger reactive validation: a binding inside a snippet
+    // does not invalidate selectedFirmwareFiles on its own in legacy reactivity mode.
+    function toggleFileEnabled(index: number) {
+        selectedFirmwareFiles = selectedFirmwareFiles.map((f, i) =>
+            i === index ? { ...f, isEnabled: f.isEnabled === false } : f
+        );
+    }
+
     // Remove metadata file
     function removeMetadataFile() {
         if (isAutoSelectMode) return; // Cannot remove metadata file in AutoSelect mode
@@ -1349,7 +1358,8 @@
                     <div class="flex flex-shrink-0 items-center">
                         <input
                             type="checkbox"
-                            bind:checked={fileItem.isEnabled}
+                            checked={fileItem.isEnabled !== false}
+                            on:change={() => toggleFileEnabled(index)}
                             disabled={isFlashing || isAutoSelectMode}
                             class="h-4 w-4 rounded border-gray-300 text-orange-600 accent-blue-600 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
                             title="Enable/disable this file for flashing"
