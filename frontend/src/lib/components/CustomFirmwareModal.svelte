@@ -1372,7 +1372,6 @@
             (f) => classifyFile(f.filename) === FirmwareFileType.PARTITIONS && f.isEnabled !== false
         );
 
-        let addressesChanged = false;
         selectedFirmwareFiles = selectedFirmwareFiles.map((fileItem) => {
             // Skip address update if user manually edited this address
             if (fileItem.userEdited) {
@@ -1385,18 +1384,37 @@
                 partitionsBin ? partitionsTable : null
             );
             if (addressResult) {
-                addressesChanged = true;
+                // Log the address basis per file once per (address, source) combination.
+                // Dedup via loggedAddressKey on the file item — resets naturally when files
+                // are re-added — so preset addresses are logged too, without spam on re-runs.
+                const addressKey = `${addressResult.address}|${addressResult.source ?? 'unknown'}`;
+                if (fileItem.loggedAddressKey !== addressKey) {
+                    const source =
+                        addressResult.source === 'metadata'
+                            ? $locales('customfirmware.address_source_metadata')
+                            : addressResult.source === 'partitions'
+                              ? $locales('customfirmware.address_source_partitions')
+                              : addressResult.source === 'pattern'
+                                ? $locales('customfirmware.address_source_pattern')
+                                : $locales('customfirmware.address_source_unknown');
+                    logger.info(
+                        $locales('customfirmware.log_address_determined', {
+                            values: {
+                                filename: fileItem.filename,
+                                address: addressResult.address,
+                                source
+                            }
+                        })
+                    );
+                }
                 return {
                     ...fileItem,
-                    address: addressResult.address
+                    address: addressResult.address,
+                    loggedAddressKey: addressKey
                 };
             }
             return fileItem;
         });
-
-        if (addressesChanged) {
-            logger.info($locales('customfirmware.log_addresses_determined'));
-        }
     }
 
     // Previous reactive-validation signature — used to log ONLY on result change

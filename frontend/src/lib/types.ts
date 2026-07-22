@@ -274,6 +274,7 @@ export interface SelectedFirmwareFile {
     fileSize?: number;
     isEnabled?: boolean; // If false, file is ignored during flashing and validation
     userEdited?: boolean; // If true, address was manually edited and should not be auto-recalculated
+    loggedAddressKey?: string; // Dedup key for address-basis logging: `${address}|${source}`
 }
 
 export interface ZipExtractionResult {
@@ -341,6 +342,7 @@ export interface FlashAddressResult {
     type: 'firmware' | 'ota' | 'filesystem';
     description: string;
     filename?: string; // Optional filename for the flash operation
+    source?: 'metadata' | 'partitions' | 'pattern'; // What the address was determined from (for logging)
 }
 
 // Validation error codes

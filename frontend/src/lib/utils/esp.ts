@@ -437,7 +437,7 @@ export function getMeshtasticFlashAddress(
     const metadataResult = getAddressFromMetadata(filename, metadata);
     if (metadataResult) {
         logAddressDetermination(filename, 'metadata (manifest.json)');
-        return metadataResult;
+        return { ...metadataResult, source: 'metadata' };
     }
 
     // Step 2: Classify file (only if no metadata)
@@ -451,7 +451,8 @@ export function getMeshtasticFlashAddress(
             return {
                 address: `0x${partitionResult.toString(16).toUpperCase()}`,
                 type: getTypeFromFileType(fileType),
-                description: getDescriptionForFileType(fileType)
+                description: getDescriptionForFileType(fileType),
+                source: 'partitions'
             };
         }
         console.log(
@@ -466,7 +467,8 @@ export function getMeshtasticFlashAddress(
         return {
             address: `0x${patternResult.address.toString(16).toUpperCase()}`,
             type: getTypeFromFileType(fileType),
-            description: patternResult.description
+            description: patternResult.description,
+            source: 'pattern'
         };
     }
 

@@ -17,17 +17,21 @@
         let result: MemorySegment[] = [];
 
         for (const segment of sorted) {
-            // Check for intersections with previous segments
-            const overlapWith = result.find((prev) => hasOverlaps(segment, prev));
+            // Check for intersections with already-placed segments
+            const overlapping = result.filter((prev) => hasOverlaps(segment, prev));
 
-            if (overlapWith) {
-                // If there's an intersection, make both segments red
-                result = result.map((prev) =>
-                    hasOverlaps(segment, prev) ? { ...prev, color: '#ef4444' } : prev
-                );
-                result.push({ ...segment, color: '#ef4444' });
-            } else {
+            if (overlapping.length === 0) {
                 result.push(segment);
+            } else {
+                // Overlap: show only the largest segment (by size), marked red (conflict).
+                // Smaller overlapping segments are dropped to avoid overlapping blocks and
+                // doubled labels on the map. The conflict is still signalled by the red color
+                // plus the overlap warning and the FILES_CONFLICT validation.
+                const largest = [...overlapping, segment].reduce((max, s) =>
+                    s.size > max.size ? s : max
+                );
+                result = result.filter((prev) => !hasOverlaps(segment, prev));
+                result.push({ ...largest, color: '#ef4444' });
             }
         }
 
