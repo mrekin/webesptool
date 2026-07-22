@@ -2292,20 +2292,6 @@
                     </div>
                 {/if}
 
-                <!-- Validation Error Status -->
-                {#if selectedFirmwareFiles.length > 0 && !validationResult.isValid}
-                    <div
-                        role="alert"
-                        aria-live="assertive"
-                        class="rounded-md border border-red-700 bg-red-900 p-3"
-                    >
-                        <div class="text-sm text-red-200">
-                            {validationResult.errorMessage ||
-                                getErrorMessage(validationResult.errorCode)}
-                        </div>
-                    </div>
-                {/if}
-
                 <!-- Partitions Compatibility Warning (Non-blocking) -->
                 {#if partitionsCompatibilityWarning}
                     <div
