@@ -887,15 +887,26 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
     rootFolder, src, fw_type = await getRootFolder(t,v,src)
 
     if not rootFolder:
-        return {'error': 'No such firmware found'}
+        return JSONResponse(content={'error': 'No such firmware found'}, status_code=404)
+
+    # Init to protect from NameError when no branch matches (unified 404 check below)
+    path = None
+    filename = None
 
     #return zipped firmware folder
     if u == "5":
-        #rf = await getRootFolder(t,v)
-        #if not rf:
-        #    return JSONResponse(content={'error': 'No such firmware found'}, status_code=404)
-        dir = os.path.join(rootFolder,t,v)
-        zip_buffer = await generate_zip(dir, await buildManifest(t = t, v = v, u = u, src = src))
+        # Verify version directory exists and contains at least one file
+        version_dir = os.path.join(rootFolder, t, v)
+        dir_exists = await aiofiles.os.path.isdir(version_dir)
+        has_files = False
+        if dir_exists:
+            async for _root, _dirs, files in aiofiles.os.walk(version_dir):
+                if files:
+                    has_files = True
+                    break
+        if not dir_exists or not has_files:
+            return JSONResponse(content={'error': 'No such firmware found'}, status_code=404)
+        zip_buffer = await generate_zip(version_dir, await buildManifest(t = t, v = v, u = u, src = src))
         zip_buffer.seek(0, 2)  # Переходим в конец
         zip_size = zip_buffer.tell()  # Получаем размер
         zip_buffer.seek(0)  # Возвращаемся в начало
@@ -911,24 +922,16 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
     #need additional logic for -s3 and install
     if not e: #not esp32
         if u=="4": #ota
-            #path = os.path.join(rootFolder,t,v,"firmware-ota.zip")
             path, filename = await getFileByMask(os.path.join(rootFolder,t,v),r".*\.zip")
             if filename == "firmware-ota.zip":
                 filename = t+"-"+v+"-ota.zip"
-            #if(not await aiofiles.os.path.isfile(path)):
-            #    path = os.path.join(rootFolder,t,v,"firmware.zip")
-            #filename = t+"-"+v+"-ota.zip"
         else: #uf2
-            #path = os.path.join(rootFolder,t,v,"firmware.uf2")
-            #filename = t+"-"+v+".uf2"
             path, filename = await getFileByMask(os.path.join(rootFolder,t,v),r".*\.uf2")
             if filename == "firmware.uf2":
                 filename = t+"-"+v+".uf2"
 
     else :
         if u=="1": #update
-            #path = os.path.join(rootFolder,t,v,"firmware.bin")
-            #filename = t+"-"+v+".bin"
             if fw_type == FirmwareType.MESHCORE:
                 # Meshcore: regular .bin files (not merged)
                 path, filename = await getFileByMask(os.path.join(rootFolder,t,v),r"(?!.*merged).*\.bin")
@@ -949,8 +952,6 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
                         filename = t+"-"+v+".factory.bin"
             if p == 'littlefs':
                 logInd = False # Do not log additional files downloads
-                #path = os.path.join(rootFolder,t,v,"littlefs.bin")
-                #filename = "littlefs.bin"
                 path, filename = await getFileByMask(os.path.join(rootFolder,t,v),r".*littlefs.*\.bin")
             if 'ota' in p:
                 logInd = False # Do not log additional files downloads
@@ -991,6 +992,9 @@ async def download_file(request: Request, t:str = None, v:str = None, u:str = "1
                 await record_download_event(event_data, stats_config.get('ttl_days', 90))
         except Exception as ex:
             log.warning(f"Failed to record download event: {ex}")
+    # Unified check: missing branch match (path is None) OR file does not exist on disk -> 404
+    if not path or not await aiofiles.os.path.isfile(path):
+        return JSONResponse(content={'error': 'Firmware file not found'}, status_code=404)
     return FileResponse(path=path, filename=filename, media_type=await getMimeType(path))
 
 @app.get("/api/files")

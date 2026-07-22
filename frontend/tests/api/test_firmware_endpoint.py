@@ -476,6 +476,95 @@ class FirmwareTester:
         path = f"api/firmware?t={device}&v={version}&u=4&p=ota&e=false&src={SRC}"
         return await self.download_firmware(session, path, output_path)
 
+    async def test_404_cases(self, session: aiohttp.ClientSession):
+        """
+        Negative 404 scenarios for /api/firmware (feature #66).
+
+        Does NOT use raise_for_status() — 404 is the expected status here.
+        Covers RSR TC-1, TC-3, TC-4 (mandatory) and TC-2, TC-5 (optional/skippable
+        when no suitable test data is available on the live server).
+        """
+        print(f"\n{'='*60}")
+        print("Running 404 negative scenarios (feature #66)...")
+        print(f"{'='*60}")
+
+        async def expect_404(name: str, params: Dict) -> bool:
+            url = f"{self.base_url}/api/firmware"
+            try:
+                async with session.get(url, params=params) as response:
+                    status = response.status
+                    body = await response.text()
+                    if status == 404 and "error" in body:
+                        async with self._lock:
+                            self.results["passed"] += 1
+                        print(f"  ✓ {name}: 404 (expected)")
+                        return True
+                    async with self._lock:
+                        self.results["failed"] += 1
+                        self.results["errors"].append(
+                            f"404:{name}: expected 404 with error body, got {status}"
+                        )
+                    print(f"  ✗ {name}: expected 404, got {status}")
+                    return False
+            except Exception as e:
+                async with self._lock:
+                    self.results["failed"] += 1
+                    self.results["errors"].append(f"404:{name}: {e}")
+                print(f"  ✗ {name}: ERROR - {e}")
+                return False
+
+        # TC-1: nonexistent device/version -> "not rootFolder" branch
+        await expect_404("TC-1 nonexistent device/version", {
+            "t": "__nonexistent__",
+            "v": "__nope__",
+            "u": "2",
+            "p": "littlefs",
+            "src": SRC,
+        })
+
+        # Pick a real ESP device/version pair from the baseline for TC-3/TC-4
+        real_device = None
+        real_version = None
+        for entry in self.baseline.get("baseline_files", {}).values():
+            if entry.get("type") == "esp":
+                real_device = entry.get("device")
+                real_version = entry.get("version")
+                break
+
+        if not real_device or not real_version:
+            print("  - TC-3/TC-4 skipped: no real ESP device/version in baseline")
+            print("  - TC-2 (littlefs not found for real version): skipped")
+            print("  - TC-5 (zip empty version dir): skipped")
+            return
+
+        # TC-3: u=2 with a garbage p (no branch matches -> historically NameError/500)
+        await expect_404("TC-3 garbage p", {
+            "t": real_device,
+            "v": real_version,
+            "u": "2",
+            "p": "__garbage__",
+            "e": "true",
+            "src": SRC,
+        })
+
+        # TC-4: ota-direct path with missing file (bin/{p}.bin does not exist on disk)
+        await expect_404("TC-4 ota missing file", {
+            "t": real_device,
+            "v": real_version,
+            "u": "2",
+            "p": "ota-__missing__",
+            "e": "true",
+            "src": SRC,
+        })
+
+        # TC-2 (optional): littlefs not found for a real pair that lacks littlefs.*\.bin.
+        # Skipped: requires knowing a specific device/version without a littlefs file.
+        print("  - TC-2 (littlefs not found for real version): skipped — needs specific test data")
+
+        # TC-5 (optional): u=5 with valid rootFolder but missing version dir.
+        # Skipped: would require a valid rootFolder whose version subdirectory is absent.
+        print("  - TC-5 (zip empty version dir): skipped — needs specific test data")
+
     async def run_tests(self):
         """Run tests against existing baseline."""
         print(f"Loading baseline from {self.baseline_file}...")
@@ -591,6 +680,9 @@ class FirmwareTester:
 
                 # Run all tasks concurrently
                 await asyncio.gather(*tasks)
+
+                # Feature #66: negative 404 scenarios (independent of baseline files)
+                await self.test_404_cases(session)
 
         finally:
             # Clean up temp directory
