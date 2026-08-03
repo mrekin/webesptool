@@ -148,7 +148,9 @@
             </button>
             <button
                 type="button"
-                onclick={() => onconfirm(pickLat, pickLon)}
+                onclick={() =>
+                    onconfirm(Number(pickLat.toFixed(5)), Number(pickLon.toFixed(5)))}
+
                 disabled={loadError}
                 class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
             >

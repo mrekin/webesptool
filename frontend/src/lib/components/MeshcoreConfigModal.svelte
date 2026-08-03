@@ -6,7 +6,6 @@
     import { buildCommandRows } from '$lib/utils/meshcoreConfigFields.js';
     import {
         parseGetResponse,
-        valuesEqual,
         coerceValue,
         buildCommand
     } from '$lib/utils/meshcoreConfigState.js';
@@ -18,6 +17,7 @@
     import { createMeshcoreCliManager, type MeshcoreCliStatus } from '$lib/utils/meshcoreCli.js';
     import { attachTerminalCopy } from '$lib/utils/terminalClipboard.js';
     import { setTerminalMode, resetTerminalMode } from '$lib/stores.js';
+    import { TERMINAL_CONFIG } from '$lib/config/terminalConfig.js';
     import McCommandSetPicker from './McCommandSetPicker.svelte';
     import MeshcoreConfigRow from './MeshcoreConfigRow.svelte';
     import MeshcoreConfigCommandList from './MeshcoreConfigCommandList.svelte';
@@ -47,8 +47,15 @@
 
     // Current value of every row (config current value + action inputs).
     let rowValues = $state<Record<string, MeshcoreConfigValue>>({});
-    // Baseline for config rows (committed value used to detect "in queue").
+    // Baseline for config rows (committed value used to revert on Discard).
     let originalValues = $state<Record<string, MeshcoreConfigValue>>({});
+
+    // The Apply queue: an ORDERED list of commands to send — the single source of
+    // truth for the command list, card dirty state and group badges. File-load
+    // appends in file order (order never changes); manual edits/arm append at the
+    // end. Each entry optionally tracks its row (for badges / Discard revert).
+    type QueueEntry = { line: string; rowId?: string };
+    let commandQueue = $state<QueueEntry[]>([]);
 
     // Output line ending for the copy buffer.
     let selectedLineEnding = $state<'lf' | 'crlf' | 'cr'>('crlf');
@@ -151,16 +158,14 @@
     }
 
     function inQueue(r: MeshcoreCommandRow): boolean {
-        return isQueueable(r) && !valuesEqual(rowValues[r.id], originalValues[r.id]);
+        return commandQueue.some((e) => e.rowId === r.id);
     }
 
-    // The assembled send queue = the exact set of config lines Apply will send.
-    // The visible command list is bound to this (single source of truth).
-    let queueRows = $derived(rows.filter((r) => inQueue(r)));
-    let assembled = $derived(
-        queueRows.map((r) => ({ line: buildCommand(r, rowValues[r.id]), dirty: true }))
-    );
-    let assembledCount = $derived(assembled.length);
+    // The assembled send queue = the exact ordered list Apply will send (single
+    // source of truth for the visible command list). Order is preserved: file-load
+    // order for loaded lines, append order for manual edits.
+    let assembled = $derived(commandQueue.map((e) => ({ line: e.line, dirty: true })));
+    let assembledCount = $derived(commandQueue.length);
 
     // Latitude/longitude render as a single combined "Coordinates" card, so they
     // stay side by side regardless of the auto-fill grid's column count.
@@ -275,12 +280,23 @@
         void doRunAction(`time ${epoch}`);
     }
 
+    // Push a sent line onto the terminal history (FIFO-capped), mirroring
+    // TerminalModal.writeCommand so ArrowUp/ArrowDown recall prior commands.
+    function pushHistory(line: string): void {
+        commandHistory.push(line);
+        if (commandHistory.length > TERMINAL_CONFIG.maxHistory) {
+            commandHistory.shift();
+        }
+        historyIndex = commandHistory.length;
+    }
+
     // Manual single-line send from the terminal input. frame=false: just write,
     // the device's output (and the cyan `>> cmd` echo) arrives via onChunk.
     async function handleTermSubmit(cmd: string): Promise<void> {
         if (!cliManager || !isConnected || isMassRunning) return;
         try {
             await cliManager.sendCommand(cmd, false);
+            pushHistory(cmd);
         } catch {
             /* errors are surfaced through the xterm via onChunk */
         }
@@ -291,6 +307,7 @@
         if (!cliManager || !isConnected || isMassRunning) return;
         try {
             await cliManager.sendCommand(line, false);
+            pushHistory(line);
         } catch {
             /* ignore — device output is visible in the xterm */
         }
@@ -310,6 +327,7 @@
                 if (stopMassRequested) break;
                 massSentIndex = i;
                 await cliManager.sendCommand(lines[i], false);
+                pushHistory(lines[i]);
                 await new Promise((r) => setTimeout(r, 150));
             }
         } finally {
@@ -331,10 +349,9 @@
         busy = true;
         pendingTermChunks = []; // fresh session: drop any buffered output
         errorMessage = '';
-        statusMessage = $locales('meshcoreconfig.status_connecting');
+        statusMessage = ''; // connection state is shown by statusText + dot
         try {
             await cliManager.connect();
-            statusMessage = $locales('meshcoreconfig.status_connected');
             // Read the firmware version (best-effort; ignore errors).
             deviceVersion = '';
             try {
@@ -395,51 +412,51 @@
         }
     }
 
-    // Apply one loaded command-set line: match the longest row baseCommand and
-    // route the remainder into rowValues (config also updates the baseline so it
-    // is clean until edited). 0-param actions become armed instead.
-    function applyLoadedLine(line: string): void {
-        const t = line.trim();
-        if (!t || isModeSwitchLine(t) || t.startsWith('[')) return;
-
+    // Find the row whose baseCommand is the longest prefix of `line` (most specific).
+    function matchRowForLine(t: string): MeshcoreCommandRow | null {
         let match: MeshcoreCommandRow | null = null;
         for (const r of rows) {
             const base = r.baseCommand;
             if (t === base || t.startsWith(base + ' ')) {
-                if (!match || base.length > match.baseCommand.length) {
-                    match = r;
-                }
+                if (!match || base.length > match.baseCommand.length) match = r;
             }
         }
-        if (!match) return;
+        return match;
+    }
 
-        const remainder = t.slice(match.baseCommand.length).trim();
-        if (match.kind === 'config' || match.params.length > 0) {
-            let v: MeshcoreConfigValue;
-            if (match.variadic) {
-                // Variadic action (e.g. 'region def a b c'): whole remainder is one value.
-                v = remainder;
-            } else {
-                const sepRe = match.separator === 'comma' ? ',' : /\s+/;
-                const vals = remainder
-                    .split(sepRe)
-                    .map((p) => p.trim())
-                    .filter((p) => p !== '');
-                v = coerceValue(match, vals);
-            }
-            rowValues[match.id] = v;
-            // Loaded values are NOT baseline — they queue for Apply so a loaded
-            // command set is sent in full. Baseline is only set by requestSettings.
-        }
-        // 0-param actions from a set have no input to fill; the user runs them
-        // via their own Run button, so there is nothing to load here.
+    // Parse a value out of a loaded line for a config/param row (inverse of buildCommand).
+    function parseRowValue(row: MeshcoreCommandRow, t: string): MeshcoreConfigValue {
+        const remainder = t.slice(row.baseCommand.length).trim();
+        if (row.variadic) return remainder;
+        const sepRe = row.separator === 'comma' ? ',' : /\s+/;
+        const vals = remainder
+            .split(sepRe)
+            .map((p) => p.trim())
+            .filter((p) => p !== '');
+        return coerceValue(row, vals);
     }
 
     function handleSetSelected(content: string): void {
+        // Load the file into the queue IN FILE ORDER: every command line becomes
+        // one queue entry (verbatim). Config/param rows also fill their card;
+        // non-urgent 0-param actions arm; 'time', urgent actions and unknown lines
+        // stay raw. No reordering, no validation — the list mirrors the file.
         const lines = trimTrailingEmptyLine(splitIntoCommandLines(content));
+        const queue: QueueEntry[] = [];
         for (const line of lines) {
-            applyLoadedLine(line);
+            const t = line.trim();
+            if (!t || isModeSwitchLine(t) || t.startsWith('[')) continue;
+            const row = matchRowForLine(t);
+            if (row && isQueueable(row)) {
+                rowValues[row.id] = parseRowValue(row, t);
+                queue.push({ line: t, rowId: row.id });
+            } else if (row && row.kind === 'action' && row.params.length === 0 && !row.urgent) {
+                queue.push({ line: t, rowId: row.id });
+            } else {
+                queue.push({ line: t });
+            }
         }
+        commandQueue = queue;
         errorMessage = '';
         statusMessage = '';
     }
@@ -455,10 +472,14 @@
     // they clear to undefined and leave the queue. Purely local — no device I/O,
     // so it works even while disconnected.
     function discardChanges(): void {
-        if (busy || assembledCount === 0) return;
-        for (const r of queueRows) {
-            rowValues[r.id] = originalValues[r.id];
+        if (busy || commandQueue.length === 0) return;
+        // Revert config rows in the queue to their baseline, then clear the queue.
+        for (const e of commandQueue) {
+            if (!e.rowId) continue;
+            const row = rows.find((r) => r.id === e.rowId);
+            if (row?.kind === 'config') rowValues[e.rowId] = originalValues[e.rowId];
         }
+        commandQueue = [];
     }
 
     async function doApply(): Promise<void> {
@@ -466,10 +487,9 @@
         busy = true;
         errorMessage = '';
         statusMessage = '';
-        // Only config rows are in the queue. Snapshot before awaiting (derived
-        // state recomputes once the baseline is committed below).
-        const lines = assembled.map((a) => a.line);
-        const queued = [...queueRows];
+        // Snapshot the ordered queue before awaiting.
+        const entries = [...commandQueue];
+        const lines = entries.map((e) => e.line);
         const failures: string[] = [];
         try {
             for (let i = 0; i < lines.length; i++) {
@@ -483,14 +503,19 @@
                     await new Promise((r) => setTimeout(r, 150));
                 }
             }
-            // Commit config baseline so applied rows become clean.
+            // Commit config baseline so applied config rows become clean.
             const applied: Record<string, MeshcoreConfigValue> = {};
             let needsReboot = false;
-            for (const r of queued) {
-                applied[r.id] = rowValues[r.id];
-                if (r.needsReboot) needsReboot = true;
+            for (const e of entries) {
+                if (!e.rowId) continue;
+                const row = rows.find((r) => r.id === e.rowId);
+                if (row?.kind === 'config') {
+                    applied[row.id] = rowValues[row.id];
+                    if (row.needsReboot) needsReboot = true;
+                }
             }
             originalValues = { ...originalValues, ...applied };
+            commandQueue = []; // all entries sent
             statusMessage = $locales('meshcoreconfig.apply_success');
             if (failures.length > 0) {
                 errorMessage = failures.join('  |  ');
@@ -520,7 +545,8 @@
     async function doRunAction(line: string): Promise<void> {
         if (!cliManager) return;
         // Jump to the terminal so the user sees the command and the device reply.
-        activeTab = 'terminal';
+        // selectTab (not a bare activeTab assignment) mounts the xterm on first open.
+        selectTab('terminal');
         busy = true;
         errorMessage = '';
         try {
@@ -565,6 +591,26 @@
 
     function setRowValue(id: string, next: MeshcoreConfigValue): void {
         rowValues[id] = next;
+        const row = rows.find((r) => r.id === id);
+        if (!row) return;
+        const line = buildCommand(row, next);
+        const idx = commandQueue.findIndex((e) => e.rowId === id);
+        if (idx >= 0) {
+            // Update in place — keeps the entry's position (file order for loaded rows).
+            commandQueue = commandQueue.map((e, i) => (i === idx ? { ...e, line } : e));
+        } else {
+            commandQueue = [...commandQueue, { line, rowId: id }];
+        }
+    }
+
+    // Arm/disarm a 0-param action for the Apply queue (manual add-to-queue).
+    function toggleArm(row: MeshcoreCommandRow): void {
+        const idx = commandQueue.findIndex((e) => e.rowId === row.id);
+        if (idx >= 0) {
+            commandQueue = commandQueue.filter((_, i) => i !== idx);
+        } else {
+            commandQueue = [...commandQueue, { line: row.baseCommand, rowId: row.id }];
+        }
     }
 
     function handleClose(): void {
@@ -706,6 +752,16 @@
                         <option value="crlf">CRLF</option>
                         <option value="cr">CR</option>
                     </select>
+
+                    <!-- Docs link (external) -->
+                    <a
+                        href="https://docs.meshcore.io/cli_commands"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-xs text-orange-300 underline hover:text-orange-200"
+                    >
+                        {$locales('meshcoreconfig.docs')}
+                    </a>
                 </div>
 
                 <!-- Status / error messages -->
@@ -892,8 +948,10 @@
                                                         value={rowValues[r.id]}
                                                         dirty={inQueue(r)}
                                                         canRun={isConnected && !busy}
+                                                        armed={inQueue(r)}
                                                         onchange={(next) => setRowValue(r.id, next)}
                                                         onsend={() => runAction(r)}
+                                                        onarm={() => toggleArm(r)}
                                                     />
                                                 {/if}
                                             {/each}

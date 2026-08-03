@@ -229,7 +229,8 @@
     "takemeacoffee_desc": "Не обязательно, но приятно :)"
   },
   "meshcoreconfig": {
-    "title": "Конфигуратор Meshcore",
+    "title": "Конфигуратор Meshcore (Repeater and Room server)",
+    "docs": "Docs",
     "select_port": "Выбрать порт",
     "connect": "Подключить",
     "disconnect": "Отключить",
@@ -252,6 +253,8 @@
     "advanced_hide": "Скрыть расширенные",
     "dirty_badge": "изменено",
     "run": "Выполнить",
+    "add_to_queue": "Добавить в очередь",
+    "remove_from_queue": "Убрать из очереди",
     "command_list_title": "Список команд",
     "group_radio": "Радио",
     "group_location": "Имя и координаты",

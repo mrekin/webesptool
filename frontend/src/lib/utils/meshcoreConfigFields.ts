@@ -156,6 +156,7 @@ export function buildCommandRows(): {
             control: deriveControl(cmd.params),
             groupId: a.groupId,
             danger: a.danger,
+            urgent: a.urgent,
             variadic: a.variadic
         });
     }

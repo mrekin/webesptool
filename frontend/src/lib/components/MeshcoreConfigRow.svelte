@@ -7,15 +7,19 @@
         value,
         dirty = false,
         canRun = true,
+        armed = false,
         onchange = (_next: MeshcoreConfigValue) => {},
-        onsend = () => {}
+        onsend = () => {},
+        onarm = () => {}
     }: {
         row: MeshcoreCommandRow;
         value: MeshcoreConfigValue | undefined;
         dirty?: boolean;
         canRun?: boolean;
+        armed?: boolean;
         onchange?: (next: MeshcoreConfigValue) => void;
         onsend?: () => void;
+        onarm?: () => void;
     } = $props();
 
     let fieldId = $derived(`mc-row-${row.id}`);
@@ -66,8 +70,8 @@
             : 'border-gray-700/60 bg-gray-900/40 hover:border-gray-600'
     } ${row.params.length > 1 ? 'col-span-full' : ''}`}
 >
-    <!-- Header: label (left) + dirty badge (config & param-actions) or Run button
-         (direct 0-param actions only). -->
+    <!-- Header: label (left) + dirty badge (config & param-actions) or action
+         buttons (0-param actions): queue toggle (non-urgent) + Run. -->
     <div class="mb-1.5 flex items-center justify-between gap-2">
         <label
             for={fieldId}
@@ -77,9 +81,25 @@
             {row.id}
         </label>
         {#if row.kind === 'action' && row.params.length === 0}
-            <button type="button" onclick={onsend} disabled={!canRun} class={runBtnClass}>
-                ▶ {$locales('meshcoreconfig.run')}
-            </button>
+            <div class="flex items-center gap-1.5">
+                {#if !row.urgent}
+                    <button
+                        type="button"
+                        onclick={onarm}
+                        class={runBtnClass}
+                        title={$locales(
+                            armed
+                                ? 'meshcoreconfig.remove_from_queue'
+                                : 'meshcoreconfig.add_to_queue'
+                        )}
+                    >
+                        {armed ? '✕' : '＋'}
+                    </button>
+                {/if}
+                <button type="button" onclick={onsend} disabled={!canRun} class={runBtnClass}>
+                    ▶ {$locales('meshcoreconfig.run')}
+                </button>
+            </div>
         {:else if dirty}
             <span
                 class="shrink-0 rounded-full bg-orange-600/30 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-orange-200"

@@ -229,7 +229,8 @@
     "takemeacoffee_desc": "Not required, but appreciated :)"
   },
   "meshcoreconfig": {
-    "title": "Meshcore Configurator",
+    "title": "Meshcore Configurator (Repeater and Room server)",
+    "docs": "Docs",
     "select_port": "Select Port",
     "connect": "Connect",
     "disconnect": "Disconnect",
@@ -252,6 +253,8 @@
     "advanced_hide": "Hide advanced",
     "dirty_badge": "changed",
     "run": "Run",
+    "add_to_queue": "Add to queue",
+    "remove_from_queue": "Remove from queue",
     "command_list_title": "Command List",
     "group_radio": "Radio",
     "group_location": "Name & Location",

@@ -41,6 +41,8 @@
 
     // Dynamic import for MeshtasticDeviceModal to avoid conflicts with +page.svelte
     let MeshtasticDeviceModal: any = null;
+    // Dynamic import for MeshcoreConfigModal to avoid conflicts with +page.svelte
+    let MeshcoreConfigModal: any = null;
 
     export let isOpen = false;
     export let onClose = () => {};
@@ -144,6 +146,7 @@
     let autoPortSelectionTriggered = false; // Flag for tracking automatic port selection
     let showTerminalModal = false; // Terminal modal state
     let showMeshtasticModal = false; // Meshtastic device modal state
+    let showMeshcoreConfigModal = false; // Meshcore config modal state
 
     // Reference to file input to replace document.getElementById
     let fileInput: HTMLInputElement;
@@ -158,6 +161,15 @@
                 .default;
         }
         showMeshtasticModal = true;
+    }
+
+    // Function to dynamically load MeshcoreConfigModal
+    async function openMeshcoreConfigModal() {
+        if (!MeshcoreConfigModal) {
+            MeshcoreConfigModal = (await import('$lib/components/MeshcoreConfigModal.svelte'))
+                .default;
+        }
+        showMeshcoreConfigModal = true;
     }
 
     // Get baudrate options from utility
@@ -2446,6 +2458,18 @@
                     {/if}
                 {/if}
 
+                {#if experimentalFeatures && (!isAutoSelectMode || getRepositoryType($availableSources, $selectionState.repository) === RepositoryType.MESHCORE)}
+                    <!-- Meshcore config button - experimental feature -->
+                    <button
+                        on:click={openMeshcoreConfigModal}
+                        class="flex items-center justify-center rounded-md bg-gray-700 px-3 py-2 text-orange-300 transition-colors hover:bg-gray-600"
+                        title={$locales('downloadbuttons.meshcore_config_description')}
+                        aria-label={$locales('downloadbuttons.meshcore_config_description')}
+                    >
+                        🗼
+                    </button>
+                {/if}
+
                 <!-- Meshcore configurator button -->
                 {#if !isAutoSelectMode || getRepositoryType($availableSources, $selectionState.repository) === RepositoryType.MESHCORE}
                     <button
@@ -2556,6 +2580,15 @@
             this={MeshtasticDeviceModal}
             isOpen={showMeshtasticModal}
             onClose={() => (showMeshtasticModal = false)}
+        />
+    {/if}
+
+    <!-- Meshcore Config Modal -->
+    {#if showMeshcoreConfigModal && MeshcoreConfigModal}
+        <svelte:component
+            this={MeshcoreConfigModal}
+            isOpen={showMeshcoreConfigModal}
+            onClose={() => (showMeshcoreConfigModal = false)}
         />
     {/if}
 {/if}

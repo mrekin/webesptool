@@ -229,7 +229,8 @@
     "takemeacoffee_desc": "Nieobowiązkowe, ale miłe :)"
   },
   "meshcoreconfig": {
-    "title": "Konfigurator Meshcore",
+    "title": "Konfigurator Meshcore (Repeater and Room server)",
+    "docs": "Docs",
     "select_port": "Wybierz port",
     "connect": "Połącz",
     "disconnect": "Rozłącz",
@@ -252,6 +253,8 @@
     "advanced_hide": "Ukryj zaawansowane",
     "dirty_badge": "zmieniono",
     "run": "Wykonaj",
+    "add_to_queue": "Dodaj do kolejki",
+    "remove_from_queue": "Usuń z kolejki",
     "command_list_title": "Lista poleceń",
     "group_radio": "Radio",
     "group_location": "Nazwa i lokalizacja",

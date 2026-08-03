@@ -796,6 +796,8 @@ export interface MeshcoreCommandRow {
     needsReboot?: boolean;
     /** Destructive one-shot action (reboot/erase) — needs confirmation before send. */
     danger?: boolean;
+    /** Urgent one-shot action — run-now only, cannot be queued for Apply. */
+    urgent?: boolean;
     /** Variadic action: the whole remainder is one value (e.g. 'region def a b c'). */
     variadic?: boolean;
     minVersion?: [number, number, number];

@@ -13,6 +13,8 @@ export interface MeshcoreAction {
     groupId: string;
     /** Whether the action is destructive and needs a confirmation dialog. */
     danger?: boolean;
+    /** Urgent one-shot action — run-now only, cannot be queued for Apply. */
+    urgent?: boolean;
     /** Variadic action: the whole remainder is one value (e.g. 'region def a b c'). */
     variadic?: boolean;
 }
@@ -33,8 +35,8 @@ export const MESHCORE_ACTIONS: MeshcoreAction[] = [
     { command: 'powersaving off', groupId: 'radio' },
 
     // Flood / Advert
-    { command: 'advert', groupId: 'flood' },
-    { command: 'advert.zerohop', groupId: 'flood' },
+    { command: 'advert', groupId: 'flood', urgent: true },
+    { command: 'advert.zerohop', groupId: 'flood', urgent: true },
 
     // Region management (region load is interactive -> terminal only)
     { command: 'region save', groupId: 'region' },
@@ -46,13 +48,13 @@ export const MESHCORE_ACTIONS: MeshcoreAction[] = [
     { command: 'region remove {name}', groupId: 'region' },
 
     // System
-    { command: 'reboot', groupId: 'system', danger: true },
-    { command: 'erase', groupId: 'system', danger: true },
-    { command: 'start ota', groupId: 'system' },
+    { command: 'reboot', groupId: 'system', danger: true, urgent: true },
+    { command: 'erase', groupId: 'system', danger: true, urgent: true },
+    { command: 'start ota', groupId: 'system', urgent: true },
     { command: 'time {epoch_seconds}', groupId: 'system' },
-    { command: 'clkreboot', groupId: 'system' },
-    { command: 'clear stats', groupId: 'system' },
-    { command: 'log start', groupId: 'system' },
-    { command: 'log stop', groupId: 'system' },
-    { command: 'log erase', groupId: 'system' }
+    { command: 'clkreboot', groupId: 'system', urgent: true },
+    { command: 'clear stats', groupId: 'system', urgent: true },
+    { command: 'log start', groupId: 'system', urgent: true },
+    { command: 'log stop', groupId: 'system', urgent: true },
+    { command: 'log erase', groupId: 'system', urgent: true }
 ];
