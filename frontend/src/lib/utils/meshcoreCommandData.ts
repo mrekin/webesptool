@@ -291,7 +291,7 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         separator: null,
         shortDescription: 'Enable power saving'
     },
-    { command: 'region', params: [], separator: null, shortDescription: 'View all regions' },
+    { command: 'region', params: [], separator: null, shortDescription: 'Dump all regions and flood permissions' },
     {
         command: 'region allowf {name}',
         params: [{ name: 'name', type: 'string' }],
@@ -339,7 +339,7 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         command: 'region list {filter}',
         params: [{ name: 'filter', type: 'string' }],
         separator: 'space',
-        shortDescription: 'View all regions'
+        shortDescription: 'View allowed/denied regions'
     },
     {
         command: 'region load',
@@ -417,7 +417,7 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
     },
     {
         command: 'set allow.read.only {state}',
-        params: [{ name: 'state', type: 'string' }],
+        params: [{ name: 'state', type: 'enum', options: ['on', 'off'] }],
         separator: 'space',
         shortDescription: 'Set read-only flag'
     },
@@ -441,7 +441,7 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
     },
     {
         command: 'set bridge.enabled {state}',
-        params: [{ name: 'state', type: 'string' }],
+        params: [{ name: 'state', type: 'enum', options: ['on', 'off'] }],
         separator: 'space',
         shortDescription: 'Set bridge enabled'
     },
@@ -519,7 +519,7 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
     },
     {
         command: 'set loop.detect {state}',
-        params: [{ name: 'state', type: 'string' }],
+        params: [{ name: 'state', type: 'enum', options: ['off', 'minimal', 'moderate', 'strict'] }],
         separator: 'space',
         shortDescription: 'Set loop detection'
     },
@@ -531,7 +531,7 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
     },
     {
         command: 'set multi.acks {state}',
-        params: [{ name: 'state', type: 'string' }],
+        params: [{ name: 'state', type: 'enum', options: ['0', '1'] }],
         separator: 'space',
         shortDescription: 'Set multi-acks support'
     },
@@ -549,7 +549,7 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
     },
     {
         command: 'set path.hash.mode {value}',
-        params: [{ name: 'value', type: 'string' }],
+        params: [{ name: 'value', type: 'enum', options: ['0', '1', '2'] }],
         separator: 'space',
         shortDescription: 'Set path hash mode'
     },
@@ -578,7 +578,7 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
     },
     {
         command: 'set repeat {state}',
-        params: [{ name: 'state', type: 'string' }],
+        params: [{ name: 'state', type: 'enum', options: ['on', 'off'] }],
         separator: 'space',
         shortDescription: 'Set repeat flag'
     },

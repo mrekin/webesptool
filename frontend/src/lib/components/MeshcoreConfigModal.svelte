@@ -1,0 +1,1044 @@
+<script lang="ts">
+    import { _ as locales } from 'svelte-i18n';
+    import { onMount, onDestroy } from 'svelte';
+    import { Xterm } from '@battlefieldduck/xterm-svelte';
+    import type { Terminal } from '@xterm/xterm';
+    import { buildCommandRows } from '$lib/utils/meshcoreConfigFields.js';
+    import {
+        parseGetResponse,
+        valuesEqual,
+        coerceValue,
+        buildCommand
+    } from '$lib/utils/meshcoreConfigState.js';
+    import {
+        splitIntoCommandLines,
+        isModeSwitchLine,
+        trimTrailingEmptyLine
+    } from '$lib/utils/multilineCommands.js';
+    import { createMeshcoreCliManager, type MeshcoreCliStatus } from '$lib/utils/meshcoreCli.js';
+    import { attachTerminalCopy } from '$lib/utils/terminalClipboard.js';
+    import { setTerminalMode, resetTerminalMode } from '$lib/stores.js';
+    import McCommandSetPicker from './McCommandSetPicker.svelte';
+    import MeshcoreConfigRow from './MeshcoreConfigRow.svelte';
+    import MeshcoreConfigCommandList from './MeshcoreConfigCommandList.svelte';
+    import CommandInput from './CommandInput.svelte';
+    import MultilineControls from './MultilineControls.svelte';
+    import CoordinateMapPicker from './CoordinateMapPicker.svelte';
+    import type {
+        MeshcoreCommandRow,
+        MeshcoreConfigGroup,
+        MeshcoreConfigValue
+    } from '$lib/types.js';
+
+    let { isOpen = false, onClose = () => {} } = $props();
+
+    // Unified command model is static, built once at init: config get<->set rows
+    // and one-shot action rows share the same shape and group taxonomy.
+    const { rows, groups } = buildCommandRows();
+
+    // Pre-group rows by their group id (rows never change, so this is plain).
+    const rowsByGroup = new Map<string, MeshcoreCommandRow[]>();
+    for (const g of groups) {
+        rowsByGroup.set(
+            g.id,
+            rows.filter((r) => r.groupId === g.id)
+        );
+    }
+
+    // Current value of every row (config current value + action inputs).
+    let rowValues = $state<Record<string, MeshcoreConfigValue>>({});
+    // Baseline for config rows (committed value used to detect "in queue").
+    let originalValues = $state<Record<string, MeshcoreConfigValue>>({});
+
+    // Output line ending for the copy buffer.
+    let selectedLineEnding = $state<'lf' | 'crlf' | 'cr'>('crlf');
+
+    // CLI manager (assigned in onMount; not rendered, so plain let).
+    let cliManager: ReturnType<typeof createMeshcoreCliManager> | null = null;
+
+    // Connection / operation state.
+    let status = $state<MeshcoreCliStatus>('disconnected');
+    let busy = $state(false);
+    let statusMessage = $state('');
+    let errorMessage = $state('');
+
+    // UI state.
+    let isSupported = $state(true);
+    // Less-commonly used groups are collapsed by default ('advanced' is a normal
+    // collapsible group now, not behind an extra toggle).
+    let collapsedGroups = $state<Set<string>>(
+        new Set(['bridge', 'flood', 'region', 'system', 'advanced'])
+    );
+    let showRebootConfirm = $state(false);
+    // A destructive action awaiting confirmation (reboot/erase run immediately).
+    let pendingDangerAction = $state<{ row: MeshcoreCommandRow; line: string } | null>(null);
+    // Device firmware version (read via 'ver' after connect).
+    let deviceVersion = $state('');
+
+    // Terminal xterm is lazily mounted on first open so it measures a visible box.
+    let terminalEverOpened = $state(false);
+    // Coordinate map picker dialog.
+    let showMapPicker = $state(false);
+
+    // Terminal tab state. Shares the same cliManager/port as the settings tab;
+    // the xterm only displays (and sends manual input), settings logic is untouched.
+    let activeTab = $state<'settings' | 'terminal'>('settings');
+    let terminal = $state<Terminal | null>(null);
+    let fitAddon: any = null;
+    // Window resize listener cleanup ref for the xterm fit addon.
+    let resizeHandler: (() => void) | null = null;
+    let autoScroll = $state(true);
+    // Output that arrived before the xterm was mounted (it mounts lazily on the
+    // first Terminal-tab open). Replayed into the terminal on mount so early
+    // traffic — and the `>> cmd` echoes of sent commands — is not lost.
+    let pendingTermChunks: string[] = [];
+    // Terminal input has its own history, independent from TerminalModal.
+    let termInput = $state('');
+    let commandHistory = $state<string[]>([]);
+    let historyIndex = $state(0);
+    let currentLine = $state('');
+    let showCommandShortDescriptions = $state(true);
+    let isMassRunning = $state(false);
+    let stopMassRequested = false;
+    let massSentIndex = $state(-1);
+
+    // xterm options — same theme as TerminalModal.
+    const terminalOptions = {
+        fontSize: 14,
+        fontFamily: 'Consolas, "Courier New", monospace',
+        theme: {
+            background: '#1f2937',
+            foreground: '#10b981',
+            cursor: '#10b981',
+            cursorAccent: '#1f2937'
+        },
+        cursorBlink: true,
+        scrollback: 1000,
+        allowProposedApi: true
+    };
+
+    // Guard against double-disconnect (mirrors MeshtasticDeviceModal).
+    // Plain let: internal guard read only in handlers/effects, never rendered.
+    let isDisconnecting = false;
+
+    let isConnected = $derived(status === 'connected');
+    let isConnecting = $derived(status === 'connecting');
+
+    let statusText = $derived(
+        isConnecting
+            ? $locales('meshcoreconfig.status_connecting')
+            : isConnected
+              ? $locales('meshcoreconfig.status_connected')
+              : $locales('meshcoreconfig.status_disconnected')
+    );
+    let statusDotColor = $derived(
+        isConnecting ? 'bg-yellow-500' : isConnected ? 'bg-green-500' : 'bg-red-500'
+    );
+    let connectionLabel = $derived(
+        isConnecting
+            ? $locales('meshcoreconfig.status_connecting')
+            : isConnected
+              ? $locales('meshcoreconfig.disconnect')
+              : $locales('meshcoreconfig.connect')
+    );
+
+    // Config rows and param-action rows go through the Apply queue; only direct
+    // (0-param) actions run immediately via their own Run button. 'time' keeps its
+    // immediate "now" send (own card button) and is not queued.
+    function isQueueable(r: MeshcoreCommandRow): boolean {
+        if (r.kind === 'config') return true;
+        return r.kind === 'action' && r.params.length > 0 && r.id !== 'time';
+    }
+
+    function inQueue(r: MeshcoreCommandRow): boolean {
+        return isQueueable(r) && !valuesEqual(rowValues[r.id], originalValues[r.id]);
+    }
+
+    // The assembled send queue = the exact set of config lines Apply will send.
+    // The visible command list is bound to this (single source of truth).
+    let queueRows = $derived(rows.filter((r) => inQueue(r)));
+    let assembled = $derived(
+        queueRows.map((r) => ({ line: buildCommand(r, rowValues[r.id]), dirty: true }))
+    );
+    let assembledCount = $derived(assembled.length);
+
+    // Latitude/longitude render as a single combined "Coordinates" card, so they
+    // stay side by side regardless of the auto-fill grid's column count.
+    let latRow = $derived(rows.find((r) => r.id === 'lat'));
+    let lonRow = $derived(rows.find((r) => r.id === 'lon'));
+    let coordsDirty = $derived(
+        !!(latRow && inQueue(latRow)) || !!(lonRow && inQueue(lonRow))
+    );
+
+    function errorText(err: unknown): string {
+        return err instanceof Error ? err.message : String(err);
+    }
+
+    onMount(() => {
+        // CommandInput reads the global terminalMode store for meshcore autocomplete.
+        setTerminalMode('meshcore');
+        cliManager = createMeshcoreCliManager({
+            onStatusChange: (s) => {
+                status = s;
+            },
+            // Every decoded device chunk (and the cyan `>> cmd` echo of sent
+            // commands) is teed here — write it straight to the xterm, or buffer
+            // it until the xterm mounts (it is lazily created on first Terminal
+            // tab open, so traffic before that would otherwise be lost).
+            onChunk: (data) => {
+                if (terminal) {
+                    terminal.write(data);
+                    if (autoScroll) terminal.scrollToBottom();
+                } else {
+                    pendingTermChunks.push(data);
+                }
+            }
+        });
+        isSupported = cliManager.isSupported();
+    });
+
+    onDestroy(() => {
+        resetTerminalMode();
+        // Clean up the xterm resize listener if the terminal tab was opened.
+        if (resizeHandler) {
+            window.removeEventListener('resize', resizeHandler);
+            resizeHandler = null;
+        }
+        if (cliManager && !isDisconnecting) {
+            void cliManager.disconnect();
+        }
+    });
+
+    // Auto-disconnect when the modal closes while still connected.
+    $effect(() => {
+        if (!isOpen && isConnected && !isDisconnecting) {
+            void disconnect();
+        }
+    });
+
+    // --- Terminal tab helpers ---
+
+    // xterm is mounted once (the terminal panel stays in the DOM, just hidden),
+    // so capture the instance, lazily load the fit addon and re-fit on resize.
+    function onLoad(term: Terminal): void {
+        terminal = term;
+        // Wire Ctrl/Cmd+C copy handling (shared with TerminalModal).
+        attachTerminalCopy(term);
+        term.writeln('\x1b[1;33mMeshcore terminal\x1b[0m');
+        term.writeln('\x1b[90mConnect to the device to see traffic.\x1b[0m\r\n');
+        // Replay output that arrived before the xterm mounted (lazy mount on
+        // first Terminal-tab open) so the session log is complete.
+        if (pendingTermChunks.length > 0) {
+            for (const chunk of pendingTermChunks) term.write(chunk);
+            pendingTermChunks = [];
+            if (autoScroll) term.scrollToBottom();
+        }
+        import('@xterm/addon-fit')
+            .then(({ FitAddon }) => {
+                fitAddon = new FitAddon();
+                terminal?.loadAddon(fitAddon);
+                setTimeout(() => fitAddon?.fit(), 50);
+                const handleResize = () => fitAddon?.fit();
+                window.addEventListener('resize', handleResize);
+                resizeHandler = handleResize;
+            })
+            .catch(() => {
+                /* fit addon unavailable — terminal still works, just no auto-fit */
+            });
+    }
+
+    function selectTab(tab: 'settings' | 'terminal'): void {
+        activeTab = tab;
+        if (tab === 'terminal') {
+            // Lazily mount the xterm on first open so it measures a visible box,
+            // then refit whenever the terminal tab becomes visible again.
+            terminalEverOpened = true;
+            setTimeout(() => fitAddon?.fit(), 60);
+        }
+    }
+
+    // Number of rows in a group that are currently in the send queue — used to
+    // badge group headers so pending changes are visible even when collapsed.
+    function groupQueueCount(groupId: string): number {
+        return (rowsByGroup.get(groupId) ?? []).filter((r) => inQueue(r)).length;
+    }
+
+    // Send the time command immediately: the entered epoch if present, else now.
+    // Sent at once (no field-filling) to avoid drift between displayed and sent time.
+    function sendCurrentTime(): void {
+        if (!cliManager || !isConnected || busy) return;
+        const entered = rowValues['time'];
+        const epoch =
+            typeof entered === 'number' && entered > 0
+                ? entered
+                : Math.floor(Date.now() / 1000);
+        void doRunAction(`time ${epoch}`);
+    }
+
+    // Manual single-line send from the terminal input. frame=false: just write,
+    // the device's output (and the cyan `>> cmd` echo) arrives via onChunk.
+    async function handleTermSubmit(cmd: string): Promise<void> {
+        if (!cliManager || !isConnected || isMassRunning) return;
+        try {
+            await cliManager.sendCommand(cmd, false);
+        } catch {
+            /* errors are surfaced through the xterm via onChunk */
+        }
+    }
+
+    // Per-line Send (the ▶ button in CommandInput): same as a manual send.
+    async function sendTermLine(line: string): Promise<void> {
+        if (!cliManager || !isConnected || isMassRunning) return;
+        try {
+            await cliManager.sendCommand(line, false);
+        } catch {
+            /* ignore — device output is visible in the xterm */
+        }
+    }
+
+    // Multiline "Send all": pace lines so the device has time to process each.
+    async function runTermMassSend(): Promise<void> {
+        if (!cliManager || !isConnected || isMassRunning) return;
+        const lines = splitIntoCommandLines(termInput)
+            .map((l) => l.trim())
+            .filter((l) => l && !isModeSwitchLine(l));
+        if (lines.length === 0) return;
+        isMassRunning = true;
+        stopMassRequested = false;
+        try {
+            for (let i = 0; i < lines.length; i++) {
+                if (stopMassRequested) break;
+                massSentIndex = i;
+                await cliManager.sendCommand(lines[i], false);
+                await new Promise((r) => setTimeout(r, 150));
+            }
+        } finally {
+            isMassRunning = false;
+            massSentIndex = -1;
+        }
+    }
+
+    function stopTermMassSend(): void {
+        stopMassRequested = true;
+    }
+
+    async function connect(): Promise<void> {
+        if (!cliManager) return;
+        // Hold busy for the whole connect (incl. the ver query) so no other
+        // command (requestSettings/apply/actions) can start until connect is
+        // fully done — the port serves one command at a time, and the device
+        // resets on open (boot log) so ver must finish before the first get.
+        busy = true;
+        pendingTermChunks = []; // fresh session: drop any buffered output
+        errorMessage = '';
+        statusMessage = $locales('meshcoreconfig.status_connecting');
+        try {
+            await cliManager.connect();
+            statusMessage = $locales('meshcoreconfig.status_connected');
+            // Read the firmware version (best-effort; ignore errors).
+            deviceVersion = '';
+            try {
+                const ver = await cliManager.sendCommand('ver');
+                deviceVersion = (ver || '').trim();
+            } catch {
+                /* version is informational only */
+            }
+        } catch (err) {
+            statusMessage = '';
+            errorMessage = errorText(err);
+        } finally {
+            busy = false;
+        }
+    }
+
+    async function disconnect(): Promise<void> {
+        if (!cliManager || isDisconnecting) return;
+        isDisconnecting = true;
+        try {
+            await cliManager.disconnect();
+        } catch {
+            // Disconnect errors are expected (e.g. port already gone); ignore.
+        } finally {
+            isDisconnecting = false;
+        }
+    }
+
+    async function toggleConnection(): Promise<void> {
+        if (isConnected) {
+            await disconnect();
+        } else {
+            await connect();
+        }
+    }
+
+    // Pull current values from the device for every config row. parseGetResponse
+    // reads row.params/row.separator, so the unified row is passed directly.
+    async function requestSettings(): Promise<void> {
+        if (!cliManager || !isConnected) return;
+        busy = true;
+        errorMessage = '';
+        statusMessage = '';
+        try {
+            for (const r of rows) {
+                if (r.kind !== 'config') continue;
+                const raw = await cliManager.getVariable(r.id);
+                const parsed = parseGetResponse(r, raw);
+                if (parsed.ok) {
+                    rowValues[r.id] = parsed.value;
+                    originalValues[r.id] = parsed.value;
+                }
+            }
+        } catch (err) {
+            errorMessage = errorText(err);
+        } finally {
+            busy = false;
+        }
+    }
+
+    // Apply one loaded command-set line: match the longest row baseCommand and
+    // route the remainder into rowValues (config also updates the baseline so it
+    // is clean until edited). 0-param actions become armed instead.
+    function applyLoadedLine(line: string): void {
+        const t = line.trim();
+        if (!t || isModeSwitchLine(t) || t.startsWith('[')) return;
+
+        let match: MeshcoreCommandRow | null = null;
+        for (const r of rows) {
+            const base = r.baseCommand;
+            if (t === base || t.startsWith(base + ' ')) {
+                if (!match || base.length > match.baseCommand.length) {
+                    match = r;
+                }
+            }
+        }
+        if (!match) return;
+
+        const remainder = t.slice(match.baseCommand.length).trim();
+        if (match.kind === 'config' || match.params.length > 0) {
+            let v: MeshcoreConfigValue;
+            if (match.variadic) {
+                // Variadic action (e.g. 'region def a b c'): whole remainder is one value.
+                v = remainder;
+            } else {
+                const sepRe = match.separator === 'comma' ? ',' : /\s+/;
+                const vals = remainder
+                    .split(sepRe)
+                    .map((p) => p.trim())
+                    .filter((p) => p !== '');
+                v = coerceValue(match, vals);
+            }
+            rowValues[match.id] = v;
+            // Loaded values are NOT baseline — they queue for Apply so a loaded
+            // command set is sent in full. Baseline is only set by requestSettings.
+        }
+        // 0-param actions from a set have no input to fill; the user runs them
+        // via their own Run button, so there is nothing to load here.
+    }
+
+    function handleSetSelected(content: string): void {
+        const lines = trimTrailingEmptyLine(splitIntoCommandLines(content));
+        for (const line of lines) {
+            applyLoadedLine(line);
+        }
+        errorMessage = '';
+        statusMessage = '';
+    }
+
+    function applyAll(): void {
+        if (!isConnected || busy || assembledCount === 0) return;
+        void doApply();
+    }
+
+    // Discard all uncommitted (queued) changes: revert each queued row's current
+    // value to its baseline. Config rows return to the last value read from the
+    // device (requestSettings baseline); param-action rows have no baseline, so
+    // they clear to undefined and leave the queue. Purely local — no device I/O,
+    // so it works even while disconnected.
+    function discardChanges(): void {
+        if (busy || assembledCount === 0) return;
+        for (const r of queueRows) {
+            rowValues[r.id] = originalValues[r.id];
+        }
+    }
+
+    async function doApply(): Promise<void> {
+        if (!cliManager || !isConnected) return;
+        busy = true;
+        errorMessage = '';
+        statusMessage = '';
+        // Only config rows are in the queue. Snapshot before awaiting (derived
+        // state recomputes once the baseline is committed below).
+        const lines = assembled.map((a) => a.line);
+        const queued = [...queueRows];
+        const failures: string[] = [];
+        try {
+            for (let i = 0; i < lines.length; i++) {
+                const resp = await cliManager.sendCommand(lines[i]);
+                // Device signals trouble with "Err ...", "??: ..." or "... fail(ed)".
+                if (/^(Err|\?\?)/i.test(resp) || /fail/i.test(resp)) {
+                    failures.push(`${lines[i]} → ${resp}`);
+                }
+                // Give the device time to finish the previous command before the next.
+                if (i < lines.length - 1) {
+                    await new Promise((r) => setTimeout(r, 150));
+                }
+            }
+            // Commit config baseline so applied rows become clean.
+            const applied: Record<string, MeshcoreConfigValue> = {};
+            let needsReboot = false;
+            for (const r of queued) {
+                applied[r.id] = rowValues[r.id];
+                if (r.needsReboot) needsReboot = true;
+            }
+            originalValues = { ...originalValues, ...applied };
+            statusMessage = $locales('meshcoreconfig.apply_success');
+            if (failures.length > 0) {
+                errorMessage = failures.join('  |  ');
+                statusMessage = '';
+            }
+            if (needsReboot) {
+                showRebootConfirm = true;
+            }
+        } catch (err) {
+            errorMessage = errorText(err) || $locales('meshcoreconfig.apply_error');
+        } finally {
+            busy = false;
+        }
+    }
+
+    // Action rows execute IMMEDIATELY via their own Run button (not the queue).
+    function runAction(row: MeshcoreCommandRow): void {
+        if (!cliManager || !isConnected || busy) return;
+        const line = buildCommand(row, rowValues[row.id]);
+        if (row.danger) {
+            pendingDangerAction = { row, line };
+            return;
+        }
+        void doRunAction(line);
+    }
+
+    async function doRunAction(line: string): Promise<void> {
+        if (!cliManager) return;
+        // Jump to the terminal so the user sees the command and the device reply.
+        activeTab = 'terminal';
+        busy = true;
+        errorMessage = '';
+        try {
+            await cliManager.sendCommand(line, false);
+        } catch (err) {
+            errorMessage = errorText(err);
+        } finally {
+            busy = false;
+        }
+    }
+
+    async function confirmDangerAction(): Promise<void> {
+        const pending = pendingDangerAction;
+        pendingDangerAction = null;
+        if (pending) await doRunAction(pending.line);
+    }
+
+    async function confirmReboot(): Promise<void> {
+        showRebootConfirm = false;
+        if (!cliManager) return;
+        busy = true;
+        try {
+            await cliManager.reboot();
+            await disconnect();
+            statusMessage = $locales('meshcoreconfig.reboot_prompt');
+        } catch (err) {
+            errorMessage = errorText(err) || $locales('meshcoreconfig.apply_error');
+        } finally {
+            busy = false;
+        }
+    }
+
+    function toggleGroup(id: string): void {
+        const next = new Set(collapsedGroups);
+        if (next.has(id)) {
+            next.delete(id);
+        } else {
+            next.add(id);
+        }
+        collapsedGroups = next;
+    }
+
+    function setRowValue(id: string, next: MeshcoreConfigValue): void {
+        rowValues[id] = next;
+    }
+
+    function handleClose(): void {
+        if (busy) return;
+        // The $effect above handles disconnect when isOpen flips to false.
+        onClose();
+    }
+</script>
+
+{#if isOpen}
+    <div
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="meshcore-config-title"
+        tabindex="-1"
+        onkeydown={(e) => e.key === 'Escape' && !busy && handleClose()}
+    >
+        <div
+            class="flex h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-orange-600 bg-gray-800 shadow-2xl"
+        >
+            <!-- Header -->
+            <div class="flex shrink-0 items-center justify-between border-b border-gray-700 p-6">
+                <h2 id="meshcore-config-title" class="text-xl font-semibold text-orange-200">
+                    {$locales('meshcoreconfig.title')}
+                </h2>
+                <button
+                    type="button"
+                    onclick={handleClose}
+                    disabled={busy}
+                    class="text-gray-400 transition-colors hover:text-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label="Close modal"
+                >
+                    &#x2715;
+                </button>
+            </div>
+
+            <!-- Content: flexes to fill below the header; the panels area below takes the rest. -->
+            <div class="flex min-h-0 flex-1 flex-col space-y-4 p-6">
+                <!-- Connection row -->
+                <div class="flex shrink-0 flex-wrap items-center gap-3">
+                    <button
+                        type="button"
+                        onclick={toggleConnection}
+                        disabled={!isSupported || isConnecting || busy}
+                        title={$locales('meshcoreconfig.select_port')}
+                        class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        {connectionLabel}
+                    </button>
+                    <span class={`h-3 w-3 rounded-full ${statusDotColor}`} aria-hidden="true"
+                    ></span>
+                    <span class="text-sm text-orange-200">{statusText}</span>
+                    {#if deviceVersion}
+                        <span class="text-xs text-gray-400">v{deviceVersion.replace(/^v/i, '')}</span>
+                    {/if}
+                    {#if !isSupported}
+                        <span class="text-xs text-red-300">
+                            {$locales('meshcoreconfig.no_webserial')}
+                        </span>
+                    {/if}
+                </div>
+
+                <!-- Tab bar: Settings / Terminal. Both panels below stay mounted;
+                     the inactive one is hidden so the xterm keeps its state. -->
+                <div class="flex shrink-0 gap-1 border-b border-gray-700">
+                    <button
+                        type="button"
+                        onclick={() => selectTab('settings')}
+                        class={`rounded-t-md px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'settings' ? 'bg-gray-700 text-orange-200' : 'text-gray-400 hover:text-gray-200'}`}
+                    >
+                        {$locales('meshcoreconfig.tab_settings')}
+                    </button>
+                    <button
+                        type="button"
+                        onclick={() => selectTab('terminal')}
+                        class={`rounded-t-md px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'terminal' ? 'bg-gray-700 text-orange-200' : 'text-gray-400 hover:text-gray-200'}`}
+                    >
+                        {$locales('meshcoreconfig.tab_terminal')}
+                    </button>
+                </div>
+
+                <!-- Panels: flex to fill the remaining modal height so nothing is clipped
+                     and switching tabs never resizes the modal (both panels are h-full of
+                     this same box). Settings scrolls, terminal stretches. -->
+                <div class="min-h-0 flex-1">
+                <!-- Settings panel: all existing settings functionality. -->
+                <div
+                    class={`h-full space-y-5 overflow-y-auto pr-1 ${activeTab === 'settings' ? '' : 'hidden'}`}
+                >
+                <!-- Toolbar: Request settings, load command set, single Apply, EOL -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <button
+                        type="button"
+                        onclick={requestSettings}
+                        disabled={!isConnected || busy}
+                        class="rounded-md bg-gray-700 px-3 py-2 text-sm text-orange-200 transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        {$locales('meshcoreconfig.request_settings')}
+                    </button>
+
+                    <McCommandSetPicker
+                        onselect={handleSetSelected}
+                        label={$locales('meshcoreconfig.load_command_set')}
+                        dropup={false}
+                    />
+
+                    <!-- Single Apply for the whole assembled queue (config + actions). -->
+                    <button
+                        type="button"
+                        onclick={applyAll}
+                        disabled={!isConnected || busy || assembledCount === 0}
+                        class="rounded-md bg-green-700 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        {$locales('meshcoreconfig.apply')}
+                        {#if assembledCount > 0}
+                            <span class="ml-1 rounded-full bg-orange-600 px-1.5 py-0.5 text-xs">
+                                {assembledCount}
+                            </span>
+                        {/if}
+                    </button>
+
+                    <!-- Discard all uncommitted (queued) changes back to baseline. -->
+                    <button
+                        type="button"
+                        onclick={discardChanges}
+                        disabled={busy || assembledCount === 0}
+                        class="rounded-md bg-gray-700 px-3 py-2 text-sm text-orange-200 transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        {$locales('meshcoreconfig.discard_changes')}
+                    </button>
+
+                    <select
+                        bind:value={selectedLineEnding}
+                        title="EOL"
+                        class="rounded-md border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-200 focus:border-orange-500 focus:ring-orange-500"
+                    >
+                        <option value="lf">LF</option>
+                        <option value="crlf">CRLF</option>
+                        <option value="cr">CR</option>
+                    </select>
+                </div>
+
+                <!-- Status / error messages -->
+                {#if errorMessage}
+                    <div
+                        role="alert"
+                        aria-live="assertive"
+                        class="rounded-md border border-red-700 bg-red-900/60 p-3 text-sm text-red-200"
+                    >
+                        {errorMessage}
+                    </div>
+                {/if}
+                {#if statusMessage && !errorMessage}
+                    <div
+                        role="status"
+                        aria-live="polite"
+                        class="rounded-md bg-gray-700 p-3 text-sm text-orange-200"
+                    >
+                        {statusMessage}
+                    </div>
+                {/if}
+
+                <!-- Body: unified groups (left, wider) + assembled command list (right) -->
+                <div class="grid gap-6 lg:grid-cols-[2fr_1fr]">
+                    <!-- Left: grouped rows in an auto-fill grid -->
+                    <div class="space-y-4">
+                        {#each groups as group (group.id)}
+                            {@const groupRows = rowsByGroup.get(group.id) ?? []}
+                            {#if groupRows.length > 0}
+                                <div class="rounded-md border border-gray-700 bg-gray-900/50">
+                                    <button
+                                        type="button"
+                                        onclick={() => toggleGroup(group.id)}
+                                        class="flex w-full items-center justify-between border-b border-gray-700/60 px-4 py-2.5 text-left transition-colors hover:bg-gray-800/50"
+                                        aria-expanded={!collapsedGroups.has(group.id)}
+                                    >
+                                        <span class="flex items-center gap-2">
+                                            <span class="text-sm font-semibold uppercase tracking-wide text-orange-300">
+                                                {$locales(`meshcoreconfig.group_${group.labelKey}`)}
+                                            </span>
+                                            {#if groupQueueCount(group.id) > 0}
+                                                <span class="rounded-full bg-orange-600 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                                                    {groupQueueCount(group.id)}
+                                                </span>
+                                            {/if}
+                                        </span>
+                                        <span class="text-xs text-gray-400">
+                                            {collapsedGroups.has(group.id) ? '▶' : '▼'}
+                                        </span>
+                                    </button>
+                                    {#if !collapsedGroups.has(group.id)}
+                                        <div
+                                            class="grid gap-2 grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] p-3"
+                                        >
+                                            {#each groupRows as r (r.id)}
+                                                {#if r.id === 'lat'}
+                                                    <!-- Combined coordinates card: lat + lon stay side by side. -->
+                                                    <div
+                                                        class={`rounded-lg border px-3 py-2 transition-colors ${coordsDirty ? 'border-orange-600/70 bg-orange-900/10' : 'border-gray-700/60 bg-gray-900/40 hover:border-gray-600'}`}
+                                                    >
+                                                        <div
+                                                            class="mb-1.5 flex items-center justify-between gap-2"
+                                                        >
+                                                            <span class="flex items-center gap-2">
+                                                                <span
+                                                                    class="text-xs font-semibold uppercase tracking-wide text-gray-400"
+                                                                >
+                                                                    {$locales('meshcoreconfig.coordinates')}
+                                                                </span>
+                                                                <button
+                                                                    type="button"
+                                                                    onclick={() => (showMapPicker = true)}
+                                                                    class="rounded bg-gray-700 px-1.5 py-0.5 text-xs text-orange-200 transition-colors hover:bg-gray-600"
+                                                                    title={$locales('meshcoreconfig.pick_on_map')}
+                                                                >
+                                                                    📍
+                                                                </button>
+                                                            </span>
+                                                            {#if coordsDirty}
+                                                                <span
+                                                                    class="shrink-0 rounded-full bg-orange-600/30 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-orange-200"
+                                                                >
+                                                                    {$locales('meshcoreconfig.dirty_badge')}
+                                                                </span>
+                                                            {/if}
+                                                        </div>
+                                                        <div class="grid grid-cols-2 gap-2">
+                                                            <div>
+                                                                <label
+                                                                    class="mb-1 block text-[11px] text-gray-500"
+                                                                >
+                                                                    lat
+                                                                </label>
+                                                                <input
+                                                                    type="number"
+                                                                    class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1.5 text-sm text-gray-100 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                                                                    value={rowValues['lat'] ?? ''}
+                                                                    onchange={(e) =>
+                                                                        setRowValue(
+                                                                            'lat',
+                                                                            Number(
+                                                                                (
+                                                                                    e.currentTarget as HTMLInputElement
+                                                                                ).value
+                                                                            )
+                                                                        )}
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label
+                                                                    class="mb-1 block text-[11px] text-gray-500"
+                                                                >
+                                                                    lon
+                                                                </label>
+                                                                <input
+                                                                    type="number"
+                                                                    class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1.5 text-sm text-gray-100 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                                                                    value={rowValues['lon'] ?? ''}
+                                                                    onchange={(e) =>
+                                                                        setRowValue(
+                                                                            'lon',
+                                                                            Number(
+                                                                                (
+                                                                                    e.currentTarget as HTMLInputElement
+                                                                                ).value
+                                                                            )
+                                                                        )}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                {:else if r.id === 'lon'}
+                                                    <!-- rendered inside the coordinates card -->
+                                                {:else if r.id === 'time'}
+                                                    <!-- time action: epoch seconds input + "now" button -->
+                                                    <div
+                                                        class={`rounded-lg border px-3 py-2 transition-colors ${inQueue(r) ? 'border-orange-600/70 bg-orange-900/10' : 'border-gray-700/60 bg-gray-900/40 hover:border-gray-600'}`}
+                                                    >
+                                                        <div
+                                                            class="mb-1.5 flex items-center justify-between gap-2"
+                                                        >
+                                                            <span
+                                                                class="text-xs font-semibold uppercase tracking-wide text-gray-400"
+                                                                title={r.label}
+                                                            >
+                                                                {r.id}
+                                                            </span>
+                                                            {#if inQueue(r)}
+                                                                <span
+                                                                    class="shrink-0 rounded-full bg-orange-600/30 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-orange-200"
+                                                                >
+                                                                    {$locales('meshcoreconfig.dirty_badge')}
+                                                                </span>
+                                                            {/if}
+                                                        </div>
+                                                        <div class="flex items-center gap-2">
+                                                            <input
+                                                                type="number"
+                                                                class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1.5 text-sm text-gray-100 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                                                                value={rowValues['time'] ?? ''}
+                                                                onchange={(e) =>
+                                                                    setRowValue(
+                                                                        'time',
+                                                                        Number(
+                                                                            (
+                                                                                e.currentTarget as HTMLInputElement
+                                                                            ).value
+                                                                        )
+                                                                    )}
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onclick={sendCurrentTime}
+                                                                class="shrink-0 rounded-md bg-gray-700 px-2 py-1.5 text-xs text-orange-200 transition-colors hover:bg-gray-600"
+                                                                title={$locales('meshcoreconfig.time_now')}
+                                                            >
+                                                                🕐
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                {:else}
+                                                    <MeshcoreConfigRow
+                                                        row={r}
+                                                        value={rowValues[r.id]}
+                                                        dirty={inQueue(r)}
+                                                        canRun={isConnected && !busy}
+                                                        onchange={(next) => setRowValue(r.id, next)}
+                                                        onsend={() => runAction(r)}
+                                                    />
+                                                {/if}
+                                            {/each}
+                                        </div>
+                                    {/if}
+                                </div>
+                            {/if}
+                        {/each}
+                    </div>
+
+                    <!-- Right: the assembled send queue (exact truth for Apply) -->
+                    <div>
+                        <MeshcoreConfigCommandList
+                            setLines={assembled}
+                            lineEnding={selectedLineEnding}
+                        />
+                    </div>
+                </div>
+                </div><!-- /Settings panel -->
+
+                <!-- Terminal panel (lazily mounted on first open so xterm sizes correctly). -->
+                {#if terminalEverOpened}
+                <div
+                    class={`h-full flex flex-col space-y-3 ${activeTab === 'terminal' ? '' : 'hidden'}`}
+                >
+                    <div
+                        class="relative min-h-0 flex-1 overflow-hidden rounded-lg border border-gray-700 bg-gray-800"
+                    >
+                        <!-- h-full w-full forwards onto the component's host <div> (via its
+                             {...rest} spread) so it stretches to the flex-1 box; otherwise
+                             fitAddon.fit() sizes the canvas to the collapsed host height. -->
+                        <Xterm options={terminalOptions} {onLoad} class="h-full w-full" />
+                    </div>
+                    <div class="shrink-0">
+                        <CommandInput
+                            bind:value={termInput}
+                            isConnected={isConnected}
+                            isMassRunning={isMassRunning}
+                            onSubmit={handleTermSubmit}
+                            onsendall={runTermMassSend}
+                            onsendline={sendTermLine}
+                            placeholder={$locales('meshcoreconfig.terminal_input_placeholder')}
+                            {commandHistory}
+                            bind:historyIndex
+                            {showCommandShortDescriptions}
+                            bind:currentLine
+                        />
+                    </div>
+                    <MultilineControls
+                        isMultiline={true}
+                        isConnected={isConnected}
+                        isMassRunning={isMassRunning}
+                        lastSentIndex={massSentIndex}
+                        totalLines={splitIntoCommandLines(termInput).filter(
+                            (l) => l.trim() && !isModeSwitchLine(l)
+                        ).length}
+                        limitExceeded={false}
+                        onsendall={runTermMassSend}
+                        onstop={stopTermMassSend}
+                    />
+                </div>
+                {/if}
+                </div><!-- /panels wrapper -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Reboot confirmation dialog -->
+    {#if showRebootConfirm}
+        <div
+            class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="meshcore-reboot-title"
+        >
+            <div class="max-w-md rounded-lg border border-orange-600 bg-gray-800 p-6 shadow-2xl">
+                <h3 id="meshcore-reboot-title" class="mb-4 text-lg font-semibold text-orange-200">
+                    {$locales('meshcoreconfig.reboot_prompt')}
+                </h3>
+                <div class="flex justify-end gap-3">
+                    <button
+                        type="button"
+                        onclick={() => (showRebootConfirm = false)}
+                        class="rounded-md bg-gray-700 px-4 py-2 text-sm text-white transition-colors hover:bg-gray-600"
+                    >
+                        {$locales('common.cancel')}
+                    </button>
+                    <button
+                        type="button"
+                        onclick={confirmReboot}
+                        class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700"
+                    >
+                        {$locales('meshcoreconfig.reboot_prompt')}
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- Destructive action confirmation (reboot/erase run immediately). -->
+    {#if pendingDangerAction}
+        <div
+            class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="meshcore-danger-title"
+        >
+            <div class="max-w-md rounded-lg border border-orange-600 bg-gray-800 p-6 shadow-2xl">
+                <h3 id="meshcore-danger-title" class="mb-4 text-lg font-semibold text-orange-200">
+                    {$locales('meshcoreconfig.apply_confirm', { values: { count: 1 } })}
+                    <span class="mt-1 block font-mono text-sm text-orange-300">
+                        {pendingDangerAction.line}
+                    </span>
+                </h3>
+                <div class="flex justify-end gap-3">
+                    <button
+                        type="button"
+                        onclick={() => (pendingDangerAction = null)}
+                        class="rounded-md bg-gray-700 px-4 py-2 text-sm text-white transition-colors hover:bg-gray-600"
+                    >
+                        {$locales('common.cancel')}
+                    </button>
+                    <button
+                        type="button"
+                        onclick={confirmDangerAction}
+                        class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700"
+                    >
+                        {$locales('meshcoreconfig.apply')}
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- Coordinate map picker -->
+    {#if showMapPicker}
+        <CoordinateMapPicker
+            lat={typeof rowValues['lat'] === 'number' ? (rowValues['lat'] as number) : undefined}
+            lon={typeof rowValues['lon'] === 'number' ? (rowValues['lon'] as number) : undefined}
+            onconfirm={(la, lo) => {
+                setRowValue('lat', la);
+                setRowValue('lon', lo);
+                showMapPicker = false;
+            }}
+            onclose={() => (showMapPicker = false)}
+        />
+    {/if}
+{/if}

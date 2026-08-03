@@ -14,6 +14,7 @@
     let Footer: any = null;
     let MinimalFooter: any = null;
     let MeshtasticDeviceModal: any = null;
+    let MeshcoreConfigModal: any = null;
     let StatsModal: any = null;
     let NewsFeed: any = null;
     import { loadingState, availableFirmwares, uiState, deviceSelection } from '$lib/stores.js';
@@ -44,6 +45,9 @@
     // Meshtastic device modal state
     let showMeshtasticModal = false;
 
+    // Meshcore configurator modal state
+    let showMeshcoreConfigModal = false;
+
     // Stats modal state
     let showStatsModal = false;
 
@@ -68,6 +72,19 @@
 
     function closeMeshtasticModal() {
         showMeshtasticModal = false;
+    }
+
+    async function openMeshcoreConfigModal() {
+        if (!MeshcoreConfigModal) {
+            MeshcoreConfigModal = (
+                await import('$lib/components/MeshcoreConfigModal.svelte')
+            ).default;
+        }
+        showMeshcoreConfigModal = true;
+    }
+
+    function closeMeshcoreConfigModal() {
+        showMeshcoreConfigModal = false;
     }
 
     function openModal(
@@ -219,6 +236,7 @@
                 <DownloadButtons
                     on:openCustomFirmwareModal={(e) => openModal(e.detail)}
                     on:openMeshtasticDeviceModal={openMeshtasticModal}
+                    on:openMeshcoreConfigModal={openMeshcoreConfigModal}
                 />
             </div>
 
@@ -332,6 +350,7 @@
                         <DownloadButtons
                             on:openCustomFirmwareModal={(e) => openModal(e.detail)}
                             on:openMeshtasticDeviceModal={openMeshtasticModal}
+                            on:openMeshcoreConfigModal={openMeshcoreConfigModal}
                         />
                     </div>
                 </div>
@@ -417,6 +436,14 @@
         this={MeshtasticDeviceModal}
         isOpen={showMeshtasticModal}
         onClose={closeMeshtasticModal}
+    />
+{/if}
+
+{#if showMeshcoreConfigModal && MeshcoreConfigModal}
+    <svelte:component
+        this={MeshcoreConfigModal}
+        isOpen={showMeshcoreConfigModal}
+        onClose={closeMeshcoreConfigModal}
     />
 {/if}
 

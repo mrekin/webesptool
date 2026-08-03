@@ -5,6 +5,7 @@
     import type { Terminal } from '@xterm/xterm';
     import { browser } from '$app/environment';
     import { getCookie, setCookie } from '$lib/utils/cookies.js';
+    import { attachTerminalCopy, copyTerminalSelection } from '$lib/utils/terminalClipboard.js';
 
     // Import parsing utilities
     import parsingRulesJson from '$lib/config/terminal-parsing-rules.json';
@@ -160,18 +161,8 @@
         // Initialize token parser
         initializeTokenParser();
 
-        // Add keydown handler to the terminal element to handle Ctrl+C
-        terminal.attachCustomKeyEventHandler((event) => {
-            if ((event.ctrlKey || event.metaKey) && event.key === 'c' && terminal!.hasSelection()) {
-                // Only prevent default if there's a selection to copy
-                // This allows Ctrl+C to work normally when there's no selection
-                // (for example, to send interrupt signal to running program)
-                event.preventDefault();
-                setTimeout(() => copyTerminal(), 0); // Use setTimeout to allow selection to be finalized
-                return false; // Prevent the keypress from being processed further
-            }
-            return !(event.ctrlKey && event.key === 'c'); // Allow other keys, but prevent Ctrl+C propagation when no selection
-        });
+        // Wire Ctrl/Cmd+C copy handling (shared with MeshcoreConfigModal).
+        attachTerminalCopy(term);
 
         try {
             // Dynamically import and load addons
@@ -412,15 +403,6 @@
             if (error && error.message) {
                 terminal.writeln(`\x1b[90mReason: ${error.message}\x1b[0m\r\n`);
             }
-        }
-    }
-
-    // Copy terminal content
-    function copyTerminal() {
-        if (!terminal) return;
-        const selection = terminal.getSelection();
-        if (selection) {
-            navigator.clipboard.writeText(selection);
         }
     }
 
@@ -819,7 +801,7 @@
                     {/if}
 
                     <button
-                        onclick={copyTerminal}
+                        onclick={() => terminal && copyTerminalSelection(terminal)}
                         class="flex-shrink-0 rounded-md bg-gray-700 p-2 text-white transition-colors hover:bg-gray-600"
                         title={$locales('customfirmware.terminal_copy')}
                     >

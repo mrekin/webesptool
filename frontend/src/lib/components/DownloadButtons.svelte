@@ -446,7 +446,17 @@
                 title={$locales('downloadbuttons.meshtastic_device_description')}
                 aria-label={$locales('downloadbuttons.meshtastic_device_description')}
             >
-                <span class="text-xl">❓</span>
+                <span class="text-xl">🗼</span>
+            </button>
+        {/if}
+        {#if experimentalFeatures && currentSourceStore?.type === RepositoryType.MESHCORE}
+            <button
+                on:click={() => dispatch('openMeshcoreConfigModal')}
+                class="rounded p-1 text-orange-200 transition-colors hover:text-orange-100"
+                title={$locales('downloadbuttons.meshcore_config_description')}
+                aria-label={$locales('downloadbuttons.meshcore_config_description')}
+            >
+                <span class="text-xl">🗼</span>
             </button>
         {/if}
         {#if !deviceSelectionStore.devicePioTarget && availableArchives.length > 0}

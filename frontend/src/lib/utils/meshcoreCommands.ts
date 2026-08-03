@@ -299,7 +299,7 @@ function findMatchingEnumValues(prefix: string, options: string[]): string[] {
  * Strips parameter placeholders like {on|off}, {pubkey}, etc.
  * e.g., "gps {on|off}" -> "gps", "setperm {pubkey} {0|1|2|3}" -> "setperm"
  */
-function getBaseCommandName(fullCommand: string): string {
+export function getBaseCommandName(fullCommand: string): string {
     // Match everything before the first parameter placeholder (space + { or just {)
     const braceIndex = fullCommand.indexOf('{');
     if (braceIndex === -1) return fullCommand;

@@ -730,6 +730,93 @@ export interface MeshcoreCommand {
     shortDescription?: string; // Brief description of the command (1-10 words)
 }
 
+// ==================== MESHCORE CONFIGURATOR TYPES ====================
+
+// Control hint for a config field, derived from command param type.
+// 'select' | 'toggle' — for enum / on-off; 'number' — numeric input; 'text' — string input.
+export type MeshcoreConfigControl = 'select' | 'toggle' | 'number' | 'text';
+
+// Single sub-parameter of a config field (one per MeshcoreCommandParam of the set-command).
+export interface MeshcoreConfigParam {
+    name: string;
+    type: 'string' | 'number' | 'enum';
+    options?: string[];
+    maxLength?: number;
+}
+
+// Descriptor of one configurable field, derived from a get<->set command pair.
+export interface MeshcoreConfigField {
+    /** Root key shared by `get X` / `set X`, e.g. 'radio', 'name', 'radio.rxgain'. */
+    key: string;
+    /** Full get command string, e.g. 'get radio'. */
+    getCommand: string;
+    /** Full base set command string (without param placeholders), e.g. 'set radio'. */
+    setCommand: string;
+    /** Params of the set-command (>=1). length>1 means a composite field (e.g. radio). */
+    params: MeshcoreConfigParam[];
+    /** Separator joining multi-param values on the wire (from set-command). */
+    separator: MeshcoreCommandSeparator;
+    /** UI control hint derived from param type(s). */
+    control: MeshcoreConfigControl;
+    /** Short label from the command's shortDescription. */
+    label?: string;
+    /** Group id from metadata (defaults to 'advanced'). */
+    groupId: string;
+    /** Whether changing this field requires a device reboot. */
+    needsReboot?: boolean;
+    /** Minimum firmware version [major, minor, patch] required for this field. */
+    minVersion?: [number, number, number];
+}
+
+// Logical group of fields (e.g. 'radio', 'bridge', 'identity').
+export interface MeshcoreConfigGroup {
+    id: string;
+    /** i18n key suffix under 'meshcoreconfig.group_*'. */
+    labelKey: string;
+    order: number;
+}
+
+// Unified descriptor of any configurator command: either a get<->set setting
+// (kind 'config') or a one-shot action command (kind 'action'). Both go to the
+// device over serial and are treated identically by the UI.
+export interface MeshcoreCommandRow {
+    /** Unique id: field key for config, base command for action (e.g. 'password'). */
+    id: string;
+    kind: 'config' | 'action';
+    label: string;
+    /** Wire command base, e.g. 'set name', 'password', 'reboot'. */
+    baseCommand: string;
+    /** Present only for config (the matching `get X`). */
+    getCommand?: string;
+    params: MeshcoreConfigParam[];
+    separator: MeshcoreCommandSeparator;
+    control: MeshcoreConfigControl;
+    groupId: string;
+    /** Changing this config field requires a device reboot. */
+    needsReboot?: boolean;
+    /** Destructive one-shot action (reboot/erase) — needs confirmation before send. */
+    danger?: boolean;
+    /** Variadic action: the whole remainder is one value (e.g. 'region def a b c'). */
+    variadic?: boolean;
+    minVersion?: [number, number, number];
+}
+
+// Coerced value held by a config field (used for current/original/diff maps).
+export type MeshcoreConfigValue = string | number | boolean | string[];
+
+// Parsed value of a single get-response: either ok (coerced) or failed.
+export type MeshcoreFieldValue =
+    | { ok: true; value: MeshcoreConfigValue }
+    | { ok: false; raw: string };
+
+// Result of a diff: only fields whose current value differs from original.
+export interface MeshcoreConfigDiff {
+    /** Field keys that changed, with the set-command to send. */
+    changes: { key: string; setLine: string; needsReboot: boolean }[];
+    /** Whether any change requires a device reboot. */
+    needsReboot: boolean;
+}
+
 // Result of parsing user input
 export interface ParsedCommandInput {
     command: string;
