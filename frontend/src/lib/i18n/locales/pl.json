@@ -282,7 +282,18 @@
     "apply_confirm": "Zastosować i wysłać {count} poleceń do urządzenia? Lista zawiera destrukcyjne akcje.",
     "tab_settings": "Ustawienia",
     "tab_terminal": "Terminal",
-    "terminal_input_placeholder": "Wpisz polecenie…"
+    "terminal_input_placeholder": "Wpisz polecenie…",
+    "geocode": {
+      "location_label": "Miejsce",
+      "no_data": "Brak opisu dla tego punktu",
+      "loading": "Wykrywanie miejsca…",
+      "rate_limited": "Osiągnięto limit zapytań, spróbuj później",
+      "error": "Geokodowanie niedostępne",
+      "view_response": "Pokaż odpowiedź",
+      "response_title": "Odpowiedź geokodowania",
+      "source_cache": "z pamięci podręcznej",
+      "source_live": "na żywo"
+    }
   },
   "customfirmware": {
     "flash_custom_firmware": "Flashuj niestandardowy firmware",

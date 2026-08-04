@@ -1,6 +1,9 @@
 <script lang="ts">
     import { _ as locales } from 'svelte-i18n';
     import { onMount, onDestroy } from 'svelte';
+    import { apiService } from '$lib/api';
+    import type { GeocodeResponse } from '$lib/types';
+    import GeocodeResponseModal from './GeocodeResponseModal.svelte';
 
     let {
         lat,
@@ -29,6 +32,52 @@
     );
     let pickLat = $state(hasCoords ? (lat as number) : 55.75);
     let pickLon = $state(hasCoords ? (lon as number) : 37.62);
+
+    // Reverse-geocoding state. Triggered reactively whenever the marker moves.
+    let geocodeResp = $state<GeocodeResponse | null>(null);
+    let geocodeLoading = $state(false);
+    let geoRequestId = 0;
+    let showGeocodeResponse = $state(false);
+
+    // Debounced reverse-geocode lookup on marker placement/drag. The requestId
+    // guard discards stale responses if the marker moves again within the window.
+    $effect(() => {
+        const la = pickLat;
+        const lo = pickLon;
+        const requestId = ++geoRequestId;
+        geocodeLoading = true;
+        const timer = setTimeout(async () => {
+            if (requestId !== geoRequestId) return;
+            const resp = await apiService.getGeocode(la, lo);
+            if (requestId !== geoRequestId) return;
+            geocodeResp = resp;
+            geocodeLoading = false;
+        }, 500);
+        return () => clearTimeout(timer);
+    });
+
+    const geocodeDisplay = $derived.by(() => {
+        if (geocodeLoading) return { kind: 'loading' as const };
+        if (!geocodeResp) return null;
+        switch (geocodeResp.status) {
+            case 'ok':
+                return {
+                    kind: 'ok' as const,
+                    text: geocodeResp.display_name ?? '',
+                    source: geocodeResp.source
+                };
+            case 'rate_limited':
+                return { kind: 'rate_limited' as const };
+            case 'no_data':
+                if (geocodeResp.source === 'error' || geocodeResp.source === 'timeout') {
+                    return { kind: 'error' as const };
+                }
+                return { kind: 'no_data' as const };
+            case 'disabled':
+            default:
+                return null;
+        }
+    });
 
     function loadCss(href: string): void {
         if (document.querySelector(`link[href="${href}"]`)) return;
@@ -138,24 +187,75 @@
             ></div>
         {/if}
 
-        <div class="mt-3 flex justify-end gap-3">
-            <button
-                type="button"
-                onclick={onclose}
-                class="rounded-md bg-gray-700 px-4 py-2 text-sm text-white transition-colors hover:bg-gray-600"
-            >
-                {$locales('common.cancel')}
-            </button>
-            <button
-                type="button"
-                onclick={() =>
-                    onconfirm(Number(pickLat.toFixed(5)), Number(pickLon.toFixed(5)))}
+        {#if geocodeDisplay}
+            <div class="mt-3 flex min-h-5 items-center gap-2 text-sm">
+                {#if geocodeDisplay.kind === 'loading'}
+                    <span
+                        class="inline-block h-3 w-3 animate-spin rounded-full border border-gray-500 border-t-transparent"
+                    ></span>
+                    <span class="text-gray-400">{$locales('meshcoreconfig.geocode.loading')}</span>
+                {:else if geocodeDisplay.kind === 'ok'}
+                    <span class="min-w-0 flex-1 truncate text-gray-300" title={geocodeDisplay.text}>
+                        📍 {geocodeDisplay.text}
+                    </span>
+                    {#if geocodeDisplay.source === 'cache'}
+                        <span
+                            class="shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-xs text-gray-400"
+                        >
+                            {$locales('meshcoreconfig.geocode.source_cache')}
+                        </span>
+                    {:else if geocodeDisplay.source === 'live'}
+                        <span
+                            class="shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-xs text-gray-400"
+                        >
+                            {$locales('meshcoreconfig.geocode.source_live')}
+                        </span>
+                    {/if}
+                {:else if geocodeDisplay.kind === 'rate_limited'}
+                    <span class="text-yellow-300">
+                        {$locales('meshcoreconfig.geocode.rate_limited')}
+                    </span>
+                {:else if geocodeDisplay.kind === 'no_data'}
+                    <span class="text-gray-500">{$locales('meshcoreconfig.geocode.no_data')}</span>
+                {:else if geocodeDisplay.kind === 'error'}
+                    <span class="text-gray-500">{$locales('meshcoreconfig.geocode.error')}</span>
+                {/if}
+            </div>
+        {/if}
 
-                disabled={loadError}
-                class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+        <div class="mt-3 flex items-center justify-between gap-3">
+            <button
+                type="button"
+                onclick={() => (showGeocodeResponse = true)}
+                disabled={!geocodeResp?.raw}
+                class="rounded-md bg-gray-700 px-3 py-2 text-sm text-white transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
             >
-                {$locales('meshcoreconfig.apply')}
+                {$locales('meshcoreconfig.geocode.view_response')}
             </button>
+            <div class="flex gap-3">
+                <button
+                    type="button"
+                    onclick={onclose}
+                    class="rounded-md bg-gray-700 px-4 py-2 text-sm text-white transition-colors hover:bg-gray-600"
+                >
+                    {$locales('common.cancel')}
+                </button>
+                <button
+                    type="button"
+                    onclick={() =>
+                        onconfirm(Number(pickLat.toFixed(5)), Number(pickLon.toFixed(5)))}
+                    disabled={loadError}
+                    class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    {$locales('meshcoreconfig.apply')}
+                </button>
+            </div>
         </div>
     </div>
 </div>
+
+<GeocodeResponseModal
+    isOpen={showGeocodeResponse}
+    raw={geocodeResp?.raw ?? null}
+    onclose={() => (showGeocodeResponse = false)}
+/>

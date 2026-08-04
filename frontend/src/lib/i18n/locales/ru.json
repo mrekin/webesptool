@@ -282,7 +282,18 @@
     "apply_confirm": "Применить и отправить {count} команд(ы) на устройство? В списке есть разрушительные действия.",
     "tab_settings": "Настройки",
     "tab_terminal": "Терминал",
-    "terminal_input_placeholder": "Введите команду…"
+    "terminal_input_placeholder": "Введите команду…",
+    "geocode": {
+      "location_label": "Место",
+      "no_data": "Нет описания для этой точки",
+      "loading": "Определяем место…",
+      "rate_limited": "Достигнут лимит запросов, повторите позже",
+      "error": "Геокодирование недоступно",
+      "view_response": "Посмотреть ответ",
+      "response_title": "Ответ геокодирования",
+      "source_cache": "из кэша",
+      "source_live": "напрямую"
+    }
   },
   "customfirmware": {
     "flash_custom_firmware": "Прошить свою прошивку",

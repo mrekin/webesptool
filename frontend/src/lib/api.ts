@@ -10,7 +10,8 @@ import type {
     AppConfig,
     UpdateMode,
     NewsResponse,
-    StatsResponse
+    StatsResponse,
+    GeocodeResponse
 } from './types.ts';
 
 class APIService {
@@ -583,6 +584,29 @@ class APIService {
             params.set('limit', limit.toString());
         }
         return await this.request<StatsResponse>(`/stats/downloads?${params.toString()}`);
+    }
+
+    // Reverse-geocode coordinates via the SvelteKit /api/geocode proxy.
+    // Uses a direct fetch (not request<T>) so transient rate_limited/no_data
+    // responses are not cached client-side for 5 minutes. On any failure the
+    // modal keeps working with a local no_data/error result.
+    async getGeocode(lat: number, lon: number): Promise<GeocodeResponse> {
+        const params = new URLSearchParams({
+            lat: lat.toString(),
+            lon: lon.toString()
+        });
+        const url = `${this.baseUrl}/geocode?${params}`;
+        try {
+            const response = await fetch(url, {
+                signal: AbortSignal.timeout(15000)
+            });
+            if (!response.ok) {
+                return { status: 'no_data', source: 'error' };
+            }
+            return (await response.json()) as GeocodeResponse;
+        } catch {
+            return { status: 'no_data', source: 'error' };
+        }
     }
 
     // Clear cache

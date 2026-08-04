@@ -895,3 +895,16 @@ export type Disclaimer = string;
 export interface LayoutServerData {
     disclaimer: Disclaimer;
 }
+
+// ==================== GEOCODE TYPES ====================
+
+export type GeocodeStatus = 'ok' | 'no_data' | 'rate_limited' | 'disabled';
+export type GeocodeSource = 'cache' | 'live' | 'negative-cache' | 'miss' | 'timeout' | 'error';
+
+export interface GeocodeResponse {
+    status: GeocodeStatus;
+    display_name?: string | null; // present when status === 'ok'
+    raw?: Record<string, unknown> | null; // full Nominatim JSON when status === 'ok'
+    source?: GeocodeSource;
+    retry_after_ms?: number; // present when status === 'rate_limited'
+}

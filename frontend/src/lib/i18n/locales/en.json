@@ -282,7 +282,18 @@
     "apply_confirm": "Apply and send {count} command(s) to the device? The list includes destructive actions.",
     "tab_settings": "Settings",
     "tab_terminal": "Terminal",
-    "terminal_input_placeholder": "Enter a command…"
+    "terminal_input_placeholder": "Enter a command…",
+    "geocode": {
+      "location_label": "Location",
+      "no_data": "No description for this point",
+      "loading": "Detecting location…",
+      "rate_limited": "Rate limit reached, please retry later",
+      "error": "Geocoding unavailable",
+      "view_response": "View response",
+      "response_title": "Geocoding response",
+      "source_cache": "cached",
+      "source_live": "live"
+    }
   },
   "customfirmware": {
     "flash_custom_firmware": "Flash Custom Firmware",
