@@ -958,6 +958,7 @@
                         </div>
 
                         {#each groups as g (g.id)}
+                            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
                             <div class={`mb-2 cursor-pointer rounded border-l-4 bg-gray-800 p-2 ${activeGroupId === g.id ? 'ring-1 ring-orange-500' : ''}`} style={`border-left-color: ${groupColor(g.id)}`} onclick={() => activateGroup(g.id)}>
                                 <div class="flex items-center gap-1">
                                     <span class="inline-block h-3 w-3 shrink-0 rounded-sm" style={`background-color: ${groupColor(g.id)}`}></span>

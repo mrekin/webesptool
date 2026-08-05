@@ -89,11 +89,16 @@ export function parseZoneCatalog(raw: unknown): ZoneCatalog {
 
 // --- build-time discovery of static assets (glob paths must be literals) ---
 
-const boundaryUrls = import.meta.glob('/static/data/boundaries/*.geojson', {
-    eager: true,
-    query: '?url',
-    import: 'default'
-}) as Record<string, string>;
+// Build-time list of base boundary files. Only the glob KEYS are used (literal
+// source paths under /static) — NOT `?url`. With `?url` Vite emits a
+// content-hashed asset (e.g. OSMB-rus.DR3XXwFS.geojson under
+// _app/immutable/assets/); the hash leaks into the displayed filename and the
+// hashed URL 404s in the built image. Files under static/ are copied verbatim
+// into build/client and served at their original path, so the served URL is the
+// key with the /static prefix stripped (works identically in dev and build).
+const boundaryPaths = Object.keys(
+    import.meta.glob('/static/data/boundaries/*.geojson')
+) as string[];
 
 // NOTE: groups are NOT discovered via a build-time glob — they support live add
 // (the administrator drops a new .geojson into the mounted static/data/groups/
@@ -112,7 +117,10 @@ function fileBase(url: string): string {
 // fetched, since these can be very large, e.g. a 39 MB country file). Content is
 // fetched lazily by fetchBoundaryFile when the user toggles a file on.
 export function boundaryFileList(): { url: string; filename: string }[] {
-    return Object.values(boundaryUrls).map((url) => ({ url, filename: fileBase(url) }));
+    return boundaryPaths.map((p) => ({
+        url: p.replace(/^\/static/, ''),
+        filename: fileBase(p)
+    }));
 }
 
 const boundaryFileCache = new Map<string, Promise<BoundaryFile | null>>();
