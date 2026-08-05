@@ -65,6 +65,18 @@ export function computeBbox(geom: ZoneGeometry): [number, number, number, number
     return turfBbox(toTurfFeature(geom)) as [number, number, number, number];
 }
 
+// Area in m² (turf). Used to paint more specific (smaller) admin boundaries on
+// top of enclosing ones in the editor, so a region (e.g. Московская область)
+// receives hover/click instead of the country/federal-district polygon that
+// covers it. Returns 0 on failure (sorts to the bottom of the paint stack).
+export function computeArea(geom: ZoneGeometry): number {
+    try {
+        return turfArea(toTurfFeature(geom));
+    } catch {
+        return 0;
+    }
+}
+
 // --- circle -> polygon approximation (task 72: circle is a tool artifact) ---
 
 // Approximate a circle (center given in [lat, lon], radius in meters) as a

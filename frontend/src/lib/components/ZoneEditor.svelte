@@ -26,6 +26,7 @@
     import {
         bufferTrail,
         circleToPolygon,
+        computeArea,
         erase,
         pointInGeometry,
         subtractExisting,
@@ -498,7 +499,24 @@
             if (!loader) continue;
             loader().then((fc) => {
                 if (!fc || !shownBoundaries.has(key) || !map) return;
-                const layer = L.geoJSON(fc, {
+                // Paint smaller (more specific) admin boundaries on top of
+                // enclosing ones (e.g. an oblast above the country/federal-
+                // district polygon that otherwise covers it and intercepts
+                // hover/click). Leaflet paints GeoJSON features in array order
+                // and later = on top, so sort DESCENDING by area: the largest
+                // polygon is painted first (bottom) and the smallest last (top),
+                // which is what receives hover/click.
+                const sorted = {
+                    ...fc,
+                    features: [...fc.features].sort((a, b) => {
+                        const ga = a.geometry as ZoneGeometry | null;
+                        const gb = b.geometry as ZoneGeometry | null;
+                        const aa = ga && (ga.type === 'Polygon' || ga.type === 'MultiPolygon') ? computeArea(ga) : 0;
+                        const ab = gb && (gb.type === 'Polygon' || gb.type === 'MultiPolygon') ? computeArea(gb) : 0;
+                        return ab - aa;
+                    })
+                };
+                const layer = L.geoJSON(sorted, {
                     style: () => BOUNDARY_STYLE,
                     onEachFeature: (feature: any, l: any) => {
                         const name = feature?.properties?.name ?? feature?.properties?.name_en ?? '';
