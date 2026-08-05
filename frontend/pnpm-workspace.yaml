@@ -5,3 +5,4 @@ allowBuilds:
   "@parcel/watcher": true
   es5-ext: true
   "@meshtastic/core": true
+  '@meshtastic/core@file:local-packages/@meshtastic/core': set this to true or false

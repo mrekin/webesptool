@@ -908,3 +908,112 @@ export interface GeocodeResponse {
     source?: GeocodeSource;
     retry_after_ms?: number; // present when status === 'rate_limited'
 }
+
+// --- GeoJSON zone catalog (task 72) ---------------------------------------
+// GeoJSON coordinates are [lon, lat]; Leaflet works in [lat, lon]. Conversion is
+// centralized in zoneGeometry.ts.
+
+// A GeoJSON Polygon coordinate ring: array of [lon, lat] positions.
+export type PolygonRing = [number, number][];
+// Polygon = outer ring + optional holes. MultiPolygon = array of polygons.
+export type PolygonCoords = PolygonRing[];
+export type MultiPolygonCoords = PolygonCoords[];
+
+export type ZoneGeometry =
+    | { type: 'Polygon'; coordinates: PolygonCoords }
+    | { type: 'MultiPolygon'; coordinates: MultiPolygonCoords };
+
+// One normalized catalog feature. `bbox` is precomputed at parse time for the
+// lookup prefilter ([minLon, minLat, maxLon, maxLat]).
+export interface ZoneFeature {
+    id: string;
+    geometry: ZoneGeometry;
+    bbox: [number, number, number, number];
+    regions: string; // value for `region def` (tokens separated by spaces)
+    group?: string; // cosmetic label for the editor/export only
+    properties: Record<string, unknown>; // open object — extensible characteristics
+}
+
+export type ZoneCatalogStatus = 'ok' | 'unavailable';
+
+export interface ZoneCatalog {
+    status: ZoneCatalogStatus;
+    features: ZoneFeature[];
+    reason?: 'empty_catalog' | 'fetch_failed' | 'invalid'; // when unavailable
+    schema?: number;
+}
+
+// A published group file loaded from static/data/groups/*.geojson: one group
+// (name + regions) with its polygon features.
+export interface GroupFile {
+    url: string;
+    filename: string;
+    name: string;
+    regions: string;
+    features: ZoneFeature[];
+}
+
+// A base administrative-boundary file loaded from static/data/boundaries/*.geojson
+// (no characteristics; reference shapes for creating zones).
+export interface BoundaryFile {
+    url: string;
+    filename: string;
+    fc: GeoJSON.FeatureCollection;
+}
+
+export type ZoneLookupStatus = 'hit' | 'miss' | 'unavailable';
+
+export interface ZoneRegionResult {
+    tokens: string[]; // regions.split(/\s+/) on hit; [] otherwise
+    status: ZoneLookupStatus;
+    regions?: string; // original properties.regions on hit
+    zoneId?: string; // feature id on hit
+    reason?: 'empty_catalog' | 'fetch_failed' | 'invalid'; // when unavailable
+}
+
+// Result returned by the coordinate picker: coordinates and/or a region lookup.
+export interface PickerResult {
+    coords: { lat: number; lon: number } | null; // null when "coordinates" toggle is off
+    region: ZoneRegionResult | null; // null when "regions" toggle is off; else lookup result
+}
+
+// --- Zone editor model (task 72 drawing tool) -----------------------------
+
+// A group assigns one `regions` value to many polygons. `name` is a human label
+// chosen at creation; `regions` is the region-def characteristic. `originUrl`
+// is set when the group was loaded from a published file for editing (used to
+// exclude it from the overlap check and to mark it as "editing").
+export interface ZoneGroup {
+    id: string;
+    name: string;
+    regions: string;
+    originUrl?: string;
+}
+
+// Circle stored as center ([lat, lon]) + radius until converted to a polygon.
+export interface CircleSpec {
+    center: [number, number];
+    radiusMeters: number;
+}
+
+// One polygon drawn by the configurator. `geom` is either a ready polygon
+// (Polygon/MultiPolygon in [lon, lat]) or a circle spec (converted on demand).
+export interface EditorPolygon {
+    id: string;
+    groupId: string | null;
+    kind: 'polygon' | 'circle';
+    geom: ZoneGeometry | CircleSpec;
+    /** Display label (e.g. the boundary name when created from a click). */
+    label?: string;
+}
+
+// A resolved zone ready for export (circles already converted to polygons).
+export interface ExportZone {
+    id: string;
+    geometry: ZoneGeometry;
+    regions: string;
+    group?: string;
+    properties?: Record<string, unknown>;
+}
+
+

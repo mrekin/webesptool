@@ -2,24 +2,26 @@
     import { _ as locales } from 'svelte-i18n';
     import { onMount, onDestroy } from 'svelte';
     import { apiService } from '$lib/api';
-    import type { GeocodeResponse } from '$lib/types';
+    import type { GeocodeResponse, PickerResult, ZoneCatalog } from '$lib/types';
     import GeocodeResponseModal from './GeocodeResponseModal.svelte';
+    import ZoneEditor from './ZoneEditor.svelte';
+    import { loadLeaflet } from '$lib/utils/leafletLoader';
+    import { fetchZoneCatalog } from '$lib/utils/zoneCatalog';
+    import { lookupZoneRegion } from '$lib/utils/zoneResolver';
 
     let {
         lat,
         lon,
-        onconfirm = (_lat: number, _lon: number) => {},
+        onconfirm = (_result: PickerResult) => {},
         onclose = () => {}
     }: {
         lat?: number;
         lon?: number;
-        onconfirm?: (lat: number, lon: number) => void;
+        detectCoords?: boolean;
+        detectRegions?: boolean;
+        onconfirm?: (result: PickerResult) => void;
         onclose?: () => void;
     } = $props();
-
-    // Leaflet is loaded from CDN at runtime (kept out of the npm bundle).
-    const LEAFLET_CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-    const LEAFLET_JS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
 
     let container: HTMLDivElement;
     let map: any = null;
@@ -32,6 +34,15 @@
     );
     let pickLat = $state(hasCoords ? (lat as number) : 55.75);
     let pickLon = $state(hasCoords ? (lon as number) : 37.62);
+
+    // The picker always opens with both coordinates and regions enabled,
+    // regardless of which entry point opened it.
+    let useCoords = $state(true);
+    let useRegions = $state(true);
+    let showZoneEditor = $state(false);
+
+    // Authoritative zone catalog (lazy-loaded once; immutable for the session).
+    let catalog = $state<ZoneCatalog | null>(null);
 
     // Reverse-geocoding state. Triggered reactively whenever the marker moves.
     let geocodeResp = $state<GeocodeResponse | null>(null);
@@ -79,30 +90,10 @@
         }
     });
 
-    function loadCss(href: string): void {
-        if (document.querySelector(`link[href="${href}"]`)) return;
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = href;
-        document.head.appendChild(link);
-    }
-
-    function loadScript(src: string): Promise<void> {
-        return new Promise((resolve, reject) => {
-            const existing = document.querySelector(`script[src="${src}"]`);
-            if (existing) {
-                if ((window as any).L) return resolve();
-                existing.addEventListener('load', () => resolve());
-                existing.addEventListener('error', () => reject(new Error('leaflet load error')));
-                return;
-            }
-            const s = document.createElement('script');
-            s.src = src;
-            s.onload = () => resolve();
-            s.onerror = () => reject(new Error('leaflet load error'));
-            document.head.appendChild(s);
-        });
-    }
+    // Point-in-polygon region lookup (only when enabled and the catalog is loaded).
+    const regionResult = $derived(
+        useRegions && catalog ? lookupZoneRegion([pickLon, pickLat], catalog) : null
+    );
 
     function placeMarker(la: number, lo: number): void {
         pickLat = la;
@@ -129,12 +120,18 @@
         }
     }
 
+    function confirm(): void {
+        onconfirm({
+            coords: useCoords
+                ? { lat: Number(pickLat.toFixed(5)), lon: Number(pickLon.toFixed(5)) }
+                : null,
+            region: useRegions ? regionResult : null
+        });
+    }
+
     onMount(async () => {
         try {
-            loadCss(LEAFLET_CSS);
-            await loadScript(LEAFLET_JS);
-            L = (window as any).L;
-            if (!L) throw new Error('Leaflet unavailable');
+            L = await loadLeaflet();
         } catch {
             loadError = true;
             return;
@@ -151,6 +148,10 @@
         if (hasCoords) placeMarker(lat as number, lon as number);
         // The container was laid out while hidden; force a recalculation.
         setTimeout(() => map?.invalidateSize(), 50);
+
+        // Load the zone catalog in the background (lookup degrades to "miss"/
+        // "unavailable" predictably if it is absent/empty).
+        fetchZoneCatalog().then((c) => (catalog = c));
     });
 
     onDestroy(() => {
@@ -166,14 +167,37 @@
     role="dialog"
     aria-modal="true"
 >
-    <div class="w-full max-w-2xl rounded-lg border border-orange-600 bg-gray-800 p-4 shadow-2xl">
+    <div class="w-full max-w-[52rem] rounded-lg border border-orange-600 bg-gray-800 p-4 shadow-2xl">
         <div class="mb-3 flex items-center justify-between gap-2">
-            <h3 class="text-lg font-semibold text-orange-200">
-                {$locales('meshcoreconfig.pick_on_map')}
-            </h3>
-            <span class="font-mono text-xs text-gray-400">
-                {pickLat.toFixed(5)}, {pickLon.toFixed(5)}
-            </span>
+            <div class="flex items-center gap-2">
+                <h3 class="text-lg font-semibold text-orange-200">
+                    {$locales('meshcoreconfig.pick_on_map')}
+                </h3>
+                <button
+                    type="button"
+                    title={$locales('meshcoreconfig.zones.editor_title')}
+                    onclick={() => (showZoneEditor = true)}
+                    class="rounded bg-gray-700 px-2 py-1 text-sm text-orange-200 hover:bg-gray-600"
+                >
+                    ✏️
+                </button>
+            </div>
+            <div class="flex flex-col items-end gap-0.5 text-right">
+                <span class="font-mono text-xs text-gray-400">
+                    {pickLat.toFixed(5)}, {pickLon.toFixed(5)}
+                </span>
+                {#if useRegions && regionResult}
+                    {#if regionResult.status === 'hit'}
+                        <span class="font-mono text-xs text-orange-200" title={regionResult.regions}>
+                            {$locales('meshcoreconfig.zones.result_label')}: {regionResult.tokens.join(' ')}
+                        </span>
+                    {:else if regionResult.status === 'miss'}
+                        <span class="text-[11px] text-gray-500">{$locales('meshcoreconfig.zones.status_miss')}</span>
+                    {:else}
+                        <span class="text-[11px] text-gray-500">{$locales('meshcoreconfig.zones.status_unavailable')}</span>
+                    {/if}
+                {/if}
+            </div>
         </div>
 
         {#if loadError}
@@ -183,9 +207,20 @@
         {:else}
             <div
                 bind:this={container}
-                class="h-72 w-full overflow-hidden rounded-md border border-gray-700 bg-gray-900"
+                class="h-[360px] w-full overflow-hidden rounded-md border border-gray-700 bg-gray-900"
             ></div>
         {/if}
+
+        <div class="mt-3 flex flex-wrap items-center gap-4 text-xs text-gray-300">
+            <label class="flex items-center gap-1.5">
+                <input type="checkbox" bind:checked={useCoords} class="h-3 w-3" />
+                {$locales('meshcoreconfig.coordinates')}
+            </label>
+            <label class="flex items-center gap-1.5">
+                <input type="checkbox" bind:checked={useRegions} class="h-3 w-3" />
+                {$locales('meshcoreconfig.zones.detect_regions')}
+            </label>
+        </div>
 
         {#if geocodeDisplay}
             <div class="mt-3 flex min-h-5 items-center gap-2 text-sm">
@@ -242,8 +277,7 @@
                 </button>
                 <button
                     type="button"
-                    onclick={() =>
-                        onconfirm(Number(pickLat.toFixed(5)), Number(pickLon.toFixed(5)))}
+                    onclick={confirm}
                     disabled={loadError}
                     class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -259,3 +293,7 @@
     raw={geocodeResp?.raw ?? null}
     onclose={() => (showGeocodeResponse = false)}
 />
+
+{#if showZoneEditor}
+    <ZoneEditor onclose={() => (showZoneEditor = false)} />
+{/if}

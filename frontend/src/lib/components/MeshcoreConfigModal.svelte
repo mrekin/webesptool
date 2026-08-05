@@ -24,10 +24,13 @@
     import CommandInput from './CommandInput.svelte';
     import MultilineControls from './MultilineControls.svelte';
     import CoordinateMapPicker from './CoordinateMapPicker.svelte';
+    import { parseDeviceVersion, versionGte } from '$lib/utils/meshcoreVersion.js';
+    import { REGION_DEF_MIN_VERSION } from '$lib/config/meshcoreZoneConfig.js';
     import type {
         MeshcoreCommandRow,
         MeshcoreConfigGroup,
-        MeshcoreConfigValue
+        MeshcoreConfigValue,
+        PickerResult
     } from '$lib/types.js';
 
     let { isOpen = false, onClose = () => {} } = $props();
@@ -86,6 +89,23 @@
     let terminalEverOpened = $state(false);
     // Coordinate map picker dialog.
     let showMapPicker = $state(false);
+    // Initial toggles for the picker (coords vs regions entry points).
+    let pickerInitial = $state<{ detectCoords: boolean; detectRegions: boolean }>({
+        detectCoords: true,
+        detectRegions: false
+    });
+
+    // `region def` is supported on firmware >= 1.16. An empty version (not
+    // connected / 'ver' unanswered) is treated as supported: the region is still
+    // shown/resolved, the user applies it themselves.
+    const regionDefSupported = $derived(
+        deviceVersion === '' || versionGte(parseDeviceVersion(deviceVersion), REGION_DEF_MIN_VERSION)
+    );
+
+    // Light metric logging for the zone feature (counters, debug-level).
+    function logZoneMetric(kind: string): void {
+        console.info('[meshcore-zone]', kind);
+    }
 
     // Terminal tab state. Shares the same cliManager/port as the settings tab;
     // the xterm only displays (and sends manual input), settings logic is untouched.
@@ -792,26 +812,48 @@
                             {@const groupRows = rowsByGroup.get(group.id) ?? []}
                             {#if groupRows.length > 0}
                                 <div class="rounded-md border border-gray-700 bg-gray-900/50">
-                                    <button
-                                        type="button"
-                                        onclick={() => toggleGroup(group.id)}
-                                        class="flex w-full items-center justify-between border-b border-gray-700/60 px-4 py-2.5 text-left transition-colors hover:bg-gray-800/50"
-                                        aria-expanded={!collapsedGroups.has(group.id)}
+                                    <div
+                                        class="flex items-center border-b border-gray-700/60"
                                     >
-                                        <span class="flex items-center gap-2">
-                                            <span class="text-sm font-semibold uppercase tracking-wide text-orange-300">
-                                                {$locales(`meshcoreconfig.group_${group.labelKey}`)}
-                                            </span>
-                                            {#if groupQueueCount(group.id) > 0}
-                                                <span class="rounded-full bg-orange-600 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                                                    {groupQueueCount(group.id)}
+                                        <button
+                                            type="button"
+                                            onclick={() => toggleGroup(group.id)}
+                                            class="flex flex-1 items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-gray-800/50"
+                                            aria-expanded={!collapsedGroups.has(group.id)}
+                                        >
+                                            <span class="flex items-center gap-2">
+                                                <span class="text-sm font-semibold uppercase tracking-wide text-orange-300">
+                                                    {$locales(`meshcoreconfig.group_${group.labelKey}`)}
                                                 </span>
-                                            {/if}
-                                        </span>
-                                        <span class="text-xs text-gray-400">
-                                            {collapsedGroups.has(group.id) ? '▶' : '▼'}
-                                        </span>
-                                    </button>
+                                                {#if groupQueueCount(group.id) > 0}
+                                                    <span class="rounded-full bg-orange-600 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                                                        {groupQueueCount(group.id)}
+                                                    </span>
+                                                {/if}
+                                            </span>
+                                            <span class="text-xs text-gray-400">
+                                                {collapsedGroups.has(group.id) ? '▶' : '▼'}
+                                            </span>
+                                        </button>
+                                        {#if group.id === 'region'}
+                                            <div class="flex items-center gap-1 pr-2">
+                                                <button
+                                                    type="button"
+                                                    onclick={() => {
+                                                        pickerInitial = {
+                                                            detectCoords: false,
+                                                            detectRegions: true
+                                                        };
+                                                        showMapPicker = true;
+                                                    }}
+                                                    class="rounded bg-gray-700 px-1.5 py-0.5 text-xs text-orange-200 transition-colors hover:bg-gray-600"
+                                                    title={$locales('meshcoreconfig.zones.detect_regions')}
+                                                >
+                                                    📍
+                                                </button>
+                                            </div>
+                                        {/if}
+                                    </div>
                                     {#if !collapsedGroups.has(group.id)}
                                         <div
                                             class="grid gap-2 grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] p-3"
@@ -833,7 +875,13 @@
                                                                 </span>
                                                                 <button
                                                                     type="button"
-                                                                    onclick={() => (showMapPicker = true)}
+                                                                    onclick={() => {
+                                                                        pickerInitial = {
+                                                                            detectCoords: true,
+                                                                            detectRegions: false
+                                                                        };
+                                                                        showMapPicker = true;
+                                                                    }}
                                                                     class="rounded bg-gray-700 px-1.5 py-0.5 text-xs text-orange-200 transition-colors hover:bg-gray-600"
                                                                     title={$locales('meshcoreconfig.pick_on_map')}
                                                                 >
@@ -1086,14 +1134,28 @@
         </div>
     {/if}
 
-    <!-- Coordinate map picker -->
+    <!-- Coordinate map picker (coords and/or region lookup entry points) -->
     {#if showMapPicker}
         <CoordinateMapPicker
             lat={typeof rowValues['lat'] === 'number' ? (rowValues['lat'] as number) : undefined}
             lon={typeof rowValues['lon'] === 'number' ? (rowValues['lon'] as number) : undefined}
-            onconfirm={(la, lo) => {
-                setRowValue('lat', la);
-                setRowValue('lon', lo);
+            detectCoords={pickerInitial.detectCoords}
+            detectRegions={pickerInitial.detectRegions}
+            onconfirm={(res: PickerResult) => {
+                if (res.coords) {
+                    setRowValue('lat', res.coords.lat);
+                    setRowValue('lon', res.coords.lon);
+                }
+                if (res.region && res.region.status === 'hit' && res.region.tokens.length > 0) {
+                    if (regionDefSupported) {
+                        setRowValue('region def', res.region.tokens.join(' '));
+                        logZoneMetric('zones_hit');
+                    } else {
+                        logZoneMetric('old_firmware_skipped');
+                    }
+                } else if (res.region && res.region.status === 'miss') {
+                    logZoneMetric('zones_miss');
+                }
                 showMapPicker = false;
             }}
             onclose={() => (showMapPicker = false)}
