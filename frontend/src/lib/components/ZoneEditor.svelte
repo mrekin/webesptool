@@ -739,7 +739,7 @@
             g.name.replace(/[^a-z0-9_-]+/gi, '_').replace(/_+/g, '_') ||
             g.regions.replace(/\s+/g, '-') ||
             g.id;
-        downloadCatalog(serializeGroup(g.name, g.regions, zones), `meshcore-zones-${slug}.geojson`);
+        downloadCatalog(serializeGroup(g.name, g.regions, zones), `mcozones-${slug}.geojson`);
     }
 
     function doExport(): void {

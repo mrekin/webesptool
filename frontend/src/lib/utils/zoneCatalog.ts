@@ -95,11 +95,11 @@ const boundaryUrls = import.meta.glob('/static/data/boundaries/*.geojson', {
     import: 'default'
 }) as Record<string, string>;
 
-const groupUrls = import.meta.glob('/static/data/groups/*.geojson', {
-    eager: true,
-    query: '?url',
-    import: 'default'
-}) as Record<string, string>;
+// NOTE: groups are NOT discovered via a build-time glob — they support live add
+// (the administrator drops a new .geojson into the mounted static/data/groups/
+// directory at runtime). Their list is fetched from the /api/zones/groups
+// endpoint, which reads that directory on each request (see
+// routes/api/zones/groups/+server.ts).
 
 function fileBase(url: string): string {
     const seg = url.split('/').pop() ?? url;
@@ -153,25 +153,26 @@ export function fetchBoundaryFile(url: string): Promise<BoundaryFile | null> {
 
 // --- published group files (source of truth for the `regions` lookup) ---
 
-let groupFilesPromise: Promise<GroupFile[]> | null = null;
-
-async function loadGroupFile(url: string): Promise<GroupFile | null> {
+// Parse an already-loaded group file's JSON into a GroupFile. `url` is a stable
+// identifier (used as the toggle key / edit-origin marker); it is NOT fetched —
+// group content comes from the /api/zones/groups endpoint, which reads the
+// mounted directory at runtime (live add).
+function parseGroupFile(
+    url: string,
+    json: unknown
+): GroupFile | null {
     try {
-        const res = await fetch(assetUrl(url.replace(/^\//, '')), {
-            signal: AbortSignal.timeout(30000)
-        });
-        if (!res.ok) return null;
-        const json = (await res.json()) as {
+        const j = json as {
             metadata?: { group?: unknown; name?: unknown; regions?: unknown };
             features?: unknown;
         };
-        const meta = json.metadata ?? {};
+        const meta = j.metadata ?? {};
         const name =
             (typeof meta.group === 'string' && meta.group) ||
             (typeof meta.name === 'string' && meta.name) ||
             fileBase(url);
         const metaRegions = typeof meta.regions === 'string' ? meta.regions.trim() : '';
-        const features = parseZoneFeatures(json.features, metaRegions);
+        const features = parseZoneFeatures(j.features, metaRegions);
         // Fall back to a feature-level regions value when metadata has none (an
         // older export or a hand-made file): the editor's regions field must
         // still populate when the group is loaded for editing.
@@ -181,34 +182,43 @@ async function loadGroupFile(url: string): Promise<GroupFile | null> {
             '';
         return { url, filename: fileBase(url), name, regions, features } satisfies GroupFile;
     } catch (err) {
-        console.warn('[meshcore-zone] group file failed', url, err);
+        console.warn('[meshcore-zone] group parse failed', url, err);
         return null;
     }
 }
 
-// Load every published group file. Cached. Never rejects; failed files skipped.
+// Load every published group file via the /api/zones/groups endpoint, which
+// reads the mounted static/data/groups/ directory at request time. Re-fetched
+// on each call so files added since the last call (live add) appear without a
+// rebuild. Never rejects; failed files are skipped.
 export function fetchGroupFiles(): Promise<GroupFile[]> {
-    if (groupFilesPromise) return groupFilesPromise;
-    groupFilesPromise = (async () => {
-        const urls = Object.values(groupUrls);
-        const files = await Promise.all(urls.map(loadGroupFile));
+    return (async () => {
+        let entries: { filename: string; json: unknown }[] = [];
+        try {
+            const res = await fetch(assetUrl('api/zones/groups'), {
+                signal: AbortSignal.timeout(15000)
+            });
+            if (res.ok) {
+                const data = (await res.json()) as { groups?: unknown };
+                if (Array.isArray(data?.groups)) {
+                    entries = data.groups as { filename: string; json: unknown }[];
+                }
+            }
+        } catch (err) {
+            console.warn('[meshcore-zone]', 'group list failed', err);
+        }
+        const files = entries.map((e) => parseGroupFile(assetUrl(`data/groups/${e.filename}`), e.json));
         const ok = files.filter((f): f is GroupFile => f !== null);
         console.info('[meshcore-zone]', 'groups_loaded', ok.length);
         return ok;
     })();
-    return groupFilesPromise;
 }
 
-// --- lookup catalog (merge of all published group files) ---
-
-let catalogPromise: Promise<ZoneCatalog> | null = null;
-
 // Build the lookup catalog by merging every published group file's features.
-// Cached. A point resolves to the group whose polygon contains it. Never rejects;
-// empty/failed -> unavailable (the picker keeps working without regions).
+// A point resolves to the group whose polygon contains it. Recomputed on each
+// call so live-added groups are picked up; never rejects (empty -> unavailable).
 export function fetchZoneCatalog(): Promise<ZoneCatalog> {
-    if (catalogPromise) return catalogPromise;
-    catalogPromise = (async () => {
+    return (async () => {
         const groups = await fetchGroupFiles();
         const features = groups.flatMap((g) => g.features);
         if (features.length === 0) {
@@ -216,5 +226,4 @@ export function fetchZoneCatalog(): Promise<ZoneCatalog> {
         }
         return { status: 'ok', features, schema: ZONE_CATALOG_SCHEMA };
     })();
-    return catalogPromise;
 }

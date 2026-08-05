@@ -24,3 +24,8 @@ build-backend-new.sh
 build-frontend-new.sh
 valkey-data/
 webesptool/config/config.yml
+
+# MeshCore zone groups: served at runtime from a mounted directory (live add),
+# not tracked. Keep the directory itself via .gitkeep.
+frontend/static/data/groups/*
+!frontend/static/data/groups/.gitkeep

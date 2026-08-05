@@ -67,7 +67,7 @@ export function serializeGroup(
 // Trigger a browser download of the catalog as a .geojson file.
 export function downloadCatalog(
     fc: ZoneCatalogJson,
-    filename = 'meshcore-zones.geojson'
+    filename = 'mczones.geojson'
 ): void {
     const blob = new Blob([JSON.stringify(fc)], { type: 'application/geo+json' });
     const url = URL.createObjectURL(blob);

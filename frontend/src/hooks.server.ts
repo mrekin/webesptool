@@ -51,9 +51,14 @@ export async function handle({ event, resolve }) {
 
     // Check only /api/ path (baseUrl is now handled by Caddy)
     let apiPath = null;
-    // /api/geocode is served by a SvelteKit route (+server.ts), not proxied to
-    // the Python backend — exclude it so resolve(event) reaches that route.
-    if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/geocode')) {
+    // /api/geocode and /api/zones/* are served by SvelteKit routes (+server.ts),
+    // not proxied to the Python backend — exclude them so resolve(event) reaches
+    // those routes.
+    if (
+        url.pathname.startsWith('/api/') &&
+        !url.pathname.startsWith('/api/geocode') &&
+        !url.pathname.startsWith('/api/zones')
+    ) {
         apiPath = url.pathname;
     }
 
