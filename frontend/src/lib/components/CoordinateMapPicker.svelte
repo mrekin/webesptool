@@ -188,9 +188,19 @@
                 </span>
                 {#if useRegions && regionResult}
                     {#if regionResult.status === 'hit'}
-                        <span class="font-mono text-xs text-orange-200" title={regionResult.regions}>
-                            {$locales('meshcoreconfig.zones.result_label')}: {regionResult.tokens.join(' ')}
-                        </span>
+                        {#if regionResult.tokens.length > 0}
+                            <span class="font-mono text-xs text-orange-200" title={regionResult.regions}>
+                                {$locales('meshcoreconfig.zones.result_label')}: {regionResult.tokens.join(' ')}
+                            </span>
+                        {/if}
+                        {#if regionResult.level != null}
+                            <span
+                                class="font-mono text-[11px] text-gray-500"
+                                title={$locales('meshcoreconfig.zones.zone_level')}
+                            >
+                                L{regionResult.level} · {$locales(`meshcoreconfig.zones.zone_level_${regionResult.level}`)}
+                            </span>
+                        {/if}
                         {#if regionResult.radio}
                             <span class="font-mono text-[11px] text-gray-400" title={$locales('meshcoreconfig.zones.radio_label')}>
                                 {$locales('meshcoreconfig.zones.result_radio', {
@@ -204,6 +214,21 @@
                                     values: { mode: regionResult.pathHashMode }
                                 })}
                             </span>
+                        {/if}
+                        {#if regionResult.nameTemplate}
+                            <span class="font-mono text-[11px] text-gray-400" title={regionResult.nameTemplate}>
+                                {$locales('meshcoreconfig.zones.result_name_template')}: {regionResult.nameTemplate}
+                            </span>
+                        {/if}
+                        {#if regionResult.docUrl}
+                            <a
+                                href={regionResult.docUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="text-[11px] text-sky-400 underline hover:text-sky-300"
+                            >
+                                {$locales('meshcoreconfig.zones.result_doc')}
+                            </a>
                         {/if}
                     {:else if regionResult.status === 'miss'}
                         <span class="text-[11px] text-gray-500">{$locales('meshcoreconfig.zones.status_miss')}</span>

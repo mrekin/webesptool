@@ -22,6 +22,16 @@ export const ZONE_CIRCLE_STEPS = 64;
 // Results below this are treated as empty/sliver and rejected.
 export const ZONE_MIN_AREA_M2 = 1;
 
+// Zone hierarchy levels (task 72 zone-levels). A zone carries one level:
+//   1 = country (broadest), 2 = region, 3 = district, 4 = city, 5 = city district.
+// Zones at the SAME level may not overlap; zones at different levels may nest.
+// The lookup resolves a point to the MOST SPECIFIC (highest-level) containing
+// zone. Labels are i18n keys meshcoreconfig.zones.zone_level_1 .. _5.
+export const ZONE_LEVELS = [1, 2, 3, 4, 5] as const;
+// Default level for zones/files that do not specify one (keeps legacy zones —
+// which were all mutually non-overlapping — behaving as before).
+export const ZONE_LEVEL_DEFAULT = 1;
+
 // OSM raster tile layer (same source as CoordinateMapPicker).
 export const OSM_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 export const OSM_TILE_ATTRIBUTION = '&copy; OpenStreetMap contributors';

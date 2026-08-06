@@ -350,7 +350,24 @@
       "radio_invalid": "Заполните все четыре параметра радио (или оставьте все пустыми для очистки)",
       "path_hash_mode": "Path hash mode",
       "result_radio": "Радио: {freq} МГц",
-      "result_path_hash": "Path hash: {mode}"
+      "result_path_hash": "Path hash: {mode}",
+      "result_name_template": "Шаблон имени",
+      "result_doc": "Документ с настройками",
+      "name_template": "Шаблон имени (set name)",
+      "name_template_placeholder": "[NN|DZ|BOR]-[AVT|KAN]-[ID]",
+      "name_template_hint": "[a|b|c] = выбор значения, [NAME] = ввод, остальное — литерал. Применяется в конфигураторе как имя узла.",
+      "name_template_preview_enum": "Выбрать одно из значений",
+      "name_template_preview_free": "Ввести значение",
+      "name_too_long": "Имя длиннее 32 символов",
+      "name_template_clear": "Отказаться от шаблона и править имя вручную",
+      "doc_url": "URL документа с настройками",
+      "doc_url_placeholder": "https://...",
+      "zone_level": "Уровень зоны",
+      "zone_level_1": "страна",
+      "zone_level_2": "регион",
+      "zone_level_3": "район",
+      "zone_level_4": "город",
+      "zone_level_5": "городской район"
     }
   },
   "customfirmware": {

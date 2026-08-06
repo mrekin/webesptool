@@ -350,7 +350,24 @@
       "radio_invalid": "Wypełnij wszystkie cztery parametry radia (lub zostaw puste, aby wyczyścić)",
       "path_hash_mode": "Path hash mode",
       "result_radio": "Radio: {freq} MHz",
-      "result_path_hash": "Path hash: {mode}"
+      "result_path_hash": "Path hash: {mode}",
+      "result_name_template": "Szablon nazwy",
+      "result_doc": "Dokument ustawień",
+      "name_template": "Szablon nazwy (set name)",
+      "name_template_placeholder": "[NN|DZ|BOR]-[AVT|KAN]-[ID]",
+      "name_template_hint": "[a|b|c] = wybierz jedno, [NAME] = wpisz, reszta to literał. Stosowane w konfiguratorze jako nazwa węzła.",
+      "name_template_preview_enum": "Wybierz jedną z wartości",
+      "name_template_preview_free": "Wpisz wartość",
+      "name_too_long": "Nazwa dłuższa niż 32 znaki",
+      "name_template_clear": "Odrzuć szablon i edytuj nazwę ręcznie",
+      "doc_url": "URL dokumentu ustawień",
+      "doc_url_placeholder": "https://...",
+      "zone_level": "Poziom strefy",
+      "zone_level_1": "kraj",
+      "zone_level_2": "region",
+      "zone_level_3": "dystrykt",
+      "zone_level_4": "miasto",
+      "zone_level_5": "dzielnica miejska"
     }
   },
   "customfirmware": {

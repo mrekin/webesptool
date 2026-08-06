@@ -932,15 +932,20 @@ export interface RadioSpec {
 }
 
 // A meshcore zone preset, stored nested as `properties.meshcore` /
-// `metadata.meshcore` in the catalog GeoJSON (task 72). `regions` is the
-// region-def characteristic; `radio` and `pathHashMode` are the optional per-zone
-// radio preset. In-memory models keep `regions` as the primary field (lookup/
-// validation) and carry `radio`/`pathHashMode` as optional siblings; the nested
-// structure is assembled at serialization boundaries (zoneExport.serializeGroup).
+// `metadata.meshcore` in the catalog GeoJSON (task 72). ALL fields are optional:
+// a zone may carry any subset (including none) — it is valid as long as it has a
+// geometry. `regions` is the region-def characteristic; `radio`/`pathHashMode`
+// the radio preset; `nameTemplate` a node-name composer template; `docUrl` a link
+// to a settings document. In-memory models keep `regions` as a `string` ('' =
+// not set) for lookup convenience; the nested structure is assembled at
+// serialization boundaries (zoneExport.serializeGroup), omitting empty fields.
 export interface MeshcoreZoneSettings {
-    regions: string;
+    regions?: string;
     radio?: RadioSpec;
     pathHashMode?: string; // "0" | "1" | "2" — matches `set path.hash.mode` options
+    nameTemplate?: string; // e.g. "[NN|DZ|BOR]-[AVT|KAN]-[ID]" (parsed by nameTemplate.ts)
+    docUrl?: string; // link to a settings document
+    level?: number; // zone hierarchy level 1-5 (1=country broadest, 5=city district); default 1
 }
 
 // One normalized catalog feature. `bbox` is precomputed at parse time for the
@@ -949,10 +954,13 @@ export interface ZoneFeature {
     id: string;
     geometry: ZoneGeometry;
     bbox: [number, number, number, number];
-    regions: string; // value for `region def` (tokens separated by spaces)
+    regions: string; // value for `region def` (tokens separated by spaces); '' = not set
     group?: string; // cosmetic label for the editor/export only
     radio?: RadioSpec; // per-zone radio preset (from properties.meshcore.radio)
     pathHashMode?: string; // per-zone path hash mode (from properties.meshcore.pathHashMode)
+    nameTemplate?: string; // per-zone node-name template (from properties.meshcore.nameTemplate)
+    docUrl?: string; // per-zone settings-document link (from properties.meshcore.docUrl)
+    level?: number; // zone hierarchy level 1-5 (default 1; 1=country, 5=city district)
     properties: Record<string, unknown>; // open object — extensible characteristics
 }
 
@@ -974,6 +982,9 @@ export interface GroupFile {
     regions: string;
     radio?: RadioSpec; // group radio preset (from metadata.meshcore.radio)
     pathHashMode?: string; // group path hash mode (from metadata.meshcore.pathHashMode)
+    nameTemplate?: string; // group node-name template (from metadata.meshcore.nameTemplate)
+    docUrl?: string; // group settings-document link (from metadata.meshcore.docUrl)
+    level?: number; // group zone hierarchy level 1-5 (default 1)
     features: ZoneFeature[];
 }
 
@@ -994,6 +1005,9 @@ export interface ZoneRegionResult {
     zoneId?: string; // feature id on hit
     radio?: RadioSpec; // per-zone radio preset on hit (from properties.meshcore.radio)
     pathHashMode?: string; // per-zone path hash mode on hit (from properties.meshcore.pathHashMode)
+    nameTemplate?: string; // per-zone node-name template on hit
+    docUrl?: string; // per-zone settings-document link on hit
+    level?: number; // zone hierarchy level of the resolved (most specific) zone on hit
     reason?: 'empty_catalog' | 'fetch_failed' | 'invalid'; // when unavailable
 }
 
@@ -1015,6 +1029,9 @@ export interface ZoneGroup {
     regions: string;
     radio?: RadioSpec; // group radio preset (set radio), edited via the ⚙️ modal
     pathHashMode?: string; // group path hash mode (set path.hash.mode)
+    nameTemplate?: string; // group node-name template
+    docUrl?: string; // group settings-document link
+    level?: number; // group zone hierarchy level 1-5 (default 1)
     originUrl?: string;
 }
 
@@ -1043,6 +1060,9 @@ export interface ExportZone {
     group?: string;
     radio?: RadioSpec;
     pathHashMode?: string;
+    nameTemplate?: string;
+    docUrl?: string;
+    level?: number;
     properties?: Record<string, unknown>;
 }
 

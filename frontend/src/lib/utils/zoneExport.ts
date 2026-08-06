@@ -21,10 +21,12 @@ export type ZoneCatalogJson = GeoJSON.FeatureCollection & {
     };
 };
 
-// A `regions` value is valid when it is one or more whitespace-separated tokens
-// with no internal whitespace inside a token (e.g. 'ru mow msk cao').
+// A `regions` value is valid when it is empty (regions is optional — '' means
+// "not set") or one or more whitespace-separated tokens with no internal
+// whitespace inside a token (e.g. 'ru mow msk cao').
 export function isValidRegions(value: string): boolean {
-    return /^[^\s]+(\s+[^\s]+)*$/.test(value.trim());
+    const t = value.trim();
+    return t === '' || /^[^\s]+(\s+[^\s]+)*$/.test(t);
 }
 
 export interface ExportValidation {
@@ -47,34 +49,60 @@ export function validateExport(zones: ExportZone[]): ExportValidation {
     return { valid: problems.length === 0, problems };
 }
 
+// Build a meshcore preset object containing only the present (non-empty) fields,
+// so a zone without `regions` (or any other characteristic) is serialized without
+// that key. Returns undefined when the preset has no fields at all (a paramless
+// zone carries no `meshcore` block at all — only geometry + id + group).
+function buildMeshcoreBlock(p: MeshcoreZoneSettings): MeshcoreZoneSettings | undefined {
+    const block: MeshcoreZoneSettings = {};
+    if (p.regions && p.regions.trim()) block.regions = p.regions;
+    if (p.radio) block.radio = p.radio;
+    if (p.pathHashMode) block.pathHashMode = p.pathHashMode;
+    if (p.nameTemplate && p.nameTemplate.trim()) block.nameTemplate = p.nameTemplate;
+    if (p.docUrl && p.docUrl.trim()) block.docUrl = p.docUrl;
+    if (p.level != null) block.level = p.level;
+    return Object.keys(block).length > 0 ? block : undefined;
+}
+
 // Serialize one group's resolved zones into a GeoJSON FeatureCollection. The
-// group name and the meshcore preset (regions + optional radio/pathHashMode) are
-// stored nested under `metadata.meshcore` (so the editor can list groups without
-// parsing features) and on each feature's `properties.meshcore` (so the lookup
-// resolves a point and its full preset). `regions` is also kept as a flat
-// top-level fallback inside the meshcore block (the in-memory `regions` field
-// remains the primary lookup key).
+// group name and the meshcore preset (any subset of regions/radio/pathHashMode/
+// nameTemplate/docUrl) are stored nested under `metadata.meshcore` (so the editor
+// can list groups without parsing features) and on each feature's
+// `properties.meshcore` (so the lookup resolves a point and its full preset).
+// Empty fields are omitted; a zone with no preset at all carries no meshcore key.
 export function serializeGroup(
     name: string,
     meshcore: MeshcoreZoneSettings,
     zones: ExportZone[]
 ): ZoneCatalogJson {
+    const metaBlock = buildMeshcoreBlock(meshcore);
+    const metadata: ZoneCatalogJson['metadata'] = {
+        schema: ZONE_CATALOG_SCHEMA,
+        group: name
+    };
+    if (metaBlock) metadata.meshcore = metaBlock;
     return {
         type: 'FeatureCollection',
-        metadata: { schema: ZONE_CATALOG_SCHEMA, group: name, meshcore: { ...meshcore } },
+        metadata,
         features: zones.map((z) => {
-            const featureMeshcore: MeshcoreZoneSettings = { regions: z.regions };
-            if (meshcore.radio) featureMeshcore.radio = meshcore.radio;
-            if (meshcore.pathHashMode) featureMeshcore.pathHashMode = meshcore.pathHashMode;
+            const featureBlock = buildMeshcoreBlock({
+                regions: z.regions,
+                radio: meshcore.radio,
+                pathHashMode: meshcore.pathHashMode,
+                nameTemplate: meshcore.nameTemplate,
+                docUrl: meshcore.docUrl,
+                level: z.level ?? meshcore.level
+            });
+            const properties: Record<string, unknown> = {
+                ...z.properties,
+                id: z.id,
+                group: name
+            };
+            if (featureBlock) properties.meshcore = featureBlock;
             return {
                 type: 'Feature' as const,
                 geometry: z.geometry,
-                properties: {
-                    ...z.properties,
-                    id: z.id,
-                    group: name,
-                    meshcore: featureMeshcore
-                }
+                properties
             };
         })
     };

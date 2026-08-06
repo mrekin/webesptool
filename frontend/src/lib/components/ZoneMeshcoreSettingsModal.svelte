@@ -6,27 +6,41 @@
 
     import { _ as locales } from 'svelte-i18n';
     import { untrack } from 'svelte';
+    import { ZONE_LEVELS, ZONE_LEVEL_DEFAULT } from '$lib/config/meshcoreZoneConfig';
     import { isValidRegions } from '$lib/utils/zoneExport';
+    import { parseNameTemplate } from '$lib/utils/nameTemplate';
     import type { RadioSpec } from '$lib/types';
 
     let {
         regions = '',
         radio = undefined,
         pathHashMode = undefined,
+        nameTemplate = undefined,
+        docUrl = undefined,
+        level = undefined,
         onsave = (
             _regions: string,
             _radio: RadioSpec | undefined,
-            _pathHashMode: string | undefined
+            _pathHashMode: string | undefined,
+            _nameTemplate: string | undefined,
+            _docUrl: string | undefined,
+            _level: number
         ) => {},
         onclose = () => {}
     }: {
         regions?: string;
         radio?: RadioSpec;
         pathHashMode?: string;
+        nameTemplate?: string;
+        docUrl?: string;
+        level?: number;
         onsave?: (
             regions: string,
             radio: RadioSpec | undefined,
-            pathHashMode: string | undefined
+            pathHashMode: string | undefined,
+            nameTemplate: string | undefined,
+            docUrl: string | undefined,
+            level: number
         ) => void;
         onclose?: () => void;
     } = $props();
@@ -44,6 +58,12 @@
     let sf = $state(untrack(() => (radio?.sf != null ? String(radio.sf) : '')));
     let cr = $state(untrack(() => (radio?.cr != null ? String(radio.cr) : '')));
     let pathHash = $state(untrack(() => pathHashMode ?? ''));
+    let nameTemplateVal = $state(untrack(() => nameTemplate ?? ''));
+    let docUrlVal = $state(untrack(() => docUrl ?? ''));
+    let levelVal = $state(untrack(() => level ?? ZONE_LEVEL_DEFAULT));
+
+    // Live preview of the parsed template tokens (enum/free/literal).
+    const templateTokens = $derived(parseNameTemplate(nameTemplateVal));
 
     // Radio is valid when either fully empty (-> cleared) or all four components
     // are finite numbers. A partial entry blocks save.
@@ -56,6 +76,7 @@
     });
 
     const regionsValid = $derived(isValidRegions(regionsVal));
+    // nameTemplate/docUrl are optional metadata — they never block save.
     const canSave = $derived(regionsValid && radioValid);
 
     function save(): void {
@@ -70,7 +91,14 @@
                   cr: Number(parts[3])
               }
             : undefined;
-        onsave(regionsVal.trim(), resolvedRadio, pathHash || undefined);
+        onsave(
+            regionsVal.trim(),
+            resolvedRadio,
+            pathHash || undefined,
+            nameTemplateVal.trim() || undefined,
+            docUrlVal.trim() || undefined,
+            levelVal
+        );
     }
 </script>
 
@@ -84,6 +112,26 @@
             <h3 class="text-base font-semibold text-orange-200">
                 {$locales('meshcoreconfig.zones.meshcore_settings')}
             </h3>
+        </div>
+
+        <!-- Zone hierarchy level: zones at the same level may not overlap;
+             different levels may nest; lookup resolves to the most specific. -->
+        <div class="mb-3">
+            <label
+                for="mc-zone-level"
+                class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                {$locales('meshcoreconfig.zones.zone_level')}
+            </label>
+            <select
+                id="mc-zone-level"
+                value={levelVal}
+                onchange={(e) => (levelVal = Number((e.currentTarget as HTMLSelectElement).value))}
+                class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
+            >
+                {#each ZONE_LEVELS as lv (lv)}
+                    <option value={lv}>{lv} — {$locales(`meshcoreconfig.zones.zone_level_${lv}`)}</option>
+                {/each}
+            </select>
         </div>
 
         <!-- regions: region def -->
@@ -184,6 +232,63 @@
                     {/each}
                 </select>
             </div>
+        </div>
+
+        <!-- Name template: composer template for `set name` -->
+        <div class="mb-3 rounded-md border border-gray-700 bg-gray-900/50 p-2">
+            <label
+                for="mc-zone-name-template"
+                class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                {$locales('meshcoreconfig.zones.name_template')}
+            </label>
+            <input
+                id="mc-zone-name-template"
+                type="text"
+                value={nameTemplateVal}
+                oninput={(e) => (nameTemplateVal = (e.currentTarget as HTMLInputElement).value)}
+                placeholder={$locales('meshcoreconfig.zones.name_template_placeholder')}
+                class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
+            />
+            {#if templateTokens.length > 0}
+                <!-- Live preview: literal (gray), enum options (orange), free token (sky). -->
+                <div class="mt-1 flex flex-wrap items-center gap-1 text-[10px] leading-tight">
+                    {#each templateTokens as tok, i (i)}
+                        {#if tok.type === 'literal'}
+                            <span class="text-gray-500">{tok.value}</span>
+                        {:else if tok.type === 'enum'}
+                            <span
+                                class="rounded bg-orange-900/50 px-1 text-orange-200"
+                                title={$locales('meshcoreconfig.zones.name_template_preview_enum')}
+                            >{tok.options.join('|')}</span>
+                        {:else}
+                            <span
+                                class="rounded bg-sky-900/50 px-1 text-sky-200"
+                                title={$locales('meshcoreconfig.zones.name_template_preview_free')}
+                            >{tok.name}</span>
+                        {/if}
+                    {/each}
+                </div>
+            {/if}
+            <span class="mt-0.5 block text-[10px] text-gray-500">
+                {$locales('meshcoreconfig.zones.name_template_hint')}
+            </span>
+        </div>
+
+        <!-- Doc URL: link to a settings document -->
+        <div class="mb-1">
+            <label
+                for="mc-zone-doc-url"
+                class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                {$locales('meshcoreconfig.zones.doc_url')}
+            </label>
+            <input
+                id="mc-zone-doc-url"
+                type="url"
+                value={docUrlVal}
+                oninput={(e) => (docUrlVal = (e.currentTarget as HTMLInputElement).value)}
+                placeholder={$locales('meshcoreconfig.zones.doc_url_placeholder')}
+                class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
+            />
         </div>
 
         <div class="mt-4 flex items-center justify-end gap-3">

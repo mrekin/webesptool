@@ -40,7 +40,7 @@
         serializeGroup,
         validateExport
     } from '$lib/utils/zoneExport';
-    import { OSM_TILE_ATTRIBUTION, OSM_TILE_URL } from '$lib/config/meshcoreZoneConfig';
+    import { OSM_TILE_ATTRIBUTION, OSM_TILE_URL, ZONE_LEVEL_DEFAULT } from '$lib/config/meshcoreZoneConfig';
     import ZoneMeshcoreSettingsModal from './ZoneMeshcoreSettingsModal.svelte';
     import type {
         EditorPolygon,
@@ -60,6 +60,14 @@
     let L: any = null;
     let loadError = $state(false);
     let notice = $state('');
+    // 'warn' notices render red with a spinner (eye-catching for failures like
+    // an overlap discard); 'info' notices render orange as before.
+    let noticeKind = $state<'info' | 'warn'>('info');
+    // The spinner bursts for ~500ms when a warn notice appears (and re-bursts on
+    // every call, even an identical repeat) so the eye catches it; it is then
+    // removed — it does not spin constantly.
+    let spinning = $state(false);
+    let spinTimer: ReturnType<typeof setTimeout> | undefined;
     let exportProblems = $state<string[]>([]);
 
     type ToolId = 'select' | 'polygon' | 'circle' | 'brush';
@@ -124,7 +132,7 @@
     const BOUNDARY_STYLE = {
         color: '#94a3b8', weight: 1, fillColor: '#94a3b8', fillOpacity: 0.05, dashArray: '4,2'
     };
-    const BOUNDARY_HOVER = { color: '#fbbf24', weight: 2, fillOpacity: 0.12 };
+    const BOUNDARY_HOVER = { color: '#f97316', fillColor: '#f97316', weight: 3, fillOpacity: 0.2 };
     const PUBLISHED_STYLE = {
         color: '#38bdf8', weight: 1.5, fillColor: '#38bdf8', fillOpacity: 0.18
     };
@@ -147,8 +155,19 @@
         groups.filter((g) => isValidRegions(g.regions) && polygons.some((p) => p.groupId === g.id))
     );
 
-    function showNotice(text: string): void {
+    function showNotice(text: string, kind: 'info' | 'warn' = 'info'): void {
         notice = text;
+        noticeKind = kind;
+        if (kind === 'warn') {
+            // Restart the 500ms spinner burst on every call (even when the text
+            // is unchanged) so repeated discards still flash.
+            if (spinTimer) clearTimeout(spinTimer);
+            spinning = true;
+            spinTimer = setTimeout(() => {
+                spinning = false;
+                spinTimer = undefined;
+            }, 500);
+        }
     }
 
     // --- undo ---
@@ -177,16 +196,22 @@
     // every in-session zone (optionally excluding one being extended). This
     // enforces "groups never overlap".
     function overlapGeometries(opts?: {
+        level?: number;
         excludeOriginUrl?: string;
         excludePolygonId?: string;
     }): ZoneGeometry[] {
+        // Only same-level zones participate in the no-overlap rule; zones at a
+        // different level may nest freely (a city over a region/country).
+        const lvl = opts?.level ?? ZONE_LEVEL_DEFAULT;
         const out: ZoneGeometry[] = [];
         for (const gf of groupFiles) {
             if (gf.url === opts?.excludeOriginUrl) continue;
+            if ((gf.level ?? ZONE_LEVEL_DEFAULT) !== lvl) continue;
             for (const f of gf.features) out.push(f.geometry);
         }
         for (const p of polygons) {
             if (p.id === opts?.excludePolygonId) continue;
+            if (groupLevel(p.groupId) !== lvl) continue;
             out.push(p.geom as ZoneGeometry);
         }
         return out;
@@ -198,6 +223,13 @@
     function groupOriginUrl(groupId: string | null): string | undefined {
         if (!groupId) return undefined;
         return groups.find((g) => g.id === groupId)?.originUrl;
+    }
+    // Zone hierarchy level of a group (1-5); defaults to ZONE_LEVEL_DEFAULT when
+    // the group has none (or groupId is null). Drives same-level overlap checks,
+    // the eraser scope and the overlay paint order.
+    function groupLevel(groupId: string | null): number {
+        if (!groupId) return ZONE_LEVEL_DEFAULT;
+        return groups.find((g) => g.id === groupId)?.level ?? ZONE_LEVEL_DEFAULT;
     }
 
     function layerToPolygonGeom(layer: any): ZoneGeometry {
@@ -229,8 +261,15 @@
 
     // Erase `eraser` from every editable session zone; fully-covered zones drop.
     function eraseFromAll(eraser: ZoneGeometry): EditorPolygon[] {
+        // Erase affects only zones at the active level — cross-level nesting is
+        // left intact (erasing a city must not punch a hole in the country below).
+        const lvl = groupLevel(activeGroupId);
         const next: EditorPolygon[] = [];
         for (const p of polygons) {
+            if (groupLevel(p.groupId) !== lvl) {
+                next.push(p);
+                continue;
+            }
             const res = erase(p.geom as ZoneGeometry, eraser);
             if (res.ok) next.push({ ...p, geom: res.geometry });
             else if (res.reason === 'covered') {
@@ -248,10 +287,13 @@
     }
 
     function commitZone(kind: 'polygon' | 'circle', geom: ZoneGeometry, label?: string): void {
-        const result = subtractExisting(geom, overlapGeometries({ excludeOriginUrl: activeOriginUrl() }));
+        const result = subtractExisting(
+            geom,
+            overlapGeometries({ excludeOriginUrl: activeOriginUrl(), level: groupLevel(activeGroupId) })
+        );
         if (!result.ok) {
             console.info('[meshcore-zone]', 'overlap_discarded', result.reason);
-            showNotice($locales('meshcoreconfig.zones.overlap_discarded'));
+            showNotice($locales('meshcoreconfig.zones.overlap_discarded'), 'warn');
             return;
         }
         pushHistory();
@@ -306,16 +348,20 @@
     function startPainting(latlng: { lat: number; lng: number }): void {
         const lonLat: [number, number] = [latlng.lng, latlng.lat];
         // Target = topmost editable session zone under the start point (paint
-        // extends that zone). Empty ground -> new zone in the active group.
+        // extends that zone). Only a zone at the active level is a target — a
+        // different-level zone nested under the cursor is not (cross-level
+        // nesting is allowed). Empty ground -> new zone in the active group.
+        const activeLvl = groupLevel(activeGroupId);
         let target: EditorPolygon | null = null;
         for (let i = polygons.length - 1; i >= 0; i--) {
+            if (groupLevel(polygons[i].groupId) !== activeLvl) continue;
             if (pointInGeometry(lonLat, polygons[i].geom as ZoneGeometry)) {
                 target = polygons[i];
                 break;
             }
         }
         if (!target && !activeGroupId) {
-            showNotice($locales('meshcoreconfig.zones.brush_no_active'));
+            showNotice($locales('meshcoreconfig.zones.brush_no_active'), 'warn');
             return;
         }
         painting = true;
@@ -368,15 +414,20 @@
 
         const target = targetId ? (polygons.find((p) => p.id === targetId) ?? null) : null;
         if (!target && !activeGroupId) {
-            showNotice($locales('meshcoreconfig.zones.brush_no_active'));
+            showNotice($locales('meshcoreconfig.zones.brush_no_active'), 'warn');
             return;
         }
         const originUrl = target ? groupOriginUrl(target.groupId) : groupOriginUrl(activeGroupId);
-        const overlap = overlapGeometries({ excludeOriginUrl: originUrl, excludePolygonId: target?.id });
+        const paintLvl = target ? groupLevel(target.groupId) : groupLevel(activeGroupId);
+        const overlap = overlapGeometries({
+            excludeOriginUrl: originUrl,
+            excludePolygonId: target?.id,
+            level: paintLvl
+        });
         const free = subtractExisting(painted, overlap);
         if (!free.ok) {
             console.info('[meshcore-zone]', 'brush_overlap_discarded', free.reason);
-            showNotice($locales('meshcoreconfig.zones.overlap_discarded'));
+            showNotice($locales('meshcoreconfig.zones.overlap_discarded'), 'warn');
             return;
         }
         pushHistory();
@@ -471,9 +522,14 @@
             userOverlay = null;
         }
         if (polygons.length === 0) return;
+        // Paint by level ascending so the most specific (highest-level) zones
+        // render on top and stay visible/clickable over the broader ones below.
+        const ordered = [...polygons].sort(
+            (a, b) => groupLevel(a.groupId) - groupLevel(b.groupId)
+        );
         const fc = {
             type: 'FeatureCollection',
-            features: polygons.map((p) => ({
+            features: ordered.map((p) => ({
                 type: 'Feature' as const,
                 // Display-only unwrap so antimeridian-crossing zones (e.g.
                 // Чукотка) render contiguous. p.geom stays in [-180,180].
@@ -612,7 +668,7 @@
     function addGroup(): void {
         pushHistory();
         const id = genId('g');
-        groups = [...groups, { id, name: '', regions: '' }];
+        groups = [...groups, { id, name: '', regions: '', level: ZONE_LEVEL_DEFAULT }];
         activeGroupId = id;
     }
 
@@ -648,6 +704,9 @@
                 regions: gf.regions,
                 radio: gf.radio,
                 pathHashMode: gf.pathHashMode,
+                nameTemplate: gf.nameTemplate,
+                docUrl: gf.docUrl,
+                level: gf.level,
                 originUrl: gf.url
             }
         ];
@@ -659,9 +718,10 @@
     }
 
     // Create a copy of a published group for editing: same settings (name,
-    // regions, radio, path.hash.mode) but NO zones and no originUrl — a fresh
-    // independent session group the user draws new polygons into. Unlike
-    // editGroup this is not idempotent: each click makes a new copy.
+    // regions, radio, path.hash.mode, name template, doc URL) but NO zones and
+    // no originUrl — a fresh independent session group the user draws new
+    // polygons into. Unlike editGroup this is not idempotent: each click makes a
+    // new copy.
     function duplicateGroup(gf: GroupFile): void {
         pushHistory();
         const id = genId('g');
@@ -672,7 +732,10 @@
                 name: gf.name,
                 regions: gf.regions,
                 radio: gf.radio,
-                pathHashMode: gf.pathHashMode
+                pathHashMode: gf.pathHashMode,
+                nameTemplate: gf.nameTemplate,
+                docUrl: gf.docUrl,
+                level: gf.level
             }
         ];
         activeGroupId = id;
@@ -682,16 +745,25 @@
     function updateGroupName(id: string, name: string): void {
         groups = groups.map((g) => (g.id === id ? { ...g, name } : g));
     }
-    // Update a group's full meshcore preset (regions + radio + path.hash.mode)
-    // from the settings modal. No pushHistory: a settings-modal edit is not a
-    // geometric/structural change worth an undo step, same as the group name.
+    // Update a group's full meshcore preset (regions + radio + path.hash.mode +
+    // name template + doc URL) from the settings modal. No pushHistory: a
+    // settings-modal edit is not a geometric/structural change worth an undo
+    // step, same as the group name.
     function updateGroupMeshcore(
         id: string,
         regions: string,
         radio: RadioSpec | undefined,
-        pathHashMode: string | undefined
+        pathHashMode: string | undefined,
+        nameTemplate: string | undefined,
+        docUrl: string | undefined,
+        level: number
     ): void {
-        groups = groups.map((g) => (g.id === id ? { ...g, regions, radio, pathHashMode } : g));
+        groups = groups.map(
+            (g) =>
+                g.id === id
+                    ? { ...g, regions, radio, pathHashMode, nameTemplate, docUrl, level }
+                    : g
+        );
         meshcoreEditId = null;
     }
     function removeGroup(id: string): void {
@@ -745,11 +817,11 @@
             fc = JSON.parse(await file.text()) as GeoJSON.FeatureCollection;
         } catch (err) {
             console.warn('[meshcore-zone]', 'user file parse failed', err);
-            showNotice($locales('meshcoreconfig.zones.load_file_invalid'));
+            showNotice($locales('meshcoreconfig.zones.load_file_invalid'), 'warn');
             return;
         }
         if (!fc || fc.type !== 'FeatureCollection' || !Array.isArray(fc.features)) {
-            showNotice($locales('meshcoreconfig.zones.load_file_invalid'));
+            showNotice($locales('meshcoreconfig.zones.load_file_invalid'), 'warn');
             return;
         }
         const meshcore = detectGroupMeshcore(fc);
@@ -778,7 +850,7 @@
             stripGeoExt(filename);
         const features = parseZoneFeatures(fc.features, meshcore.regions);
         if (features.length === 0) {
-            showNotice($locales('meshcoreconfig.zones.load_file_invalid'));
+            showNotice($locales('meshcoreconfig.zones.load_file_invalid'), 'warn');
             return;
         }
         pushHistory();
@@ -795,9 +867,12 @@
             {
                 id,
                 name,
-                regions: meshcore.regions,
+                regions: meshcore.regions ?? '',
                 radio: meshcore.radio,
-                pathHashMode: meshcore.pathHashMode
+                pathHashMode: meshcore.pathHashMode,
+                nameTemplate: meshcore.nameTemplate,
+                docUrl: meshcore.docUrl,
+                level: meshcore.level ?? ZONE_LEVEL_DEFAULT
             }
         ];
         polygons = [...polygons, ...loaded];
@@ -829,6 +904,9 @@
                 group: g.name,
                 radio: g.radio,
                 pathHashMode: g.pathHashMode,
+                nameTemplate: g.nameTemplate,
+                docUrl: g.docUrl,
+                level: g.level,
                 properties: p.label ? { name: p.label } : undefined
             }));
         const v = validateExport(zones);
@@ -843,7 +921,14 @@
         downloadCatalog(
             serializeGroup(
                 g.name,
-                { regions: g.regions, radio: g.radio, pathHashMode: g.pathHashMode },
+                {
+                    regions: g.regions,
+                    radio: g.radio,
+                    pathHashMode: g.pathHashMode,
+                    nameTemplate: g.nameTemplate,
+                    docUrl: g.docUrl,
+                    level: g.level
+                },
                 zones
             ),
             `mczones-${slug}.geojson`
@@ -898,6 +983,7 @@
     });
 
     onDestroy(() => {
+        if (spinTimer) clearTimeout(spinTimer);
         teardownBrush();
         if (typeof container !== 'undefined' && container) {
             container.removeEventListener('mousedown', onDomMouseDown);
@@ -1088,6 +1174,10 @@
                                 regions + optional radio/path hash. -->
                                 <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] leading-snug">
                                     <span
+                                        class="rounded bg-gray-700 px-1 font-mono text-orange-300"
+                                        title={$locales('meshcoreconfig.zones.zone_level')}
+                                    >L{g.level ?? 1}</span>
+                                    <span
                                         class={`font-mono ${isValidRegions(g.regions) ? 'text-gray-300' : 'text-red-400'}`}
                                         title={$locales('meshcoreconfig.zones.regions_label')}
                                     >{g.regions || $locales('meshcoreconfig.zones.regions_placeholder')}</span>
@@ -1096,6 +1186,12 @@
                                     {/if}
                                     {#if g.pathHashMode}
                                         <span class="text-gray-500">· path {g.pathHashMode}</span>
+                                    {/if}
+                                    {#if g.nameTemplate}
+                                        <span class="text-gray-500" title={g.nameTemplate}>· name tpl</span>
+                                    {/if}
+                                    {#if g.docUrl}
+                                        <span class="text-sky-400">· doc</span>
                                     {/if}
                                 </div>
 
@@ -1139,7 +1235,21 @@
         {/if}
 
         {#if notice}
-            <div class="mt-2 text-xs text-orange-200">{notice}</div>
+            <div
+                class={`mt-2 flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-medium ${
+                    noticeKind === 'warn'
+                        ? 'border-red-500 bg-red-900/40 text-red-200'
+                        : 'border-orange-500/60 bg-orange-900/30 text-orange-200'
+                }`}
+                role="status"
+            >
+                {#if noticeKind === 'warn' && spinning}
+                    <span
+                        class="inline-block h-3 w-3 shrink-0 animate-spin rounded-full border border-red-400 border-t-transparent"
+                    ></span>
+                {/if}
+                <span>{notice}</span>
+            </div>
         {/if}
         {#if exportProblems.length > 0}
             <div class="mt-2 text-xs text-red-400">{exportProblems.join(', ')}</div>
@@ -1166,8 +1276,19 @@
         regions={meshcoreEditGroup.regions}
         radio={meshcoreEditGroup.radio}
         pathHashMode={meshcoreEditGroup.pathHashMode}
-        onsave={(regions, radio, pathHashMode) =>
-            updateGroupMeshcore(meshcoreEditGroup.id, regions, radio, pathHashMode)}
+        nameTemplate={meshcoreEditGroup.nameTemplate}
+        docUrl={meshcoreEditGroup.docUrl}
+        level={meshcoreEditGroup.level}
+        onsave={(regions, radio, pathHashMode, nameTemplate, docUrl, level) =>
+            updateGroupMeshcore(
+                meshcoreEditGroup.id,
+                regions,
+                radio,
+                pathHashMode,
+                nameTemplate,
+                docUrl,
+                level
+            )}
         onclose={() => (meshcoreEditId = null)}
     />
 {/if}

@@ -1,8 +1,11 @@
 // Pure point-in-polygon lookup for the meshcore zone catalog (task 72).
 // No Svelte, no fetch — only the catalog + point. Returns the `regions` value
-// (tokens) plus the optional radio/pathHashMode preset for the zone containing
-// the point, or nothing on miss/unavailable.
+// (tokens) plus the optional preset (radio/pathHashMode/nameTemplate/docUrl) for
+// the zone containing the point, or nothing on miss/unavailable. A hit means the
+// point is inside a zone polygon — that zone may carry any subset of preset
+// fields (regions is optional, so tokens may be empty).
 
+import { ZONE_LEVEL_DEFAULT } from '$lib/config/meshcoreZoneConfig';
 import { pointInGeometry } from '$lib/utils/zoneGeometry';
 import type { ZoneCatalog, ZoneRegionResult } from '$lib/types';
 
@@ -20,9 +23,11 @@ function withinBbox(
 // - unavailable/empty catalog -> status 'unavailable' (reason set by the catalog)
 // - point inside a feature     -> status 'hit', tokens = regions.split(/\s+/)
 // - point outside every feature -> status 'miss'
-// Never throws: a failing feature is skipped with a warning. Intersections in a
-// catalog are impossible by construction (cut at draw time); defensively the
-// first hit wins and an overlap is logged.
+// Zones may nest across hierarchy levels (a city zone over a country zone); the
+// point resolves to the MOST SPECIFIC containing zone — the highest `level`
+// (1=country … 5=city district). Zones at the same level never overlap, so the
+// max level is unique; a same-level double-hit is logged defensively. Never
+// throws: a failing feature is skipped with a warning.
 export function lookupZoneRegion(
     point: [number, number],
     catalog: ZoneCatalog
@@ -31,29 +36,40 @@ export function lookupZoneRegion(
         return { tokens: [], status: 'unavailable', reason: catalog.reason ?? 'empty_catalog' };
     }
 
-    let hit: ZoneRegionResult | null = null;
+    let best: { result: ZoneRegionResult; level: number } | null = null;
     for (const feature of catalog.features) {
         try {
             if (!withinBbox(point, feature.bbox)) continue;
             if (!pointInGeometry(point, feature.geometry)) continue;
-            if (hit) {
-                // Catalogs should have no overlaps; log defensively if one is found.
-                console.warn('[meshcore-zone] overlap_in_catalog: point in multiple zones');
+            const level = feature.level ?? ZONE_LEVEL_DEFAULT;
+            if (best && level <= best.level) {
+                // Less specific (lower level) -> ignore; a same-level second hit
+                // is impossible in a well-formed catalog (same-level zones never
+                // overlap) — log defensively.
+                if (level === best.level) {
+                    console.warn('[meshcore-zone] overlap_in_catalog: same-level zones overlap');
+                }
                 continue;
             }
-            hit = {
-                tokens: feature.regions.split(/\s+/).filter(Boolean),
-                status: 'hit',
-                regions: feature.regions,
-                zoneId: feature.id,
-                radio: feature.radio,
-                pathHashMode: feature.pathHashMode
+            best = {
+                level,
+                result: {
+                    tokens: feature.regions.split(/\s+/).filter(Boolean),
+                    status: 'hit',
+                    regions: feature.regions,
+                    zoneId: feature.id,
+                    radio: feature.radio,
+                    pathHashMode: feature.pathHashMode,
+                    nameTemplate: feature.nameTemplate,
+                    docUrl: feature.docUrl,
+                    level
+                }
             };
         } catch (err) {
             console.warn('[meshcore-zone] lookup feature error, skipped', err);
         }
     }
 
-    if (hit) return hit;
+    if (best) return best.result;
     return { tokens: [], status: 'miss' };
 }

@@ -26,6 +26,11 @@
     import CoordinateMapPicker from './CoordinateMapPicker.svelte';
     import { parseDeviceVersion, versionGte } from '$lib/utils/meshcoreVersion.js';
     import {
+        parseNameTemplate,
+        composeName,
+        defaultComposerParts
+    } from '$lib/utils/nameTemplate.js';
+    import {
         PATH_HASH_MODE_MIN_VERSION,
         REGION_DEF_MIN_VERSION
     } from '$lib/config/meshcoreZoneConfig.js';
@@ -98,6 +103,13 @@
         detectRegions: false
     });
 
+    // Node-name composer: when the picker resolves a zone carrying a name
+    // template, the `set name` row turns into a composer (enum selects + free
+    // inputs) instead of a plain text field. `composerParts` holds one value per
+    // input token (enum/free), in order. Null template -> normal text input.
+    let activeNameTemplate = $state<string | null>(null);
+    let composerParts = $state<string[]>([]);
+
     // `region def` is supported on firmware >= 1.16. An empty version (not
     // connected / 'ver' unanswered) is treated as supported: the region is still
     // shown/resolved, the user applies it themselves.
@@ -108,6 +120,23 @@
     // convention as regionDefSupported.
     const pathHashSupported = $derived(
         deviceVersion === '' || versionGte(parseDeviceVersion(deviceVersion), PATH_HASH_MODE_MIN_VERSION)
+    );
+
+    // Parsed tokens of the active name template (empty when none active).
+    const nameTokens = $derived(activeNameTemplate ? parseNameTemplate(activeNameTemplate) : []);
+    // Maps each token index to its composer-part index (-1 for literals), so the
+    // composer can bind the right `composerParts` slot to each input control.
+    const nameTokenComposerIndex = $derived.by<number[]>(() => {
+        const map: number[] = [];
+        let n = 0;
+        for (const t of nameTokens) {
+            map.push(t.type === 'literal' ? -1 : n++);
+        }
+        return map;
+    });
+    // The device caps `set name` at 32 chars; flag an over-long composed name.
+    const nameTooLong = $derived(
+        activeNameTemplate !== null && composeName(nameTokens, composerParts).length > 32
     );
 
     // Does the configurator expose a given row id? Zone presets only apply when
@@ -637,6 +666,32 @@
         }
     }
 
+    // Activate the name composer for a resolved zone's template: parse it, seed
+    // the inputs with defaults (enum -> first option, free -> '') and write the
+    // composed name straight into the `set name` row.
+    function applyNameTemplate(tpl: string): void {
+        const tokens = parseNameTemplate(tpl);
+        activeNameTemplate = tpl;
+        composerParts = defaultComposerParts(tokens);
+        setRowValue('name', composeName(tokens, composerParts));
+    }
+
+    // One composer input changed: update its slot and re-compose the name.
+    function updateComposerPart(partIndex: number, val: string): void {
+        const next = composerParts.map((p, i) => (i === partIndex ? val : p));
+        composerParts = next;
+        setRowValue('name', composeName(nameTokens, next));
+    }
+
+    // Abandon the zone template composer: drop the template binding so the
+    // `set name` row falls back to a plain free-text input. The currently
+    // composed name is KEPT (so it can be hand-edited) — only the structured
+    // composer controls are removed.
+    function clearNameTemplate(): void {
+        activeNameTemplate = null;
+        composerParts = [];
+    }
+
     // Arm/disarm a 0-param action for the Apply queue (manual add-to-queue).
     function toggleArm(row: MeshcoreCommandRow): void {
         const idx = commandQueue.findIndex((e) => e.rowId === row.id);
@@ -918,7 +973,8 @@
                                                                     lat
                                                                 </label>
                                                                 <input
-                                                                    type="number"
+                                                                    type="text"
+                                                                    inputmode="decimal"
                                                                     class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1.5 text-sm text-gray-100 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
                                                                     value={rowValues['lat'] ?? ''}
                                                                     onchange={(e) =>
@@ -927,7 +983,7 @@
                                                                             Number(
                                                                                 (
                                                                                     e.currentTarget as HTMLInputElement
-                                                                                ).value
+                                                                                ).value.replace(',', '.')
                                                                             )
                                                                         )}
                                                                 />
@@ -939,7 +995,8 @@
                                                                     lon
                                                                 </label>
                                                                 <input
-                                                                    type="number"
+                                                                    type="text"
+                                                                    inputmode="decimal"
                                                                     class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1.5 text-sm text-gray-100 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
                                                                     value={rowValues['lon'] ?? ''}
                                                                     onchange={(e) =>
@@ -948,7 +1005,7 @@
                                                                             Number(
                                                                                 (
                                                                                     e.currentTarget as HTMLInputElement
-                                                                                ).value
+                                                                                ).value.replace(',', '.')
                                                                             )
                                                                         )}
                                                                 />
@@ -1003,6 +1060,81 @@
                                                                 🕐
                                                             </button>
                                                         </div>
+                                                    </div>
+                                                {:else if r.id === 'name' && activeNameTemplate}
+                                                    <!-- Name composer: the zone's template drives inline enum
+                                                         selects + free inputs; the composed name is written to
+                                                         the `set name` row via setRowValue. -->
+                                                    <div
+                                                        class={`rounded-lg border px-3 py-2 transition-colors ${inQueue(r) ? 'border-orange-600/70 bg-orange-900/10' : 'border-gray-700/60 bg-gray-900/40 hover:border-gray-600'}`}
+                                                    >
+                                                        <div
+                                                            class="mb-1.5 flex items-center justify-between gap-2"
+                                                        >
+                                                            <span
+                                                                class="text-xs font-semibold uppercase tracking-wide text-gray-400"
+                                                                title={r.label}
+                                                            >
+                                                                {r.id}
+                                                            </span>
+                                                            <div class="flex items-center gap-1">
+                                                                {#if inQueue(r)}
+                                                                    <span
+                                                                        class="shrink-0 rounded-full bg-orange-600/30 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-orange-200"
+                                                                    >
+                                                                        {$locales('meshcoreconfig.dirty_badge')}
+                                                                    </span>
+                                                                {/if}
+                                                                <button
+                                                                    type="button"
+                                                                    onclick={clearNameTemplate}
+                                                                    title={$locales('meshcoreconfig.zones.name_template_clear')}
+                                                                    class="shrink-0 rounded px-1.5 py-0.5 text-xs text-gray-400 transition-colors hover:bg-gray-700 hover:text-red-300"
+                                                                >
+                                                                    ✕
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div class="flex flex-wrap items-center gap-1">
+                                                            {#each nameTokens as tok, i (i)}
+                                                                {#if tok.type === 'literal'}
+                                                                    <span class="text-xs text-gray-500">{tok.value}</span>
+                                                                {:else if tok.type === 'enum'}
+                                                                    {@const pi = nameTokenComposerIndex[i]}
+                                                                    <select
+                                                                        class="rounded border border-gray-600 bg-gray-700 px-1.5 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
+                                                                        value={composerParts[pi] ?? ''}
+                                                                        onchange={(e) =>
+                                                                            updateComposerPart(
+                                                                                pi,
+                                                                                (e.currentTarget as HTMLSelectElement).value
+                                                                            )}
+                                                                    >
+                                                                        {#each tok.options as opt (opt)}
+                                                                            <option value={opt}>{opt}</option>
+                                                                        {/each}
+                                                                    </select>
+                                                                {:else}
+                                                                    {@const pi = nameTokenComposerIndex[i]}
+                                                                    <input
+                                                                        type="text"
+                                                                        maxlength="32"
+                                                                        class="w-16 rounded border border-gray-600 bg-gray-700 px-1.5 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
+                                                                        value={composerParts[pi] ?? ''}
+                                                                        oninput={(e) =>
+                                                                            updateComposerPart(
+                                                                                pi,
+                                                                                (e.currentTarget as HTMLInputElement).value
+                                                                            )}
+                                                                    />
+                                                                {/if}
+                                                            {/each}
+                                                        </div>
+                                                        {#if nameTooLong}
+                                                            <span class="mt-1 block text-[10px] text-red-400">
+                                                                {$locales('meshcoreconfig.zones.name_too_long')}
+                                                            </span>
+                                                        {/if}
                                                     </div>
                                                 {:else}
                                                     <MeshcoreConfigRow
@@ -1183,6 +1315,11 @@
                     if (r.pathHashMode && pathHashSupported && hasRow('path.hash.mode')) {
                         setRowValue('path.hash.mode', r.pathHashMode);
                         logZoneMetric('zones_pathhash_applied');
+                    }
+                    // Activate the node-name composer for the zone's template.
+                    if (r.nameTemplate && hasRow('name')) {
+                        applyNameTemplate(r.nameTemplate);
+                        logZoneMetric('zones_nametemplate_applied');
                     }
                 } else if (res.region && res.region.status === 'miss') {
                     logZoneMetric('zones_miss');
