@@ -1,6 +1,7 @@
 // Pure point-in-polygon lookup for the meshcore zone catalog (task 72).
 // No Svelte, no fetch — only the catalog + point. Returns the `regions` value
-// (tokens) for the zone containing the point, or nothing on miss/unavailable.
+// (tokens) plus the optional radio/pathHashMode preset for the zone containing
+// the point, or nothing on miss/unavailable.
 
 import { pointInGeometry } from '$lib/utils/zoneGeometry';
 import type { ZoneCatalog, ZoneRegionResult } from '$lib/types';
@@ -44,7 +45,9 @@ export function lookupZoneRegion(
                 tokens: feature.regions.split(/\s+/).filter(Boolean),
                 status: 'hit',
                 regions: feature.regions,
-                zoneId: feature.id
+                zoneId: feature.id,
+                radio: feature.radio,
+                pathHashMode: feature.pathHashMode
             };
         } catch (err) {
             console.warn('[meshcore-zone] lookup feature error, skipped', err);

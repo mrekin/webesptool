@@ -317,6 +317,9 @@
       "load_file_done": "Loaded",
       "published_section": "Published groups",
       "editing_published": "editing published group",
+      "edit_hint": "Load into editor",
+      "duplicate_hint": "Duplicate for editing (same settings, no zones)",
+      "duplicate_done": "Copy created",
       "group_new": "New group",
       "group_name_prompt": "Group name",
       "group_label": "Groups",
@@ -337,7 +340,17 @@
       "brush_hint": "Hold LMB to paint · RMB to pan",
       "brush_no_active": "Select or create an active group first",
       "erase_mode": "Erase mode (active tool erases)",
-      "undo": "Undo last change"
+      "undo": "Undo last change",
+      "meshcore_settings": "Meshcore settings",
+      "radio_label": "Radio (set radio)",
+      "radio_freq": "Frequency, MHz",
+      "radio_bw": "Bandwidth, kHz",
+      "radio_sf": "Spreading factor",
+      "radio_cr": "Coding rate",
+      "radio_invalid": "Fill in all four radio parameters (or leave all empty to clear)",
+      "path_hash_mode": "Path hash mode",
+      "result_radio": "Radio: {freq} MHz",
+      "result_path_hash": "Path hash: {mode}"
     }
   },
   "customfirmware": {

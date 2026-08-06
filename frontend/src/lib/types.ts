@@ -923,6 +923,26 @@ export type ZoneGeometry =
     | { type: 'Polygon'; coordinates: PolygonCoords }
     | { type: 'MultiPolygon'; coordinates: MultiPolygonCoords };
 
+// Meshcore radio preset — mirrors `set radio {freq},{bw},{sf},{cr}`.
+export interface RadioSpec {
+    freq: number;
+    bw: number;
+    sf: number;
+    cr: number;
+}
+
+// A meshcore zone preset, stored nested as `properties.meshcore` /
+// `metadata.meshcore` in the catalog GeoJSON (task 72). `regions` is the
+// region-def characteristic; `radio` and `pathHashMode` are the optional per-zone
+// radio preset. In-memory models keep `regions` as the primary field (lookup/
+// validation) and carry `radio`/`pathHashMode` as optional siblings; the nested
+// structure is assembled at serialization boundaries (zoneExport.serializeGroup).
+export interface MeshcoreZoneSettings {
+    regions: string;
+    radio?: RadioSpec;
+    pathHashMode?: string; // "0" | "1" | "2" — matches `set path.hash.mode` options
+}
+
 // One normalized catalog feature. `bbox` is precomputed at parse time for the
 // lookup prefilter ([minLon, minLat, maxLon, maxLat]).
 export interface ZoneFeature {
@@ -931,6 +951,8 @@ export interface ZoneFeature {
     bbox: [number, number, number, number];
     regions: string; // value for `region def` (tokens separated by spaces)
     group?: string; // cosmetic label for the editor/export only
+    radio?: RadioSpec; // per-zone radio preset (from properties.meshcore.radio)
+    pathHashMode?: string; // per-zone path hash mode (from properties.meshcore.pathHashMode)
     properties: Record<string, unknown>; // open object — extensible characteristics
 }
 
@@ -950,6 +972,8 @@ export interface GroupFile {
     filename: string;
     name: string;
     regions: string;
+    radio?: RadioSpec; // group radio preset (from metadata.meshcore.radio)
+    pathHashMode?: string; // group path hash mode (from metadata.meshcore.pathHashMode)
     features: ZoneFeature[];
 }
 
@@ -968,6 +992,8 @@ export interface ZoneRegionResult {
     status: ZoneLookupStatus;
     regions?: string; // original properties.regions on hit
     zoneId?: string; // feature id on hit
+    radio?: RadioSpec; // per-zone radio preset on hit (from properties.meshcore.radio)
+    pathHashMode?: string; // per-zone path hash mode on hit (from properties.meshcore.pathHashMode)
     reason?: 'empty_catalog' | 'fetch_failed' | 'invalid'; // when unavailable
 }
 
@@ -987,6 +1013,8 @@ export interface ZoneGroup {
     id: string;
     name: string;
     regions: string;
+    radio?: RadioSpec; // group radio preset (set radio), edited via the ⚙️ modal
+    pathHashMode?: string; // group path hash mode (set path.hash.mode)
     originUrl?: string;
 }
 
@@ -1013,6 +1041,8 @@ export interface ExportZone {
     geometry: ZoneGeometry;
     regions: string;
     group?: string;
+    radio?: RadioSpec;
+    pathHashMode?: string;
     properties?: Record<string, unknown>;
 }
 

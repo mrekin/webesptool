@@ -19,6 +19,7 @@
     import { loadGeoman, loadLeaflet } from '$lib/utils/leafletLoader';
     import {
         boundaryFileList,
+        detectGroupMeshcore,
         fetchBoundaryFile,
         fetchGroupFiles,
         parseZoneFeatures
@@ -40,10 +41,13 @@
         validateExport
     } from '$lib/utils/zoneExport';
     import { OSM_TILE_ATTRIBUTION, OSM_TILE_URL } from '$lib/config/meshcoreZoneConfig';
+    import ZoneMeshcoreSettingsModal from './ZoneMeshcoreSettingsModal.svelte';
     import type {
         EditorPolygon,
         ExportZone,
         GroupFile,
+        MeshcoreZoneSettings,
+        RadioSpec,
         ZoneGeometry,
         ZoneGroup
     } from '$lib/types';
@@ -87,6 +91,9 @@
     let groups = $state<ZoneGroup[]>([]);
     let polygons = $state<EditorPolygon[]>([]);
     let activeGroupId = $state<string | null>(null);
+    // Group whose meshcore settings modal (radio + path.hash.mode) is open.
+    let meshcoreEditId = $state<string | null>(null);
+    const meshcoreEditGroup = $derived(groups.find((g) => g.id === meshcoreEditId) ?? null);
 
     // Undo: snapshot stack of geometric/structural state (text edits excluded).
     interface Snapshot {
@@ -633,7 +640,17 @@
             geom: f.geometry,
             label: (f.properties?.name as string) || gf.name
         }));
-        groups = [...groups, { id, name: gf.name, regions: gf.regions, originUrl: gf.url }];
+        groups = [
+            ...groups,
+            {
+                id,
+                name: gf.name,
+                regions: gf.regions,
+                radio: gf.radio,
+                pathHashMode: gf.pathHashMode,
+                originUrl: gf.url
+            }
+        ];
         polygons = [...polygons, ...loaded];
         activeGroupId = id;
         // Hide the published copy so only the editable (session) version shows.
@@ -641,11 +658,41 @@
         showNotice(`${$locales('meshcoreconfig.zones.editor_title')}: ${gf.name}`);
     }
 
+    // Create a copy of a published group for editing: same settings (name,
+    // regions, radio, path.hash.mode) but NO zones and no originUrl — a fresh
+    // independent session group the user draws new polygons into. Unlike
+    // editGroup this is not idempotent: each click makes a new copy.
+    function duplicateGroup(gf: GroupFile): void {
+        pushHistory();
+        const id = genId('g');
+        groups = [
+            ...groups,
+            {
+                id,
+                name: gf.name,
+                regions: gf.regions,
+                radio: gf.radio,
+                pathHashMode: gf.pathHashMode
+            }
+        ];
+        activeGroupId = id;
+        showNotice(`${$locales('meshcoreconfig.zones.duplicate_done')}: ${gf.name}`);
+    }
+
     function updateGroupName(id: string, name: string): void {
         groups = groups.map((g) => (g.id === id ? { ...g, name } : g));
     }
-    function updateGroupRegions(id: string, regions: string): void {
-        groups = groups.map((g) => (g.id === id ? { ...g, regions } : g));
+    // Update a group's full meshcore preset (regions + radio + path.hash.mode)
+    // from the settings modal. No pushHistory: a settings-modal edit is not a
+    // geometric/structural change worth an undo step, same as the group name.
+    function updateGroupMeshcore(
+        id: string,
+        regions: string,
+        radio: RadioSpec | undefined,
+        pathHashMode: string | undefined
+    ): void {
+        groups = groups.map((g) => (g.id === id ? { ...g, regions, radio, pathHashMode } : g));
+        meshcoreEditId = null;
     }
     function removeGroup(id: string): void {
         pushHistory();
@@ -682,17 +729,11 @@
         return name.replace(/\.geojson$/i, '');
     }
 
-    // A file is a "group" when it carries a regions characteristic (in metadata
-    // or on a feature); otherwise it is a plain reference boundary.
-    function detectRegions(fc: GeoJSON.FeatureCollection): string {
-        const meta = (fc as { metadata?: { regions?: unknown } }).metadata ?? {};
-        if (typeof meta.regions === 'string' && meta.regions.trim()) return meta.regions.trim();
-        for (const f of fc.features) {
-            const r = (f as { properties?: { regions?: unknown } }).properties?.regions;
-            if (typeof r === 'string' && r.trim()) return r.trim();
-        }
-        return '';
-    }
+    // A file is a "group" when it carries a meshcore preset with a regions value
+    // (in metadata.meshcore/regions or on a feature); otherwise it is a plain
+    // reference boundary. detectGroupMeshcore returns the full preset (regions +
+    // optional radio/pathHashMode) or null.
+
 
     async function onFilePicked(e: Event): Promise<void> {
         const input = e.currentTarget as HTMLInputElement;
@@ -711,8 +752,8 @@
             showNotice($locales('meshcoreconfig.zones.load_file_invalid'));
             return;
         }
-        const regions = detectRegions(fc);
-        if (regions) loadFileAsGroup(fc, file.name, regions);
+        const meshcore = detectGroupMeshcore(fc);
+        if (meshcore) loadFileAsGroup(fc, file.name, meshcore);
         else loadFileAsBoundary(fc, file.name);
     }
 
@@ -725,13 +766,17 @@
         showNotice(`${$locales('meshcoreconfig.zones.load_file_done')}: ${stripGeoExt(filename)}`);
     }
 
-    function loadFileAsGroup(fc: GeoJSON.FeatureCollection, filename: string, regions: string): void {
+    function loadFileAsGroup(
+        fc: GeoJSON.FeatureCollection,
+        filename: string,
+        meshcore: MeshcoreZoneSettings
+    ): void {
         const meta = (fc as { metadata?: { group?: unknown; name?: unknown } }).metadata ?? {};
         const name =
             (typeof meta.group === 'string' && meta.group) ||
             (typeof meta.name === 'string' && meta.name) ||
             stripGeoExt(filename);
-        const features = parseZoneFeatures(fc.features, regions);
+        const features = parseZoneFeatures(fc.features, meshcore.regions);
         if (features.length === 0) {
             showNotice($locales('meshcoreconfig.zones.load_file_invalid'));
             return;
@@ -745,7 +790,16 @@
             geom: f.geometry,
             label: (f.properties?.name as string) || name
         }));
-        groups = [...groups, { id, name, regions }];
+        groups = [
+            ...groups,
+            {
+                id,
+                name,
+                regions: meshcore.regions,
+                radio: meshcore.radio,
+                pathHashMode: meshcore.pathHashMode
+            }
+        ];
         polygons = [...polygons, ...loaded];
         activeGroupId = id;
         console.info('[meshcore-zone]', 'user_group_loaded', name);
@@ -773,6 +827,8 @@
                 geometry: p.geom as ZoneGeometry,
                 regions: g.regions,
                 group: g.name,
+                radio: g.radio,
+                pathHashMode: g.pathHashMode,
                 properties: p.label ? { name: p.label } : undefined
             }));
         const v = validateExport(zones);
@@ -784,7 +840,14 @@
             g.name.replace(/[^a-z0-9_-]+/gi, '_').replace(/_+/g, '_') ||
             g.regions.replace(/\s+/g, '-') ||
             g.id;
-        downloadCatalog(serializeGroup(g.name, g.regions, zones), `mcozones-${slug}.geojson`);
+        downloadCatalog(
+            serializeGroup(
+                g.name,
+                { regions: g.regions, radio: g.radio, pathHashMode: g.pathHashMode },
+                zones
+            ),
+            `mczones-${slug}.geojson`
+        );
     }
 
     function doExport(): void {
@@ -980,8 +1043,11 @@
                                     <span class="min-w-0 flex-1 truncate" title={`${gf.name} · ${gf.regions}`}>
                                         {gf.name}<span class="text-gray-500"> · {gf.regions}</span>
                                     </span>
-                                    <button type="button" onclick={() => editGroup(gf)} disabled={isEditing(gf.url)} title={isEditing(gf.url) ? $locales('meshcoreconfig.zones.editing_published') : ''} class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-orange-200 hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-40">
+                                    <button type="button" onclick={() => editGroup(gf)} disabled={isEditing(gf.url)} title={isEditing(gf.url) ? $locales('meshcoreconfig.zones.editing_published') : $locales('meshcoreconfig.zones.edit_hint')} class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-orange-200 hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-40">
                                         ✎
+                                    </button>
+                                    <button type="button" onclick={() => duplicateGroup(gf)} title={$locales('meshcoreconfig.zones.duplicate_hint')} class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-orange-200 hover:bg-gray-600">
+                                        📋
                                     </button>
                                 </div>
                             {/each}
@@ -1008,6 +1074,9 @@
                                 <div class="flex items-center gap-1">
                                     <span class="inline-block h-3 w-3 shrink-0 rounded-sm" style={`background-color: ${groupColor(g.id)}`}></span>
                                     <input type="text" value={g.name} oninput={(e) => updateGroupName(g.id, (e.currentTarget as HTMLInputElement).value)} placeholder={$locales('meshcoreconfig.zones.group_name_prompt')} class={`min-w-0 flex-1 rounded-md border bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500 ${g.name.trim() ? 'border-gray-600' : 'border-red-500'}`} />
+                                    <button type="button" onclick={(e) => { e.stopPropagation(); meshcoreEditId = g.id; }} title={$locales('meshcoreconfig.zones.meshcore_settings')} class={`shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-xs hover:bg-gray-600 ${g.radio || g.pathHashMode ? 'text-orange-200' : 'text-gray-300'}`}>
+                                        ⚙
+                                    </button>
                                     <button type="button" onclick={() => removeGroup(g.id)} class="shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-xs text-gray-300 hover:bg-gray-600">
                                         ✕
                                     </button>
@@ -1015,10 +1084,20 @@
                                 {#if g.originUrl}
                                     <span class="mt-0.5 block text-[10px] text-sky-300">✎ {$locales('meshcoreconfig.zones.editing_published')}</span>
                                 {/if}
-                                <input type="text" value={g.regions} oninput={(e) => updateGroupRegions(g.id, (e.currentTarget as HTMLInputElement).value)} placeholder={$locales('meshcoreconfig.zones.regions_placeholder')} class={`mt-1 w-full rounded-md border bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500 ${isValidRegions(g.regions) ? 'border-gray-600' : 'border-red-500'}`} />
-                                {#if g.regions && !isValidRegions(g.regions)}
-                                    <span class="mt-0.5 block text-[10px] text-red-400">{$locales('meshcoreconfig.zones.regions_invalid')}</span>
-                                {/if}
+                                <!-- Meshcore preset summary (edited via the ⚙ modal):
+                                regions + optional radio/path hash. -->
+                                <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] leading-snug">
+                                    <span
+                                        class={`font-mono ${isValidRegions(g.regions) ? 'text-gray-300' : 'text-red-400'}`}
+                                        title={$locales('meshcoreconfig.zones.regions_label')}
+                                    >{g.regions || $locales('meshcoreconfig.zones.regions_placeholder')}</span>
+                                    {#if g.radio}
+                                        <span class="text-gray-500">· {g.radio.freq}</span>
+                                    {/if}
+                                    {#if g.pathHashMode}
+                                        <span class="text-gray-500">· path {g.pathHashMode}</span>
+                                    {/if}
+                                </div>
 
                                 <div class="mt-1 space-y-1">
                                     {#each zonesIn(g.id) as p (p.id)}
@@ -1081,3 +1160,14 @@
         </div>
     </div>
 </div>
+
+{#if meshcoreEditGroup}
+    <ZoneMeshcoreSettingsModal
+        regions={meshcoreEditGroup.regions}
+        radio={meshcoreEditGroup.radio}
+        pathHashMode={meshcoreEditGroup.pathHashMode}
+        onsave={(regions, radio, pathHashMode) =>
+            updateGroupMeshcore(meshcoreEditGroup.id, regions, radio, pathHashMode)}
+        onclose={() => (meshcoreEditId = null)}
+    />
+{/if}

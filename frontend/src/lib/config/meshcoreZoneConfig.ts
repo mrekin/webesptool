@@ -47,3 +47,6 @@ export const GEOMAN_JS =
 
 // Firmware version at which the `region def` command is supported.
 export const REGION_DEF_MIN_VERSION: [number, number, number] = [1, 16, 0];
+
+// Firmware version at which the `set path.hash.mode` command is supported.
+export const PATH_HASH_MODE_MIN_VERSION: [number, number, number] = [1, 14, 0];

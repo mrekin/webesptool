@@ -317,6 +317,9 @@
       "load_file_done": "Wczytano",
       "published_section": "Opublikowane grupy",
       "editing_published": "edytuj opublikowaną grupę",
+      "edit_hint": "Wczytaj do edytora",
+      "duplicate_hint": "Duplikuj do edycji (te same ustawienia, bez stref)",
+      "duplicate_done": "Kopia utworzona",
       "group_new": "Nowa grupa",
       "group_name_prompt": "Nazwa grupy",
       "group_label": "Grupy",
@@ -337,7 +340,17 @@
       "brush_hint": "Przytrzymaj LPM — rysuj · PPM — przesuń mapę",
       "brush_no_active": "Najpierw wybierz lub utwórz aktywną grupę",
       "erase_mode": "Wymazywanie (aktywne narzędzie wymazuje)",
-      "undo": "Cofnij ostatnią zmianę"
+      "undo": "Cofnij ostatnią zmianę",
+      "meshcore_settings": "Ustawienia Meshcore",
+      "radio_label": "Radio (set radio)",
+      "radio_freq": "Częstotliwość, MHz",
+      "radio_bw": "Szerokość, kHz",
+      "radio_sf": "Spreading factor",
+      "radio_cr": "Coding rate",
+      "radio_invalid": "Wypełnij wszystkie cztery parametry radia (lub zostaw puste, aby wyczyścić)",
+      "path_hash_mode": "Path hash mode",
+      "result_radio": "Radio: {freq} MHz",
+      "result_path_hash": "Path hash: {mode}"
     }
   },
   "customfirmware": {

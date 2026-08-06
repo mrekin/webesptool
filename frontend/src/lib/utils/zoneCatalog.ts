@@ -14,8 +14,10 @@ import { computeBbox, validateGeometry } from '$lib/utils/zoneGeometry';
 import type {
     BoundaryFile,
     GroupFile,
+    MeshcoreZoneSettings,
     MultiPolygonCoords,
     PolygonCoords,
+    RadioSpec,
     ZoneCatalog,
     ZoneFeature,
     ZoneGeometry
@@ -26,6 +28,45 @@ import type {
 function assetUrl(path: string): string {
     const basePart = base ? `${base}/` : '/';
     return `${basePart}${path}`;
+}
+
+// Coerce a raw `properties.meshcore.radio` object into a typed RadioSpec.
+// Requires all four numeric components; any missing/non-finite value -> null
+// (the zone simply has no radio preset).
+function parseRadio(raw: unknown): RadioSpec | null {
+    if (!raw || typeof raw !== 'object') return null;
+    const r = raw as { freq?: unknown; bw?: unknown; sf?: unknown; cr?: unknown };
+    const freq = Number(r.freq);
+    const bw = Number(r.bw);
+    const sf = Number(r.sf);
+    const cr = Number(r.cr);
+    if (![freq, bw, sf, cr].every(Number.isFinite)) return null;
+    return { freq, bw, sf, cr };
+}
+
+// Read the meshcore preset from a raw properties/metadata object. `regions` is
+// read from the nested `meshcore.regions` first, then falls back to a flat
+// legacy `regions`, then to `fallbackRegions`. radio/pathHashMode come only from
+// the nested `meshcore` block. Returns the resolved regions (possibly '') and
+// optional radio/pathHashMode.
+function readMeshcore(
+    props: Record<string, unknown> | null | undefined,
+    fallbackRegions = ''
+): Pick<MeshcoreZoneSettings, 'regions' | 'radio' | 'pathHashMode'> {
+    const mcRaw = props?.meshcore;
+    const mc =
+        mcRaw && typeof mcRaw === 'object'
+            ? (mcRaw as { regions?: unknown; radio?: unknown; pathHashMode?: unknown })
+            : null;
+    const regions =
+        (mc && typeof mc.regions === 'string' ? mc.regions.trim() : '') ||
+        (props && typeof props.regions === 'string' ? (props.regions as string).trim() : '') ||
+        (fallbackRegions ? fallbackRegions.trim() : '');
+    const pathHashMode =
+        mc && typeof mc.pathHashMode === 'string' && mc.pathHashMode.trim()
+            ? mc.pathHashMode.trim()
+            : undefined;
+    return { regions, radio: mc ? parseRadio(mc.radio) ?? undefined : undefined, pathHashMode };
 }
 
 function asGeometry(raw: unknown): ZoneGeometry | null {
@@ -40,8 +81,10 @@ function asGeometry(raw: unknown): ZoneGeometry | null {
 }
 
 // Validate + normalize raw GeoJSON features into ZoneFeature[] (precompute bbox).
-// `fallbackRegions` is used when a feature has no properties.regions (e.g. a
-// group file carrying regions only in metadata). Invalid features are skipped.
+// `fallbackRegions` is used when a feature carries regions only in metadata
+// (e.g. an older group file). The meshcore preset (regions + radio/pathHashMode)
+// is read from the nested `properties.meshcore` with a fallback to a flat legacy
+// `properties.regions`. Invalid features are skipped.
 export function parseZoneFeatures(rawFeatures: unknown, fallbackRegions = ''): ZoneFeature[] {
     const out: ZoneFeature[] = [];
     if (!Array.isArray(rawFeatures)) return out;
@@ -52,17 +95,17 @@ export function parseZoneFeatures(rawFeatures: unknown, fallbackRegions = ''): Z
             const geometry = asGeometry(f.geometry);
             if (!geometry || !validateGeometry(geometry).valid) return;
             const props = f.properties ?? {};
-            const regions =
-                (typeof props.regions === 'string' ? props.regions.trim() : '') ||
-                (fallbackRegions ? fallbackRegions.trim() : '');
-            if (!regions) return;
+            const mc = readMeshcore(props, fallbackRegions);
+            if (!mc.regions) return;
             const id = typeof props.id === 'string' && props.id ? props.id : `zone-${index + 1}`;
             out.push({
                 id,
                 geometry,
                 bbox: computeBbox(geometry),
-                regions,
+                regions: mc.regions,
                 group: typeof props.group === 'string' ? props.group : undefined,
+                radio: mc.radio,
+                pathHashMode: mc.pathHashMode,
                 properties: props
             });
         } catch (err) {
@@ -85,6 +128,29 @@ export function parseZoneCatalog(raw: unknown): ZoneCatalog {
         return { status: 'unavailable', features: [], reason: 'empty_catalog', schema };
     }
     return { status: 'ok', features, schema };
+}
+
+// Detect whether a raw FeatureCollection carries a meshcore group preset
+// (regions + optional radio/pathHashMode), reading metadata.meshcore first (with
+// a fallback to a flat legacy regions), then the first feature's preset. Returns
+// null when no regions are found — the caller treats the file as a plain base
+// boundary. Used by the editor to auto-detect group vs boundary on user upload.
+export function detectGroupMeshcore(fc: GeoJSON.FeatureCollection): MeshcoreZoneSettings | null {
+    const meta = (fc as { metadata?: Record<string, unknown> }).metadata;
+    const fromMeta = readMeshcore(meta);
+    const sources = [fromMeta];
+    if (Array.isArray(fc.features)) {
+        for (const f of fc.features) {
+            const props = (f as { properties?: Record<string, unknown> | null }).properties ?? {};
+            sources.push(readMeshcore(props));
+        }
+    }
+    const found = sources.find((mc) => !!mc.regions);
+    if (!found) return null;
+    const out: MeshcoreZoneSettings = { regions: found.regions };
+    if (found.radio) out.radio = found.radio;
+    if (found.pathHashMode) out.pathHashMode = found.pathHashMode;
+    return out;
 }
 
 // --- build-time discovery of static assets (glob paths must be literals) ---
@@ -171,7 +237,12 @@ function parseGroupFile(
 ): GroupFile | null {
     try {
         const j = json as {
-            metadata?: { group?: unknown; name?: unknown; regions?: unknown };
+            metadata?: {
+                group?: unknown;
+                name?: unknown;
+                regions?: unknown;
+                meshcore?: unknown;
+            };
             features?: unknown;
         };
         const meta = j.metadata ?? {};
@@ -179,7 +250,11 @@ function parseGroupFile(
             (typeof meta.group === 'string' && meta.group) ||
             (typeof meta.name === 'string' && meta.name) ||
             fileBase(url);
-        const metaRegions = typeof meta.regions === 'string' ? meta.regions.trim() : '';
+        // Read the group-level preset from metadata.meshcore (with a fallback to
+        // a flat legacy metadata.regions), then let per-feature values fill in
+        // regions when metadata has none.
+        const metaMc = readMeshcore(meta as Record<string, unknown>);
+        const metaRegions = metaMc.regions || (typeof meta.regions === 'string' ? meta.regions.trim() : '');
         const features = parseZoneFeatures(j.features, metaRegions);
         // Fall back to a feature-level regions value when metadata has none (an
         // older export or a hand-made file): the editor's regions field must
@@ -188,7 +263,15 @@ function parseGroupFile(
             metaRegions ||
             features.map((f) => f.regions).find((r) => !!r) ||
             '';
-        return { url, filename: fileBase(url), name, regions, features } satisfies GroupFile;
+        return {
+            url,
+            filename: fileBase(url),
+            name,
+            regions,
+            radio: metaMc.radio,
+            pathHashMode: metaMc.pathHashMode,
+            features
+        } satisfies GroupFile;
     } catch (err) {
         console.warn('[meshcore-zone] group parse failed', url, err);
         return null;

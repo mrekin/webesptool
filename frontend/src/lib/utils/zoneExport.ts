@@ -5,12 +5,20 @@
 
 import { ZONE_CATALOG_SCHEMA } from '$lib/config/meshcoreZoneConfig';
 import { validateGeometry } from '$lib/utils/zoneGeometry';
-import type { ExportZone } from '$lib/types';
+import type { ExportZone, MeshcoreZoneSettings } from '$lib/types';
 
 // The on-disk catalog: a GeoJSON FeatureCollection with a small `metadata`
-// extension (schema version) used for forward-compatible migration.
+// extension (schema version) used for forward-compatible migration. The meshcore
+// preset (regions + radio + pathHashMode) lives nested under `metadata.meshcore`
+// and each feature's `properties.meshcore`; a flat legacy `regions` is kept in
+// the type for backward-compatible reading of older catalogs.
 export type ZoneCatalogJson = GeoJSON.FeatureCollection & {
-    metadata?: { schema?: number; group?: string; regions?: string };
+    metadata?: {
+        schema?: number;
+        group?: string;
+        regions?: string; // legacy flat field (older exports)
+        meshcore?: MeshcoreZoneSettings;
+    };
 };
 
 // A `regions` value is valid when it is one or more whitespace-separated tokens
@@ -40,27 +48,35 @@ export function validateExport(zones: ExportZone[]): ExportValidation {
 }
 
 // Serialize one group's resolved zones into a GeoJSON FeatureCollection. The
-// group name and `regions` characteristic are stored both in `metadata` (so the
-// editor can list groups without parsing features) and on each feature's
-// properties (so the lookup resolves a point by properties.regions).
+// group name and the meshcore preset (regions + optional radio/pathHashMode) are
+// stored nested under `metadata.meshcore` (so the editor can list groups without
+// parsing features) and on each feature's `properties.meshcore` (so the lookup
+// resolves a point and its full preset). `regions` is also kept as a flat
+// top-level fallback inside the meshcore block (the in-memory `regions` field
+// remains the primary lookup key).
 export function serializeGroup(
     name: string,
-    regions: string,
+    meshcore: MeshcoreZoneSettings,
     zones: ExportZone[]
 ): ZoneCatalogJson {
     return {
         type: 'FeatureCollection',
-        metadata: { schema: ZONE_CATALOG_SCHEMA, group: name, regions },
-        features: zones.map((z) => ({
-            type: 'Feature' as const,
-            geometry: z.geometry,
-            properties: {
-                id: z.id,
-                group: name,
-                regions,
-                ...z.properties
-            }
-        }))
+        metadata: { schema: ZONE_CATALOG_SCHEMA, group: name, meshcore: { ...meshcore } },
+        features: zones.map((z) => {
+            const featureMeshcore: MeshcoreZoneSettings = { regions: z.regions };
+            if (meshcore.radio) featureMeshcore.radio = meshcore.radio;
+            if (meshcore.pathHashMode) featureMeshcore.pathHashMode = meshcore.pathHashMode;
+            return {
+                type: 'Feature' as const,
+                geometry: z.geometry,
+                properties: {
+                    ...z.properties,
+                    id: z.id,
+                    group: name,
+                    meshcore: featureMeshcore
+                }
+            };
+        })
     };
 }
 

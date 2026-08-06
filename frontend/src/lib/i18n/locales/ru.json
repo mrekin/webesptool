@@ -317,6 +317,9 @@
       "load_file_done": "Загружено",
       "published_section": "Опубликованные группы",
       "editing_published": "правка опубликованной группы",
+      "edit_hint": "Загрузить в редактор",
+      "duplicate_hint": "Дублировать для правки (те же настройки, без зон)",
+      "duplicate_done": "Копия создана",
       "group_new": "Новая группа",
       "group_name_prompt": "Имя группы",
       "group_label": "Группы",
@@ -337,7 +340,17 @@
       "brush_hint": "Зажмите ЛКМ — рисовать · ПКМ — двигать карту",
       "brush_no_active": "Сначала выберите или создайте активную группу",
       "erase_mode": "Стирание (активный инструмент стирает)",
-      "undo": "Отменить последнее действие"
+      "undo": "Отменить последнее действие",
+      "meshcore_settings": "Настройки Meshcore",
+      "radio_label": "Радио (set radio)",
+      "radio_freq": "Частота, МГц",
+      "radio_bw": "Полоса, кГц",
+      "radio_sf": "Spreading factor",
+      "radio_cr": "Coding rate",
+      "radio_invalid": "Заполните все четыре параметра радио (или оставьте все пустыми для очистки)",
+      "path_hash_mode": "Path hash mode",
+      "result_radio": "Радио: {freq} МГц",
+      "result_path_hash": "Path hash: {mode}"
     }
   },
   "customfirmware": {

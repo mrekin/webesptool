@@ -25,7 +25,10 @@
     import MultilineControls from './MultilineControls.svelte';
     import CoordinateMapPicker from './CoordinateMapPicker.svelte';
     import { parseDeviceVersion, versionGte } from '$lib/utils/meshcoreVersion.js';
-    import { REGION_DEF_MIN_VERSION } from '$lib/config/meshcoreZoneConfig.js';
+    import {
+        PATH_HASH_MODE_MIN_VERSION,
+        REGION_DEF_MIN_VERSION
+    } from '$lib/config/meshcoreZoneConfig.js';
     import type {
         MeshcoreCommandRow,
         MeshcoreConfigGroup,
@@ -101,6 +104,17 @@
     const regionDefSupported = $derived(
         deviceVersion === '' || versionGte(parseDeviceVersion(deviceVersion), REGION_DEF_MIN_VERSION)
     );
+    // `set path.hash.mode` is supported on firmware >= 1.14. Same empty-version
+    // convention as regionDefSupported.
+    const pathHashSupported = $derived(
+        deviceVersion === '' || versionGte(parseDeviceVersion(deviceVersion), PATH_HASH_MODE_MIN_VERSION)
+    );
+
+    // Does the configurator expose a given row id? Zone presets only apply when
+    // the matching command row exists for this command-set variant.
+    function hasRow(id: string): boolean {
+        return rows.some((r) => r.id === id);
+    }
 
     // Light metric logging for the zone feature (counters, debug-level).
     function logZoneMetric(kind: string): void {
@@ -1146,12 +1160,29 @@
                     setRowValue('lat', res.coords.lat);
                     setRowValue('lon', res.coords.lon);
                 }
-                if (res.region && res.region.status === 'hit' && res.region.tokens.length > 0) {
-                    if (regionDefSupported) {
-                        setRowValue('region def', res.region.tokens.join(' '));
-                        logZoneMetric('zones_hit');
-                    } else {
-                        logZoneMetric('old_firmware_skipped');
+                if (res.region && res.region.status === 'hit') {
+                    const r = res.region;
+                    if (r.tokens.length > 0) {
+                        if (regionDefSupported) {
+                            setRowValue('region def', r.tokens.join(' '));
+                            logZoneMetric('zones_hit');
+                        } else {
+                            logZoneMetric('old_firmware_skipped');
+                        }
+                    }
+                    // Apply the zone's radio preset (full `set radio`) when the
+                    // configurator exposes that row.
+                    if (r.radio && hasRow('radio')) {
+                        setRowValue(
+                            'radio',
+                            [r.radio.freq, r.radio.bw, r.radio.sf, r.radio.cr].map(String)
+                        );
+                        logZoneMetric('zones_radio_applied');
+                    }
+                    // Apply path hash mode (firmware-gated >= 1.14).
+                    if (r.pathHashMode && pathHashSupported && hasRow('path.hash.mode')) {
+                        setRowValue('path.hash.mode', r.pathHashMode);
+                        logZoneMetric('zones_pathhash_applied');
                     }
                 } else if (res.region && res.region.status === 'miss') {
                     logZoneMetric('zones_miss');

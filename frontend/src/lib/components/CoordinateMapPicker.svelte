@@ -191,6 +191,20 @@
                         <span class="font-mono text-xs text-orange-200" title={regionResult.regions}>
                             {$locales('meshcoreconfig.zones.result_label')}: {regionResult.tokens.join(' ')}
                         </span>
+                        {#if regionResult.radio}
+                            <span class="font-mono text-[11px] text-gray-400" title={$locales('meshcoreconfig.zones.radio_label')}>
+                                {$locales('meshcoreconfig.zones.result_radio', {
+                                    values: { freq: regionResult.radio.freq }
+                                })}
+                            </span>
+                        {/if}
+                        {#if regionResult.pathHashMode}
+                            <span class="font-mono text-[11px] text-gray-400">
+                                {$locales('meshcoreconfig.zones.result_path_hash', {
+                                    values: { mode: regionResult.pathHashMode }
+                                })}
+                            </span>
+                        {/if}
                     {:else if regionResult.status === 'miss'}
                         <span class="text-[11px] text-gray-500">{$locales('meshcoreconfig.zones.status_miss')}</span>
                     {:else}
