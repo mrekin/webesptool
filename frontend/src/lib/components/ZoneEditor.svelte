@@ -30,7 +30,8 @@
         erase,
         pointInGeometry,
         subtractExisting,
-        unionInto
+        unionInto,
+        unwrapAntimeridian
     } from '$lib/utils/zoneGeometry';
     import {
         downloadCatalog,
@@ -467,7 +468,9 @@
             type: 'FeatureCollection',
             features: polygons.map((p) => ({
                 type: 'Feature' as const,
-                geometry: p.geom as ZoneGeometry,
+                // Display-only unwrap so antimeridian-crossing zones (e.g.
+                // Чукотка) render contiguous. p.geom stays in [-180,180].
+                geometry: unwrapAntimeridian(p.geom as ZoneGeometry),
                 properties: { id: p.id, name: p.label ?? '', groupId: p.groupId }
             }))
         };
@@ -516,14 +519,38 @@
                         return ab - aa;
                     })
                 };
-                const layer = L.geoJSON(sorted, {
+                // Render antimeridian-crossing shapes (e.g. Чукотка) contiguous
+                // for display, but keep the ORIGINAL geometry on the feature
+                // (__orig) — clicks commit the original so storage/export and
+                // the coordinate→region lookup stay in the standard [-180,180].
+                const renderFc = {
+                    ...sorted,
+                    features: sorted.features.map((f) => {
+                        const orig = f.geometry as ZoneGeometry | null;
+                        const display =
+                            orig && (orig.type === 'Polygon' || orig.type === 'MultiPolygon')
+                                ? unwrapAntimeridian(orig)
+                                : orig;
+                        return {
+                            ...f,
+                            properties: { ...(f.properties ?? {}), __orig: orig },
+                            geometry: display
+                        };
+                    })
+                };
+                const layer = L.geoJSON(renderFc, {
                     style: () => BOUNDARY_STYLE,
                     onEachFeature: (feature: any, l: any) => {
                         const name = feature?.properties?.name ?? feature?.properties?.name_en ?? '';
                         if (name) l.bindTooltip(String(name));
                         l.on('mouseover', () => l.setStyle(BOUNDARY_HOVER));
                         l.on('mouseout', () => l.setStyle(BOUNDARY_STYLE));
-                        l.on('click', () => onBoundaryClick(feature));
+                        l.on('click', () =>
+                            onBoundaryClick({
+                                geometry: feature.properties.__orig,
+                                properties: feature.properties
+                            })
+                        );
                     }
                 }).addTo(map);
                 layer.eachLayer((l: any) => {

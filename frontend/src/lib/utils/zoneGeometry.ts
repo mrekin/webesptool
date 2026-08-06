@@ -26,6 +26,7 @@ import { ZONE_CIRCLE_STEPS, ZONE_MIN_AREA_M2 } from '$lib/config/meshcoreZoneCon
 import type {
     MultiPolygonCoords,
     PolygonCoords,
+    PolygonRing,
     ZoneGeometry
 } from '$lib/types';
 
@@ -75,6 +76,72 @@ export function computeArea(geom: ZoneGeometry): number {
     } catch {
         return 0;
     }
+}
+
+// --- antimeridian (±180°) display unwrap ---
+
+// Shift every longitude in a set of rings by `delta`. Used to align MultiPolygon
+// parts that sit on opposite sides of the date line.
+function shiftRings(rings: PolygonCoords, delta: number): PolygonCoords {
+    if (delta === 0) return rings;
+    return rings.map((ring) => ring.map(([lon, lat]) => [lon + delta, lat] as [number, number]));
+}
+
+// Make a single ring continuous: walking the vertices, remove >180° jumps by
+// accumulating a ±360 shift. A ring already on one side is returned unchanged.
+function unwrapRing(ring: PolygonRing): PolygonRing {
+    if (ring.length === 0) return ring;
+    const out: PolygonRing = [];
+    let shift = 0;
+    let prev: number | null = null;
+    for (const [lon, lat] of ring) {
+        if (prev !== null) {
+            while (lon + shift - prev > 180) shift -= 360;
+            while (lon + shift - prev < -180) shift += 360;
+        }
+        const l = lon + shift;
+        out.push([l, lat] as [number, number]);
+        prev = l;
+    }
+    return out;
+}
+
+// Mean longitude of a polygon's exterior ring (its "side" of the date line).
+function meanLon(rings: PolygonCoords): number {
+    const ring = rings[0];
+    if (!ring || ring.length === 0) return 0;
+    let sum = 0;
+    for (const [lon] of ring) sum += lon;
+    return sum / ring.length;
+}
+
+// Return a copy of `geom` with antimeridian-crossing shapes made contiguous for
+// DISPLAY. Rings are walked to remove >180° jumps, and MultiPolygon parts on
+// opposite sides of ±180° are aligned to the largest part's cluster (so some
+// longitudes may end up outside [-180,180]). This is display-only: callers must
+// keep the original geometry for storage/export/lookup, which must stay in the
+// standard [-180,180] range.
+export function unwrapAntimeridian(geom: ZoneGeometry): ZoneGeometry {
+    if (geom.type === 'Polygon') {
+        return { type: 'Polygon', coordinates: geom.coordinates.map(unwrapRing) };
+    }
+    const parts = geom.coordinates.map((poly) => poly.map(unwrapRing));
+    // Align parts to the cluster of the largest part (by exterior-ring vertex
+    // count) so a region split across the date line renders as one shape.
+    let center = 0;
+    let best = -1;
+    for (const poly of parts) {
+        const n = poly[0]?.length ?? 0;
+        if (n > best) {
+            best = n;
+            center = meanLon(poly);
+        }
+    }
+    const aligned = parts.map((poly) => {
+        const d = meanLon(poly) - center;
+        return shiftRings(poly, d > 180 ? -360 : d < -180 ? 360 : 0);
+    });
+    return { type: 'MultiPolygon', coordinates: aligned };
 }
 
 // --- circle -> polygon approximation (task 72: circle is a tool artifact) ---
