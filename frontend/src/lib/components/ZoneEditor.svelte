@@ -196,22 +196,25 @@
     // every in-session zone (optionally excluding one being extended). This
     // enforces "groups never overlap".
     function overlapGeometries(opts?: {
-        level?: number;
+        level?: number | null; // null = wildcard (a homeless zone conflicts with any level)
         excludeOriginUrl?: string;
         excludePolygonId?: string;
     }): ZoneGeometry[] {
-        // Only same-level zones participate in the no-overlap rule; zones at a
-        // different level may nest freely (a city over a region/country).
-        const lvl = opts?.level ?? ZONE_LEVEL_DEFAULT;
+        // Two zones conflict (may not overlap) when they share a level, OR when
+        // either is a wildcard (no group/level) — a homeless zone collides with
+        // every level. Zones at different concrete levels may nest freely (a city
+        // over a region/country).
+        const lvl: number | null = opts?.level === undefined ? ZONE_LEVEL_DEFAULT : opts.level;
         const out: ZoneGeometry[] = [];
         for (const gf of groupFiles) {
             if (gf.url === opts?.excludeOriginUrl) continue;
-            if ((gf.level ?? ZONE_LEVEL_DEFAULT) !== lvl) continue;
+            const gfLvl = gf.level ?? ZONE_LEVEL_DEFAULT;
+            if (!levelsConflict(lvl, gfLvl)) continue;
             for (const f of gf.features) out.push(f.geometry);
         }
         for (const p of polygons) {
             if (p.id === opts?.excludePolygonId) continue;
-            if (groupLevel(p.groupId) !== lvl) continue;
+            if (!levelsConflict(lvl, groupLevel(p.groupId))) continue;
             out.push(p.geom as ZoneGeometry);
         }
         return out;
@@ -224,12 +227,18 @@
         if (!groupId) return undefined;
         return groups.find((g) => g.id === groupId)?.originUrl;
     }
-    // Zone hierarchy level of a group (1-5); defaults to ZONE_LEVEL_DEFAULT when
-    // the group has none (or groupId is null). Drives same-level overlap checks,
-    // the eraser scope and the overlay paint order.
-    function groupLevel(groupId: string | null): number {
-        if (!groupId) return ZONE_LEVEL_DEFAULT;
+    // Zone hierarchy level of a group (1-5). Returns null when the zone has no
+    // group (a homeless/orphan zone) — null is a WILDCARD: it conflicts with
+    // every level (see levelsConflict). Drives overlap checks, the eraser scope
+    // and the overlay paint order.
+    function groupLevel(groupId: string | null): number | null {
+        if (!groupId) return null;
         return groups.find((g) => g.id === groupId)?.level ?? ZONE_LEVEL_DEFAULT;
+    }
+    // Two zones may not overlap when they share a concrete level, OR when either
+    // is a wildcard (no level) — a homeless zone collides with zones of any level.
+    function levelsConflict(a: number | null, b: number | null): boolean {
+        return a === null || b === null || a === b;
     }
 
     function layerToPolygonGeom(layer: any): ZoneGeometry {
@@ -266,7 +275,7 @@
         const lvl = groupLevel(activeGroupId);
         const next: EditorPolygon[] = [];
         for (const p of polygons) {
-            if (groupLevel(p.groupId) !== lvl) {
+            if (!levelsConflict(lvl, groupLevel(p.groupId))) {
                 next.push(p);
                 continue;
             }
@@ -354,7 +363,7 @@
         const activeLvl = groupLevel(activeGroupId);
         let target: EditorPolygon | null = null;
         for (let i = polygons.length - 1; i >= 0; i--) {
-            if (groupLevel(polygons[i].groupId) !== activeLvl) continue;
+            if (!levelsConflict(activeLvl, groupLevel(polygons[i].groupId))) continue;
             if (pointInGeometry(lonLat, polygons[i].geom as ZoneGeometry)) {
                 target = polygons[i];
                 break;
@@ -524,8 +533,9 @@
         if (polygons.length === 0) return;
         // Paint by level ascending so the most specific (highest-level) zones
         // render on top and stay visible/clickable over the broader ones below.
+        const lvlOf = (id: string | null): number => groupLevel(id) ?? 0;
         const ordered = [...polygons].sort(
-            (a, b) => groupLevel(a.groupId) - groupLevel(b.groupId)
+            (a, b) => lvlOf(a.groupId) - lvlOf(b.groupId)
         );
         const fc = {
             type: 'FeatureCollection',
