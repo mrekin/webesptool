@@ -13,13 +13,13 @@ export const MESHCORE_CONFIG_METADATA = {
         'allow.read.only': 'identity', repeat: 'identity',
         // Radio (core only)
         radio: 'radio', freq: 'radio', tx: 'radio',
-        'radio.rxgain': 'radio', dutycycle: 'radio',
+        'radio.rxgain': 'radio', 'radio.fem.rxgain': 'radio', dutycycle: 'radio',
         // Bridge (core only)
         'bridge.enabled': 'bridge',
         // Flood (core only)
         'flood.max': 'flood',
         // Advanced: deprecated / obscure params explicitly grouped.
-        af: 'advanced', 'agc.reset.interval': 'advanced', 'int.thresh': 'advanced',
+        cad: 'advanced', af: 'advanced', 'agc.reset.interval': 'advanced', 'int.thresh': 'advanced',
         'direct.txdelay': 'advanced', rxdelay: 'advanced', txdelay: 'advanced',
         'adc.multiplier': 'advanced', 'path.hash.mode': 'advanced',
         'loop.detect': 'advanced', 'multi.acks': 'advanced',
@@ -48,7 +48,7 @@ export const MESHCORE_CONFIG_METADATA = {
         // identity
         'prv.key', 'guest.password', 'allow.read.only', 'repeat',
         // radio
-        'radio', 'freq', 'tx', 'radio.rxgain', 'dutycycle',
+        'radio', 'freq', 'tx', 'radio.rxgain', 'radio.fem.rxgain', 'dutycycle',
         // bridge
         'bridge.enabled',
         // flood
@@ -56,7 +56,7 @@ export const MESHCORE_CONFIG_METADATA = {
         // advanced (alphabetical)
         'adc.multiplier', 'af', 'agc.reset.interval', 'advert.interval',
         'bridge.baud', 'bridge.channel', 'bridge.delay', 'bridge.secret',
-        'bridge.source', 'direct.txdelay', 'flood.advert.interval',
+        'bridge.source', 'cad', 'direct.txdelay', 'flood.advert.interval',
         'flood.max.advert', 'flood.max.unscoped', 'int.thresh', 'loop.detect',
         'multi.acks', 'path.hash.mode', 'rxdelay', 'txdelay'
     ] as string[],

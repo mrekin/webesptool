@@ -52,6 +52,8 @@ export const MESHCORE_ACTIONS: MeshcoreAction[] = [
     { command: 'erase', groupId: 'system', danger: true, urgent: true },
     { command: 'start ota', groupId: 'system', urgent: true },
     { command: 'time {epoch_seconds}', groupId: 'system' },
+    // room server only (1.17.0): the remainder is the whole post text.
+    { command: 'room.post {text}', groupId: 'system', variadic: true },
     { command: 'clkreboot', groupId: 'system', urgent: true },
     { command: 'clear stats', groupId: 'system', urgent: true },
     { command: 'log start', groupId: 'system', urgent: true },

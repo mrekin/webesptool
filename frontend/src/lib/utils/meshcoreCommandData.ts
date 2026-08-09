@@ -114,6 +114,12 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         shortDescription: 'View bootloader version'
     },
     {
+        command: 'get cad',
+        params: [],
+        separator: null,
+        shortDescription: 'View hardware Channel Activity Detection (CAD) state'
+    },
+    {
         command: 'get direct.txdelay',
         params: [],
         separator: null,
@@ -215,6 +221,12 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         params: [],
         separator: null,
         shortDescription: 'View radio parameters'
+    },
+    {
+        command: 'get radio.fem.rxgain',
+        params: [],
+        separator: null,
+        shortDescription: 'View LoRa FEM receive-path gain state'
     },
     {
         command: 'get radio.rxgain',
@@ -371,6 +383,12 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
     },
     { command: 'reboot', params: [], separator: null, shortDescription: 'Reboot the node' },
     {
+        command: 'room.post {text}',
+        params: [{ name: 'text', type: 'string' }],
+        separator: 'space',
+        shortDescription: 'Post a message to the room server'
+    },
+    {
         command: 'sensor get {key}',
         params: [{ name: 'key', type: 'string' }],
         separator: 'space',
@@ -456,6 +474,12 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         params: [{ name: 'source', type: 'string' }],
         separator: 'space',
         shortDescription: 'Set bridge source'
+    },
+    {
+        command: 'set cad {state}',
+        params: [{ name: 'state', type: 'enum', options: ['on', 'off'] }],
+        separator: 'space',
+        shortDescription: 'Set hardware Channel Activity Detection (CAD)'
     },
     {
         command: 'set direct.txdelay {value}',
@@ -569,6 +593,12 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         ],
         separator: 'comma',
         shortDescription: 'Configure radio parameters'
+    },
+    {
+        command: 'set radio.fem.rxgain {state}',
+        params: [{ name: 'state', type: 'enum', options: ['on', 'off'] }],
+        separator: 'space',
+        shortDescription: 'Set LoRa FEM receive-path gain state'
     },
     {
         command: 'set radio.rxgain {state}',

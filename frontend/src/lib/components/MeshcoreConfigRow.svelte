@@ -37,12 +37,17 @@
     });
 
     function updateComposite(index: number, inputValue: string): void {
-        const next = compositeValues.map((v, i) => (i === index ? inputValue : v));
+        // Decimal separator normalization: the device parses a dot (e.g. 869.525);
+        // users on a comma-decimal locale type a comma, so normalize numeric sub-params.
+        const norm =
+            row.params[index]?.type === 'number' ? inputValue.replace(',', '.') : inputValue;
+        const next = compositeValues.map((v, i) => (i === index ? norm : v));
         onchange(next);
     }
 
     function onNumberChange(e: Event): void {
-        onchange(Number((e.currentTarget as HTMLInputElement).value));
+        // Decimal separator normalization (see updateComposite): accept a comma, send a dot.
+        onchange(Number((e.currentTarget as HTMLInputElement).value.replace(',', '.')));
     }
 
     function onTextChange(e: Event): void {
@@ -150,7 +155,8 @@
     {:else if row.control === 'number' && row.params.length === 1}
         <input
             id={fieldId}
-            type="number"
+            type="text"
+            inputmode="decimal"
             class={inputClass}
             value={value ?? ''}
             aria-label={row.label}
@@ -165,7 +171,8 @@
                     </label>
                     <input
                         id={`${fieldId}-${i}`}
-                        type={p.type === 'number' ? 'number' : 'text'}
+                        type="text"
+                        inputmode={p.type === 'number' ? 'decimal' : undefined}
                         class={inputClass}
                         value={compositeValues[i] ?? ''}
                         onchange={(e) =>

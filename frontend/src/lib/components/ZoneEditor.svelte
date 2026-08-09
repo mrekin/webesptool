@@ -29,6 +29,7 @@
         circleToPolygon,
         computeArea,
         erase,
+        parseCoordinatePolygon,
         pointInGeometry,
         subtractExisting,
         unionInto,
@@ -76,6 +77,10 @@
     let eraseOn = $state(false);
     // Brush radius (meters). 5 km default.
     let brushRadiusM = $state(5000);
+    // Polygon tool sub-variant: free-hand drawing vs. typing a vertex list.
+    let polygonVariant = $state<'draw' | 'coords'>('draw');
+    let coordText = $state('');
+    let coordPreviewLayer: any = null;
 
     const TOOLS: { id: ToolId; glyph: string; tipKey: string }[] = [
         { id: 'select', glyph: '◎', tipKey: 'select' },
@@ -154,6 +159,9 @@
     const exportableGroups = $derived(
         groups.filter((g) => isValidRegions(g.regions) && polygons.some((p) => p.groupId === g.id))
     );
+
+    // Live parse of the typed coordinate list (Polygon-by-coordinates tool).
+    const coordParse = $derived(parseCoordinatePolygon(coordText));
 
     function showNotice(text: string, kind: 'info' | 'warn' = 'info'): void {
         notice = text;
@@ -510,7 +518,7 @@
         mode = m;
         if (!map) return;
         map.pm.disableDraw();
-        if (m === 'polygon') map.pm.enableDraw('Polygon');
+        if (m === 'polygon' && polygonVariant === 'draw') map.pm.enableDraw('Polygon');
         else if (m === 'circle') map.pm.enableDraw('Circle');
         // In brush mode LMB paints and RMB pans (custom); default drag is off.
         if (m === 'brush') map.dragging.disable();
@@ -519,6 +527,46 @@
 
     function setBrushRadiusKm(v: number): void {
         brushRadiusM = Math.max(100, Math.round(v * 1000));
+    }
+
+    // Switch the Polygon tool between free-hand drawing and the typed vertex
+    // list. Toggling to "draw" re-enables Geoman; "coords" leaves it disabled so
+    // map clicks do not start a free-hand polygon.
+    function setPolygonVariant(v: 'draw' | 'coords'): void {
+        polygonVariant = v;
+        if (!map) return;
+        map.pm.disableDraw();
+        if (mode === 'polygon' && v === 'draw') map.pm.enableDraw('Polygon');
+    }
+
+    // Commit the typed polygon through the shared entry point (overlap check +
+    // undo as for every other tool). Erase mode routes it through the eraser.
+    function commitCoordPolygon(): void {
+        const r = coordParse;
+        if (!r.ok) {
+            showNotice($locales(`meshcoreconfig.zones.coords_err_${r.reason}`), 'warn');
+            return;
+        }
+        if (eraseOn) {
+            eraseShape(r.geometry);
+            return;
+        }
+        commitZone('polygon', r.geometry);
+    }
+
+    // Frame the typed polygon on the map so the preview is visible.
+    function fitToCoordPreview(): void {
+        if (!coordParse?.ok || !map || !L) return;
+        const tmp = L.geoJSON({
+            type: 'FeatureCollection',
+            features: [{ type: 'Feature', geometry: coordParse.geometry, properties: {} }]
+        });
+        try {
+            const b = tmp.getBounds();
+            if (b.isValid()) map.fitBounds(b, { padding: [40, 40] });
+        } catch {
+            /* best-effort: ignore bounds failures */
+        }
     }
 
     // Rebuild the in-session overlay (colored per session group) on changes.
@@ -555,6 +603,44 @@
             }
         }).addTo(map);
         userOverlay.eachLayer((l: any) => {
+            l.options.pmIgnore = true;
+        });
+    });
+
+    // Preview layer for the typed coordinate polygon (display-only, antimeridian-
+    // unwrapped like the main overlay). Rebuilt reactively from the live parse.
+    $effect(() => {
+        coordParse;
+        mode;
+        polygonVariant;
+        if (!map || !L) return;
+        if (coordPreviewLayer) {
+            map.removeLayer(coordPreviewLayer);
+            coordPreviewLayer = null;
+        }
+        if (mode !== 'polygon' || polygonVariant !== 'coords') return;
+        if (!coordParse.ok) return;
+        coordPreviewLayer = L.geoJSON(
+            {
+                type: 'FeatureCollection',
+                features: [
+                    {
+                        type: 'Feature',
+                        geometry: unwrapAntimeridian(coordParse.geometry),
+                        properties: {}
+                    }
+                ]
+            },
+            {
+                style: () => ({
+                    ...styleFor(activeGroupId),
+                    dashArray: '5,4',
+                    fillOpacity: 0.15,
+                    weight: 2
+                })
+            }
+        ).addTo(map);
+        coordPreviewLayer.eachLayer((l: any) => {
             l.options.pmIgnore = true;
         });
     });
@@ -1040,7 +1126,8 @@
                         class="h-full min-h-[300px] w-full overflow-hidden rounded-md border border-gray-700 bg-gray-900"
                     ></div>
 
-                    <div class="pointer-events-none absolute left-2 top-2 z-[1000] flex flex-col items-start gap-2">
+                    <div class="pointer-events-none absolute left-2 top-2 z-[1000] flex items-start gap-1">
+                        <!-- Main tool palette -->
                         <div class="pointer-events-auto flex flex-col gap-1 rounded-md border border-gray-700 bg-gray-900/90 p-1 shadow-lg">
                             {#each TOOLS as t (t.id)}
                                 <button
@@ -1072,6 +1159,66 @@
                             </button>
                         </div>
 
+                        <!-- Polygon sub-variants: expand right from the palette -->
+                        {#if mode === 'polygon'}
+                            <div class="pointer-events-auto flex flex-col gap-1 rounded-md border border-gray-700 bg-gray-900/90 p-1 shadow-lg">
+                                <button
+                                    type="button"
+                                    title={$locales('meshcoreconfig.zones.polygon_by_points')}
+                                    onclick={() => setPolygonVariant('draw')}
+                                    class={`flex h-9 w-9 items-center justify-center rounded text-base ${polygonVariant === 'draw' ? 'bg-orange-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+                                >
+                                    🖱
+                                </button>
+                                <button
+                                    type="button"
+                                    title={$locales('meshcoreconfig.zones.polygon_by_coords')}
+                                    onclick={() => setPolygonVariant('coords')}
+                                    class={`flex h-9 w-9 items-center justify-center rounded text-base ${polygonVariant === 'coords' ? 'bg-orange-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+                                >
+                                    📍
+                                </button>
+                            </div>
+                        {/if}
+
+                        <!-- Coordinate input (polygon by coordinates) -->
+                        {#if mode === 'polygon' && polygonVariant === 'coords'}
+                            <div class="pointer-events-auto flex w-[230px] flex-col gap-1 rounded-md border border-gray-700 bg-gray-900/90 p-2 text-[11px] text-gray-200 shadow-lg">
+                                <textarea
+                                    bind:value={coordText}
+                                    rows="6"
+                                    spellcheck="false"
+                                    placeholder={'55.751, 37.618\n55.728, 37.685\n55.772, 37.700'}
+                                    class="w-full resize-y rounded border border-gray-600 bg-gray-700 px-1.5 py-1 font-mono text-[11px] text-gray-100 outline-none focus:border-orange-500"
+                                ></textarea>
+                                {#if coordParse.ok}
+                                    <span class="text-[10px] text-emerald-400">{$locales('meshcoreconfig.zones.coords_count').replace('{n}', String(coordParse.pointCount))}</span>
+                                {:else if !coordParse.ok && coordText.trim() !== ''}
+                                    <span class="text-[10px] text-red-400">{$locales(`meshcoreconfig.zones.coords_err_${coordParse.reason}`)}</span>
+                                {/if}
+                                <div class="flex gap-1">
+                                    <button
+                                        type="button"
+                                        onclick={commitCoordPolygon}
+                                        disabled={!coordParse.ok}
+                                        class="flex-1 rounded bg-orange-600 px-2 py-1 font-medium text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {$locales('meshcoreconfig.zones.coords_add')}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onclick={fitToCoordPreview}
+                                        disabled={!coordParse.ok}
+                                        title={$locales('meshcoreconfig.zones.coords_fit')}
+                                        class="rounded bg-gray-700 px-2 py-1 text-orange-200 hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        🎯
+                                    </button>
+                                </div>
+                            </div>
+                        {/if}
+
+                        <!-- Brush radius -->
                         {#if mode === 'brush'}
                             <label class="pointer-events-auto flex items-center gap-1 rounded-md border border-gray-700 bg-gray-900/90 px-2 py-1 text-[11px] text-gray-200 shadow-lg">
                                 <span>{$locales('meshcoreconfig.zones.brush_radius')}</span>
@@ -1086,14 +1233,6 @@
                                 <span>km</span>
                             </label>
                         {/if}
-
-                        <div class="pointer-events-none max-w-[230px] rounded bg-gray-900/80 px-2 py-1 text-[10px] leading-snug text-gray-300 shadow">
-                            {#if mode === 'select'}
-                                {$locales('meshcoreconfig.zones.click_boundary_hint')}
-                            {:else if mode === 'brush'}
-                                {$locales('meshcoreconfig.zones.brush_hint')}
-                            {/if}
-                        </div>
                     </div>
                 </div>
 

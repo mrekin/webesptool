@@ -56,6 +56,16 @@
         );
     }
 
+    // Region commands that mutate the device's region tree (every action in the
+    // 'region' group except 'region save'). Region edits only persist once
+    // 'region save' runs, so a 'region save' must follow any of these on Apply —
+    // see the auto-sync $effect below.
+    const regionMutatingIds = new Set(
+        rows
+            .filter((r) => r.groupId === 'region' && r.kind === 'action' && r.id !== 'region save')
+            .map((r) => r.id)
+    );
+
     // Current value of every row (config current value + action inputs).
     let rowValues = $state<Record<string, MeshcoreConfigValue>>({});
     // Baseline for config rows (committed value used to revert on Discard).
@@ -281,6 +291,22 @@
     $effect(() => {
         if (!isOpen && isConnected && !isDisconnecting) {
             void disconnect();
+        }
+    });
+
+    // Keep exactly one 'region save' in the Apply queue while any region-mutating
+    // command is present, and drop it once none remain. Without 'region save' the
+    // region edits are lost on reboot, so this makes persistence automatic. The
+    // effect is idempotent: after adding/removing the entry the re-run is a no-op.
+    $effect(() => {
+        const hasMutating = commandQueue.some(
+            (e) => e.rowId !== undefined && regionMutatingIds.has(e.rowId)
+        );
+        const hasSave = commandQueue.some((e) => e.rowId === 'region save');
+        if (hasMutating && !hasSave) {
+            commandQueue = [...commandQueue, { line: 'region save', rowId: 'region save' }];
+        } else if (!hasMutating && hasSave) {
+            commandQueue = commandQueue.filter((e) => e.rowId !== 'region save');
         }
     });
 
@@ -872,6 +898,34 @@
                         {statusMessage}
                     </div>
                 {/if}
+                {#if showRebootConfirm}
+                    <!-- Compact reboot hint: the changes are already applied, a reboot
+                         only activates them — so this is a non-blocking inline banner
+                         (replaces the old full-screen confirm modal: less text, less space). -->
+                    <div
+                        role="status"
+                        aria-live="polite"
+                        class="flex items-center gap-2 rounded-md border border-yellow-600 bg-yellow-900/30 px-3 py-2 text-sm text-yellow-100"
+                    >
+                        <span aria-hidden="true">⚠</span>
+                        <span class="flex-1">{$locales('meshcoreconfig.reboot_banner')}</span>
+                        <button
+                            type="button"
+                            onclick={confirmReboot}
+                            class="shrink-0 rounded bg-yellow-700 px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-yellow-600"
+                        >
+                            ⟳ {$locales('meshcoreconfig.reboot_now')}
+                        </button>
+                        <button
+                            type="button"
+                            onclick={() => (showRebootConfirm = false)}
+                            class="shrink-0 text-yellow-300/70 transition-colors hover:text-yellow-100"
+                            aria-label={$locales('common.close')}
+                        >
+                            &#x2715;
+                        </button>
+                    </div>
+                {/if}
 
                 <!-- Body: unified groups (left, wider) + assembled command list (right) -->
                 <div class="grid gap-6 lg:grid-cols-[2fr_1fr]">
@@ -1047,7 +1101,7 @@
                                                                         Number(
                                                                             (
                                                                                 e.currentTarget as HTMLInputElement
-                                                                            ).value
+                                                                            ).value.replace(',', '.')
                                                                         )
                                                                     )}
                                                             />
@@ -1212,38 +1266,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Reboot confirmation dialog -->
-    {#if showRebootConfirm}
-        <div
-            class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="meshcore-reboot-title"
-        >
-            <div class="max-w-md rounded-lg border border-orange-600 bg-gray-800 p-6 shadow-2xl">
-                <h3 id="meshcore-reboot-title" class="mb-4 text-lg font-semibold text-orange-200">
-                    {$locales('meshcoreconfig.reboot_prompt')}
-                </h3>
-                <div class="flex justify-end gap-3">
-                    <button
-                        type="button"
-                        onclick={() => (showRebootConfirm = false)}
-                        class="rounded-md bg-gray-700 px-4 py-2 text-sm text-white transition-colors hover:bg-gray-600"
-                    >
-                        {$locales('common.cancel')}
-                    </button>
-                    <button
-                        type="button"
-                        onclick={confirmReboot}
-                        class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700"
-                    >
-                        {$locales('meshcoreconfig.reboot_prompt')}
-                    </button>
-                </div>
-            </div>
-        </div>
-    {/if}
 
     <!-- Destructive action confirmation (reboot/erase run immediately). -->
     {#if pendingDangerAction}

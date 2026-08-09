@@ -264,3 +264,52 @@ export function pointInGeometry(pointLonLat: [number, number], geom: ZoneGeometr
         ignoreBoundary: false
     });
 }
+
+// --- coordinate text -> polygon (Polygon-by-coordinates tool) ---
+
+export interface ParsedCoordinatePolygon {
+    ok: true;
+    geometry: ZoneGeometry;
+    pointCount: number;
+}
+export type ParseCoordinatePolygonResult =
+    | ParsedCoordinatePolygon
+    | { ok: false; reason: 'empty' | 'too_few_points' | 'out_of_range' | 'malformed' };
+
+// Parse a free-form list of polygon vertices typed by the user. Each line is a
+// "lat,lng" pair; a comma or whitespace separates the two numbers. Blank lines
+// and lines starting with # or // are ignored. Latitude must be in [-90, 90]
+// and longitude in [-180, 180]. The ring is auto-closed (first vertex repeated
+// at the end) when it is not already, and the resulting Polygon is returned in
+// GeoJSON [lon, lat] coordinate order. Used by the Polygon tool's
+// "by-coordinates" sub-variant in the editor.
+export function parseCoordinatePolygon(text: string): ParseCoordinatePolygonResult {
+    const points: [number, number][] = []; // [lat, lng] in human order
+    for (const raw of text.split(/\r?\n/)) {
+        const line = raw.trim();
+        if (line === '' || line.startsWith('#') || line.startsWith('//')) continue;
+        const parts = line.split(/[,\s]+/).filter((s) => s.length > 0);
+        if (parts.length < 2) return { ok: false, reason: 'malformed' };
+        const lat = Number(parts[0]);
+        const lng = Number(parts[1]);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            return { ok: false, reason: 'malformed' };
+        }
+        if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            return { ok: false, reason: 'out_of_range' };
+        }
+        points.push([lat, lng]);
+    }
+    if (points.length === 0) return { ok: false, reason: 'empty' };
+    if (points.length < 3) return { ok: false, reason: 'too_few_points' };
+    // GeoJSON order is [lon, lat]; auto-close the ring if it is open.
+    const ring: PolygonRing = points.map(([lat, lng]) => [lng, lat]);
+    const first = ring[0];
+    const last = ring[ring.length - 1];
+    if (first[0] !== last[0] || first[1] !== last[1]) ring.push([first[0], first[1]]);
+    return {
+        ok: true,
+        geometry: { type: 'Polygon', coordinates: [ring] },
+        pointCount: points.length
+    };
+}
