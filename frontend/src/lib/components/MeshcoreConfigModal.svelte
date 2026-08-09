@@ -25,6 +25,7 @@
     import MultilineControls from './MultilineControls.svelte';
     import CoordinateMapPicker from './CoordinateMapPicker.svelte';
     import { parseDeviceVersion, versionGte } from '$lib/utils/meshcoreVersion.js';
+    import { fillHint } from '$lib/actions/fillHint.js';
     import {
         parseNameTemplate,
         composeName,
@@ -1173,6 +1174,8 @@
                                                                     <input
                                                                         type="text"
                                                                         maxlength="32"
+                                                                        placeholder={tok.name}
+                                                                        use:fillHint
                                                                         class="w-16 rounded border border-gray-600 bg-gray-700 px-1.5 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
                                                                         value={composerParts[pi] ?? ''}
                                                                         oninput={(e) =>

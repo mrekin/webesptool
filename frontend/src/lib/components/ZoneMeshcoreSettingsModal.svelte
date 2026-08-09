@@ -9,6 +9,7 @@
     import { ZONE_LEVELS, ZONE_LEVEL_DEFAULT } from '$lib/config/meshcoreZoneConfig';
     import { isValidRegions } from '$lib/utils/zoneExport';
     import { parseNameTemplate } from '$lib/utils/nameTemplate';
+    import { fillHint } from '$lib/actions/fillHint.js';
     import type { RadioSpec } from '$lib/types';
 
     let {
@@ -57,7 +58,9 @@
     let bw = $state(untrack(() => (radio?.bw != null ? String(radio.bw) : '')));
     let sf = $state(untrack(() => (radio?.sf != null ? String(radio.sf) : '')));
     let cr = $state(untrack(() => (radio?.cr != null ? String(radio.cr) : '')));
-    let pathHash = $state(untrack(() => pathHashMode ?? ''));
+    // Default to '1' (recommended path hash mode) when the group has none set;
+    // an existing '0'/'2' is preserved, and '—' stays selectable to clear it.
+    let pathHash = $state(untrack(() => pathHashMode ?? '1'));
     let nameTemplateVal = $state(untrack(() => nameTemplate ?? ''));
     let docUrlVal = $state(untrack(() => docUrl ?? ''));
     let levelVal = $state(untrack(() => level ?? ZONE_LEVEL_DEFAULT));
@@ -147,6 +150,7 @@
                 value={regionsVal}
                 oninput={(e) => (regionsVal = (e.currentTarget as HTMLInputElement).value)}
                 placeholder={$locales('meshcoreconfig.zones.regions_placeholder')}
+                use:fillHint
                 class={`w-full rounded-md border bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500 ${regionsValid ? 'border-gray-600' : 'border-red-500'}`}
             />
             {#if regionsVal && !regionsValid}
@@ -170,6 +174,7 @@
                         value={freq}
                         oninput={(e) => (freq = (e.currentTarget as HTMLInputElement).value)}
                         placeholder="868.731"
+                        use:fillHint
                         class="rounded border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
                     />
                 </label>
@@ -181,6 +186,7 @@
                         value={bw}
                         oninput={(e) => (bw = (e.currentTarget as HTMLInputElement).value)}
                         placeholder="62.5"
+                        use:fillHint
                         class="rounded border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
                     />
                 </label>
@@ -192,6 +198,7 @@
                         value={sf}
                         oninput={(e) => (sf = (e.currentTarget as HTMLInputElement).value)}
                         placeholder="7"
+                        use:fillHint
                         class="rounded border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
                     />
                 </label>
@@ -203,6 +210,7 @@
                         value={cr}
                         oninput={(e) => (cr = (e.currentTarget as HTMLInputElement).value)}
                         placeholder="7"
+                        use:fillHint
                         class="rounded border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
                     />
                 </label>
@@ -246,7 +254,6 @@
                 type="text"
                 value={nameTemplateVal}
                 oninput={(e) => (nameTemplateVal = (e.currentTarget as HTMLInputElement).value)}
-                placeholder={$locales('meshcoreconfig.zones.name_template_placeholder')}
                 class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
             />
             {#if templateTokens.length > 0}
@@ -287,6 +294,7 @@
                 value={docUrlVal}
                 oninput={(e) => (docUrlVal = (e.currentTarget as HTMLInputElement).value)}
                 placeholder={$locales('meshcoreconfig.zones.doc_url_placeholder')}
+                use:fillHint
                 class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
             />
         </div>

@@ -366,7 +366,6 @@
       "result_name_template": "Szablon nazwy",
       "result_doc": "Dokument ustawień",
       "name_template": "Szablon nazwy (set name)",
-      "name_template_placeholder": "[NN|DZ|BOR]-[AVT|KAN]-[ID]",
       "name_template_hint": "[a|b|c] = wybierz jedno, [NAME] = wpisz, reszta to literał. Stosowane w konfiguratorze jako nazwa węzła.",
       "name_template_preview_enum": "Wybierz jedną z wartości",
       "name_template_preview_free": "Wpisz wartość",

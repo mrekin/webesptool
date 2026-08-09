@@ -11,6 +11,7 @@
     import { getCaretCoordinates, type CaretCoordinates } from '$lib/utils/textareaCaret.js';
     import { TERMINAL_CONFIG } from '$lib/config/terminalConfig.js';
     import { _ as locales } from 'svelte-i18n';
+    import { fillHint } from '$lib/actions/fillHint.js';
 
     let {
         value = $bindable(),
@@ -398,6 +399,7 @@
             onselect={handleSelect}
             title={$locales('customfirmware.terminal_multiline_newline_tooltip')}
             {placeholder}
+            use:fillHint
             rows="1"
             disabled={isMassRunning}
             spellcheck="false"

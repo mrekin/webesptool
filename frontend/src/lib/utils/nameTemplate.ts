@@ -34,10 +34,22 @@ export function parseNameTemplate(template: string): NameTemplateToken[] {
             if (lit) tokens.push({ type: 'literal', value: lit });
         }
         if (inner.includes('|')) {
-            const options = inner
-                .split('|')
-                .map((o) => o.trim())
-                .filter((o) => o !== '');
+            // Enum token: keep `|`-separated options INCLUDING an explicit empty
+            // one (so `[A|B|]` -> ['A','B',''] and `[|]` -> [''] stay selectable),
+            // then deduplicate and sort alphabetically with the empty option last
+            // — the composer dropdown is stable and options[0] stays a real value.
+            const seen = new Set<string>();
+            const options: string[] = [];
+            for (const opt of inner.split('|').map((o) => o.trim())) {
+                if (seen.has(opt)) continue;
+                seen.add(opt);
+                options.push(opt);
+            }
+            options.sort((a, b) => {
+                if (a === '') return 1;
+                if (b === '') return -1;
+                return a.localeCompare(b);
+            });
             if (options.length > 0) tokens.push({ type: 'enum', options });
             else tokens.push({ type: 'literal', value: match[0] });
         } else {

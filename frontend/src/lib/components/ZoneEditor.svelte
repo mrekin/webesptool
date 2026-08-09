@@ -42,6 +42,7 @@
         validateExport
     } from '$lib/utils/zoneExport';
     import { OSM_TILE_ATTRIBUTION, OSM_TILE_URL, ZONE_LEVEL_DEFAULT } from '$lib/config/meshcoreZoneConfig';
+    import { fillHint } from '$lib/actions/fillHint.js';
     import ZoneMeshcoreSettingsModal from './ZoneMeshcoreSettingsModal.svelte';
     import type {
         EditorPolygon,
@@ -1189,6 +1190,7 @@
                                     rows="6"
                                     spellcheck="false"
                                     placeholder={'55.751, 37.618\n55.728, 37.685\n55.772, 37.700'}
+                                    use:fillHint
                                     class="w-full resize-y rounded border border-gray-600 bg-gray-700 px-1.5 py-1 font-mono text-[11px] text-gray-100 outline-none focus:border-orange-500"
                                 ></textarea>
                                 {#if coordParse.ok}
@@ -1308,7 +1310,7 @@
                             <div class={`mb-2 cursor-pointer rounded border-l-4 bg-gray-800 p-2 ${activeGroupId === g.id ? 'ring-1 ring-orange-500' : ''}`} style={`border-left-color: ${groupColor(g.id)}`} onclick={() => activateGroup(g.id)}>
                                 <div class="flex items-center gap-1">
                                     <span class="inline-block h-3 w-3 shrink-0 rounded-sm" style={`background-color: ${groupColor(g.id)}`}></span>
-                                    <input type="text" value={g.name} oninput={(e) => updateGroupName(g.id, (e.currentTarget as HTMLInputElement).value)} placeholder={$locales('meshcoreconfig.zones.group_name_prompt')} class={`min-w-0 flex-1 rounded-md border bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500 ${g.name.trim() ? 'border-gray-600' : 'border-red-500'}`} />
+                                    <input type="text" value={g.name} oninput={(e) => updateGroupName(g.id, (e.currentTarget as HTMLInputElement).value)} placeholder={$locales('meshcoreconfig.zones.group_name_prompt')} use:fillHint class={`min-w-0 flex-1 rounded-md border bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500 ${g.name.trim() ? 'border-gray-600' : 'border-red-500'}`} />
                                     <button type="button" onclick={(e) => { e.stopPropagation(); meshcoreEditId = g.id; }} title={$locales('meshcoreconfig.zones.meshcore_settings')} class={`shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-xs hover:bg-gray-600 ${g.radio || g.pathHashMode ? 'text-orange-200' : 'text-gray-300'}`}>
                                         ⚙
                                     </button>
@@ -1348,7 +1350,7 @@
                                     {#each zonesIn(g.id) as p (p.id)}
                                         <div class="flex items-center gap-1 text-[11px] text-gray-300">
                                             <span class="shrink-0">{p.kind === 'circle' ? '◯' : '⬠'}</span>
-                                            <input type="text" value={p.label ?? ''} oninput={(e) => updateZoneLabel(p.id, (e.currentTarget as HTMLInputElement).value)} placeholder={$locales('meshcoreconfig.zones.zone_name')} title={p.id} class="min-w-0 flex-1 rounded border border-gray-700 bg-gray-900 px-1 py-0.5 text-[11px] text-gray-100 outline-none focus:border-orange-500" />
+                                            <input type="text" value={p.label ?? ''} oninput={(e) => updateZoneLabel(p.id, (e.currentTarget as HTMLInputElement).value)} placeholder={$locales('meshcoreconfig.zones.zone_name')} use:fillHint title={p.id} class="min-w-0 flex-1 rounded border border-gray-700 bg-gray-900 px-1 py-0.5 text-[11px] text-gray-100 outline-none focus:border-orange-500" />
                                             <select class="max-w-[5rem] shrink-0 truncate rounded border border-gray-600 bg-gray-700 px-1 py-0.5 text-[10px] text-gray-100 outline-none" value={p.groupId ?? ''} onchange={(e) => setZoneGroup(p.id, (e.currentTarget as HTMLSelectElement).value)}>
                                                 <option value="">{$locales('meshcoreconfig.zones.no_group')}</option>
                                                 {#each groups as og (og.id)}<option value={og.id}>{og.name}</option>{/each}
@@ -1367,7 +1369,7 @@
                                     {#each zonesIn(null) as p (p.id)}
                                         <div class="flex items-center gap-1 text-[11px] text-gray-300">
                                             <span class="shrink-0">{p.kind === 'circle' ? '◯' : '⬠'}</span>
-                                            <input type="text" value={p.label ?? ''} oninput={(e) => updateZoneLabel(p.id, (e.currentTarget as HTMLInputElement).value)} placeholder={$locales('meshcoreconfig.zones.zone_name')} title={p.id} class="min-w-0 flex-1 rounded border border-gray-700 bg-gray-900 px-1 py-0.5 text-[11px] text-gray-100 outline-none focus:border-orange-500" />
+                                            <input type="text" value={p.label ?? ''} oninput={(e) => updateZoneLabel(p.id, (e.currentTarget as HTMLInputElement).value)} placeholder={$locales('meshcoreconfig.zones.zone_name')} use:fillHint title={p.id} class="min-w-0 flex-1 rounded border border-gray-700 bg-gray-900 px-1 py-0.5 text-[11px] text-gray-100 outline-none focus:border-orange-500" />
                                             <select class="max-w-[5rem] shrink-0 truncate rounded border border-gray-600 bg-gray-700 px-1 py-0.5 text-[10px] text-gray-100 outline-none" value="" onchange={(e) => setZoneGroup(p.id, (e.currentTarget as HTMLSelectElement).value)}>
                                                 <option value="">{$locales('meshcoreconfig.zones.no_group')}</option>
                                                 {#each groups as og (og.id)}<option value={og.id}>{og.name}</option>{/each}
