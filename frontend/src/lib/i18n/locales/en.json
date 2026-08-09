@@ -372,7 +372,6 @@
       "name_too_long": "Name is longer than 32 characters",
       "name_template_clear": "Abandon template and edit the name freely",
       "doc_url": "Settings document URL",
-      "doc_url_placeholder": "https://...",
       "zone_level": "Zone level",
       "zone_level_1": "country",
       "zone_level_2": "region",

@@ -372,7 +372,6 @@
       "name_too_long": "Имя длиннее 32 символов",
       "name_template_clear": "Отказаться от шаблона и править имя вручную",
       "doc_url": "URL документа с настройками",
-      "doc_url_placeholder": "https://...",
       "zone_level": "Уровень зоны",
       "zone_level_1": "страна",
       "zone_level_2": "регион",

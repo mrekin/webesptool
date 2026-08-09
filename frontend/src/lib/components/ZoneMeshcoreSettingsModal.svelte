@@ -293,7 +293,7 @@
                 type="url"
                 value={docUrlVal}
                 oninput={(e) => (docUrlVal = (e.currentTarget as HTMLInputElement).value)}
-                placeholder={$locales('meshcoreconfig.zones.doc_url_placeholder')}
+                placeholder="https://..."
                 use:fillHint
                 class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
             />

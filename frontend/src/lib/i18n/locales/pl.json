@@ -372,7 +372,6 @@
       "name_too_long": "Nazwa dłuższa niż 32 znaki",
       "name_template_clear": "Odrzuć szablon i edytuj nazwę ręcznie",
       "doc_url": "URL dokumentu ustawień",
-      "doc_url_placeholder": "https://...",
       "zone_level": "Poziom strefy",
       "zone_level_1": "kraj",
       "zone_level_2": "region",
