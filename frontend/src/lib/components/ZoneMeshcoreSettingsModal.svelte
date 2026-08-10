@@ -169,8 +169,8 @@
                 <label class="flex flex-col gap-1 text-[11px] text-gray-300">
                     <span>{$locales('meshcoreconfig.zones.radio_freq')}</span>
                     <input
-                        type="number"
-                        step="0.001"
+                        type="text"
+                        inputmode="decimal"
                         value={freq}
                         oninput={(e) => (freq = (e.currentTarget as HTMLInputElement).value)}
                         placeholder="868.731"
@@ -181,8 +181,8 @@
                 <label class="flex flex-col gap-1 text-[11px] text-gray-300">
                     <span>{$locales('meshcoreconfig.zones.radio_bw')}</span>
                     <input
-                        type="number"
-                        step="0.1"
+                        type="text"
+                        inputmode="decimal"
                         value={bw}
                         oninput={(e) => (bw = (e.currentTarget as HTMLInputElement).value)}
                         placeholder="62.5"
@@ -193,8 +193,8 @@
                 <label class="flex flex-col gap-1 text-[11px] text-gray-300">
                     <span>{$locales('meshcoreconfig.zones.radio_sf')}</span>
                     <input
-                        type="number"
-                        step="1"
+                        type="text"
+                        inputmode="decimal"
                         value={sf}
                         oninput={(e) => (sf = (e.currentTarget as HTMLInputElement).value)}
                         placeholder="7"
@@ -205,8 +205,8 @@
                 <label class="flex flex-col gap-1 text-[11px] text-gray-300">
                     <span>{$locales('meshcoreconfig.zones.radio_cr')}</span>
                     <input
-                        type="number"
-                        step="1"
+                        type="text"
+                        inputmode="decimal"
                         value={cr}
                         oninput={(e) => (cr = (e.currentTarget as HTMLInputElement).value)}
                         placeholder="7"
