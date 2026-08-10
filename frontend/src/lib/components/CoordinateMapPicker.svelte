@@ -56,9 +56,16 @@
     let geoRequestId = 0;
     let showGeocodeResponse = $state(false);
 
+    // Suppress the automatic geocode on open. The picker mounts with either the
+    // device's current coords or a default — we must NOT fire a network geocode
+    // for those. Only after the user actually picks a point (map click or marker
+    // drag) does userPicked flip true and the effect below start issuing requests.
+    let userPicked = $state(false);
+
     // Debounced reverse-geocode lookup on marker placement/drag. The requestId
     // guard discards stale responses if the marker moves again within the window.
     $effect(() => {
+        if (!userPicked) return;
         const la = pickLat;
         const lo = pickLon;
         const requestId = ++geoRequestId;
@@ -146,6 +153,7 @@
                 })
             }).addTo(map);
             marker.on('dragend', (e: any) => {
+                userPicked = true;
                 const ll = e.target.getLatLng();
                 pickLat = ll.lat;
                 pickLon = ll.lng;
@@ -177,7 +185,10 @@
             maxZoom: 19,
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
-        map.on('click', (e: any) => placeMarker(e.latlng.lat, e.latlng.lng));
+        map.on('click', (e: any) => {
+            userPicked = true;
+            placeMarker(e.latlng.lat, e.latlng.lng);
+        });
         if (hasCoords) placeMarker(lat as number, lon as number);
         // The container was laid out while hidden; force a recalculation.
         setTimeout(() => map?.invalidateSize(), 50);
