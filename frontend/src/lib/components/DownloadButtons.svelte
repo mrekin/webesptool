@@ -3,8 +3,7 @@
         deviceSelection,
         loadingState,
         deviceDisplayInfo,
-        currentSource,
-        uiState
+        currentSource
     } from '$lib/stores.js';
     import { apiActions } from '$lib/stores.js';
     import { DeviceType, RepositoryType } from '$lib/types.js';
@@ -43,7 +42,6 @@
     $: isDownloading = $loadingState.isDownloading;
     $: deviceDisplayInfoStore = $deviceDisplayInfo;
     $: currentSourceStore = $currentSource;
-    $: experimentalFeatures = $uiState.experimentalFeatures;
 
     // Available download options based on device type and version
     $: downloadOptions = getDownloadOptions(
@@ -439,7 +437,7 @@
                 <span class="text-xl">🔧</span>
             </button>
         {/if}
-        {#if experimentalFeatures && currentSourceStore?.type === RepositoryType.MESHTASTIC}
+        {#if currentSourceStore?.type === RepositoryType.MESHTASTIC}
             <button
                 on:click={() => dispatch('openMeshtasticDeviceModal')}
                 class="rounded p-1 text-orange-200 transition-colors hover:text-orange-100"
@@ -449,7 +447,7 @@
                 <span class="text-xl">🗼</span>
             </button>
         {/if}
-        {#if experimentalFeatures && currentSourceStore?.type === RepositoryType.MESHCORE}
+        {#if currentSourceStore?.type === RepositoryType.MESHCORE}
             <button
                 on:click={() => dispatch('openMeshcoreConfigModal')}
                 class="rounded p-1 text-orange-200 transition-colors hover:text-orange-100"

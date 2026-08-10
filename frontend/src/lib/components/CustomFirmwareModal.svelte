@@ -30,7 +30,7 @@
     import TerminalModal from '$lib/components/TerminalModal.svelte';
     import FlashLog from '$lib/components/FlashLog.svelte';
     import { createFlashLogger } from '$lib/utils/flashLog.js';
-    import { uiState, selectionState, availableSources } from '$lib/stores.js';
+    import { selectionState, availableSources } from '$lib/stores.js';
     import { RepositoryType } from '$lib/types.js';
     import { EXTERNAL_LINKS } from '$lib/utils/externalLinks.js';
     import { getRepositoryType } from '$lib/utils/repository.js';
@@ -72,7 +72,7 @@
     let flashStatus = '';
     let flashError = '';
     let eraseBeforeFlash = false; // New parameter for checkbox
-    let selectedBaudrate = 115200; // Default selected speed
+    let selectedBaudrate = 512000; // Default selected speed
 
     // Watch for baudrate changes and update esploader
     $: if (selectedBaudrate && espManager) {
@@ -150,9 +150,6 @@
 
     // Reference to file input to replace document.getElementById
     let fileInput: HTMLInputElement;
-
-    // Experimental features flag
-    $: experimentalFeatures = $uiState.experimentalFeatures;
 
     // Function to dynamically load MeshtasticDeviceModal
     async function openMeshtasticModal() {
@@ -1625,9 +1622,7 @@
 
     // meshcore room_server / repeater builds need device config after a successful
     // flash — suggest (and highlight) the MeshcoreConfigModal entry point then.
-    // Requires experimentalFeatures so the config button is actually present.
     $: suggestDeviceConfig =
-        experimentalFeatures &&
         flashProgress === 100 &&
         flashStatus.includes('successfully') &&
         getRepositoryType($availableSources, $selectionState.repository) ===
@@ -2480,21 +2475,19 @@
                     </svg>
                 </button>
 
-                {#if experimentalFeatures}
-                    <!-- Meshtastic device config button - experimental feature -->
-                    {#if !isAutoSelectMode || getRepositoryType($availableSources, $selectionState.repository) === RepositoryType.MESHTASTIC}
-                        <button
-                            on:click={openMeshtasticModal}
-                            class="flex items-center justify-center rounded-md bg-gray-700 px-3 py-2 text-orange-300 transition-colors hover:bg-gray-600"
-                            title={$locales('customfirmware.meshtastic_config')}
-                        >
-                            🗺️
-                        </button>
-                    {/if}
+                <!-- Meshtastic device config button -->
+                {#if !isAutoSelectMode || getRepositoryType($availableSources, $selectionState.repository) === RepositoryType.MESHTASTIC}
+                    <button
+                        on:click={openMeshtasticModal}
+                        class="flex items-center justify-center rounded-md bg-gray-700 px-3 py-2 text-orange-300 transition-colors hover:bg-gray-600"
+                        title={$locales('customfirmware.meshtastic_config')}
+                    >
+                        🗺️
+                    </button>
                 {/if}
 
-                {#if experimentalFeatures && (!isAutoSelectMode || getRepositoryType($availableSources, $selectionState.repository) === RepositoryType.MESHCORE)}
-                    <!-- Meshcore config button - experimental feature.
+                {#if !isAutoSelectMode || getRepositoryType($availableSources, $selectionState.repository) === RepositoryType.MESHCORE}
+                    <!-- Meshcore config button.
                          After a successful flash of a meshcore room_server/repeater
                          build, it is promoted to a highlighted "Configure" CTA
                          (grows in parallel with the flash button shrinking). -->
