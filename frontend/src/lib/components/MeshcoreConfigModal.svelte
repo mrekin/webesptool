@@ -16,7 +16,7 @@
     } from '$lib/utils/multilineCommands.js';
     import { createMeshcoreCliManager, type MeshcoreCliStatus } from '$lib/utils/meshcoreCli.js';
     import { attachTerminalCopy } from '$lib/utils/terminalClipboard.js';
-    import { setTerminalMode, resetTerminalMode } from '$lib/stores.js';
+    import { setTerminalMode, resetTerminalMode, uiState } from '$lib/stores.js';
     import { TERMINAL_CONFIG } from '$lib/config/terminalConfig.js';
     import McCommandSetPicker from './McCommandSetPicker.svelte';
     import MeshcoreConfigRow from './MeshcoreConfigRow.svelte';
@@ -204,6 +204,9 @@
 
     let isConnected = $derived(status === 'connected');
     let isConnecting = $derived(status === 'connecting');
+
+    // Load Command Set is gated behind the Experimental Features toggle.
+    let experimentalFeatures = $derived($uiState.experimentalFeatures);
 
     let statusText = $derived(
         isConnecting
@@ -834,11 +837,13 @@
                         {$locales('meshcoreconfig.request_settings')}
                     </button>
 
-                    <McCommandSetPicker
-                        onselect={handleSetSelected}
-                        label={$locales('meshcoreconfig.load_command_set')}
-                        dropup={false}
-                    />
+                    {#if experimentalFeatures}
+                        <McCommandSetPicker
+                            onselect={handleSetSelected}
+                            label={$locales('meshcoreconfig.load_command_set')}
+                            dropup={false}
+                        />
+                    {/if}
 
                     <!-- Single Apply for the whole assembled queue (config + actions). -->
                     <button
