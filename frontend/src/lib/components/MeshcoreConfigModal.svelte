@@ -295,6 +295,12 @@
         }
     });
 
+    // The 📍 map-picker buttons wear a finite `animate-blink-attention` class:
+    // it plays once (6 slow blinks, ~6.6s) on open to draw the user to
+    // geolocation setup, then self-stops. No state needed — the buttons live
+    // inside the {#if isOpen} block, so they mount fresh on every open (the
+    // animation replays) and unmount on close.
+
     // Keep exactly one 'region save' in the Apply queue while any region-mutating
     // command is present, and drop it once none remain. Without 'region save' the
     // region edits are lost on reboot, so this makes persistence automatic. The
@@ -970,7 +976,7 @@
                                                         };
                                                         showMapPicker = true;
                                                     }}
-                                                    class="rounded bg-gray-700 px-1.5 py-0.5 text-xs text-orange-200 transition-colors hover:bg-gray-600"
+                                                    class="rounded bg-gray-700 px-1.5 py-0.5 text-xs text-orange-200 transition-colors hover:bg-gray-600 animate-blink-attention"
                                                     title={$locales('meshcoreconfig.zones.detect_regions')}
                                                 >
                                                     📍
@@ -1006,7 +1012,7 @@
                                                                         };
                                                                         showMapPicker = true;
                                                                     }}
-                                                                    class="rounded bg-gray-700 px-1.5 py-0.5 text-xs text-orange-200 transition-colors hover:bg-gray-600"
+                                                                    class="rounded bg-gray-700 px-1.5 py-0.5 text-xs text-orange-200 transition-colors hover:bg-gray-600 animate-blink-attention"
                                                                     title={$locales('meshcoreconfig.pick_on_map')}
                                                                 >
                                                                     📍

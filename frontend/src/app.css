@@ -220,6 +220,24 @@
     overflow: hidden;
 }
 
+/* Attention blink for the 📍 map-picker buttons on modal open:
+   plays once (~2s, 2 slow blinks) then stops. */
+@keyframes blinkAttention {
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.25;
+        transform: scale(1.2);
+    }
+}
+
+.animate-blink-attention {
+    animation: blinkAttention 1s ease-in-out 2;
+}
+
 /* Global styles for exact theme matching */
 :root {
     /* CSS Custom Properties for dynamic theming */
@@ -453,6 +471,14 @@ hr {
 
 .animate-pulse {
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Slower pulse used by the highlighted "Configure" CTA in CustomFirmwareModal
+   (animate-pulse-slow was only in the legacy tailwind.config.ts, which Tailwind
+   v4 ignores — define it here against the shared @keyframes pulse). Plays twice
+   only — a finite attention pulse, not an infinite loop. */
+.animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) 2;
 }
 
 .animate-bounce {
