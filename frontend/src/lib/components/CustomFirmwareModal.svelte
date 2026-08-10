@@ -1623,6 +1623,34 @@
             f.isEnabled !== false && !f.hasDownloadError && !f.hasValidationError
     ).length;
 
+    // meshcore room_server / repeater builds need device config after a successful
+    // flash — suggest (and highlight) the MeshcoreConfigModal entry point then.
+    // Requires experimentalFeatures so the config button is actually present.
+    $: suggestDeviceConfig =
+        experimentalFeatures &&
+        flashProgress === 100 &&
+        flashStatus.includes('successfully') &&
+        getRepositoryType($availableSources, $selectionState.repository) ===
+            RepositoryType.MESHCORE &&
+        selectedFirmwareFiles.some((f) => /room_server|repeater/i.test(f.filename));
+
+    // Visual morph flag. The flash_another_file button is rendered only once
+    // flashing succeeds, so tying the shrunk style directly to suggestDeviceConfig
+    // would make it mount already shrunk — transition-all would have no prior
+    // state and no animation would play. configSuggested lags suggestDeviceConfig
+    // by one frame: the button mounts full-size, then this flips true and BOTH
+    // buttons morph in parallel (one shrinks, the other grows).
+    let configSuggested = false;
+    $: {
+        if (suggestDeviceConfig && !configSuggested) {
+            requestAnimationFrame(() => {
+                if (suggestDeviceConfig) configSuggested = true;
+            });
+        } else if (!suggestDeviceConfig && configSuggested) {
+            configSuggested = false;
+        }
+    }
+
     // Reactive: Validate files for conflicts and chip compatibility.
     // IMPORTANT: this block writes ONLY to hasValidationError / validationErrorMessage.
     // It MUST NOT overwrite hasDownloadError / downloadErrorMessage / isRetryable —
@@ -2368,12 +2396,19 @@
                 </button>
 
                 {#if flashProgress === 100 && flashStatus.includes('successfully')}
-                    <!-- Show appropriate button after successful flash -->
+                    <!-- Show appropriate button after successful flash.
+                         When a meshcore room_server/repeater build was flashed,
+                         this button shrinks (transition-all) to a short label so
+                         the highlighted "Configure" CTA takes focus instead. -->
                     <button
                         on:click={resetForAnotherFlash}
-                        class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                        class="rounded-md bg-blue-600 text-sm font-medium text-white transition-all duration-[3000ms] ease-in-out hover:bg-blue-700 {configSuggested
+                            ? 'px-2.5 py-1.5 text-xs opacity-80'
+                            : 'px-4 py-2'}"
                     >
-                        {#if isAutoSelectMode}
+                        {#if configSuggested}
+                            {$locales('customfirmware.flash_another_short')}
+                        {:else if isAutoSelectMode}
                             {$locales('customfirmware.select_different_device')}
                         {:else}
                             {$locales('customfirmware.flash_another_file')}
@@ -2459,13 +2494,21 @@
                 {/if}
 
                 {#if experimentalFeatures && (!isAutoSelectMode || getRepositoryType($availableSources, $selectionState.repository) === RepositoryType.MESHCORE)}
-                    <!-- Meshcore config button - experimental feature -->
+                    <!-- Meshcore config button - experimental feature.
+                         After a successful flash of a meshcore room_server/repeater
+                         build, it is promoted to a highlighted "Configure" CTA
+                         (grows in parallel with the flash button shrinking). -->
                     <button
                         on:click={openMeshcoreConfigModal}
-                        class="flex items-center justify-center rounded-md bg-gray-700 px-3 py-2 text-orange-300 transition-colors hover:bg-gray-600"
+                        class="flex items-center justify-center gap-1.5 rounded-md font-medium transition-all duration-[3000ms] ease-in-out {configSuggested
+                            ? 'animate-pulse-slow bg-orange-600 px-4 py-2 text-sm text-white shadow-orange ring-2 ring-orange-300'
+                            : 'bg-gray-700 px-3 py-2 text-orange-300 hover:bg-gray-600'}"
                         title={$locales('downloadbuttons.meshcore_config_description')}
                         aria-label={$locales('downloadbuttons.meshcore_config_description')}
                     >
+                        {#if configSuggested}
+                            <span>{$locales('customfirmware.configure')}</span>
+                        {/if}
                         🗼
                     </button>
                 {/if}

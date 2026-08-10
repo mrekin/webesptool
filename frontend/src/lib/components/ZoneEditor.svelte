@@ -1107,7 +1107,7 @@
     role="dialog"
     aria-modal="true"
 >
-    <div class="flex h-[80vh] w-[80vw] min-w-0 flex-col rounded-lg border border-orange-600 bg-gray-800 p-4 shadow-2xl">
+    <div class="flex h-[95vh] w-[95vw] min-w-0 flex-col rounded-lg border border-orange-600 bg-gray-800 p-4 shadow-2xl">
         <div class="mb-3 flex items-center justify-between gap-2">
             <h3 class="text-lg font-semibold text-orange-200">
                 {$locales('meshcoreconfig.zones.editor_title')}

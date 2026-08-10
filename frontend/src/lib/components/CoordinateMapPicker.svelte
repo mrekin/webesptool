@@ -8,6 +8,7 @@
     import { loadLeaflet } from '$lib/utils/leafletLoader';
     import { fetchZoneCatalog } from '$lib/utils/zoneCatalog';
     import { lookupZoneRegion } from '$lib/utils/zoneResolver';
+    import { unwrapAntimeridian } from '$lib/utils/zoneGeometry';
 
     let {
         lat,
@@ -28,6 +29,11 @@
     let marker: any = null;
     let L: any = null;
     let loadError = $state(false);
+
+    // Thin orange outlines of every published zone (display-only; rebuilt when
+    // the catalog arrives). No hover/click/tooltip — interactive:false lets map
+    // clicks pass through to placeMarker.
+    let publishedLayer: any = null;
 
     const hasCoords = $derived(
         typeof lat === 'number' && typeof lon === 'number' && lat !== 0 && lon !== 0
@@ -95,6 +101,33 @@
         useRegions && catalog ? lookupZoneRegion([pickLon, pickLat], catalog) : null
     );
 
+    // Draw every published zone's outline as a thin orange line. Display-only:
+    // interactive:false disables hover/click/tooltip so map clicks still place
+    // the marker. Antimeridian-crossing zones (e.g. Чукотка) are unwrapped for
+    // contiguous rendering, mirroring ZoneEditor.
+    $effect(() => {
+        const cat = catalog;
+        if (!map || !L || !cat || cat.features.length === 0) return;
+        const fc = {
+            type: 'FeatureCollection',
+            features: cat.features.map((f) => ({
+                type: 'Feature' as const,
+                geometry: unwrapAntimeridian(f.geometry),
+                properties: {}
+            }))
+        };
+        if (publishedLayer) {
+            map.removeLayer(publishedLayer);
+            publishedLayer = null;
+        }
+        publishedLayer = L.geoJSON(fc, {
+            style: () => ({ color: '#f97316', weight: 1, fillOpacity: 0, interactive: false })
+        }).addTo(map);
+        publishedLayer.eachLayer((l: any) => {
+            l.options.interactive = false;
+        });
+    });
+
     function placeMarker(la: number, lo: number): void {
         pickLat = la;
         pickLon = lo;
@@ -155,6 +188,7 @@
     });
 
     onDestroy(() => {
+        publishedLayer = null;
         if (map) {
             map.remove();
             map = null;
@@ -167,145 +201,161 @@
     role="dialog"
     aria-modal="true"
 >
-    <div class="w-full max-w-[52rem] rounded-lg border border-orange-600 bg-gray-800 p-4 shadow-2xl">
-        <div class="mb-3 flex items-center justify-between gap-2">
-            <div class="flex items-center gap-2">
-                <h3 class="text-lg font-semibold text-orange-200">
-                    {$locales('meshcoreconfig.pick_on_map')}
-                </h3>
-                <button
-                    type="button"
-                    title={$locales('meshcoreconfig.zones.editor_title')}
-                    onclick={() => (showZoneEditor = true)}
-                    class="rounded bg-gray-700 px-2 py-1 text-sm text-orange-200 hover:bg-gray-600"
-                >
-                    ✏️
-                </button>
-            </div>
-            <div class="flex flex-col items-end gap-0.5 text-right">
-                <span class="font-mono text-xs text-gray-400">
-                    {pickLat.toFixed(5)}, {pickLon.toFixed(5)}
-                </span>
-                {#if useRegions && regionResult}
-                    {#if regionResult.status === 'hit'}
-                        {#if regionResult.tokens.length > 0}
-                            <span class="font-mono text-xs text-orange-200" title={regionResult.regions}>
-                                {$locales('meshcoreconfig.zones.result_label')}: {regionResult.tokens.join(' ')}
-                            </span>
-                        {/if}
-                        {#if regionResult.level != null}
-                            <span
-                                class="font-mono text-[11px] text-gray-500"
-                                title={$locales('meshcoreconfig.zones.zone_level')}
-                            >
-                                L{regionResult.level} · {$locales(`meshcoreconfig.zones.zone_level_${regionResult.level}`)}
-                            </span>
-                        {/if}
-                        {#if regionResult.radio}
-                            <span class="font-mono text-[11px] text-gray-400" title={$locales('meshcoreconfig.zones.radio_label')}>
-                                {$locales('meshcoreconfig.zones.result_radio', {
-                                    values: { freq: regionResult.radio.freq }
-                                })}
-                            </span>
-                        {/if}
-                        {#if regionResult.pathHashMode}
-                            <span class="font-mono text-[11px] text-gray-400">
-                                {$locales('meshcoreconfig.zones.result_path_hash', {
-                                    values: { mode: regionResult.pathHashMode }
-                                })}
-                            </span>
-                        {/if}
-                        {#if regionResult.nameTemplate}
-                            <span class="font-mono text-[11px] text-gray-400" title={regionResult.nameTemplate}>
-                                {$locales('meshcoreconfig.zones.result_name_template')}: {regionResult.nameTemplate}
-                            </span>
-                        {/if}
-                        {#if regionResult.docUrl}
-                            <a
-                                href={regionResult.docUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="text-[11px] text-sky-400 underline hover:text-sky-300"
-                            >
-                                {$locales('meshcoreconfig.zones.result_doc')}
-                            </a>
-                        {/if}
-                    {:else if regionResult.status === 'miss'}
-                        <span class="text-[11px] text-gray-500">{$locales('meshcoreconfig.zones.status_miss')}</span>
-                    {:else}
-                        <span class="text-[11px] text-gray-500">{$locales('meshcoreconfig.zones.status_unavailable')}</span>
-                    {/if}
-                {/if}
-            </div>
+    <div class="flex h-[95vh] w-[95vw] flex-col rounded-lg border border-orange-600 bg-gray-800 p-4 shadow-2xl">
+        <div class="mb-3 flex shrink-0 items-center gap-2">
+            <h3 class="text-lg font-semibold text-orange-200">
+                {$locales('meshcoreconfig.pick_on_map')}
+            </h3>
+            <button
+                type="button"
+                title={$locales('meshcoreconfig.zones.editor_title')}
+                onclick={() => (showZoneEditor = true)}
+                class="rounded bg-gray-700 px-2 py-1 text-sm text-orange-200 hover:bg-gray-600"
+            >
+                ✏️
+            </button>
         </div>
 
         {#if loadError}
-            <div class="flex h-72 items-center justify-center rounded-md border border-gray-700 bg-gray-900 p-4 text-center text-sm text-red-300">
+            <div class="flex min-h-0 flex-1 items-center justify-center rounded-md border border-gray-700 bg-gray-900 p-4 text-center text-sm text-red-300">
                 {$locales('meshcoreconfig.map_load_error')}
             </div>
         {:else}
-            <div
-                bind:this={container}
-                class="h-[360px] w-full overflow-hidden rounded-md border border-gray-700 bg-gray-900"
-            ></div>
-        {/if}
+            <div class="flex min-h-0 flex-1 gap-3">
+                <div
+                    bind:this={container}
+                    class="min-h-0 w-full flex-1 overflow-hidden rounded-md border border-gray-700 bg-gray-900"
+                ></div>
 
-        <div class="mt-3 flex flex-wrap items-center gap-4 text-xs text-gray-300">
-            <label class="flex items-center gap-1.5">
-                <input type="checkbox" bind:checked={useCoords} class="h-3 w-3" />
-                {$locales('meshcoreconfig.coordinates')}
-            </label>
-            <label class="flex items-center gap-1.5">
-                <input type="checkbox" bind:checked={useRegions} class="h-3 w-3" />
-                {$locales('meshcoreconfig.zones.detect_regions')}
-            </label>
-        </div>
+                <!-- Right-side point-info panel. Fixed width so loading region/
+                     geocode data no longer resizes the card; content scrolls here. -->
+                <div class="flex w-80 shrink-0 flex-col gap-3 overflow-y-auto rounded-md border border-gray-700 bg-gray-900/50 p-3">
+                    <!-- Coordinates -->
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                            {$locales('meshcoreconfig.coordinates')}
+                        </span>
+                        <span class="font-mono text-xs text-gray-300">
+                            {pickLat.toFixed(5)}, {pickLon.toFixed(5)}
+                        </span>
+                    </div>
 
-        {#if geocodeDisplay}
-            <div class="mt-3 flex min-h-5 items-center gap-2 text-sm">
-                {#if geocodeDisplay.kind === 'loading'}
-                    <span
-                        class="inline-block h-3 w-3 animate-spin rounded-full border border-gray-500 border-t-transparent"
-                    ></span>
-                    <span class="text-gray-400">{$locales('meshcoreconfig.geocode.loading')}</span>
-                {:else if geocodeDisplay.kind === 'ok'}
-                    <span class="min-w-0 flex-1 truncate text-gray-300" title={geocodeDisplay.text}>
-                        📍 {geocodeDisplay.text}
-                    </span>
-                    {#if geocodeDisplay.source === 'cache'}
-                        <span
-                            class="shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-xs text-gray-400"
-                        >
-                            {$locales('meshcoreconfig.geocode.source_cache')}
+                    <!-- Region lookup -->
+                    <div class="flex flex-col gap-1">
+                        <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                            {$locales('meshcoreconfig.zones.result_label')}
                         </span>
-                    {:else if geocodeDisplay.source === 'live'}
-                        <span
-                            class="shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-xs text-gray-400"
-                        >
-                            {$locales('meshcoreconfig.geocode.source_live')}
+                        {#if useRegions && regionResult}
+                            {#if regionResult.status === 'hit'}
+                                {#if regionResult.tokens.length > 0}
+                                    <span class="font-mono text-xs text-orange-200" title={regionResult.regions}>
+                                        {regionResult.tokens.join(' ')}
+                                    </span>
+                                {/if}
+                                {#if regionResult.level != null}
+                                    <span class="font-mono text-[11px] text-gray-500" title={$locales('meshcoreconfig.zones.zone_level')}>
+                                        L{regionResult.level} · {$locales(`meshcoreconfig.zones.zone_level_${regionResult.level}`)}
+                                    </span>
+                                {/if}
+                                {#if regionResult.radio}
+                                    <span class="font-mono text-[11px] text-gray-400" title={$locales('meshcoreconfig.zones.radio_label')}>
+                                        {$locales('meshcoreconfig.zones.result_radio', {
+                                            values: { freq: regionResult.radio.freq }
+                                        })}
+                                    </span>
+                                {/if}
+                                {#if regionResult.pathHashMode}
+                                    <span class="font-mono text-[11px] text-gray-400">
+                                        {$locales('meshcoreconfig.zones.result_path_hash', {
+                                            values: { mode: regionResult.pathHashMode }
+                                        })}
+                                    </span>
+                                {/if}
+                                {#if regionResult.nameTemplate}
+                                    <span class="font-mono text-[11px] text-gray-400" title={regionResult.nameTemplate}>
+                                        {$locales('meshcoreconfig.zones.result_name_template')}: {regionResult.nameTemplate}
+                                    </span>
+                                {/if}
+                                {#if regionResult.docUrl}
+                                    <a
+                                        href={regionResult.docUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="text-[11px] text-sky-400 underline hover:text-sky-300"
+                                    >
+                                        {$locales('meshcoreconfig.zones.result_doc')}
+                                    </a>
+                                {/if}
+                            {:else if regionResult.status === 'miss'}
+                                <span class="text-[11px] text-gray-500">{$locales('meshcoreconfig.zones.status_miss')}</span>
+                            {:else}
+                                <span class="text-[11px] text-gray-500">{$locales('meshcoreconfig.zones.status_unavailable')}</span>
+                            {/if}
+                        {:else}
+                            <span class="text-[11px] text-gray-500">—</span>
+                        {/if}
+                    </div>
+
+                    <!-- Reverse geocode (address) -->
+                    <div class="flex flex-col gap-1">
+                        <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                            {$locales('meshcoreconfig.geocode.location_label')}
                         </span>
-                    {/if}
-                {:else if geocodeDisplay.kind === 'rate_limited'}
-                    <span class="text-yellow-300">
-                        {$locales('meshcoreconfig.geocode.rate_limited')}
-                    </span>
-                {:else if geocodeDisplay.kind === 'no_data'}
-                    <span class="text-gray-500">{$locales('meshcoreconfig.geocode.no_data')}</span>
-                {:else if geocodeDisplay.kind === 'error'}
-                    <span class="text-gray-500">{$locales('meshcoreconfig.geocode.error')}</span>
-                {/if}
+                        {#if geocodeDisplay}
+                            {#if geocodeDisplay.kind === 'loading'}
+                                <span class="flex items-center gap-2 text-xs text-gray-400">
+                                    <span class="inline-block h-3 w-3 animate-spin rounded-full border border-gray-500 border-t-transparent"></span>
+                                    {$locales('meshcoreconfig.geocode.loading')}
+                                </span>
+                            {:else if geocodeDisplay.kind === 'ok'}
+                                <span class="flex items-center gap-1.5 text-xs text-gray-300">
+                                    📍 <span class="min-w-0 flex-1 break-words" title={geocodeDisplay.text}>{geocodeDisplay.text}</span>
+                                    {#if geocodeDisplay.source === 'cache'}
+                                        <span class="shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-[10px] text-gray-400">
+                                            {$locales('meshcoreconfig.geocode.source_cache')}
+                                        </span>
+                                    {:else if geocodeDisplay.source === 'live'}
+                                        <span class="shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-[10px] text-gray-400">
+                                            {$locales('meshcoreconfig.geocode.source_live')}
+                                        </span>
+                                    {/if}
+                                </span>
+                            {:else if geocodeDisplay.kind === 'rate_limited'}
+                                <span class="text-xs text-yellow-300">
+                                    {$locales('meshcoreconfig.geocode.rate_limited')}
+                                </span>
+                            {:else if geocodeDisplay.kind === 'no_data'}
+                                <span class="text-xs text-gray-500">{$locales('meshcoreconfig.geocode.no_data')}</span>
+                            {:else if geocodeDisplay.kind === 'error'}
+                                <span class="text-xs text-gray-500">{$locales('meshcoreconfig.geocode.error')}</span>
+                            {/if}
+                        {:else}
+                            <span class="text-[11px] text-gray-500">—</span>
+                        {/if}
+                        <button
+                            type="button"
+                            onclick={() => (showGeocodeResponse = true)}
+                            disabled={!geocodeResp?.raw}
+                            class="mt-1 self-start rounded bg-gray-700 px-2 py-1 text-[11px] text-white transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {$locales('meshcoreconfig.geocode.view_response')}
+                        </button>
+                    </div>
+                </div>
             </div>
         {/if}
 
-        <div class="mt-3 flex items-center justify-between gap-3">
-            <button
-                type="button"
-                onclick={() => (showGeocodeResponse = true)}
-                disabled={!geocodeResp?.raw}
-                class="rounded-md bg-gray-700 px-3 py-2 text-sm text-white transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-                {$locales('meshcoreconfig.geocode.view_response')}
-            </button>
+        <div class="mt-3 flex shrink-0 items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-4 text-xs text-gray-300">
+                <label class="flex items-center gap-1.5">
+                    <input type="checkbox" bind:checked={useCoords} class="h-3 w-3" />
+                    {$locales('meshcoreconfig.coordinates')}
+                </label>
+                <label class="flex items-center gap-1.5">
+                    <input type="checkbox" bind:checked={useRegions} class="h-3 w-3" />
+                    {$locales('meshcoreconfig.zones.detect_regions')}
+                </label>
+            </div>
             <div class="flex gap-3">
                 <button
                     type="button"
