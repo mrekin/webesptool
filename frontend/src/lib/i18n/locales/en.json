@@ -231,6 +231,7 @@
   "meshcoreconfig": {
     "title": "Meshcore Configurator (Repeater and Room server)",
     "docs": "Docs",
+    "regional_docs": "Regional Docs",
     "select_port": "Select Port",
     "connect": "Connect",
     "disconnect": "Disconnect",
@@ -371,6 +372,7 @@
       "name_template_preview_enum": "Pick one of these values",
       "name_template_preview_free": "Type a value",
       "name_too_long": "Name is longer than 32 characters",
+      "name_incomplete": "Fill in all required name fields before applying",
       "name_template_clear": "Abandon template and edit the name freely",
       "doc_url": "Settings document URL",
       "zone_level": "Zone level",

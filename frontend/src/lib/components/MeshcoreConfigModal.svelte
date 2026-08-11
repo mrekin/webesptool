@@ -121,6 +121,11 @@
     let activeNameTemplate = $state<string | null>(null);
     let composerParts = $state<string[]>([]);
 
+    // Settings-document link for the currently-applied zone preset (from the
+    // picker's resolved region meshcore.docUrl). Shown in the toolbar next to
+    // the generic Docs link. Null until a region with a docUrl is applied.
+    let regionDocUrl = $state<string | null>(null);
+
     // `region def` is supported on firmware >= 1.16. An empty version (not
     // connected / 'ver' unanswered) is treated as supported: the region is still
     // shown/resolved, the user applies it themselves.
@@ -149,6 +154,23 @@
     const nameTooLong = $derived(
         activeNameTemplate !== null && composeName(nameTokens, composerParts).length > 32
     );
+
+    // While a name template is active, every placeholder must be filled before
+    // the queue can be sent: free tokens are always required, enum tokens are
+    // required unless they expose an explicit empty variant (`[A|B|]` -> options
+    // include ''). Free-edit mode (no active template) is never incomplete.
+    const nameIncomplete = $derived.by(() => {
+        if (activeNameTemplate === null) return false;
+        let n = 0;
+        for (const t of nameTokens) {
+            if (t.type === 'literal') continue;
+            const part = composerParts[n] ?? '';
+            n++;
+            const allowsEmpty = t.type === 'enum' && t.options.includes('');
+            if (!allowsEmpty && part.trim() === '') return true;
+        }
+        return false;
+    });
 
     // Does the configurator expose a given row id? Zone presets only apply when
     // the matching command row exists for this command-set variant.
@@ -849,7 +871,8 @@
                     <button
                         type="button"
                         onclick={applyAll}
-                        disabled={!isConnected || busy || assembledCount === 0}
+                        disabled={!isConnected || busy || assembledCount === 0 || nameIncomplete}
+                        title={nameIncomplete ? $locales('meshcoreconfig.zones.name_incomplete') : ''}
                         class="rounded-md bg-green-700 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {$locales('meshcoreconfig.apply')}
@@ -889,6 +912,19 @@
                     >
                         {$locales('meshcoreconfig.docs')}
                     </a>
+
+                    <!-- Regional settings-docs link for the applied zone preset
+                         (meshcore.docUrl from the resolved region). -->
+                    {#if regionDocUrl}
+                        <a
+                            href={regionDocUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="text-xs text-sky-400 underline hover:text-sky-300"
+                        >
+                            {$locales('meshcoreconfig.regional_docs')}
+                        </a>
+                    {/if}
                 </div>
 
                 <!-- Status / error messages -->
@@ -1203,6 +1239,11 @@
                                                                 {$locales('meshcoreconfig.zones.name_too_long')}
                                                             </span>
                                                         {/if}
+                                                        {#if nameIncomplete}
+                                                            <span class="mt-1 block text-[10px] text-red-400">
+                                                                {$locales('meshcoreconfig.zones.name_incomplete')}
+                                                            </span>
+                                                        {/if}
                                                     </div>
                                                 {:else}
                                                     <MeshcoreConfigRow
@@ -1357,8 +1398,13 @@
                         applyNameTemplate(r.nameTemplate);
                         logZoneMetric('zones_nametemplate_applied');
                     }
+                    // Surface the region's settings-docs link in the toolbar.
+                    regionDocUrl = r.docUrl || null;
                 } else if (res.region && res.region.status === 'miss') {
+                    regionDocUrl = null;
                     logZoneMetric('zones_miss');
+                } else {
+                    regionDocUrl = null;
                 }
                 showMapPicker = false;
             }}

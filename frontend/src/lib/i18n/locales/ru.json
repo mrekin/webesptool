@@ -231,6 +231,7 @@
   "meshcoreconfig": {
     "title": "Конфигуратор Meshcore (Repeater and Room server)",
     "docs": "Docs",
+    "regional_docs": "Документы региона",
     "select_port": "Выбрать порт",
     "connect": "Подключить",
     "disconnect": "Отключить",
@@ -371,6 +372,7 @@
       "name_template_preview_enum": "Выбрать одно из значений",
       "name_template_preview_free": "Ввести значение",
       "name_too_long": "Имя длиннее 32 символов",
+      "name_incomplete": "Заполните все обязательные поля имени перед применением",
       "name_template_clear": "Отказаться от шаблона и править имя вручную",
       "doc_url": "URL документа с настройками",
       "zone_level": "Уровень зоны",

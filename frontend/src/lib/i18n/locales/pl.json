@@ -231,6 +231,7 @@
   "meshcoreconfig": {
     "title": "Konfigurator Meshcore (Repeater and Room server)",
     "docs": "Docs",
+    "regional_docs": "Dokumenty regionalne",
     "select_port": "Wybierz port",
     "connect": "Połącz",
     "disconnect": "Rozłącz",
@@ -371,6 +372,7 @@
       "name_template_preview_enum": "Wybierz jedną z wartości",
       "name_template_preview_free": "Wpisz wartość",
       "name_too_long": "Nazwa dłuższa niż 32 znaki",
+      "name_incomplete": "Wypełnij wszystkie wymagane pola nazwy przed zastosowaniem",
       "name_template_clear": "Odrzuć szablon i edytuj nazwę ręcznie",
       "doc_url": "URL dokumentu ustawień",
       "zone_level": "Poziom strefy",
