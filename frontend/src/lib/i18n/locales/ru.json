@@ -323,6 +323,7 @@
       "zone_added": "Зона добавлена",
       "no_group": "без группы",
       "boundaries_section": "Базовые границы",
+      "boundaries_help": "OSM-границы можно получить здесь",
       "load_file": "Загрузить GeoJSON-файл",
       "load_file_hint": "Группа, если есть регионы, иначе базовая граница",
       "load_file_invalid": "Файл не является корректным GeoJSON",

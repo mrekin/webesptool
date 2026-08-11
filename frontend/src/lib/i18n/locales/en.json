@@ -323,6 +323,7 @@
       "zone_added": "Zone added",
       "no_group": "no group",
       "boundaries_section": "Base boundaries",
+      "boundaries_help": "Get OSM boundaries here",
       "load_file": "Load GeoJSON file",
       "load_file_hint": "Group if it has regions, otherwise a base boundary",
       "load_file_invalid": "Not a valid GeoJSON file",

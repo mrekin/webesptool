@@ -1462,8 +1462,15 @@
 
                     <!-- Base boundary files -->
                     <div class="rounded-md border border-gray-700 bg-gray-900/50 p-2">
-                        <span class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                        <span class="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                             {$locales('meshcoreconfig.zones.boundaries_section')}
+                            <a
+                                href="https://osm-boundaries.com/map"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title={$locales('meshcoreconfig.zones.boundaries_help')}
+                                class="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-gray-500 normal-case text-[9px] font-normal leading-none text-gray-400 hover:border-orange-400 hover:text-orange-200"
+                            >i</a>
                         </span>
                         <div class="space-y-1">
                             {#each boundaryEntries as b (b.key)}

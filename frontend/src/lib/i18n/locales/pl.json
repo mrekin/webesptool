@@ -323,6 +323,7 @@
       "zone_added": "Strefa dodana",
       "no_group": "bez grupy",
       "boundaries_section": "Granice bazowe",
+      "boundaries_help": "Pobierz granice OSM tutaj",
       "load_file": "Wczytaj plik GeoJSON",
       "load_file_hint": "Grupa, jeśli ma regiony, w przeciwnym razie granica bazowa",
       "load_file_invalid": "Plik nie jest poprawnym GeoJSON",
