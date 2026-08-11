@@ -78,7 +78,7 @@
 		"@xterm/addon-search": "^0.16.0",
 		"buffer": "^6.0.3",
 		"crc": "^4.3.2",
-		"esptool-js": "^0.6.0",
+		"esptool-js": "^0.6.1",
 		"ioredis": "^6.0.0",
 		"js-yaml": "^4.1.1",
 		"jszip": "^3.10.1",

@@ -814,7 +814,7 @@ export function createESPManager() {
                 }
             }
 
-            // Detect flash size using esploader's detectFlashSize() (esptool-js 0.6.0 API).
+            // Detect flash size using esploader's detectFlashSize() (esptool-js 0.6.1 API).
             // Returns an already-formatted string (e.g., "8MB"); more reliable than parsing
             // terminal output, especially when PSRAM is present.
             try {
