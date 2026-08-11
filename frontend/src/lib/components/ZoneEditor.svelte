@@ -887,6 +887,32 @@
         showNotice(`${$locales('meshcoreconfig.zones.duplicate_done')}: ${gf.name}`);
     }
 
+    // Clone a session group's settings into a fresh independent group — same
+    // semantics as duplicateGroup for published groups. No zones, no originUrl:
+    // a same-level clone with zones would overlap the original and break the
+    // non-overlap invariant; the intent is a reusable preset to draw into.
+    function duplicateSessionGroup(id: string): void {
+        const src = groups.find((g) => g.id === id);
+        if (!src) return;
+        pushHistory();
+        const nid = genId('g');
+        groups = [
+            ...groups,
+            {
+                id: nid,
+                name: src.name,
+                regions: src.regions,
+                radio: src.radio,
+                pathHashMode: src.pathHashMode,
+                nameTemplate: src.nameTemplate,
+                docUrl: src.docUrl,
+                level: src.level
+            }
+        ];
+        activeGroupId = nid;
+        showNotice(`${$locales('meshcoreconfig.zones.duplicate_done')}: ${src.name}`);
+    }
+
     function updateGroupName(id: string, name: string): void {
         groups = groups.map((g) => (g.id === id ? { ...g, name } : g));
     }
@@ -1361,6 +1387,17 @@
                                     <input type="text" value={g.name} oninput={(e) => updateGroupName(g.id, (e.currentTarget as HTMLInputElement).value)} placeholder={$locales('meshcoreconfig.zones.group_name_prompt')} use:fillHint class={`min-w-0 flex-1 rounded-md border bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500 ${g.name.trim() ? 'border-gray-600' : 'border-red-500'}`} />
                                     <button type="button" onclick={(e) => { e.stopPropagation(); meshcoreEditId = g.id; }} title={$locales('meshcoreconfig.zones.meshcore_settings')} class={`shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-xs hover:bg-gray-600 ${g.radio || g.pathHashMode ? 'text-orange-200' : 'text-gray-300'}`}>
                                         ⚙
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onclick={(e) => {
+                                            e.stopPropagation();
+                                            duplicateSessionGroup(g.id);
+                                        }}
+                                        title={$locales('meshcoreconfig.zones.duplicate_hint')}
+                                        class="shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-xs text-orange-200 hover:bg-gray-600"
+                                    >
+                                        📋
                                     </button>
                                     <button type="button" onclick={() => removeGroup(g.id)} class="shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-xs text-gray-300 hover:bg-gray-600">
                                         ✕
