@@ -148,6 +148,9 @@
     const PUBLISHED_STYLE = {
         color: '#38bdf8', weight: 1.5, fillColor: '#38bdf8', fillOpacity: 0.18
     };
+    const PUBLISHED_HOVER = {
+        color: '#38bdf8', weight: 3, fillColor: '#38bdf8', fillOpacity: 0.4
+    };
     const GROUP_COLORS = [
         '#f97316', '#22c55e', '#a855f7', '#ec4899', '#eab308',
         '#14b8a6', '#ef4444', '#8b5cf6', '#06b6d4', '#f43f5e'
@@ -207,9 +210,12 @@
     }
 
     // All geometries a new/edited zone must NOT overlap: every published group
-    // file (server-wide, regardless of display) except the one being edited, plus
-    // every in-session zone (optionally excluding one being extended). This
-    // enforces "groups never overlap".
+    // except the one being edited, plus every in-session zone (optionally
+    // excluding one being extended). A published group that is currently shown
+    // (selected) blocks at ANY level — so a zone can be drawn to fit between
+    // selected groups without overlapping them, mirroring homeless reference
+    // zones from base boundaries. A hidden group blocks only at its own level.
+    // Enforces "groups never overlap".
     function overlapGeometries(opts?: {
         level?: number | null; // null = wildcard (a homeless zone conflicts with any level)
         excludeOriginUrl?: string;
@@ -224,7 +230,9 @@
         for (const gf of groupFiles) {
             if (gf.url === opts?.excludeOriginUrl) continue;
             const gfLvl = gf.level ?? ZONE_LEVEL_DEFAULT;
-            if (!levelsConflict(lvl, gfLvl)) continue;
+            // A shown (selected) published group is an obstacle at any level;
+            // a hidden one blocks only on a same-level conflict.
+            if (!shownGroups.has(gf.url) && !levelsConflict(lvl, gfLvl)) continue;
             for (const f of gf.features) out.push(f.geometry);
         }
         for (const p of polygons) {
@@ -329,7 +337,10 @@
         console.info('[meshcore-zone]', 'zone_drawn', kind);
     }
 
-    function onBoundaryClick(feature: any): void {
+    // Handle a click on a reference polygon (base boundary OR published group):
+    // in Select mode create a zone from it, or erase it in erase mode. Generic —
+    // wired to both the base-boundary and published-group layers.
+    function onReferenceClick(feature: any): void {
         if (mode !== 'select') return;
         const geom = feature.geometry as ZoneGeometry;
         const props = feature.properties ?? {};
@@ -754,7 +765,7 @@
                         l.on('mouseover', () => l.setStyle(BOUNDARY_HOVER));
                         l.on('mouseout', () => l.setStyle(BOUNDARY_STYLE));
                         l.on('click', () =>
-                            onBoundaryClick({
+                            onReferenceClick({
                                 geometry: feature.properties.__orig,
                                 properties: feature.properties
                             })
@@ -770,6 +781,10 @@
     });
 
     // Sync displayed published-group layers with the shownGroups toggle.
+    // Published groups are fully interactive like base boundaries: hover
+    // highlight, tooltip, and click in Select creates a zone from the polygon
+    // (or erases in erase mode) via onReferenceClick. Features are painted with
+    // the smallest on top so nested zones stay clickable.
     $effect(() => {
         shownGroups;
         if (!map || !L) return;
@@ -783,15 +798,36 @@
             if (groupLayers.has(url)) continue;
             const gf = groupFiles.find((g) => g.url === url);
             if (!gf) continue;
+            const sortedFeatures = [...gf.features].sort((a, b) => {
+                const ga = a.geometry as ZoneGeometry | null;
+                const gb = b.geometry as ZoneGeometry | null;
+                const aa = ga && (ga.type === 'Polygon' || ga.type === 'MultiPolygon') ? computeArea(ga) : 0;
+                const ab = gb && (gb.type === 'Polygon' || gb.type === 'MultiPolygon') ? computeArea(gb) : 0;
+                return ab - aa;
+            });
             const fc = {
                 type: 'FeatureCollection',
-                features: gf.features.map((f) => ({
+                features: sortedFeatures.map((f) => ({
                     type: 'Feature' as const,
                     geometry: f.geometry,
                     properties: { name: gf.name }
                 }))
             };
-            const layer = L.geoJSON(fc, { style: () => PUBLISHED_STYLE }).addTo(map);
+            const layer = L.geoJSON(fc, {
+                style: () => PUBLISHED_STYLE,
+                onEachFeature: (feature: any, l: any) => {
+                    const name = feature?.properties?.name ?? '';
+                    if (name) l.bindTooltip(String(name));
+                    l.on('mouseover', () => l.setStyle(PUBLISHED_HOVER));
+                    l.on('mouseout', () => l.setStyle(PUBLISHED_STYLE));
+                    l.on('click', () =>
+                        onReferenceClick({
+                            geometry: feature.geometry,
+                            properties: feature.properties
+                        })
+                    );
+                }
+            }).addTo(map);
             layer.eachLayer((l: any) => {
                 l.options.pmIgnore = true;
             });
@@ -807,6 +843,109 @@
         else next.add(url);
         return next;
     }
+
+    // --- published groups tree ---
+    // Published groups can be numerous; group them into a collapsible tree by
+    // name, splitting on '-' and '_'. Each node has a checkbox: a leaf toggles
+    // one group's visibility, a branch toggles every group under it (tri-state).
+    interface GroupTreeNode {
+        segment: string;
+        children: Map<string, GroupTreeNode>;
+        group: GroupFile | null;
+    }
+    interface GroupTreeRow {
+        key: string;
+        depth: number;
+        label: string;
+        kind: 'branch' | 'leaf';
+        group: GroupFile | null;
+        childUrls: string[];
+        childCount: number;
+    }
+    function buildGroupTree(files: GroupFile[]): Map<string, GroupTreeNode> {
+        const root = new Map<string, GroupTreeNode>();
+        for (const gf of files) {
+            const segs = gf.name.split(/[-_]+/).filter(Boolean);
+            if (segs.length === 0) segs.push(gf.name || '?');
+            let level = root;
+            for (let i = 0; i < segs.length; i++) {
+                const seg = segs[i];
+                let node = level.get(seg);
+                if (!node) {
+                    node = { segment: seg, children: new Map(), group: null };
+                    level.set(seg, node);
+                }
+                if (i === segs.length - 1) node.group = gf;
+                level = node.children;
+            }
+        }
+        return root;
+    }
+    function collectGroupUrls(node: GroupTreeNode): string[] {
+        const urls: string[] = [];
+        if (node.group) urls.push(node.group.url);
+        for (const child of node.children.values()) urls.push(...collectGroupUrls(child));
+        return urls;
+    }
+    function flattenGroupTree(
+        root: Map<string, GroupTreeNode>,
+        expanded: Set<string>
+    ): GroupTreeRow[] {
+        const rows: GroupTreeRow[] = [];
+        const walk = (nodes: Map<string, GroupTreeNode>, depth: number, prefix: string) => {
+            const sorted = [...nodes.values()].sort((a, b) => a.segment.localeCompare(b.segment));
+            for (const node of sorted) {
+                const key = prefix ? `${prefix}/${node.segment}` : node.segment;
+                const childUrls = collectGroupUrls(node);
+                const hasChildren = node.children.size > 0;
+                rows.push({
+                    key,
+                    depth,
+                    label: node.segment,
+                    kind: hasChildren ? 'branch' : 'leaf',
+                    group: node.group,
+                    childUrls,
+                    childCount: childUrls.length
+                });
+                if (hasChildren && expanded.has(key)) walk(node.children, depth + 1, key);
+            }
+        };
+        walk(root, 0, '');
+        return rows;
+    }
+    function branchCheckState(urls: string[]): 'on' | 'off' | 'some' {
+        if (urls.length === 0) return 'off';
+        let shown = 0;
+        for (const u of urls) if (shownGroups.has(u)) shown++;
+        if (shown === 0) return 'off';
+        return shown === urls.length ? 'on' : 'some';
+    }
+    function toggleBranchUrls(urls: string[]): void {
+        const all = urls.every((u) => shownGroups.has(u));
+        const next = new Set(shownGroups);
+        if (all) for (const u of urls) next.delete(u);
+        else for (const u of urls) next.add(u);
+        shownGroups = next;
+    }
+    function toggleGroupExpand(key: string): void {
+        expandedGroupNodes = toggleSet(expandedGroupNodes, key);
+    }
+    // Tri-state checkbox action: show indeterminate when only some children shown.
+    function triBox(
+        node: HTMLInputElement,
+        state: 'on' | 'off' | 'some'
+    ): { update(state: 'on' | 'off' | 'some'): void } {
+        node.indeterminate = state === 'some';
+        return {
+            update(s: 'on' | 'off' | 'some') {
+                node.indeterminate = s === 'some';
+            }
+        };
+    }
+    // Branches are collapsed by default (the set holds EXPANDED node keys).
+    let expandedGroupNodes = $state<Set<string>>(new Set());
+    const groupTreeRoot = $derived(buildGroupTree(groupFiles));
+    const groupTreeRows = $derived(flattenGroupTree(groupTreeRoot, expandedGroupNodes));
 
     // --- session groups / zones ---
 
@@ -1347,19 +1486,39 @@
                         <span class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                             {$locales('meshcoreconfig.zones.published_section')}
                         </span>
-                        <div class="space-y-1">
-                            {#each groupFiles as gf (gf.url)}
-                                <div class="flex items-center gap-1 text-[11px] text-gray-300">
-                                    <input type="checkbox" class="h-3 w-3 shrink-0" checked={shownGroups.has(gf.url)} onchange={() => (shownGroups = toggleSet(shownGroups, gf.url))} />
-                                    <span class="min-w-0 flex-1 truncate" title={`${gf.name} · ${gf.regions}`}>
-                                        {gf.name}<span class="text-gray-500"> · {gf.regions}</span>
-                                    </span>
-                                    <button type="button" onclick={() => editGroup(gf)} disabled={isEditing(gf.url)} title={isEditing(gf.url) ? $locales('meshcoreconfig.zones.editing_published') : $locales('meshcoreconfig.zones.edit_hint')} class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-orange-200 hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-40">
-                                        ✎
-                                    </button>
-                                    <button type="button" onclick={() => duplicateGroup(gf)} title={$locales('meshcoreconfig.zones.duplicate_hint')} class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-orange-200 hover:bg-gray-600">
-                                        📋
-                                    </button>
+                        <div class="space-y-0.5">
+                            {#each groupTreeRows as row (row.key)}
+                                <div class="flex items-center gap-1 text-[11px] text-gray-300" style={`padding-left:${row.depth * 12}px`}>
+                                    {#if row.kind === 'branch'}
+                                        <button
+                                            type="button"
+                                            onclick={() => toggleGroupExpand(row.key)}
+                                            class="shrink-0 w-4 text-center text-gray-400 hover:text-gray-200"
+                                        >
+                                            {expandedGroupNodes.has(row.key) ? '▾' : '▸'}
+                                        </button>
+                                        <input
+                                            type="checkbox"
+                                            class="h-3 w-3 shrink-0"
+                                            use:triBox={branchCheckState(row.childUrls)}
+                                            checked={branchCheckState(row.childUrls) === 'on'}
+                                            onchange={() => toggleBranchUrls(row.childUrls)}
+                                        />
+                                        <span class="min-w-0 flex-1 truncate font-medium text-gray-200">{row.label}</span>
+                                        <span class="shrink-0 text-gray-500">{row.childCount}</span>
+                                        {#if row.group}
+                                            <button type="button" onclick={() => editGroup(row.group!)} disabled={isEditing(row.group!.url)} title={isEditing(row.group!.url) ? $locales('meshcoreconfig.zones.editing_published') : $locales('meshcoreconfig.zones.edit_hint')} class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-orange-200 hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-40">✎</button>
+                                            <button type="button" onclick={() => duplicateGroup(row.group!)} title={$locales('meshcoreconfig.zones.duplicate_hint')} class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-orange-200 hover:bg-gray-600">📋</button>
+                                        {/if}
+                                    {:else}
+                                        <span class="shrink-0 w-4"></span>
+                                        <input type="checkbox" class="h-3 w-3 shrink-0" checked={shownGroups.has(row.group!.url)} onchange={() => (shownGroups = toggleSet(shownGroups, row.group!.url))} />
+                                        <span class="min-w-0 flex-1 truncate" title={row.group!.name}>
+                                            {row.label}<span class="text-gray-500"> · L{row.group!.level ?? 1}</span>
+                                        </span>
+                                        <button type="button" onclick={() => editGroup(row.group!)} disabled={isEditing(row.group!.url)} title={isEditing(row.group!.url) ? $locales('meshcoreconfig.zones.editing_published') : $locales('meshcoreconfig.zones.edit_hint')} class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-orange-200 hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-40">✎</button>
+                                        <button type="button" onclick={() => duplicateGroup(row.group!)} title={$locales('meshcoreconfig.zones.duplicate_hint')} class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-orange-200 hover:bg-gray-600">📋</button>
+                                    {/if}
                                 </div>
                             {/each}
                             {#if groupFiles.length === 0}
