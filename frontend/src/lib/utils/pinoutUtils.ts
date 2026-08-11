@@ -110,23 +110,37 @@ export function mapDeviceToPinout(
     return null;
 }
 
-// Parse C expressions for pins (e.g. "(0 + 13)", "(32 + 4)")
+// Parse C expressions for pins: "11", "-1", "(11)", "(-1)", "(0 + 13)",
+// "((0 + 13))". C macros (variant.h) frequently wrap pin numbers in parens,
+// e.g. `#define PIN_LED (11)`, so the meshcore catalog stores values as
+// "(11)" rather than "11". Floats like "(3.0)" (AREF_VOLTAGE) are NOT pin
+// numbers and must be rejected — therefore after stripping parens we accept
+// only integers and integer sums, never Number() (which would coerce 3.0
+// into pin 3).
 function parsePinExpression(expr: string): number | null {
     if (!expr) return null;
 
-    // If it's a simple number
+    // Bare value (no parens): keep existing behavior, including the Number()
+    // coercion used historically for the meshtastic catalog. Bare sums like
+    // "0 + 13" fall through and are handled below.
     const simpleNum = Number(expr);
     if (!isNaN(simpleNum)) return simpleNum;
 
-    // Parse expressions like "(0 + 13)", "(32 + 4)"
-    // Remove spaces and check for pattern (number + number)
-    const cleaned = expr.replace(/\s+/g, '');
-    const match = cleaned.match(/^\(?(\d+)\s*\+\s*(\d+)\)?$/);
+    // Strip any number of surrounding paren layers introduced by C macros.
+    let stripped = expr.trim();
+    while (stripped.startsWith('(') && stripped.endsWith(')')) {
+        stripped = stripped.slice(1, -1).trim();
+    }
 
-    if (match) {
-        const num1 = parseInt(match[1]);
-        const num2 = parseInt(match[2]);
-        return num1 + num2;
+    // Integer pin number (also handles negative sentinels like "-1").
+    if (/^-?\d+$/.test(stripped)) {
+        return parseInt(stripped, 10);
+    }
+
+    // Sum of two integers, e.g. "0 + 13" or "(0 + 13)".
+    const sumMatch = stripped.match(/^(\d+)\s*\+\s*(\d+)$/);
+    if (sumMatch) {
+        return parseInt(sumMatch[1], 10) + parseInt(sumMatch[2], 10);
     }
 
     return null;

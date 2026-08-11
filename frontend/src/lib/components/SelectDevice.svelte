@@ -424,7 +424,7 @@
                     </button>
                 {/if}
 
-                {#if $hasPinoutData && deviceSelectionStore.devicePioTarget && currentSourceStore?.type === RepositoryType.MESHTASTIC}
+                {#if $hasPinoutData && deviceSelectionStore.devicePioTarget && (currentSourceStore?.type === RepositoryType.MESHTASTIC || currentSourceStore?.type === RepositoryType.MESHCORE)}
                     <button
                         type="button"
                         on:click={onOpenPinoutModal}

@@ -74,8 +74,11 @@
     let eraseBeforeFlash = false; // New parameter for checkbox
     let selectedBaudrate = 512000; // Default selected speed
 
-    // Watch for baudrate changes and update esploader
-    $: if (selectedBaudrate && espManager) {
+    // Apply selected baudrate whenever it changes OR once the port connects.
+    // Depends on isPortSelected so the default (512000) is applied right after
+    // getDeviceInfo() creates the esploader — without it the reactive fires only
+    // on mount (no esploader yet → silent failure) and the device stays at 115200.
+    $: if (selectedBaudrate && espManager && isPortSelected) {
         updateBaudrate(selectedBaudrate);
     }
 
