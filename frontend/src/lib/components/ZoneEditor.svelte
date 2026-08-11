@@ -283,14 +283,14 @@
         return { kind: 'polygon', geom: layerToPolygonGeom(layer) };
     }
 
-    // Erase `eraser` from every editable session zone; fully-covered zones drop.
+    // Erase `eraser` from the zones of the active group only; fully-covered
+    // zones drop. The eraser is scoped to the current editing context — it
+    // never bleeds into other groups' zones (nor homeless zones when a group is
+    // active). When no group is active it trims the homeless zones.
     function eraseFromAll(eraser: ZoneGeometry): EditorPolygon[] {
-        // Erase affects only zones at the active level — cross-level nesting is
-        // left intact (erasing a city must not punch a hole in the country below).
-        const lvl = groupLevel(activeGroupId);
         const next: EditorPolygon[] = [];
         for (const p of polygons) {
-            if (!levelsConflict(lvl, groupLevel(p.groupId))) {
+            if (p.groupId !== activeGroupId) {
                 next.push(p);
                 continue;
             }
