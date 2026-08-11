@@ -460,6 +460,14 @@ export interface PinoutData {
     variants: PinoutVariant; // Flat structure: boardName -> BoardVariant (v2.0)
 }
 
+// One file in the pinouts catalog: its source filename (sort key + diagnostics)
+// paired with the parsed PinoutData. The runtime catalog is an alphabetically
+// sorted array of these (loaded by loadPinoutData).
+export interface PinoutCatalogFile {
+    fileName: string; // bare filename, e.g. "meshtastic.json" — sort key + diagnostics
+    data: PinoutData; // parsed file content (metadata + variants)
+}
+
 // UI Types for pinout visualization
 export interface PinInfo {
     name: string; // e.g., "LORA_SCK"

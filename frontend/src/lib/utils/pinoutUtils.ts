@@ -4,52 +4,72 @@ import type {
     PinCategory,
     BoardVariant,
     PinDefines,
-    ConfigInfo
+    ConfigInfo,
+    PinoutCatalogFile,
+    PinoutVariant
 } from '$lib/types';
 import { isNRF52Device } from './deviceTypeUtils';
 import type { DeviceType } from '$lib/types';
-import pinoutJson from '$lib/config/my_pinout.json';
 
-// Cache for pinout data
-let pinoutCache: PinoutData | null = null;
+// NOTE: Vite requires the first argument of import.meta.glob to be a string
+// literal, so the catalog path cannot be moved elsewhere. This comment is the
+// single canonical reference for the pinouts catalog location.
+const pinoutCatalogModules = import.meta.glob('/src/lib/config/pinouts/*.json', {
+    eager: true,
+    import: 'default'
+}) as Record<string, PinoutData>;
 
-// Load pinout data from JSON file
-export async function loadPinoutData(): Promise<PinoutData> {
-    if (pinoutCache) return pinoutCache;
+// Cache for the sorted catalog (array of files)
+let catalogCache: PinoutCatalogFile[] | null = null;
 
-    try {
-        // Use imported data directly
-        const data = pinoutJson as PinoutData;
-        pinoutCache = data;
-        return data;
-    } catch (error) {
-        console.error('Error loading pinout data:', error);
-        throw error;
+// Load pinout catalog from all JSON files in pinouts/. Returns an alphabetically
+// sorted (by bare filename, code-point ASCII) array of { fileName, data }.
+// Eager-glob from src means a broken JSON fails the build at parse time (CI
+// catches it); the defensive shape check below is a safety net for files that
+// parse but do not match the PinoutData structure.
+export async function loadPinoutData(): Promise<PinoutCatalogFile[]> {
+    if (catalogCache) return catalogCache;
+
+    const files: PinoutCatalogFile[] = [];
+    for (const [fullPath, data] of Object.entries(pinoutCatalogModules)) {
+        // Defensive shape check; src-bundled JSON reaches here only if it parsed.
+        if (!data || typeof data !== 'object' || !data.variants) {
+            console.warn(`[pinout] skipping file with invalid shape: ${fullPath}`);
+            continue;
+        }
+        const fileName = fullPath.split('/').pop() ?? fullPath;
+        files.push({ fileName, data });
     }
+    // Deterministic code-point sort by bare filename (NOT localeCompare, which
+    // depends on the host locale and can diverge across CI machines).
+    files.sort((a, b) =>
+        a.fileName < b.fileName ? -1 : a.fileName > b.fileName ? 1 : 0
+    );
+
+    catalogCache = files;
+    return files;
 }
 
-// Map devicePioTarget to (variant, board) from my_pinout.json
-// Solves the problem that devicePioTarget doesn't always match board name
-export function mapDeviceToPinout(
+// Run the 4-strategy cascade over a single variants map. Returns the matched
+// BoardVariant directly so callers do not need to know where variants came from.
+function matchVariantInVariants(
     devicePioTarget: string,
-    pinoutData: PinoutData
-): { variant: string; board: string } | null {
-    const { variants } = pinoutData;
-
+    variants: PinoutVariant
+): { variant: BoardVariant; board: string } | null {
     // Strategy 1: Direct match (new structure v2.0)
     if (variants[devicePioTarget]) {
-        return { variant: devicePioTarget, board: devicePioTarget };
+        return { variant: variants[devicePioTarget], board: devicePioTarget };
     }
 
     // Strategy 2: Case-insensitive match
-    for (const [boardName] of Object.entries(variants)) {
+    for (const [boardName, v] of Object.entries(variants)) {
         if (boardName.toLowerCase() === devicePioTarget.toLowerCase()) {
-            return { variant: boardName, board: boardName };
+            return { variant: v, board: boardName };
         }
     }
 
-    // Strategy 3: Partial match (for "t-deck" → "tdeck")
-    for (const [boardName] of Object.entries(variants)) {
+    // Strategy 3: Partial match (for "t-deck" -> "tdeck")
+    for (const [boardName, v] of Object.entries(variants)) {
         const normalizedBoard = boardName.toLowerCase().replace(/[-_]/g, '');
         const normalizedDevice = devicePioTarget.toLowerCase().replace(/[-_]/g, '');
 
@@ -57,19 +77,36 @@ export function mapDeviceToPinout(
             normalizedBoard.includes(normalizedDevice) ||
             normalizedDevice.includes(normalizedBoard)
         ) {
-            return { variant: boardName, board: boardName };
+            return { variant: v, board: boardName };
         }
     }
 
     // Strategy 4: Manual mapping for special cases
-    const manualMapping: Record<string, { variant: string; board: string }> = {
+    const manualMapping: Record<string, { board: string }> = {
         // Add as needed
     };
 
-    if (manualMapping[devicePioTarget]) {
-        return manualMapping[devicePioTarget];
+    const manual = manualMapping[devicePioTarget];
+    if (manual && variants[manual.board]) {
+        return { variant: variants[manual.board], board: manual.board };
     }
 
+    return null;
+}
+
+// File-major search: iterate catalog files (already alphabetically sorted by
+// loadPinoutData) and run the full strategy cascade against each file's
+// variants independently. First non-null match wins.
+// WARNING: a naive "merge all variants first-wins by board key" is NOT
+// equivalent — see RSR Q-B counterexample (tdeck / t-deck).
+export function mapDeviceToPinout(
+    devicePioTarget: string,
+    catalog: PinoutCatalogFile[]
+): { variant: BoardVariant; board: string } | null {
+    for (const file of catalog) {
+        const match = matchVariantInVariants(devicePioTarget, file.data.variants);
+        if (match) return match;
+    }
     return null;
 }
 

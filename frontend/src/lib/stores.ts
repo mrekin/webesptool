@@ -16,7 +16,7 @@ import type {
     DeviceDisplayInfo,
     SelectionState,
     Device,
-    PinoutData,
+    PinoutCatalogFile,
     TerminalMode
 } from './types.js';
 import { InterfaceMode } from './types.js';
@@ -1010,7 +1010,7 @@ async function initializeFromDeviceParam(devicePioTarget: string) {
 import { loadPinoutData, mapDeviceToPinout } from '$lib/utils/pinoutUtils.js';
 
 interface PinoutState {
-    data: PinoutData | null;
+    data: PinoutCatalogFile[] | null;
     isLoading: boolean;
     error: string | null;
 }

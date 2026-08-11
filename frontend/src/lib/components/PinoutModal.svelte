@@ -19,13 +19,13 @@
 
     // Get board variant data
     $: boardVariant = (() => {
-        const pinoutData = $pinoutStore.data;
-        if (!pinoutData || !devicePioTarget) return null;
+        const catalog = $pinoutStore.data;
+        if (!catalog || !devicePioTarget) return null;
 
-        const mapping = mapDeviceToPinout(devicePioTarget, pinoutData);
+        const mapping = mapDeviceToPinout(devicePioTarget, catalog);
         if (!mapping) return null;
 
-        return pinoutData.variants[mapping.board] || null;
+        return mapping.variant;
     })();
 
     // Extract and filter pins
