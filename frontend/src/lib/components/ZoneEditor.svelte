@@ -851,6 +851,7 @@
     // one group's visibility, a branch toggles every group under it (tri-state).
     interface GroupTreeNode {
         segment: string;
+        sep: string;
         children: Map<string, GroupTreeNode>;
         group: GroupFile | null;
     }
@@ -866,21 +867,67 @@
     function buildGroupTree(files: GroupFile[]): Map<string, GroupTreeNode> {
         const root = new Map<string, GroupTreeNode>();
         for (const gf of files) {
-            const segs = gf.name.split(/[-_]+/).filter(Boolean);
-            if (segs.length === 0) segs.push(gf.name || '?');
+            // Split keeping separators so collapsed labels can reconstruct the
+            // original name (nng-obl, not nng/obl). parts alternate seg/sep.
+            const parts = gf.name.split(/([-_]+)/);
+            const segs: string[] = [];
+            const seps: string[] = [];
+            for (let k = 0; 2 * k < parts.length; k++) {
+                const seg = parts[2 * k];
+                if (seg === '') continue; // skip empty segments (leading/double sep)
+                const sep = k === 0 ? '' : parts[2 * k - 1] || '-';
+                segs.push(seg);
+                seps.push(sep);
+            }
+            if (segs.length === 0) {
+                segs.push(gf.name || '?');
+                seps.push('');
+            }
             let level = root;
             for (let i = 0; i < segs.length; i++) {
                 const seg = segs[i];
+                const sep = seps[i];
                 let node = level.get(seg);
                 if (!node) {
-                    node = { segment: seg, children: new Map(), group: null };
+                    node = { segment: seg, sep, children: new Map(), group: null };
                     level.set(seg, node);
+                } else if (!node.sep) {
+                    node.sep = sep;
                 }
                 if (i === segs.length - 1) node.group = gf;
                 level = node.children;
             }
         }
-        return root;
+        return collapseSingleChildren(root);
+    }
+
+    // Merge pure intermediate nodes that have exactly one child into that child,
+    // so single-child chains display as one node with the joined original name
+    // (nng > obl > [1,2] -> nng-obl > [1,2]). Bottom-up, repeated so chains of
+    // any length collapse fully.
+    function collapseSingleChildren(
+        nodes: Map<string, GroupTreeNode>
+    ): Map<string, GroupTreeNode> {
+        for (const node of nodes.values()) {
+            if (node.children.size > 0) {
+                node.children = collapseSingleChildren(node.children);
+            }
+        }
+        const result = new Map<string, GroupTreeNode>();
+        for (const node of nodes.values()) {
+            let cur = node;
+            while (cur.group === null && cur.children.size === 1) {
+                const onlyChild = [...cur.children.values()][0];
+                cur = {
+                    segment: `${cur.segment}${onlyChild.sep}${onlyChild.segment}`,
+                    sep: cur.sep,
+                    children: onlyChild.children,
+                    group: onlyChild.group
+                };
+            }
+            result.set(cur.segment, cur);
+        }
+        return result;
     }
     function collectGroupUrls(node: GroupTreeNode): string[] {
         const urls: string[] = [];
