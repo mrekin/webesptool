@@ -808,11 +808,23 @@
             });
             const fc = {
                 type: 'FeatureCollection',
-                features: sortedFeatures.map((f) => ({
-                    type: 'Feature' as const,
-                    geometry: f.geometry,
-                    properties: { name: gf.name }
-                }))
+                features: sortedFeatures.map((f) => {
+                    // Preserve the feature's own properties; resolve a display
+                    // name from the zone itself (name -> name_en -> cosmetic
+                    // group label -> group file name) so the tooltip shows the
+                    // zone name, matching base boundaries behaviour.
+                    const fp = f.properties ?? {};
+                    const name =
+                        (typeof fp.name === 'string' && fp.name) ||
+                        (typeof fp.name_en === 'string' && fp.name_en) ||
+                        (typeof f.group === 'string' && f.group) ||
+                        gf.name;
+                    return {
+                        type: 'Feature' as const,
+                        geometry: f.geometry,
+                        properties: { ...fp, name }
+                    };
+                })
             };
             const layer = L.geoJSON(fc, {
                 style: () => PUBLISHED_STYLE,
