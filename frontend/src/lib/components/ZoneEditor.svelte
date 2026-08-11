@@ -123,6 +123,12 @@
     let trail: [number, number][] = []; // [lat, lng] for Leaflet rendering
     let paintTargetId: string | null = null;
     let paintPreviewLayer: any = null;
+    // Brush coverage cursor (display-only): a geodesic circle whose radius is
+    // brushRadiusM (meters), following the mouse so the user sees exactly what
+    // area the brush will cover. The pixel-weighted paint preview can't express
+    // a meter radius accurately at high zoom, so this circle is the source of
+    // truth for coverage.
+    let brushCursor: any = null;
     // Right-button pan runtime.
     let rmbDragging = false;
     let rmbLast = { x: 0, y: 0 };
@@ -355,6 +361,32 @@
         const r = brushRadiusM / Math.max(mpp, 1e-6);
         return Math.max(2, Math.min(220, r * 2));
     }
+    function brushCursorColor(): string {
+        // Red in erase mode so the cursor signals removal; orange otherwise,
+        // matching the paint preview.
+        return eraseOn ? '#ef4444' : '#fb923c';
+    }
+    function updateBrushCursor(latlng: { lat: number; lng: number }): void {
+        if (!map || !L) return;
+        if (!brushCursor) {
+            brushCursor = L.circle(latlng, {
+                radius: brushRadiusM,
+                color: brushCursorColor(),
+                weight: 1.5,
+                fillColor: brushCursorColor(),
+                fillOpacity: 0.1,
+                interactive: false
+            }).addTo(map);
+        } else {
+            brushCursor.setLatLng(latlng);
+        }
+    }
+    function removeBrushCursor(): void {
+        if (brushCursor) {
+            map?.removeLayer(brushCursor);
+            brushCursor = null;
+        }
+    }
 
     function metersBetween(a: [number, number], b: [number, number]): number {
         const lat0 = ((a[0] + b[0]) / 2) * (Math.PI / 180);
@@ -491,7 +523,11 @@
             map.panBy([dx, dy], { animate: false });
             return;
         }
-        if (painting) addPaintPoint(map.mouseEventToLatLng(e));
+        if (mode === 'brush') {
+            const ll = map.mouseEventToLatLng(e);
+            updateBrushCursor(ll);
+            if (painting) addPaintPoint(ll);
+        }
     }
 
     function onDocMouseUp(e: MouseEvent): void {
@@ -510,6 +546,7 @@
         painting = false;
         rmbDragging = false;
         removePreview();
+        removeBrushCursor();
         trail = [];
         paintTargetId = null;
     }
@@ -644,6 +681,17 @@
         coordPreviewLayer.eachLayer((l: any) => {
             l.options.pmIgnore = true;
         });
+    });
+
+    // Keep the brush cursor's radius/color in sync with the controls without
+    // waiting for the next mouse move (e.g. typing a new radius).
+    $effect(() => {
+        brushRadiusM;
+        eraseOn;
+        if (!brushCursor) return;
+        brushCursor.setRadius(brushRadiusM);
+        const c = brushCursorColor();
+        brushCursor.setStyle({ color: c, fillColor: c });
     });
 
     // Sync displayed base boundary layers with the shownBoundaries toggle.
