@@ -43,6 +43,7 @@
     } from '$lib/utils/zoneExport';
     import { OSM_TILE_ATTRIBUTION, OSM_TILE_URL, ZONE_LEVEL_DEFAULT } from '$lib/config/meshcoreZoneConfig';
     import { fillHint } from '$lib/actions/fillHint.js';
+    import JSZip from 'jszip';
     import ZoneMeshcoreSettingsModal from './ZoneMeshcoreSettingsModal.svelte';
     import type {
         EditorPolygon,
@@ -1108,36 +1109,107 @@
     // --- user file upload (base boundary or group, auto-detected) ---
 
     function stripGeoExt(name: string): string {
-        return name.replace(/\.geojson$/i, '');
+        // Strip archive + geojson extensions, including chained ones like
+        // "moscow.geojson.gz" -> "moscow.geojson" -> "moscow".
+        let out = name;
+        for (let i = 0; i < 2; i++) {
+            const next = out.replace(/\.(geojson|json|gz|zip)$/i, '');
+            if (next === out) break;
+            out = next;
+        }
+        return out;
     }
 
-    // A file is a "group" when it carries a meshcore preset with a regions value
-    // (in metadata.meshcore/regions or on a feature); otherwise it is a plain
-    // reference boundary. detectGroupMeshcore returns the full preset (regions +
-    // optional radio/pathHashMode) or null.
+    // Parse text into a FeatureCollection, or null on failure / wrong shape.
+    function parseFeatureCollection(text: string): GeoJSON.FeatureCollection | null {
+        let fc: unknown;
+        try {
+            fc = JSON.parse(text);
+        } catch {
+            return null;
+        }
+        const maybe = fc as GeoJSON.FeatureCollection;
+        if (!maybe || maybe.type !== 'FeatureCollection' || !Array.isArray(maybe.features)) {
+            return null;
+        }
+        return maybe;
+    }
 
+    // Validate + dispatch a parsed FeatureCollection through the existing
+    // auto-detect path (meshcore group vs plain reference boundary).
+    function dispatchFeatureCollection(fc: GeoJSON.FeatureCollection, filename: string): void {
+        const meshcore = detectGroupMeshcore(fc);
+        if (meshcore) loadFileAsGroup(fc, filename, meshcore);
+        else loadFileAsBoundary(fc, filename);
+    }
+
+    // Decompress a gzip stream to text. DecompressionStream is a native browser
+    // API available in all supported (Chromium-based) targets of this app.
+    async function gunzipToText(file: File): Promise<string> {
+        const ds = new DecompressionStream('gzip');
+        const stream = file.stream().pipeThrough(ds);
+        const buf = await new Response(stream).arrayBuffer();
+        return new TextDecoder().decode(buf);
+    }
 
     async function onFilePicked(e: Event): Promise<void> {
         const input = e.currentTarget as HTMLInputElement;
         const file = input.files?.[0];
         input.value = '';
         if (!file) return;
-        let fc: GeoJSON.FeatureCollection;
+        const lower = file.name.toLowerCase();
+
         try {
-            fc = JSON.parse(await file.text()) as GeoJSON.FeatureCollection;
+            if (lower.endsWith('.zip')) {
+                const zip = await JSZip.loadAsync(file);
+                const entries: Array<[string, JSZip.JSZipObject]> = [];
+                zip.forEach((relativePath, entry) => {
+                    if (!entry.dir && /\.(geojson|json)$/i.test(relativePath)) {
+                        entries.push([relativePath, entry]);
+                    }
+                });
+                if (entries.length === 0) {
+                    showNotice($locales('meshcoreconfig.zones.load_file_invalid'), 'warn');
+                    return;
+                }
+                for (const [relativePath, entry] of entries) {
+                    const entryName = relativePath.split('/').pop() || relativePath;
+                    const text = await entry.async('text');
+                    const fc = parseFeatureCollection(text);
+                    if (!fc) {
+                        console.warn('[meshcore-zone]', 'zip entry parse failed', entryName);
+                        continue;
+                    }
+                    dispatchFeatureCollection(fc, entryName);
+                }
+            } else if (lower.endsWith('.gz')) {
+                const text = await gunzipToText(file);
+                const fc = parseFeatureCollection(text);
+                if (!fc) {
+                    console.warn('[meshcore-zone]', 'gz file parse failed');
+                    showNotice($locales('meshcoreconfig.zones.load_file_invalid'), 'warn');
+                    return;
+                }
+                dispatchFeatureCollection(fc, file.name.replace(/\.gz$/i, ''));
+            } else {
+                const fc = parseFeatureCollection(await file.text());
+                if (!fc) {
+                    console.warn('[meshcore-zone]', 'user file parse failed');
+                    showNotice($locales('meshcoreconfig.zones.load_file_invalid'), 'warn');
+                    return;
+                }
+                dispatchFeatureCollection(fc, file.name);
+            }
         } catch (err) {
-            console.warn('[meshcore-zone]', 'user file parse failed', err);
+            console.warn('[meshcore-zone]', 'user file load failed', err);
             showNotice($locales('meshcoreconfig.zones.load_file_invalid'), 'warn');
-            return;
         }
-        if (!fc || fc.type !== 'FeatureCollection' || !Array.isArray(fc.features)) {
-            showNotice($locales('meshcoreconfig.zones.load_file_invalid'), 'warn');
-            return;
-        }
-        const meshcore = detectGroupMeshcore(fc);
-        if (meshcore) loadFileAsGroup(fc, file.name, meshcore);
-        else loadFileAsBoundary(fc, file.name);
     }
+
+    // A file is a "group" when it carries a meshcore preset with a regions value
+    // (in metadata.meshcore/regions or on a feature); otherwise it is a plain
+    // reference boundary. detectGroupMeshcore returns the full preset (regions +
+    // optional radio/pathHashMode) or null.
 
     function loadFileAsBoundary(fc: GeoJSON.FeatureCollection, filename: string): void {
         const key = `user://${filename}/${genId('u')}`;
@@ -1454,7 +1526,7 @@
                 <div class="flex w-72 shrink-0 flex-col gap-3 overflow-y-auto pr-1">
                     <!-- Load a user GeoJSON (auto: group if it has regions, else boundary) -->
                     <div>
-                        <input bind:this={fileInput} type="file" accept=".geojson,application/geo+json,application/json" class="hidden" onchange={onFilePicked} />
+                        <input bind:this={fileInput} type="file" accept=".geojson,application/geo+json,application/json,.zip,application/zip,.gz,application/gzip" class="hidden" onchange={onFilePicked} />
                         <button type="button" onclick={() => fileInput?.click()} title={$locales('meshcoreconfig.zones.load_file_hint')} class="w-full rounded bg-gray-700 px-2 py-1 text-xs text-orange-200 hover:bg-gray-600">
                             📁 {$locales('meshcoreconfig.zones.load_file')}
                         </button>
