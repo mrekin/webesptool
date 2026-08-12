@@ -150,6 +150,9 @@
     let showTerminalModal = false; // Terminal modal state
     let showMeshtasticModal = false; // Meshtastic device modal state
     let showMeshcoreConfigModal = false; // Meshcore config modal state
+    // When true, the next MeshcoreConfigModal open auto-opens the coordinate map
+    // picker. Set by the 📍 shortcut inside the merged Configure button.
+    let meshcoreAutoOpenPicker = false;
 
     // Reference to file input to replace document.getElementById
     let fileInput: HTMLInputElement;
@@ -2490,23 +2493,44 @@
                 {/if}
 
                 {#if !isAutoSelectMode || getRepositoryType($availableSources, $selectionState.repository) === RepositoryType.MESHCORE}
-                    <!-- Meshcore config button.
-                         After a successful flash of a meshcore room_server/repeater
-                         build, it is promoted to a highlighted "Configure" CTA
-                         (grows in parallel with the flash button shrinking). -->
-                    <button
-                        on:click={openMeshcoreConfigModal}
-                        class="flex items-center justify-center gap-1.5 rounded-md font-medium transition-all duration-[3000ms] ease-in-out {configSuggested
-                            ? 'animate-pulse-slow bg-orange-600 px-4 py-2 text-sm text-white shadow-orange ring-2 ring-orange-300'
-                            : 'bg-gray-700 px-3 py-2 text-orange-300 hover:bg-gray-600'}"
-                        title={$locales('downloadbuttons.meshcore_config_description')}
-                        aria-label={$locales('downloadbuttons.meshcore_config_description')}
+                    <!-- Merged "Configure" button: one visual button, two actual
+                         buttons. No entrance animation — on a successful flash the
+                         CTA snaps to its final orange state; only the 📍 shortcut
+                         blinks (animate-blink-attention, twice) for attention.
+                         Left (🗼) opens the configurator; right (📍, post-flash only)
+                         opens it with the coordinate map picker auto-opened. -->
+                    <div
+                        class="flex items-stretch overflow-hidden rounded-md font-medium {configSuggested
+                            ? 'bg-orange-600 text-sm text-white shadow-orange ring-2 ring-orange-300'
+                            : 'bg-gray-700 text-orange-300'}"
                     >
+                        <button
+                            on:click={openMeshcoreConfigModal}
+                            class="flex items-center justify-center gap-1.5 py-2 transition-colors {configSuggested
+                                ? 'px-4 hover:bg-orange-700/60'
+                                : 'px-3 hover:bg-gray-600'}"
+                            title={$locales('downloadbuttons.meshcore_config_description')}
+                            aria-label={$locales('downloadbuttons.meshcore_config_description')}
+                        >
+                            {#if configSuggested}
+                                <span>{$locales('customfirmware.configure')}</span>
+                            {/if}
+                            🗼
+                        </button>
                         {#if configSuggested}
-                            <span>{$locales('customfirmware.configure')}</span>
+                            <button
+                                on:click={() => {
+                                    meshcoreAutoOpenPicker = true;
+                                    openMeshcoreConfigModal();
+                                }}
+                                class="flex animate-blink-attention items-center justify-center border-l border-orange-300/50 px-3 py-2 transition-colors hover:bg-orange-700/60"
+                                title={$locales('meshcoreconfig.pick_on_map')}
+                                aria-label={$locales('meshcoreconfig.pick_on_map')}
+                            >
+                                📍
+                            </button>
                         {/if}
-                        🗼
-                    </button>
+                    </div>
                 {/if}
 
                 <!-- Meshcore configurator button -->
@@ -2627,7 +2651,11 @@
         <svelte:component
             this={MeshcoreConfigModal}
             isOpen={showMeshcoreConfigModal}
-            onClose={() => (showMeshcoreConfigModal = false)}
+            autoOpenPicker={meshcoreAutoOpenPicker}
+            onClose={() => {
+                showMeshcoreConfigModal = false;
+                meshcoreAutoOpenPicker = false;
+            }}
         />
     {/if}
 {/if}

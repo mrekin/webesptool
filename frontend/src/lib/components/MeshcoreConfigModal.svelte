@@ -42,7 +42,7 @@
         PickerResult
     } from '$lib/types.js';
 
-    let { isOpen = false, onClose = () => {} } = $props();
+    let { isOpen = false, onClose = () => {}, autoOpenPicker = false } = $props();
 
     // Unified command model is static, built once at init: config get<->set rows
     // and one-shot action rows share the same shape and group taxonomy.
@@ -299,6 +299,13 @@
             }
         });
         isSupported = cliManager.isSupported();
+        // Auto-open the coordinate map picker when the modal is opened from the
+        // CustomFirmwareModal 📍 shortcut. The confirmed point is then applied to
+        // the device config rows through the existing picker onconfirm handler.
+        if (autoOpenPicker) {
+            pickerInitial = { detectCoords: true, detectRegions: true };
+            showMapPicker = true;
+        }
     });
 
     onDestroy(() => {
