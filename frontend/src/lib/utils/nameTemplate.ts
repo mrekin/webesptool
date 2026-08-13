@@ -6,16 +6,20 @@
 // Template notation (single string):
 //   - `[a|b|c]`  → enum token: the user picks one of the `|`-separated options.
 //   - `[NAME]`   → free token (no `|`): the user types an arbitrary value.
+//   - `[?...]`   → optional marker: a leading `?` right after `[` makes the
+//                  placeholder optional, so an empty value does NOT block Apply.
+//                  Works for both kinds: `[?ID]` (free), `[?A|B|C]` (enum).
 //   - everything else → literal text, copied verbatim.
 //
 // Examples:
 //   "[NN|DZ|BOR|NNO]-[AVT|KAN|LEN]-[ID]"  → enum, '-', enum, '-', free
 //   "[PREFIX]433-[LOC]-[ID]"              → free, '433-', free, '-', free
+//   "[PREFIX]-[?ID]"                      → free, '-', optional free
 
 export type NameTemplateToken =
     | { type: 'literal'; value: string }
-    | { type: 'enum'; options: string[] }
-    | { type: 'free'; name: string };
+    | { type: 'enum'; options: string[]; optional?: boolean }
+    | { type: 'free'; name: string; optional?: boolean };
 
 // Matches a `[...]` block with no nested brackets and no `[`/`]` inside.
 const TOKEN_RE = /\[([^\[\]]+)\]/g;
@@ -27,11 +31,20 @@ export function parseNameTemplate(template: string): NameTemplateToken[] {
     const tokens: NameTemplateToken[] = [];
     let last = 0;
     for (const match of template.matchAll(TOKEN_RE)) {
-        const inner = match[1];
+        const raw = match[1];
         const start = match.index ?? 0;
         if (start > last) {
             const lit = template.slice(last, start);
             if (lit) tokens.push({ type: 'literal', value: lit });
+        }
+        // A leading `?` marks the placeholder optional (an empty value will not
+        // block Apply in the composer): `[?ID]`, `[?A|B|C]`. Strip it before the
+        // enum/free split so it never leaks into option or field names.
+        let optional = false;
+        let inner = raw;
+        if (inner.startsWith('?')) {
+            optional = true;
+            inner = inner.slice(1);
         }
         if (inner.includes('|')) {
             // Enum token: keep `|`-separated options INCLUDING an explicit empty
@@ -50,11 +63,11 @@ export function parseNameTemplate(template: string): NameTemplateToken[] {
                 if (b === '') return -1;
                 return a.localeCompare(b);
             });
-            if (options.length > 0) tokens.push({ type: 'enum', options });
+            if (options.length > 0) tokens.push({ type: 'enum', options, optional });
             else tokens.push({ type: 'literal', value: match[0] });
         } else {
             const name = inner.trim();
-            if (name) tokens.push({ type: 'free', name });
+            if (name) tokens.push({ type: 'free', name, optional });
             else tokens.push({ type: 'literal', value: match[0] });
         }
         last = start + match[0].length;

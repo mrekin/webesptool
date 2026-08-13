@@ -368,7 +368,7 @@
       "result_name_template": "Szablon nazwy",
       "result_doc": "Dokument ustawień",
       "name_template": "Szablon nazwy (set name)",
-      "name_template_hint": "[a|b|c] = wybierz jedno, [NAME] = wpisz, reszta to literał. Stosowane w konfiguratorze jako nazwa węzła.",
+      "name_template_hint": "[a|b|c] = wybierz jedno, [NAME] = wpisz, [?X] = opcjonalnie, reszta to literał. Stosowane w konfiguratorze jako nazwa węzła.",
       "name_template_preview_enum": "Wybierz jedną z wartości",
       "name_template_preview_free": "Wpisz wartość",
       "name_too_long": "Nazwa dłuższa niż 32 znaki",

@@ -155,10 +155,11 @@
         activeNameTemplate !== null && composeName(nameTokens, composerParts).length > 32
     );
 
-    // While a name template is active, every placeholder must be filled before
-    // the queue can be sent: free tokens are always required, enum tokens are
-    // required unless they expose an explicit empty variant (`[A|B|]` -> options
-    // include ''). Free-edit mode (no active template) is never incomplete.
+    // While a name template is active, every REQUIRED placeholder must be filled
+    // before the queue can be sent. A placeholder is required unless it is marked
+    // optional (`[?...]`) or it is an enum exposing an explicit empty variant
+    // (`[A|B|]` -> options include ''). Free-edit mode (no template) is never
+    // incomplete.
     const nameIncomplete = $derived.by(() => {
         if (activeNameTemplate === null) return false;
         let n = 0;
@@ -166,6 +167,9 @@
             if (t.type === 'literal') continue;
             const part = composerParts[n] ?? '';
             n++;
+            // Optional placeholders and empty-variant enums never block Apply.
+            // (n is incremented above so composerParts stays aligned either way.)
+            if (t.optional) continue;
             const allowsEmpty = t.type === 'enum' && t.options.includes('');
             if (!allowsEmpty && part.trim() === '') return true;
         }
@@ -1228,7 +1232,7 @@
                                                                     <input
                                                                         type="text"
                                                                         maxlength="32"
-                                                                        placeholder={tok.name}
+                                                                        placeholder={tok.optional ? `${tok.name}?` : tok.name}
                                                                         use:fillHint
                                                                         class="w-16 rounded border border-gray-600 bg-gray-700 px-1.5 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
                                                                         value={composerParts[pi] ?? ''}

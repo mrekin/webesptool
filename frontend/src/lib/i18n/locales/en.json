@@ -368,7 +368,7 @@
       "result_name_template": "Name template",
       "result_doc": "Settings document",
       "name_template": "Name template (set name)",
-      "name_template_hint": "[a|b|c] = pick one, [NAME] = type, the rest is literal. Applied in the configurator as the node name.",
+      "name_template_hint": "[a|b|c] = pick one, [NAME] = type, [?X] = optional, the rest is literal. Applied in the configurator as the node name.",
       "name_template_preview_enum": "Pick one of these values",
       "name_template_preview_free": "Type a value",
       "name_too_long": "Name is longer than 32 characters",
