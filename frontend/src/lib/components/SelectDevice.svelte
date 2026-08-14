@@ -9,7 +9,8 @@
         availableDevicesForSelection,
         availableVersionsForSelection,
         hasPinoutData,
-        currentSource
+        currentSource,
+        firmwaresLoadedState
     } from '$lib/stores.js';
     import { deviceActions, selectionActions } from '$lib/stores.js';
     import { onMount, onDestroy } from 'svelte';
@@ -506,8 +507,10 @@
             {/if}
         </div>
 
-        <!-- Status Messages -->
-        {#if allDevices.length === 0}
+        <!-- Status Messages (shown only after the catalog request settled:
+             flashing it earlier shrinks the card after load and clips a news
+             row on the main page) -->
+        {#if allDevices.length === 0 && $firmwaresLoadedState}
             <p class="text-sm text-orange-300">
                 {$locales('selectdevice.no_devices_available')}
             </p>

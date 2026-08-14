@@ -73,8 +73,6 @@
     "error_loading": "Błąd ładowania informacji o firmware",
     "latest_tag": "Ostatni tag: ",
     "no_device_info": "Brak dostępnych informacji o urządzeniu",
-    "select_device_view": "Wybierz urządzenie, aby zobaczyć szczegóły",
-    "select_device_instructions": "Wybierz urządzenie i wersję firmware, aby zobaczyć szczegółowe informacje i instrukcje instalacji.",
     "readme_not_found": "Plik Readme.md nie znaleziono w repozytorium wariantu",
     "esp_web_tools": "Instalacja przez ESP Web Tools",
     "esp_web_tools_desc": "Kliknij \"{downloadbuttons.update_device}\", aby użyć instalacji opartej na przeglądarce.",
@@ -659,11 +657,13 @@
   },
   "news": {
     "title": "Wiadomości",
+    "all": "Wszystkie wiadomości",
     "more": "Więcej...",
     "show_less": "Pokaż mniej",
     "latest_title": "Ostatnie wiadomości",
     "archive_title": "Archiwum wiadomości",
     "no_news": "Brak dostępnych wiadomości",
+    "load_error": "Nie udało się załadować wiadomości",
     "expired": "Wygasło"
   },
   "stats": {

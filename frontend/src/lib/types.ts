@@ -635,8 +635,16 @@ export interface NewsResponse {
     news: NewsItem[];
 }
 
-// News pagination configuration (must match backend config.yml: news.max_items_on_main)
-export const NEWS_PAGE_SIZE = 5;
+// Main page news feed state (owned by stores.ts)
+export interface NewsFeedState {
+    items: NewsItem[]; // date desc, pinned excluded (modal-only, user decision 2026-08-14)
+    loading: boolean;
+    failed: boolean; // true if the last request failed; local to the news card
+}
+
+// News modal page size (frontend passes it explicitly; backend default
+// config.yml news.max_items_on_main stays 5)
+export const NEWS_PAGE_SIZE = 7;
 
 // ==================== TERMINAL PARSING TYPES ====================
 

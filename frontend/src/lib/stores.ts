@@ -17,7 +17,8 @@ import type {
     SelectionState,
     Device,
     PinoutCatalogFile,
-    TerminalMode
+    TerminalMode,
+    NewsFeedState
 } from './types.js';
 import { InterfaceMode } from './types.js';
 import { mapCategoryToDeviceType } from './utils/deviceTypeUtils.js';
@@ -104,6 +105,11 @@ export const availableFirmwares = writable<AvailableFirmwares>({
     srcs: []
 });
 
+// True after the first catalog request has settled (success or failure).
+// Unlike loadingState.isLoadingAvailable it also covers the gap between app
+// start and the actual request start, so "no devices" UI does not flash.
+export const firmwaresLoadedState = writable(false);
+
 // Versions data store - manages available versions for selected device
 export const versionsData = writable<VersionsResponse>({
     versions: [],
@@ -114,6 +120,43 @@ export const versionsData = writable<VersionsResponse>({
 
 // Firmware info store - manages firmware information for selected device/version
 export const firmwareInfo = writable<FirmwareInfo | null>(null);
+
+// News feed store - main page headlines state (loading/failed are local to the news card)
+export const newsFeedState = writable<NewsFeedState>({
+    items: [],
+    loading: false,
+    failed: false
+});
+
+// Max number of headlines requested for the main page
+const NEWS_FEED_LIMIT = 10;
+let newsRequestId = 0; // race guard for locale switches
+
+// News actions - loading for the main page news card
+export const newsActions = {
+    async loadNews(lang: string): Promise<void> {
+        const requestId = ++newsRequestId;
+        newsFeedState.set({ items: [], loading: true, failed: false });
+        try {
+            const response = await apiService.getNews(lang, NEWS_FEED_LIMIT);
+            // Ignore the response if a newer request was started meanwhile
+            if (requestId !== newsRequestId) return;
+            // Pinned news are not shown on the main page (user decision,
+            // 2026-08-14): they are available in the full news modal only.
+            // Backend date order is preserved for the rest.
+            newsFeedState.set({
+                items: (response.news || []).filter((item) => !item.is_pinned),
+                loading: false,
+                failed: false
+            });
+        } catch (error) {
+            if (requestId !== newsRequestId) return;
+            console.error('Failed to load news:', error);
+            // Local card error - deliberately not written to loadingState.error
+            newsFeedState.set({ items: [], loading: false, failed: true });
+        }
+    }
+};
 
 // Download history store - keeps track of download attempts (for analytics)
 export const downloadHistory = writable<DownloadEvent[]>([]);
@@ -844,6 +887,7 @@ export const apiActions = {
                 error instanceof Error ? error.message : 'Failed to load available firmwares'
             );
         } finally {
+            firmwaresLoadedState.set(true);
             loadingActions.setLoadingAvailable(false);
         }
     }

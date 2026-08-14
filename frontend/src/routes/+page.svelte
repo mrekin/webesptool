@@ -17,7 +17,13 @@
     let MeshcoreConfigModal: any = null;
     let StatsModal: any = null;
     let NewsFeed: any = null;
-    import { loadingState, availableFirmwares, uiState, deviceSelection } from '$lib/stores.js';
+    import {
+        loadingState,
+        availableFirmwares,
+        uiState,
+        deviceSelection,
+        isDeviceSelected
+    } from '$lib/stores.js';
     import { onMount } from 'svelte';
     import { _ as locales, locale } from 'svelte-i18n';
     import { InterfaceMode } from '$lib/types.js';
@@ -356,20 +362,24 @@
                 </div>
 
                 <!-- Right Column: Information and Notes -->
-                <div class="flex-1 space-y-8">
-                    <!-- Firmware Information -->
-                    <div class="rounded-lg border border-orange-600 bg-gray-800 p-6">
-                        <h2 class="mb-6 flex items-center text-xl font-bold text-orange-200">
-                            <span class="mr-3">ℹ️</span>
-                            {$locales('page.firmware_information')}
-                        </h2>
-                        {#if FirmwareInfo}
-                            <svelte:component this={FirmwareInfo} />
-                        {:else}
-                            <!-- Loading placeholder -->
-                            <div class="h-64 animate-pulse rounded bg-gray-700"></div>
-                        {/if}
-                    </div>
+                <div class="flex flex-1 flex-col gap-8">
+                    <!-- Firmware Information (mounted only after a device is selected) -->
+                    {#if $isDeviceSelected}
+                        <div
+                            class="animate-fade-in rounded-lg border border-orange-600 bg-gray-800 p-6"
+                        >
+                            <h2 class="mb-6 flex items-center text-xl font-bold text-orange-200">
+                                <span class="mr-3">ℹ️</span>
+                                {$locales('page.firmware_information')}
+                            </h2>
+                            {#if FirmwareInfo}
+                                <svelte:component this={FirmwareInfo} />
+                            {:else}
+                                <!-- Loading placeholder -->
+                                <div class="h-64 animate-pulse rounded bg-gray-700"></div>
+                            {/if}
+                        </div>
+                    {/if}
 
                     <!-- News Feed -->
                     {#if NewsFeed}
@@ -466,6 +476,11 @@
             opacity: 1;
             transform: translateY(0);
         }
+    }
+
+    /* Fade-in for the firmware info card appearing after device selection */
+    .animate-fade-in {
+        animation: fadeIn 0.3s ease-out;
     }
 
     /* Custom scrollbar styling */

@@ -17,6 +17,8 @@
     $: deviceInfo = $deviceDisplayInfo;
     $: displayInfo = $firmwareDisplayInfo;
     $: error = $loadingState.error;
+    $: isLoadingVersions = $loadingState.isLoadingVersions;
+    $: isLoadingInfo = $loadingState.isLoadingInfo;
 
     // Toggle device info section
     function toggleDeviceInfo() {
@@ -98,9 +100,16 @@
                             <span class="font-medium text-orange-300"
                                 >{$locales('common.available_versions')}</span
                             >
-                            <span class="text-orange-100"
-                                >{deviceInfo.availableVersions?.length || 0} versions</span
-                            >
+                            {#if isLoadingVersions && !(deviceInfo?.availableVersions?.length)}
+                                <!-- Skeleton while versions are loading -->
+                                <span
+                                    class="inline-block h-4 w-12 animate-pulse rounded bg-gray-700"
+                                ></span>
+                            {:else}
+                                <span class="text-orange-100"
+                                    >{deviceInfo.availableVersions?.length || 0} versions</span
+                                >
+                            {/if}
                         </div>
                     </div>
                 </div>
@@ -139,13 +148,16 @@
                                         source={deviceInfo.deviceInfo.markdownInfo}
                                         wrapperClass="prose prose-invert max-w-none"
                                     />
-                                {:else if deviceInfo}
-                                    <div class="py-8 text-center text-sm text-orange-300">
-                                        {$locales('firmwareinfo.no_device_info')}
+                                {:else if isLoadingInfo && !deviceInfo?.deviceInfo}
+                                    <!-- Skeleton while device info is loading -->
+                                    <div class="py-8 text-center">
+                                        <span
+                                            class="inline-block h-4 w-12 animate-pulse rounded bg-gray-700"
+                                        ></span>
                                     </div>
                                 {:else}
                                     <div class="py-8 text-center text-sm text-orange-300">
-                                        {$locales('firmwareinfo.select_device_view')}
+                                        {$locales('firmwareinfo.no_device_info')}
                                     </div>
                                 {/if}
                             </div>
@@ -281,13 +293,6 @@
             Error Loading {$locales('firmwareinfo.title')}
         </h2>
         <p class="text-sm text-red-300">{error}</p>
-    </div>
-{:else}
-    <div class="rounded-lg border border-orange-600 bg-gray-800 p-6">
-        <h2 class="mb-4 text-xl font-bold text-orange-200">{$locales('firmwareinfo.title')}</h2>
-        <p class="text-sm text-orange-300">
-            {$locales('firmwareinfo.select_device_instructions')}
-        </p>
     </div>
 {/if}
 

@@ -1,59 +1,32 @@
 <script lang="ts">
-    import { _ as locales } from 'svelte-i18n';
-    import { locale } from 'svelte-i18n';
-    import { onMount } from 'svelte';
-    import { apiService } from '$lib/api.js';
-    import type { NewsItem } from '$lib/types.js';
+    import { _ as locales, locale } from 'svelte-i18n';
+    import { newsFeedState, newsActions } from '$lib/stores.js';
+    import { setCookie } from '$lib/utils/cookies.js';
     import NewsModal from './NewsModal.svelte';
-    import { getCookie, setCookie } from '$lib/utils/cookies.js';
 
-    let latestNews: NewsItem | null = null;
-    let loading = false;
-    let showModal = false;
+    let showModal = $state(false);
+    // News id whose headline was clicked (highlighted in the modal); null if
+    // the modal was opened via the "All news" button
+    let openedNewsId: number | null = $state(null);
 
     const COOKIE_NAME = 'last_read_news_id';
 
-    async function loadLatestNews() {
-        if (loading) return;
-        loading = true;
-        try {
-            const currentLocale = $locale;
-            if (!currentLocale) {
-                return;
-            }
-            const response = await apiService.getNews(currentLocale, 10);
-            const allNews = response.news || [];
-
-            // Get the latest news by start_date (not pinned)
-            if (allNews.length > 0) {
-                // Sort by start_date descending and get the first one
-                const sortedByDate = [...allNews].sort(
-                    (a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime()
-                );
-                latestNews = sortedByDate[0] || null;
-            } else {
-                latestNews = null;
-            }
-        } catch (e) {
-            console.error('Failed to load latest news:', e);
-        } finally {
-            loading = false;
-        }
-    }
-
-    function markAsRead() {
-        if (latestNews) {
-            setCookie(COOKIE_NAME, String(latestNews.id), 365);
-        }
-    }
-
-    function handleOpenModal() {
+    function handleOpenModal(itemId: number | null = null) {
+        openedNewsId = itemId;
         showModal = true;
         markAsRead();
     }
 
     function handleCloseModal() {
         showModal = false;
+    }
+
+    // Mark all currently listed news as read: cookie holds the max id
+    function markAsRead() {
+        const ids = $newsFeedState.items.map((item) => item.id);
+        if (ids.length > 0) {
+            setCookie(COOKIE_NAME, String(Math.max(...ids)), 365);
+        }
     }
 
     // Format date as YYYY.MM.DD
@@ -76,45 +49,72 @@
             .trim();
     }
 
-    onMount(() => {
-        loadLatestNews();
-    });
-
-    // Re-render when locale changes
-    $: if ($locale) {
-        loadLatestNews();
+    // Cap the headline for the compact row view
+    function capTitle(text: string): string {
+        return text.length > 60 ? text.slice(0, 60).trim() + '…' : text;
     }
+
+    // Load news on mount and whenever the locale changes
+    $effect(() => {
+        if ($locale) {
+            newsActions.loadNews($locale);
+        }
+    });
 </script>
 
-{#if loading}
-    <!-- Loading state -->
-    <div class="animate-pulse rounded-lg border border-orange-600 bg-gray-800 p-3">
-        <div class="h-4 w-3/4 rounded bg-gray-700"></div>
+<!-- md+: basis-0 (absolute) so the card never grows the page - it fills the
+     column leftover; headlines that do not fit are clipped (no inner scroll,
+     full list is available via the modal). Below md the card is content-sized
+     (all headlines visible). -->
+<div
+    class="flex min-h-[10.5rem] flex-col rounded-lg border border-orange-600 bg-gray-800 p-6 md:grow md:basis-0"
+>
+    <div class="mb-6 flex items-center justify-between">
+        <h2 class="flex items-center text-xl font-bold text-orange-200">
+            <span class="mr-3">📰</span>
+            {$locales('news.title')}
+        </h2>
+        <button
+            onclick={handleOpenModal}
+            class="text-sm text-orange-400 hover:text-orange-300 hover:underline"
+        >
+            {$locales('news.all')}
+        </button>
     </div>
-{:else if latestNews}
-    <!-- News block - single line -->
-    <div
-        onclick={handleOpenModal}
-        class="hover:bg-gray-750 cursor-pointer rounded-lg border border-orange-600 bg-gray-800 p-3 transition-colors"
-        role="button"
-        tabindex="0"
-        onkeydown={(e) => e.key === 'Enter' && handleOpenModal()}
-    >
-        <div class="flex w-full items-center justify-between">
-            <span class="text-gray-200">
-                📰 <span class="text-xl font-bold text-orange-200">{$locales('news.title')}:</span>
-            </span>
-            <span class="text-sm text-gray-200">{stripMarkdown(latestNews.title_markdown)}</span>
-            <span class="text-sm text-gray-200">{formatDateToYMD(latestNews.start_date)}</span>
+
+    {#if $newsFeedState.loading}
+        <!-- Loading skeletons (one per headline row) -->
+        <div class="flex-1 space-y-3">
+            {#each [0, 1, 2] as i (i)}
+                <div class="h-6 animate-pulse rounded bg-gray-700"></div>
+            {/each}
         </div>
-    </div>
-{/if}
+    {:else if $newsFeedState.failed}
+        <!-- Local card error - not a global application error -->
+        <div class="flex-1 text-sm text-gray-400">{$locales('news.load_error')}</div>
+    {:else if $newsFeedState.items.length === 0}
+        <!-- No news for the current language -->
+        <div class="flex-1 text-sm text-gray-400">{$locales('news.no_news')}</div>
+    {:else}
+        <!-- Headlines in date order (pinned excluded - modal only); non-fitting
+             rows are clipped, the full list is available via the modal -->
+        <div class="min-h-0 flex-1 divide-y divide-gray-700 overflow-hidden">
+            {#each $newsFeedState.items as item (item.id)}
+                <button
+                    onclick={() => handleOpenModal(item.id)}
+                    class="flex w-full items-center gap-2 py-2 text-left hover:bg-gray-900"
+                >
+                    <span class="min-w-0 flex-1 truncate text-sm text-gray-200">
+                        {capTitle(stripMarkdown(item.title_markdown))}
+                    </span>
+                    <span class="shrink-0 whitespace-nowrap text-xs text-gray-400">
+                        {formatDateToYMD(item.start_date)}
+                    </span>
+                </button>
+            {/each}
+        </div>
+    {/if}
+</div>
 
-<!-- Modal -->
-<svelte:component this={NewsModal} isOpen={showModal} onClose={handleCloseModal} />
-
-<style>
-    .hover\:bg-gray-750:hover {
-        background-color: rgb(55, 65, 81);
-    }
-</style>
+<!-- Full news viewer -->
+<NewsModal isOpen={showModal} onClose={handleCloseModal} focusItemId={openedNewsId} />

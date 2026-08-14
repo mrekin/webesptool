@@ -1,7 +1,7 @@
 <script lang="ts">
     import { _ as locales } from 'svelte-i18n';
     import { locale } from 'svelte-i18n';
-    import { onMount } from 'svelte';
+    import { onMount, tick } from 'svelte';
     import { apiService } from '$lib/api.js';
     import type { NewsItem } from '$lib/types.js';
     import { NEWS_PAGE_SIZE } from '$lib/types.js';
@@ -9,6 +9,7 @@
 
     export let isOpen: boolean = false;
     export let onClose: () => void = () => {};
+    export let focusItemId: number | null = null;
 
     let newsList: NewsItem[] = [];
     let loading = false;
@@ -26,26 +27,23 @@
                 return;
             }
 
-            console.log('[NewsModal] loadNews called:', { loadMore, offset, currentLocale });
-            const response = await apiService.getPaginatedNews(currentLocale, offset);
+            const response = await apiService.getPaginatedNews(currentLocale, offset, NEWS_PAGE_SIZE);
             const newItems = response.news || [];
-
-            console.log(
-                '[NewsModal] Received items:',
-                newItems.length,
-                newItems.map((i: NewsItem) => i.id)
-            );
 
             if (newItems.length > 0) {
                 newsList = [...newsList, ...newItems];
                 // Increment offset for next page
                 offset += newItems.length;
                 hasMore = newItems.length >= NEWS_PAGE_SIZE;
-                console.log('[NewsModal] Updated state:', {
-                    offset,
-                    hasMore,
-                    newsListLength: newsList.length
-                });
+                // Bring the clicked news into view with minimal scrolling:
+                // no scroll if it is already visible, otherwise just enough.
+                // It blinks via .highlight-blink.
+                if (!loadMore && focusItemId != null) {
+                    await tick();
+                    document
+                        .getElementById(`news-item-${focusItemId}`)
+                        ?.scrollIntoView({ block: 'nearest' });
+                }
             } else {
                 hasMore = false;
             }
@@ -96,20 +94,22 @@
 
 {#if isOpen}
     <div
-        class="animate-fade-in fixed inset-0 z-50 overflow-y-auto bg-black/50 p-4 backdrop-blur-sm"
+        class="animate-fade-in fixed inset-0 z-50 bg-black/50 p-4 backdrop-blur-sm"
         onkeydown={closeOnEscape}
         role="dialog"
         aria-modal="true"
         tabindex="-1"
     >
-        <div class="flex min-h-full items-center justify-center">
+        <!-- Dialog fits the viewport height: header and footer stay fixed,
+             only the news list area scrolls -->
+        <div class="flex h-full items-center justify-center">
             <div
-                class="my-4 max-h-screen w-full max-w-2xl overflow-y-auto rounded-xl border
+                class="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-xl border
                     border-orange-600 bg-gray-800 shadow-2xl shadow-orange-900/50"
             >
                 <!-- Header -->
                 <div
-                    class="sticky top-0 z-10 flex items-center justify-between border-b border-gray-700 bg-gray-800 p-6"
+                    class="flex shrink-0 items-center justify-between border-b border-gray-700 bg-gray-800 p-6"
                 >
                     <h2 class="text-xl font-semibold text-orange-200">
                         {$locales('news.latest_title')}
@@ -119,8 +119,8 @@
                     >
                 </div>
 
-                <!-- Content -->
-                <div class="p-6">
+                <!-- Content: the only scrollable area -->
+                <div class="min-h-0 flex-1 overflow-y-auto p-6">
                     {#if newsList.length === 0 && loading}
                         <div class="py-12 text-center text-gray-400">
                             <span class="inline-block animate-spin">⏳</span>
@@ -129,7 +129,9 @@
                         <div class="space-y-3">
                             {#each newsList as item (item.id)}
                                 <div
-                                    class="news-item-markdown rounded-lg border border-gray-700 bg-gray-900 p-4"
+                                    id="news-item-{item.id}"
+                                    class="news-item-markdown scroll-mt-2 rounded-lg border border-gray-700 bg-gray-900 p-4"
+                                    class:highlight-blink={item.id === focusItemId}
                                 >
                                     <div class="mb-2 flex items-start justify-between">
                                         <div class="flex flex-1 items-center gap-2">
@@ -190,7 +192,9 @@
                 </div>
 
                 <!-- Footer -->
-                <div class="flex justify-end space-x-3 border-t border-gray-700 p-6">
+                <div
+                    class="flex shrink-0 justify-end space-x-3 border-t border-gray-700 bg-gray-800 p-6"
+                >
                     <button
                         onclick={handleClose}
                         class="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-600"
@@ -214,6 +218,22 @@
     }
     .animate-fade-in {
         animation: fade-in 0.3s ease-out;
+    }
+
+    /* Double blink highlight for the news opened from the main page */
+    @keyframes highlight-blink {
+        0%,
+        100% {
+            background-color: rgb(17 24 39); /* bg-gray-900 */
+            border-color: rgb(55 65 81); /* border-gray-700 */
+        }
+        50% {
+            background-color: rgb(67 20 7); /* orange-950, subtle tint */
+            border-color: rgb(124 45 18); /* orange-900 */
+        }
+    }
+    .highlight-blink {
+        animation: highlight-blink 0.6s ease-in-out 2;
     }
 
     @keyframes spin {
