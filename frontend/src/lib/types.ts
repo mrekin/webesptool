@@ -1001,6 +1001,7 @@ export interface GroupFile {
     nameTemplate?: string; // group node-name template (from metadata.meshcore.nameTemplate)
     docUrl?: string; // group settings-document link (from metadata.meshcore.docUrl)
     level?: number; // group zone hierarchy level 1-5 (default 1)
+    author?: string; // who filled the group in (from metadata.author)
     features: ZoneFeature[];
 }
 
@@ -1048,6 +1049,7 @@ export interface ZoneGroup {
     nameTemplate?: string; // group node-name template
     docUrl?: string; // group settings-document link
     level?: number; // group zone hierarchy level 1-5 (default 1)
+    author?: string; // who filled the group in (optional catalog metadata)
     originUrl?: string;
 }
 
@@ -1082,4 +1084,69 @@ export interface ExportZone {
     properties?: Record<string, unknown>;
 }
 
+// --- Zones upload / moderation (task 77) ------------------------------------
+
+// One side of a conflict pair: which file/feature it belongs to (for display).
+export interface ZoneConflictRef {
+    file: string; // pending file name or published file name
+    id: string; // feature id
+    name?: string; // properties.name, when present
+    level: number; // effective hierarchy level (for display)
+}
+
+// A conflict found by zoneConflicts.findZoneConflicts: two features that may
+// not overlap per the task-72 rules. 'within' = both in the same pending file;
+// 'published' = pending feature vs an already published one.
+export interface ZoneConflictPair {
+    kind: 'within' | 'published';
+    a: ZoneConflictRef;
+    b: ZoneConflictRef;
+}
+
+// Machine-readable rejection codes of the zones upload/moderation API (client
+// localizes the message by code; hardware values like filenames are not
+// localized — they are substituted as-is).
+export type ZonesUploadErrorCode =
+    | 'invalid_json'
+    | 'invalid_filename'
+    | 'file_too_large'
+    | 'quota_exceeded'
+    | 'invalid_format'
+    | 'doc_url_missing'
+    | 'rate_limited'
+    | 'not_found'
+    | 'name_conflict'
+    | 'conflicts'
+    | 'network'
+    | 'internal';
+
+export interface ZonesUploadError {
+    code: ZonesUploadErrorCode;
+    message?: string;
+    conflicts?: ZoneConflictPair[]; // with code 'conflicts' (approve)
+    retryAfterS?: number; // with code 'rate_limited'
+}
+
+// Metadata row of one file in the pending directory (GET /api/zones/pending).
+export interface PendingFileInfo {
+    filename: string;
+    sizeBytes: number;
+    receivedAt: string; // mtime, ISO-8601
+    name?: string;
+    regions?: string;
+    level?: number;
+    docUrl?: string;
+    radio?: RadioSpec;
+    pathHashMode?: string;
+    nameTemplate?: string;
+    author?: string;
+    featureCount: number;
+}
+
+// Result of one client-side upload attempt (uploadZoneFile).
+export interface ZonesUploadResult {
+    ok: boolean;
+    filename: string;
+    error?: ZonesUploadError;
+}
 

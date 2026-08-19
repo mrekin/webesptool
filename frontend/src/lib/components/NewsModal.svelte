@@ -93,8 +93,11 @@
 </script>
 
 {#if isOpen}
+    <!-- No backdrop-blur here: a blur filter forces the dialog subtree into a
+         composited layer where Chromium disables subpixel text antialiasing,
+         making the news text look thin and washed out -->
     <div
-        class="animate-fade-in fixed inset-0 z-50 bg-black/50 p-4 backdrop-blur-sm"
+        class="animate-fade-in fixed inset-0 z-50 bg-black/60 p-4"
         onkeydown={closeOnEscape}
         role="dialog"
         aria-modal="true"
@@ -104,8 +107,8 @@
              only the news list area scrolls -->
         <div class="flex h-full items-center justify-center">
             <div
-                class="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-xl border
-                    border-orange-600 bg-gray-800 shadow-2xl shadow-orange-900/50"
+                class="flex max-h-full w-full max-w-[50.4rem] flex-col overflow-hidden rounded-xl
+                    border border-orange-600 bg-gray-800 shadow-2xl shadow-orange-900/50"
             >
                 <!-- Header -->
                 <div
@@ -248,7 +251,7 @@
     /* Override prose styles for news body - scoped to news items only */
     .news-item-markdown :global(.prose) {
         color: #f3f4f6;
-        font-size: 0.875rem;
+        font-size: 0.9375rem; /* 15px */
         font-weight: 300;
         line-height: 1.25;
     }
@@ -256,7 +259,7 @@
     .news-item-markdown :global(.prose p),
     .news-item-markdown :global(.prose li) {
         color: #f3f4f6;
-        font-size: 0.875rem;
+        font-size: 0.9375rem; /* 15px */
         font-weight: 300;
         line-height: 1.25;
         margin-top: 0;

@@ -16,6 +16,7 @@ export type ZoneCatalogJson = GeoJSON.FeatureCollection & {
     metadata?: {
         schema?: number;
         group?: string;
+        author?: string; // who filled the group in (optional catalog metadata)
         regions?: string; // legacy flat field (older exports)
         meshcore?: MeshcoreZoneSettings;
     };
@@ -65,21 +66,26 @@ function buildMeshcoreBlock(p: MeshcoreZoneSettings): MeshcoreZoneSettings | und
 }
 
 // Serialize one group's resolved zones into a GeoJSON FeatureCollection. The
-// group name and the meshcore preset (any subset of regions/radio/pathHashMode/
-// nameTemplate/docUrl) are stored nested under `metadata.meshcore` (so the editor
-// can list groups without parsing features) and on each feature's
-// `properties.meshcore` (so the lookup resolves a point and its full preset).
-// Empty fields are omitted; a zone with no preset at all carries no meshcore key.
+// group name and the optional author (catalog metadata — who filled the group
+// in) are plain `metadata` fields next to `schema`. The meshcore preset (any
+// subset of regions/radio/pathHashMode/nameTemplate/docUrl) is stored nested
+// under `metadata.meshcore` (so the editor can list groups without parsing
+// features) and on each feature's `properties.meshcore` (so the lookup resolves
+// a point and its full preset). Empty fields are omitted; a zone with no preset
+// at all carries no meshcore key. `author` is metadata-only — not firmware
+// config, not duplicated into features.
 export function serializeGroup(
     name: string,
     meshcore: MeshcoreZoneSettings,
-    zones: ExportZone[]
+    zones: ExportZone[],
+    author?: string
 ): ZoneCatalogJson {
     const metaBlock = buildMeshcoreBlock(meshcore);
     const metadata: ZoneCatalogJson['metadata'] = {
         schema: ZONE_CATALOG_SCHEMA,
         group: name
     };
+    if (author && author.trim()) metadata.author = author.trim();
     if (metaBlock) metadata.meshcore = metaBlock;
     return {
         type: 'FeatureCollection',
@@ -122,4 +128,17 @@ export function downloadCatalog(
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+}
+
+/// The canonical file name of one group's catalog file: `mczones-<slug>.geojson`
+// where the slug is the group name with anything outside [a-z0-9_-] replaced by
+// '_' (collapsed), falling back to a regions-derived slug, then the group id.
+// Shared by the export download and the server upload (task 77) so a re-upload
+// of the same group targets the same pending file name (idempotent replace).
+export function groupFileName(name: string, regions: string, id: string): string {
+    const slug =
+        name.replace(/[^a-z0-9_-]+/gi, '_').replace(/_+/g, '_') ||
+        regions.replace(/\s+/g, '-') ||
+        id;
+    return `mczones-${slug}.geojson`;
 }

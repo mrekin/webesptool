@@ -13,6 +13,11 @@
     // paints a circular stroke: hold LMB to paint, RMB to pan. An Erase toggle
     // turns any tool into an eraser. Undo keeps a snapshot stack of geometric/
     // structural changes.
+    //
+    // Task 77 adds the upload/review flow: "Send for review" posts each group
+    // (same serialization as export) to the server's closed pending catalog,
+    // and a token-gated moderator mode (sidebar section + map layer) reviews,
+    // conflict-checks, approves (publish) or rejects those files.
 
     import { _ as locales } from 'svelte-i18n';
     import { onMount, onDestroy } from 'svelte';
@@ -37,21 +42,40 @@
     } from '$lib/utils/zoneGeometry';
     import {
         downloadCatalog,
+        groupFileName,
         isValidRegions,
         serializeGroup,
         validateExport
     } from '$lib/utils/zoneExport';
+    import { findZoneConflicts, levelsConflict } from '$lib/utils/zoneConflicts';
+    import {
+        approvePendingFile,
+        clearModeratorToken,
+        fetchModerationConfig,
+        fetchPendingFileContent,
+        fetchPendingFiles,
+        getModeratorToken,
+        rejectPendingFile,
+        setModeratorToken,
+        submittableGroups,
+        updatePendingFile,
+        uploadZoneFile
+    } from '$lib/utils/zonesUpload';
     import { OSM_TILE_ATTRIBUTION, OSM_TILE_URL, ZONE_LEVEL_DEFAULT } from '$lib/config/meshcoreZoneConfig';
     import { fillHint } from '$lib/actions/fillHint.js';
     import JSZip from 'jszip';
     import ZoneMeshcoreSettingsModal from './ZoneMeshcoreSettingsModal.svelte';
+    import ZoneModerationPanel from './ZoneModerationPanel.svelte';
     import type {
         EditorPolygon,
         ExportZone,
         GroupFile,
         MeshcoreZoneSettings,
+        PendingFileInfo,
         RadioSpec,
+        ZoneConflictPair,
         ZoneGeometry,
+        ZonesUploadError,
         ZoneGroup
     } from '$lib/types';
 
@@ -138,6 +162,35 @@
     let userOverlay: any = null;
     const boundaryLayers = new Map<string, any>();
     const groupLayers = new Map<string, any>();
+    const pendingLayers = new Map<string, any>();
+    const pendingConflictLayers = new Map<string, any>();
+
+    // --- upload to review + moderator mode (task 77) ---
+
+    // Upload (all users): admission = export criteria + a non-empty docUrl.
+    let uploadBusy = $state(false);
+    let uploadProblems = $state<string[]>([]);
+    const uploadableGroups = $derived(submittableGroups(groups, polygons));
+
+    // Moderator mode: exists in the UI only when the server has a token
+    // configured (moderationEnabled). The token lives in sessionStorage for the
+    // tab's lifetime (zonesUpload); the API work itself is in zonesUpload.ts.
+    let moderationEnabled = $state(false);
+    let moderationUi = $state(false);
+    let moderatorToken = $state<string | null>(null);
+    let moderationBusy = $state(false);
+    let pendingFiles = $state<PendingFileInfo[]>([]);
+    // Pending file whose preset edit modal is open (moderator fixes the preset
+    // right in the moderation UI — no re-upload, no editor session).
+    let pendingEditFile = $state<PendingFileInfo | null>(null);
+    let shownPending = $state<Set<string>>(new Set());
+    let pendingConflicts = $state<Record<string, ZoneConflictPair[]>>({});
+    // Parsed pending contents, cached per filename (non-reactive; layers and
+    // conflict records are the reactive projection).
+    const pendingContentCache = new Map<string, Promise<GroupFile | null>>();
+    // Base names (without .geojson) of published files — a pending file with
+    // the same base name would REPLACE the published one on approve.
+    const publishedFilenames = $derived(new Set(groupFiles.map((g) => g.filename)));
 
     let idSeq = 0;
     const genId = (prefix: string) => `${prefix}${++idSeq}`;
@@ -156,6 +209,18 @@
         '#f97316', '#22c55e', '#a855f7', '#ec4899', '#eab308',
         '#14b8a6', '#ef4444', '#8b5cf6', '#06b6d4', '#f43f5e'
     ];
+    // Pending ("awaiting review") file style (task 77): dashed orange over the
+    // published groups (semi-transparent fill keeps overlaps visible); the red
+    // overlay marks pending polygons involved in a conflict pair. Drawn in
+    // dedicated panes ABOVE the published layers (overlayPane is 400).
+    const PENDING_STYLE = {
+        color: '#f59e0b', weight: 2, fillColor: '#f59e0b', fillOpacity: 0.25, dashArray: '6,4'
+    };
+    const PENDING_CONFLICT_STYLE = {
+        color: '#ef4444', weight: 3, fillColor: '#ef4444', fillOpacity: 0.35
+    };
+    const PENDING_PANE = 'zones-pending';
+    const PENDING_CONFLICT_PANE = 'zones-conflict';
 
     function groupColor(groupId: string | null): string {
         if (!groupId) return '#9ca3af';
@@ -259,11 +324,8 @@
         if (!groupId) return null;
         return groups.find((g) => g.id === groupId)?.level ?? ZONE_LEVEL_DEFAULT;
     }
-    // Two zones may not overlap when they share a concrete level, OR when either
-    // is a wildcard (no level) — a homeless zone collides with zones of any level.
-    function levelsConflict(a: number | null, b: number | null): boolean {
-        return a === null || b === null || a === b;
-    }
+    // levelsConflict (the task-72 non-overlap rule) lives in zoneConflicts.ts —
+    // the single implementation shared with the moderation conflict engine.
 
     function layerToPolygonGeom(layer: any): ZoneGeometry {
         const raw = layer.getLatLngs();
@@ -1051,6 +1113,7 @@
                 nameTemplate: gf.nameTemplate,
                 docUrl: gf.docUrl,
                 level: gf.level,
+                author: gf.author,
                 originUrl: gf.url
             }
         ];
@@ -1062,10 +1125,10 @@
     }
 
     // Create a copy of a published group for editing: same settings (name,
-    // regions, radio, path.hash.mode, name template, doc URL) but NO zones and
-    // no originUrl — a fresh independent session group the user draws new
-    // polygons into. Unlike editGroup this is not idempotent: each click makes a
-    // new copy.
+    // regions, radio, path.hash.mode, name template, doc URL, author) but NO
+    // zones and no originUrl — a fresh independent session group the user draws
+    // new polygons into. Unlike editGroup this is not idempotent: each click
+    // makes a new copy.
     function duplicateGroup(gf: GroupFile): void {
         pushHistory();
         const id = genId('g');
@@ -1079,7 +1142,8 @@
                 pathHashMode: gf.pathHashMode,
                 nameTemplate: gf.nameTemplate,
                 docUrl: gf.docUrl,
-                level: gf.level
+                level: gf.level,
+                author: gf.author
             }
         ];
         activeGroupId = id;
@@ -1105,7 +1169,8 @@
                 pathHashMode: src.pathHashMode,
                 nameTemplate: src.nameTemplate,
                 docUrl: src.docUrl,
-                level: src.level
+                level: src.level,
+                author: src.author
             }
         ];
         activeGroupId = nid;
@@ -1114,6 +1179,11 @@
 
     function updateGroupName(id: string, name: string): void {
         groups = groups.map((g) => (g.id === id ? { ...g, name } : g));
+    }
+    // Update the optional author field (catalog metadata — who filled the group
+    // in). No pushHistory: a text edit, same as the group name.
+    function updateGroupAuthor(id: string, author: string): void {
+        groups = groups.map((g) => (g.id === id ? { ...g, author: author.trim() || undefined } : g));
     }
     // Update a group's full meshcore preset (regions + radio + path.hash.mode +
     // name template + doc URL) from the settings modal. No pushHistory: a
@@ -1284,7 +1354,8 @@
         filename: string,
         meshcore: MeshcoreZoneSettings
     ): void {
-        const meta = (fc as { metadata?: { group?: unknown; name?: unknown } }).metadata ?? {};
+        const meta = (fc as { metadata?: { group?: unknown; name?: unknown; author?: unknown } })
+            .metadata ?? {};
         const name =
             (typeof meta.group === 'string' && meta.group) ||
             (typeof meta.name === 'string' && meta.name) ||
@@ -1313,7 +1384,11 @@
                 pathHashMode: meshcore.pathHashMode,
                 nameTemplate: meshcore.nameTemplate,
                 docUrl: meshcore.docUrl,
-                level: meshcore.level ?? ZONE_LEVEL_DEFAULT
+                level: meshcore.level ?? ZONE_LEVEL_DEFAULT,
+                author:
+                    typeof meta.author === 'string' && meta.author.trim()
+                        ? meta.author.trim()
+                        : undefined
             }
         ];
         polygons = [...polygons, ...loaded];
@@ -1333,10 +1408,13 @@
         shownBoundaries = next;
     }
 
-    // --- export: one file per session group ---
+    // --- export + upload: one file per session group (shared serialization) ---
 
-    function exportOne(g: ZoneGroup): void {
-        const zones: ExportZone[] = polygons
+    // Resolve one group's zones into export form (circles are already polygons
+    // by commit time). Shared by the export download and the server upload so
+    // both write byte-identical files.
+    function groupExportZones(g: ZoneGroup): ExportZone[] {
+        return polygons
             .filter((p) => p.groupId === g.id)
             .map((p) => ({
                 id: p.id,
@@ -1350,15 +1428,15 @@
                 level: g.level,
                 properties: p.label ? { name: p.label } : undefined
             }));
+    }
+
+    function exportOne(g: ZoneGroup): void {
+        const zones = groupExportZones(g);
         const v = validateExport(zones);
         if (!v.valid) {
             exportProblems = [...exportProblems, ...v.problems];
             return;
         }
-        const slug =
-            g.name.replace(/[^a-z0-9_-]+/gi, '_').replace(/_+/g, '_') ||
-            g.regions.replace(/\s+/g, '-') ||
-            g.id;
         downloadCatalog(
             serializeGroup(
                 g.name,
@@ -1370,9 +1448,10 @@
                     docUrl: g.docUrl,
                     level: g.level
                 },
-                zones
+                zones,
+                g.author
             ),
-            `mczones-${slug}.geojson`
+            groupFileName(g.name, g.regions, g.id)
         );
     }
 
@@ -1388,6 +1467,443 @@
         console.info('[meshcore-zone]', 'export_done', exportableGroups.length);
         showNotice(`${$locales('meshcoreconfig.zones.export_done')} (${exportableGroups.length})`);
     }
+
+    // Localized reason for a machine error code; codes without a dedicated key
+    // fall back to the generic network wording.
+    function uploadErrorText(err?: ZonesUploadError): string {
+        const code = err?.code ?? 'network';
+        const keyed = [
+            'file_too_large', 'quota_exceeded', 'invalid_json', 'invalid_format',
+            'doc_url_missing', 'rate_limited', 'network'
+        ];
+        const key = keyed.includes(code) ? code : 'network';
+        return $locales(`meshcoreconfig.zones.upload_err_${key}`);
+    }
+
+    // Send one group to the pending catalog (same serialization + file name as
+    // the export download, so a re-upload replaces the awaiting version).
+    async function uploadOne(g: ZoneGroup): Promise<boolean> {
+        const zones = groupExportZones(g);
+        const v = validateExport(zones);
+        if (!v.valid) {
+            uploadProblems = [...uploadProblems, ...v.problems];
+            return false;
+        }
+        const res = await uploadZoneFile(
+            groupFileName(g.name, g.regions, g.id),
+            serializeGroup(
+                g.name,
+                {
+                    regions: g.regions,
+                    radio: g.radio,
+                    pathHashMode: g.pathHashMode,
+                    nameTemplate: g.nameTemplate,
+                    docUrl: g.docUrl,
+                    level: g.level
+                },
+                zones,
+                g.author
+            )
+        );
+        if (!res.ok) {
+            uploadProblems = [
+                ...uploadProblems,
+                $locales('meshcoreconfig.zones.upload_failed')
+                    .replace('{file}', res.filename)
+                    .replace('{reason}', uploadErrorText(res.error))
+            ];
+            return false;
+        }
+        return true;
+    }
+
+    async function doUpload(): Promise<void> {
+        if (uploadBusy) return;
+        uploadProblems = [];
+        // Client-side precheck reasons: export-eligible groups without a docUrl
+        // are not admitted (the server rejects them with doc_url_missing).
+        const noDoc = groups.filter(
+            (g) =>
+                isValidRegions(g.regions) &&
+                polygons.some((p) => p.groupId === g.id) &&
+                (g.docUrl ?? '').trim() === ''
+        );
+        const docProblems = noDoc.map((g) =>
+            $locales('meshcoreconfig.zones.upload_no_docurl').replace('{name}', g.name || g.id)
+        );
+        if (uploadableGroups.length === 0) {
+            uploadProblems = docProblems;
+            showNotice($locales('meshcoreconfig.zones.upload_none'), 'warn');
+            return;
+        }
+        uploadBusy = true;
+        let okCount = 0;
+        // Sequential with a pause, same pacing as the multi-file export.
+        for (let i = 0; i < uploadableGroups.length; i++) {
+            if (await uploadOne(uploadableGroups[i])) okCount++;
+            if (i < uploadableGroups.length - 1) {
+                await new Promise((resolve) => setTimeout(resolve, 350));
+            }
+        }
+        uploadBusy = false;
+        uploadProblems = [...uploadProblems, ...docProblems];
+        console.info('[meshcore-zone]', 'upload_done', okCount);
+        showNotice($locales('meshcoreconfig.zones.upload_done').replace('{n}', String(okCount)));
+        // In an active moderator session the moderator's own upload lands in
+        // the queue (same filename replaces) — refresh it so the panel and the
+        // map show the new versions instead of the cached ones.
+        if (moderatorToken && okCount > 0) {
+            pendingContentCache.clear();
+            pendingConflicts = {};
+            shownPending = new Set(); // layers are removed by the pending $effect
+            void loadPending();
+        }
+    }
+
+    // --- moderator mode ---
+
+    async function enterModerator(token: string): Promise<void> {
+        moderationBusy = true;
+        const res = await fetchPendingFiles(token);
+        moderationBusy = false;
+        if (res.ok) {
+            setModeratorToken(token);
+            moderatorToken = token;
+            pendingFiles = res.value;
+            // A stale "invalid token" warning must not survive a successful
+            // login — the panel switching to the queue view is the feedback.
+            notice = '';
+            console.info('[meshcore-zone]', 'moderation_entered');
+            return;
+        }
+        if (res.error.code === 'not_found') {
+            showNotice($locales('meshcoreconfig.zones.moderation_invalid_token'), 'warn');
+        } else if (res.error.code === 'rate_limited') {
+            showNotice($locales('meshcoreconfig.zones.upload_err_rate_limited'), 'warn');
+        } else {
+            showNotice($locales('meshcoreconfig.zones.pending_load_failed'), 'warn');
+        }
+    }
+
+    function exitModerator(): void {
+        clearModeratorToken();
+        moderatorToken = null;
+        pendingFiles = [];
+        pendingConflicts = {};
+        shownPending = new Set(); // layers are removed by the pending $effect
+        pendingContentCache.clear();
+    }
+
+    async function loadPending(): Promise<void> {
+        if (!moderatorToken) return;
+        moderationBusy = true;
+        const res = await fetchPendingFiles(moderatorToken);
+        moderationBusy = false;
+        if (res.ok) {
+            pendingFiles = res.value;
+            return;
+        }
+        if (res.error.code === 'not_found') {
+            // Token revoked server-side (config change) — drop the session.
+            showNotice($locales('meshcoreconfig.zones.moderation_invalid_token'), 'warn');
+            exitModerator();
+            return;
+        }
+        showNotice($locales('meshcoreconfig.zones.pending_load_failed'), 'warn');
+    }
+
+    // Open the preset edit modal over the moderation panel (the same modal the
+    // editor uses for in-session groups). The full preset and the author come
+    // from the list metadata; Save rewrites the awaiting file server-side —
+    // geometry and the group name stay untouched, so the filename and queue
+    // position never change and no re-upload happens.
+    function editPending(filename: string): void {
+        pendingEditFile = pendingFiles.find((f) => f.filename === filename) ?? null;
+    }
+
+    // Save the preset (and author) edited by the moderator: update the file in
+    // place, then refresh everything derived from its content — cache, drawn
+    // layer and conflict record (the pending $effect redraws and re-runs the
+    // client conflict check), and the queue row (preset summary).
+    async function savePendingEdit(
+        regions: string,
+        radio: RadioSpec | undefined,
+        pathHashMode: string | undefined,
+        nameTemplate: string | undefined,
+        docUrl: string | undefined,
+        level: number,
+        author: string | undefined
+    ): Promise<void> {
+        const file = pendingEditFile;
+        if (!file || !moderatorToken) return;
+        moderationBusy = true;
+        const res = await updatePendingFile(
+            moderatorToken,
+            file.filename,
+            {
+                regions,
+                radio,
+                pathHashMode,
+                nameTemplate,
+                docUrl,
+                level
+            },
+            author
+        );
+        moderationBusy = false;
+        if (res.ok) {
+            showNotice(
+                $locales('meshcoreconfig.zones.pending_updated').replace('{file}', file.filename)
+            );
+            console.info('[meshcore-zone]', 'moderation_updated', file.filename);
+            pendingEditFile = null;
+            pendingContentCache.delete(file.filename);
+            const layer = pendingLayers.get(file.filename);
+            if (layer && map) {
+                map.removeLayer(layer);
+                pendingLayers.delete(file.filename);
+            }
+            const cl = pendingConflictLayers.get(file.filename);
+            if (cl && map) {
+                map.removeLayer(cl);
+                pendingConflictLayers.delete(file.filename);
+            }
+            const nextConflicts = { ...pendingConflicts };
+            delete nextConflicts[file.filename];
+            pendingConflicts = nextConflicts;
+            await loadPending();
+            return;
+        }
+        if (res.error.code === 'not_found') {
+            // Token revoked server-side (config change) — drop the session.
+            showNotice($locales('meshcoreconfig.zones.moderation_invalid_token'), 'warn');
+            exitModerator();
+            return;
+        }
+        // Keep the modal open so the moderator can fix the reported problem.
+        showNotice(
+            $locales('meshcoreconfig.zones.pending_update_failed').replace(
+                '{reason}',
+                uploadErrorText(res.error)
+            ),
+            'warn'
+        );
+    }
+
+    // Forget one pending file locally (approved/rejected): list row, conflict
+    // record, map toggle and cached content; layers go with the toggle change.
+    function dropPendingFile(filename: string): void {
+        pendingFiles = pendingFiles.filter((f) => f.filename !== filename);
+        const nextConflicts = { ...pendingConflicts };
+        delete nextConflicts[filename];
+        pendingConflicts = nextConflicts;
+        const next = new Set(shownPending);
+        next.delete(filename);
+        shownPending = next;
+        pendingContentCache.delete(filename);
+    }
+
+    async function refreshPublished(): Promise<void> {
+        groupFiles = await fetchGroupFiles();
+    }
+
+    async function approvePending(filename: string, overwrite: boolean): Promise<void> {
+        if (!moderatorToken) return;
+        moderationBusy = true;
+        const res = await approvePendingFile(moderatorToken, filename, overwrite);
+        moderationBusy = false;
+        if (res.ok) {
+            showNotice(
+                $locales('meshcoreconfig.zones.pending_approved').replace('{file}', filename)
+            );
+            console.info('[meshcore-zone]', 'moderation_approved', filename);
+            dropPendingFile(filename);
+            // Re-read both catalogs: the file is live-added to the published
+            // tree and the queue shrank.
+            await Promise.all([loadPending(), refreshPublished()]);
+            return;
+        }
+        const err = res.error;
+        if (err.code === 'name_conflict') {
+            // Published between list and click — refresh the names so the panel
+            // re-arms the overwrite confirmation.
+            showNotice($locales('meshcoreconfig.zones.pending_name_conflict'), 'warn');
+            await refreshPublished();
+            return;
+        }
+        if (err.code === 'conflicts') {
+            // Server-side pairs win (the published catalog may have changed
+            // since the list was loaded) — show + highlight them.
+            pendingConflicts = { ...pendingConflicts, [filename]: err.conflicts ?? [] };
+            showNotice(
+                $locales('meshcoreconfig.zones.pending_conflicts').replace(
+                    '{n}',
+                    String(err.conflicts?.length ?? 0)
+                ),
+                'warn'
+            );
+            return;
+        }
+        showNotice(
+            $locales('meshcoreconfig.zones.pending_publish_failed').replace(
+                '{reason}',
+                uploadErrorText(err)
+            ),
+            'warn'
+        );
+    }
+
+    async function rejectPending(filename: string): Promise<void> {
+        if (!moderatorToken) return;
+        moderationBusy = true;
+        const res = await rejectPendingFile(moderatorToken, filename);
+        moderationBusy = false;
+        if (res.ok) {
+            showNotice(
+                $locales('meshcoreconfig.zones.pending_rejected').replace('{file}', filename)
+            );
+            console.info('[meshcore-zone]', 'moderation_rejected', filename);
+            dropPendingFile(filename);
+            await loadPending();
+            return;
+        }
+        showNotice($locales('meshcoreconfig.zones.pending_load_failed'), 'warn');
+    }
+
+    function togglePendingShown(filename: string): void {
+        shownPending = toggleSet(shownPending, filename);
+    }
+
+    // Load (and cache) one pending file parsed as a group — the SAME parser and
+    // format as published groups (url key `pending:<filename>`).
+    function loadPendingGroupFile(filename: string): Promise<GroupFile | null> {
+        let p = pendingContentCache.get(filename);
+        if (!p) {
+            p = moderatorToken
+                ? fetchPendingFileContent(moderatorToken, filename)
+                : Promise.resolve(null);
+            pendingContentCache.set(filename, p);
+        }
+        return p;
+    }
+
+    // Draw one pending file: the dashed orange layer + the red conflict overlay
+    // for polygons involved in conflict pairs. Above the published layers
+    // (dedicated panes), read-only (pmIgnore); tooltips show zone names.
+    function addPendingLayers(filename: string, gf: GroupFile): void {
+        if (!map || !L || pendingLayers.has(filename)) return;
+        const fc = {
+            type: 'FeatureCollection',
+            features: gf.features.map((f) => ({
+                type: 'Feature' as const,
+                geometry: f.geometry,
+                properties: {
+                    ...f.properties,
+                    name: (f.properties?.name as string) || f.group || gf.name
+                }
+            }))
+        };
+        const layer = L.geoJSON(fc, {
+            pane: PENDING_PANE,
+            style: () => PENDING_STYLE,
+            onEachFeature: (_f: any, l: any) => {
+                const name = _f?.properties?.name;
+                if (name) l.bindTooltip(String(name));
+            }
+        }).addTo(map);
+        layer.eachLayer((l: any) => {
+            l.options.pmIgnore = true;
+        });
+        pendingLayers.set(filename, layer);
+        rebuildPendingConflictLayer(filename, gf);
+    }
+
+    // Redraw the red overlay of a pending file from its current conflict pairs.
+    function rebuildPendingConflictLayer(filename: string, gf: GroupFile): void {
+        if (!map || !L) return;
+        const prev = pendingConflictLayers.get(filename);
+        if (prev) {
+            map.removeLayer(prev);
+            pendingConflictLayers.delete(filename);
+        }
+        const pairs = pendingConflicts[filename] ?? [];
+        if (pairs.length === 0) return;
+        // Involved pending polygons: side a always; side b too for within-file
+        // pairs (both ends live in the pending file).
+        const ids = new Set<string>();
+        for (const pair of pairs) {
+            ids.add(pair.a.id);
+            if (pair.kind === 'within') ids.add(pair.b.id);
+        }
+        const involved = gf.features.filter((f) => ids.has(f.id));
+        if (involved.length === 0) return;
+        const fc = {
+            type: 'FeatureCollection',
+            features: involved.map((f) => ({
+                type: 'Feature' as const,
+                geometry: f.geometry,
+                properties: { name: f.properties?.name ?? '' }
+            }))
+        };
+        const layer = L.geoJSON(fc, {
+            pane: PENDING_CONFLICT_PANE,
+            style: () => PENDING_CONFLICT_STYLE,
+            interactive: false
+        }).addTo(map);
+        pendingConflictLayers.set(filename, layer);
+    }
+
+    // Sync displayed pending layers with the shownPending toggle (same pattern
+    // as the published-groups effect). Content loads async; the client side of
+    // the hybrid conflict check runs once per loaded file (the server repeats
+    // it authoritatively on approve).
+    $effect(() => {
+        shownPending;
+        pendingConflicts;
+        if (!map || !L) return;
+        for (const [filename, layer] of pendingLayers) {
+            if (!shownPending.has(filename)) {
+                map.removeLayer(layer);
+                pendingLayers.delete(filename);
+                const cl = pendingConflictLayers.get(filename);
+                if (cl) {
+                    map.removeLayer(cl);
+                    pendingConflictLayers.delete(filename);
+                }
+            }
+        }
+        for (const filename of shownPending) {
+            if (pendingLayers.has(filename)) {
+                // Conflict set may have changed (e.g. a server 409) — refresh
+                // the red overlay of the already drawn file.
+                loadPendingGroupFile(filename).then((gf) => {
+                    if (gf && shownPending.has(filename)) rebuildPendingConflictLayer(filename, gf);
+                });
+                continue;
+            }
+            loadPendingGroupFile(filename).then((gf) => {
+                if (!gf || !shownPending.has(filename) || !map || !L) return;
+                if (!pendingConflicts[filename]) {
+                    // Mirror the server-side approve check: the catalog AFTER
+                    // publication — the published file this approval would
+                    // replace (same base name) is excluded from the check.
+                    const base = filename.replace(/\.geojson$/, '');
+                    const pairs = findZoneConflicts(
+                        { file: filename, level: gf.level, features: gf.features },
+                        groupFiles
+                            .filter((g) => g.filename !== base)
+                            .map((g) => ({
+                                file: g.filename,
+                                level: g.level,
+                                features: g.features
+                            }))
+                    );
+                    pendingConflicts = { ...pendingConflicts, [filename]: pairs };
+                }
+                addPendingLayers(filename, gf);
+            });
+        }
+    });
 
     onMount(async () => {
         for (const b of boundaryFileList()) {
@@ -1408,6 +1924,14 @@
         map.attributionControl.setPrefix(false);
         L.tileLayer(OSM_TILE_URL, { maxZoom: 19, attribution: OSM_TILE_ATTRIBUTION }).addTo(map);
 
+        // Pending/conflict panes above the published group layers (the default
+        // overlayPane is 400): the awaiting geometry stays visible on top.
+        map.createPane(PENDING_PANE);
+        map.getPane(PENDING_PANE).style.zIndex = '450';
+        map.createPane(PENDING_CONFLICT_PANE);
+        map.getPane(PENDING_CONFLICT_PANE).style.zIndex = '460';
+        map.getPane(PENDING_CONFLICT_PANE).style.pointerEvents = 'none';
+
         map.pm.setGlobalOptions({ allowSelfIntersection: false });
         map.on('pm:create', onPmCreate);
 
@@ -1420,6 +1944,21 @@
         // Published groups are needed for the overlap check (all of them, server-
         // wide) regardless of display, so they are loaded up front.
         groupFiles = await fetchGroupFiles();
+
+        // Moderator mode availability (page-cached flag; when no token is
+        // configured on the server the entry point does not exist at all). With
+        // a stored session token the queue loads right away.
+        fetchModerationConfig().then((enabled) => {
+            moderationEnabled = enabled;
+            if (!enabled) return;
+            const tok = getModeratorToken();
+            if (tok) {
+                moderatorToken = tok;
+                moderationUi = true;
+                void loadPending();
+            }
+        });
+
         map.invalidateSize();
     });
 
@@ -1665,6 +2204,25 @@
                         </div>
                     </div>
 
+                    <!-- Moderator mode: awaiting files (exists only when the
+                         server has a token configured and the mode was opened) -->
+                    {#if moderationUi && moderationEnabled}
+                        <ZoneModerationPanel
+                            files={pendingFiles}
+                            conflicts={pendingConflicts}
+                            shown={shownPending}
+                            publishedNames={publishedFilenames}
+                            active={moderatorToken !== null}
+                            busy={moderationBusy}
+                            onenter={enterModerator}
+                            onexit={exitModerator}
+                            ontoggle={togglePendingShown}
+                            onedit={editPending}
+                            onapprove={approvePending}
+                            onreject={rejectPending}
+                        />
+                    {/if}
+
                     <!-- Session groups -->
                     <div class="rounded-md border border-gray-700 bg-gray-900/50 p-2">
                         <div class="mb-2 flex items-center justify-between">
@@ -1700,6 +2258,16 @@
                                         ✕
                                     </button>
                                 </div>
+                                <!-- Optional author (catalog metadata: who filled
+                                     the group in — shown to the moderator) -->
+                                <input
+                                    type="text"
+                                    value={g.author ?? ''}
+                                    oninput={(e) => updateGroupAuthor(g.id, (e.currentTarget as HTMLInputElement).value)}
+                                    placeholder={$locales('meshcoreconfig.zones.group_author_prompt')}
+                                    use:fillHint
+                                    class="mt-1 w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
+                                />
                                 {#if g.originUrl}
                                     <span class="mt-0.5 block text-[10px] text-sky-300">✎ {$locales('meshcoreconfig.zones.editing_published')}</span>
                                 {/if}
@@ -1787,6 +2355,9 @@
         {#if exportProblems.length > 0}
             <div class="mt-2 text-xs text-red-400">{exportProblems.join(', ')}</div>
         {/if}
+        {#if uploadProblems.length > 0}
+            <div class="mt-2 text-xs text-red-400">{uploadProblems.join(', ')}</div>
+        {/if}
 
         <div class="mt-3 flex items-center justify-between gap-3">
             <span class="text-xs text-gray-500">
@@ -1795,6 +2366,27 @@
             <div class="flex gap-3">
                 <button type="button" onclick={onclose} class="rounded-md bg-gray-700 px-4 py-2 text-sm text-white transition-colors hover:bg-gray-600">
                     {$locales('common.cancel')}
+                </button>
+                {#if moderationEnabled}
+                    <!-- Moderator mode entry: rendered only when the server has
+                         a token configured (the flag reveals nothing else). -->
+                    <button
+                        type="button"
+                        onclick={() => (moderationUi = !moderationUi)}
+                        title={$locales('meshcoreconfig.zones.moderation_entry')}
+                        class={`rounded-md px-3 py-2 text-sm transition-colors ${moderationUi ? 'bg-amber-600 text-white hover:bg-amber-700' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+                    >
+                        🔐
+                    </button>
+                {/if}
+                <button
+                    type="button"
+                    onclick={doUpload}
+                    disabled={loadError || uploadBusy || uploadableGroups.length === 0}
+                    title={$locales('meshcoreconfig.zones.upload_hint')}
+                    class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    📤 {$locales('meshcoreconfig.zones.upload')} ({uploadableGroups.length})
                 </button>
                 <button type="button" onclick={doExport} disabled={loadError || exportableGroups.length === 0} class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50">
                     {$locales('meshcoreconfig.zones.export')}
@@ -1823,5 +2415,20 @@
                 level
             )}
         onclose={() => (meshcoreEditId = null)}
+    />
+{/if}
+
+{#if pendingEditFile}
+    <ZoneMeshcoreSettingsModal
+        regions={pendingEditFile.regions ?? ''}
+        radio={pendingEditFile.radio}
+        pathHashMode={pendingEditFile.pathHashMode}
+        nameTemplate={pendingEditFile.nameTemplate}
+        docUrl={pendingEditFile.docUrl}
+        level={pendingEditFile.level}
+        author={pendingEditFile.author ?? ''}
+        editAuthor={true}
+        onsave={savePendingEdit}
+        onclose={() => (pendingEditFile = null)}
     />
 {/if}

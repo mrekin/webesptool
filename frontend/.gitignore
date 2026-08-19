@@ -22,3 +22,7 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Zones pending catalog (task 77): local dev runtime directory
+# (data/zones-pending relative to cwd) — closed upload queue, not a source asset
+/data

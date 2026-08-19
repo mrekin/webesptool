@@ -19,13 +19,16 @@
         nameTemplate = undefined,
         docUrl = undefined,
         level = undefined,
+        author = undefined,
+        editAuthor = false,
         onsave = (
             _regions: string,
             _radio: RadioSpec | undefined,
             _pathHashMode: string | undefined,
             _nameTemplate: string | undefined,
             _docUrl: string | undefined,
-            _level: number
+            _level: number,
+            _author: string | undefined
         ) => {},
         onclose = () => {}
     }: {
@@ -35,13 +38,19 @@
         nameTemplate?: string;
         docUrl?: string;
         level?: number;
+        /** Current author (metadata), shown when editAuthor is set. */
+        author?: string;
+        /** Render the author field (used by the pending-file edit; in-session
+         groups edit the author in their card instead). */
+        editAuthor?: boolean;
         onsave?: (
             regions: string,
             radio: RadioSpec | undefined,
             pathHashMode: string | undefined,
             nameTemplate: string | undefined,
             docUrl: string | undefined,
-            level: number
+            level: number,
+            author: string | undefined
         ) => void;
         onclose?: () => void;
     } = $props();
@@ -64,6 +73,7 @@
     let nameTemplateVal = $state(untrack(() => nameTemplate ?? ''));
     let docUrlVal = $state(untrack(() => docUrl ?? ''));
     let levelVal = $state(untrack(() => level ?? ZONE_LEVEL_DEFAULT));
+    let authorVal = $state(untrack(() => author ?? ''));
 
     // Live preview of the parsed template tokens (enum/free/literal).
     const templateTokens = $derived(parseNameTemplate(nameTemplateVal));
@@ -100,7 +110,8 @@
             pathHash || undefined,
             nameTemplateVal.trim() || undefined,
             docUrlVal.trim() || undefined,
-            levelVal
+            levelVal,
+            authorVal.trim() || undefined
         );
     }
 </script>
@@ -298,6 +309,26 @@
                 class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
             />
         </div>
+
+        <!-- Author: plain catalog metadata (who filled the group in), not a
+             firmware setting — only the pending-file edit needs it here. -->
+        {#if editAuthor}
+            <div class="mb-1 mt-3">
+                <label
+                    for="mc-zone-author"
+                    class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                    {$locales('meshcoreconfig.zones.group_author_prompt')}
+                </label>
+                <input
+                    id="mc-zone-author"
+                    type="text"
+                    value={authorVal}
+                    oninput={(e) => (authorVal = (e.currentTarget as HTMLInputElement).value)}
+                    use:fillHint
+                    class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
+                />
+            </div>
+        {/if}
 
         <div class="mt-4 flex items-center justify-end gap-3">
             <button
