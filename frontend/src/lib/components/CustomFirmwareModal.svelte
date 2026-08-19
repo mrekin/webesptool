@@ -74,34 +74,10 @@
     let eraseBeforeFlash = false; // New parameter for checkbox
     let selectedBaudrate = 512000; // Default selected speed
 
-    // Apply selected baudrate whenever it changes OR once the port connects.
-    // Depends on isPortSelected so the default (512000) is applied right after
-    // getDeviceInfo() creates the esploader — without it the reactive fires only
-    // on mount (no esploader yet → silent failure) and the device stays at 115200.
-    $: if (selectedBaudrate && espManager && isPortSelected) {
-        updateBaudrate(selectedBaudrate);
-    }
-
-    // Function to update baudrate in esploader
-    async function updateBaudrate(newBaudrate: number) {
-        if (isFlashing || isBackingUp) return; // Don't change during operations
-
-        try {
-            const currentBaudrate = espManager.getCurrentBaudrate();
-            if (currentBaudrate !== newBaudrate) {
-                console.log(`Changing baudrate from ${currentBaudrate} to ${newBaudrate}...`);
-                await espManager.changeBaudrate(newBaudrate);
-                console.log(`Baudrate changed to ${newBaudrate}`);
-                logger.info(
-                    $locales('customfirmware.log_baudrate_changed', {
-                        values: { from: currentBaudrate, to: newBaudrate }
-                    })
-                );
-            }
-        } catch (error) {
-            console.error('Failed to change baudrate:', error);
-        }
-    }
+    // NOTE: the selected baudrate is NOT applied to a live connection anymore.
+    // Each operation (flash/backup) opens its own loader session at
+    // `selectedBaudrate` and closes the port afterwards (session-less model
+    // in esp.ts) - mid-session baudrate changes are unreliable in esptool-js.
 
     // Memory backup state
     let isBackingUp = false;
@@ -577,6 +553,11 @@
 
     // Select and analyze port
     async function selectPort() {
+        // Guard against double activation: the auto-select reactive
+        // (setTimeout) can race a user click on the "Select port" button and
+        // launch two concurrent detections on the same serial port.
+        if (isConnecting || isFlashing) return;
+
         isConnecting = true;
         flashStatus = 'Selecting port...';
         flashError = '';
@@ -807,134 +788,139 @@
             flashProgress = 0;
             flashStatus = 'Starting flash process...';
 
-            // Step 1: Erase flash if requested (0-5% preparation, then part of 5-95% work)
-            let cumulativeProcessed = 0;
+            // Erase volume is processed first; file progress continues after it
+            const willErase = eraseBeforeFlash && flashSizeBytes > 0;
+            let cumulativeProcessed = willErase ? flashSizeBytes : 0;
+            // Per-file throttling tracker for segment fill updates (reset on each file start)
+            let lastSegmentPercent: number | undefined;
 
-            if (eraseBeforeFlash && flashSizeBytes > 0) {
-                flashProgress = 5;
-                flashStatus = 'Erasing flash...';
-                logger.info($locales('customfirmware.log_erase_start'));
-
-                await espManager.eraseFlash({
-                    onProgress: (progress: any) => {
-                        // Erase progress 0-100 maps to 5-95% range
-                        const eraseProgress =
-                            (progress.progress / 100) * (flashSizeBytes / totalVolume);
-                        flashProgress = Math.round(5 + eraseProgress * 90);
-                        flashStatus = `Erasing flash... ${progress.progress}%`;
-                        // Throttled progress log (erase emits only 0% and 100%)
-                        logger.progress(
-                            'erase',
-                            progress.progress,
-                            $locales('customfirmware.log_erase_progress', {
-                                values: { percent: progress.progress }
-                            })
-                        );
-                        if (progress.error) {
-                            flashError = progress.error;
-                            logger.error(
-                                $locales('customfirmware.log_progress_error', {
-                                    values: { error: progress.error }
-                                })
-                            );
-                        }
-                    }
+            // Read all file contents up front, before the loader session opens
+            const flashEntries: {
+                data: Uint8Array;
+                address: string;
+                filename: string;
+                size: number;
+            }[] = [];
+            for (const fileItem of sortedFiles) {
+                const content = new Uint8Array(
+                    await fileHandler.readFileAsArrayBuffer(fileItem.file)
+                );
+                flashEntries.push({
+                    data: content,
+                    address: fileItem.address, // Already in hex format
+                    filename: fileItem.filename,
+                    size: fileItem.file.size
                 });
-
-                logger.success($locales('customfirmware.log_erase_done'));
-                cumulativeProcessed += flashSizeBytes;
             }
 
-            // Step 2: Flash all files (part of 5-95% work) - skip in erase-only mode
-            if (!isEraseOnly) {
-                for (let i = 0; i < totalFiles; i++) {
-                    const fileItem = sortedFiles[i];
-                    // Per-file throttling tracker for segment fill updates (reset for each file)
-                    let lastSegmentPercent: number | undefined;
+            logger.info(
+                $locales('customfirmware.log_baudrate_set', {
+                    values: { baud: selectedBaudrate }
+                })
+            );
 
-                    flashStatus = `Flashing file ${i + 1}/${totalFiles}: ${fileItem.filename} @ ${fileItem.address}...`;
-                    logger.info(
-                        $locales('customfirmware.log_flash_file_start', {
+            if (willErase) {
+                logger.info($locales('customfirmware.log_erase_start'));
+            }
+
+            // Single loader session: optional erase + all files in one writeFlash.
+            // The session opens at the selected baudrate and closes afterwards.
+            await espManager.flashFiles(flashEntries, {
+                baudrate: selectedBaudrate,
+                eraseBeforeFlash: willErase,
+                onEraseProgress: (progress) => {
+                    // Erase progress 0-100 maps to 5-95% range
+                    const eraseProgress =
+                        (progress.progress / 100) * (flashSizeBytes / totalVolume);
+                    flashProgress = Math.round(5 + eraseProgress * 90);
+                    flashStatus = `Erasing flash... ${progress.progress}%`;
+                    // Throttled progress log (erase emits only 0% and 100%)
+                    logger.progress(
+                        'erase',
+                        progress.progress,
+                        $locales('customfirmware.log_erase_progress', {
+                            values: { percent: progress.progress }
+                        })
+                    );
+                    if (progress.error) {
+                        flashError = progress.error;
+                        logger.error(
+                            $locales('customfirmware.log_progress_error', {
+                                values: { error: progress.error }
+                            })
+                        );
+                    }
+                },
+                onFileProgress: (event) => {
+                    const fileItem = sortedFiles[event.index];
+
+                    if (event.phase === 'start') {
+                        lastSegmentPercent = undefined;
+                        flashStatus = `Flashing file ${event.index + 1}/${totalFiles}: ${event.filename} @ ${event.address}...`;
+                        logger.info(
+                            $locales('customfirmware.log_flash_file_start', {
+                                values: {
+                                    index: event.index + 1,
+                                    total: totalFiles,
+                                    filename: event.filename,
+                                    address: event.address,
+                                    size: fileHandler.formatFileSize(fileItem.file.size)
+                                }
+                            })
+                        );
+                        // Show the segment as soon as its file starts
+                        segmentFill = new Map(segmentFill).set(event.filename, 0);
+                        return;
+                    }
+
+                    if (event.phase === 'done') {
+                        // Add completed file to cumulative processed
+                        cumulativeProcessed += fileItem.file.size;
+                        flashProgress = Math.round(5 + (cumulativeProcessed / totalVolume) * 90);
+                        logger.success(
+                            $locales('customfirmware.log_flash_file_done', {
+                                values: { filename: event.filename }
+                            })
+                        );
+                        // Ensure the completed file is fully filled (fraction = 1)
+                        segmentFill = new Map(segmentFill).set(event.filename, 1);
+                        return;
+                    }
+
+                    // 'progress': file progress 0-100 maps to portion of 5-95% range
+                    const fileSize = fileItem.file.size;
+                    const processedBytes = cumulativeProcessed + (event.progress / 100) * fileSize;
+                    flashProgress = Math.round(5 + (processedBytes / totalVolume) * 90);
+                    flashStatus = `Flashing file ${event.index + 1}/${totalFiles}: ${event.filename} @ ${event.address} - ${event.progress}%`;
+                    // Throttled progress log (10 p.p. step per-file key)
+                    logger.progress(
+                        `flash:${event.filename}`,
+                        event.progress,
+                        $locales('customfirmware.log_flash_file_progress', {
                             values: {
-                                index: i + 1,
-                                total: totalFiles,
-                                filename: fileItem.filename,
-                                address: fileItem.address,
-                                size: fileHandler.formatFileSize(fileItem.file.size)
+                                filename: event.filename,
+                                percent: event.progress
                             }
                         })
                     );
 
-                    // Read file content as Uint8Array for the flash path
-                    const content = new Uint8Array(
-                        await fileHandler.readFileAsArrayBuffer(fileItem.file)
-                    );
-                    const firmwareFile: FirmwareFile = {
-                        ...fileItem.file,
-                        content: content
-                    };
-
-                    const flashOptions = {
-                        baudrate: selectedBaudrate,
-                        address: fileItem.address, // Already in hex format
-                        onProgress: (progress: any) => {
-                            // File progress 0-100 maps to portion of 5-95% range
-                            const fileSize = fileItem.file.size;
-                            const processedBytes =
-                                cumulativeProcessed + (progress.progress / 100) * fileSize;
-                            flashProgress = Math.round(5 + (processedBytes / totalVolume) * 90);
-                            flashStatus = `Flashing file ${i + 1}/${totalFiles}: ${fileItem.filename} @ ${fileItem.address} - ${progress.status}`;
-                            // Throttled progress log (10 p.p. step per-file key)
-                            logger.progress(
-                                `flash:${fileItem.filename}`,
-                                progress.progress,
-                                $locales('customfirmware.log_flash_file_progress', {
-                                    values: {
-                                        filename: fileItem.filename,
-                                        percent: progress.progress
-                                    }
-                                })
-                            );
-                            if (progress.error) {
-                                flashError = progress.error;
-                                logger.error(
-                                    $locales('customfirmware.log_progress_error', {
-                                        values: { error: progress.error }
-                                    })
-                                );
-                            }
-
-                            // Throttled fill update: only on STEP boundary or at file start/end.
-                            // Assigning a new Map is required for legacy `$:` reactivity.
-                            const fraction = progress.progress / 100;
-                            if (
-                                lastSegmentPercent === undefined ||
-                                progress.progress - lastSegmentPercent >= FILL_PROGRESS_STEP ||
-                                progress.progress >= 100 ||
-                                progress.progress === 0
-                            ) {
-                                lastSegmentPercent = progress.progress;
-                                segmentFill = new Map(segmentFill).set(
-                                    fileItem.filename,
-                                    fraction
-                                );
-                            }
-                        }
-                    };
-
-                    // Use ESP manager to flash firmware
-                    await espManager.flashFirmware(firmwareFile, flashOptions);
-                    logger.success(
-                        $locales('customfirmware.log_flash_file_done', {
-                            values: { filename: fileItem.filename }
-                        })
-                    );
-
-                    // Add completed file to cumulative processed
-                    cumulativeProcessed += fileItem.file.size;
-                    // Ensure the completed file is fully filled (fraction = 1)
-                    segmentFill = new Map(segmentFill).set(fileItem.filename, 1);
+                    // Throttled fill update: only on STEP boundary or at file start/end.
+                    // Assigning a new Map is required for legacy `$:` reactivity.
+                    const fraction = event.progress / 100;
+                    if (
+                        lastSegmentPercent === undefined ||
+                        event.progress - lastSegmentPercent >= FILL_PROGRESS_STEP ||
+                        event.progress >= 100 ||
+                        event.progress === 0
+                    ) {
+                        lastSegmentPercent = event.progress;
+                        segmentFill = new Map(segmentFill).set(event.filename, fraction);
+                    }
                 }
+            });
+
+            if (willErase) {
+                logger.success($locales('customfirmware.log_erase_done'));
             }
 
             // Step 3: Finalization (95-100%)
@@ -1011,10 +997,17 @@
                 values: { size: deviceInfo.flashSize }
             })
         );
+        logger.info(
+            $locales('customfirmware.log_baudrate_set', {
+                values: { baud: selectedBaudrate }
+            })
+        );
 
         try {
-            // Read flash memory with progress tracking and abort signal
+            // Read flash memory with progress tracking and abort signal.
+            // Runs in its own loader session at the selected baudrate.
             const { data: flashData, flashId } = await espManager.readFlashMemory(flashSizeBytes, {
+                baudrate: selectedBaudrate,
                 onProgress: (progress) => {
                     console.log(
                         `Backup progress update: ${progress.progress}% - ${progress.status}`

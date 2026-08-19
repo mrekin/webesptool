@@ -1,8 +1,6 @@
 import type {
     ESPDeviceInfo,
     FlashProgress,
-    FlashOptions,
-    FirmwareFile,
     FirmwareMetadata,
     FirmwareMetadataExtended,
     FlashAddressResult,
@@ -679,6 +677,17 @@ export function createESPManager() {
     let port: any = null; // Use 'any' type for SerialPort since it's not defined in the current context
     let esploader: any = null;
     let transport: any = null;
+    // Serializes port sessions: only one open loader session may run at a
+    // time. Overlapping operations (e.g. a double port selection: auto-select
+    // reactive racing a user click) previously fought over the same
+    // SerialPort and failed with "The port is already open".
+    let activeSession: Promise<unknown> = Promise.resolve();
+
+    function runSerialized<T>(task: () => Promise<T>): Promise<T> {
+        const result = activeSession.then(task, task);
+        activeSession = result.catch(() => undefined);
+        return result;
+    }
 
     // Baudrate options
     const baudrateOptions = [
@@ -706,19 +715,64 @@ export function createESPManager() {
         }
     }
 
-    // Get device information
-    async function getDeviceInfo(): Promise<ESPDeviceInfo | null> {
-        if (!port) return null;
+    // Close the serial port reliably. transport.disconnect() races with the
+    // esptool-js readLoop (it releases the stream lock between iterations),
+    // which can leave the port open with a locked stream and every later
+    // device.open() fails with "The port is already open". So we cancel the
+    // reader ourselves (retrying, because readLoop re-acquires the lock) and
+    // wait a bounded time for the lock to become free before closing.
+    // Returns true if the port ended up closed.
+    async function closePortQuietly(): Promise<boolean> {
+        if (!port || !port.readable) return true; // already closed
+
+        for (let i = 0; i < 20; i++) {
+            try {
+                await (transport as any)?.reader?.cancel();
+            } catch {
+                // reader already released between readLoop iterations - retry
+            }
+            if (!port.readable?.locked) break;
+            await new Promise((resolve) => setTimeout(resolve, 50));
+        }
 
         try {
-            // Import ESPLoader and Transport
+            await port.close();
+        } catch (e) {
+            console.log('Port close note:', (e as any).message || e);
+        }
+        return !port.readable;
+    }
+
+    // Run an operation in a fresh loader session (session-less model):
+    // opens the port, resets the chip into download mode, syncs at 115200,
+    // uploads the flasher stub and switches to `baudrate` (the single proven
+    // changeBaud() inside main()). The port is closed when the operation ends,
+    // so no live connection is kept between operations.
+    async function withLoader<T>(
+        baudrate: number,
+        operation: (loader: any, terminalOutput: string[]) => Promise<T>
+    ): Promise<T> {
+        if (!port) {
+            throw new Error('No port selected');
+        }
+
+        // One session at a time: a second operation (double port selection,
+        // reset during detection, ...) waits for the previous session to
+        // finish and close the port instead of racing on the same SerialPort.
+        return runSerialized(async () => {
             const { ESPLoader, Transport } = await import('esptool-js');
-            type LoaderOptions = any; // Define LoaderOptions as any since it's not exported from esptool-js
 
-            // Create transport and store for reuse (disable trace logging)
-            transport = new Transport(port, false);
+            // Recover from a previous session that failed to close the port
+            const recovered = await closePortQuietly();
+            if (!recovered) {
+                throw new Error(
+                    'Serial port is busy (held open by a previous session). Reload the page and try again.'
+                );
+            }
 
-            // Create terminal and collect all output
+            // Create terminal and collect all output (used for info parsing).
+            // Full lines are also mirrored to the console so the loader
+            // messages (e.g. "Changing baudrate to ...") stay visible.
             const terminalOutput: string[] = [];
             const espLoaderTerminal = {
                 clean() {
@@ -726,194 +780,208 @@ export function createESPManager() {
                 },
                 writeLine(data: string) {
                     terminalOutput.push(data);
+                    console.log(data);
                 },
                 write(data: string) {
                     terminalOutput.push(data);
                 }
             };
 
+            transport = new Transport(port, false);
+
             // Create ESPLoader with minimal options
             const loaderOptions: any = {
                 transport,
-                baudrate: 115200, // Use standard speed for detection
+                baudrate, // main() syncs at 115200 (romBaudrate) and switches to this
                 terminal: espLoaderTerminal,
                 debugLogging: false,
                 enableTracing: false // Disable TRACE logs
             };
 
-            esploader = new ESPLoader(loaderOptions);
+            const loader = new ESPLoader(loaderOptions);
+            esploader = loader;
 
-            // Initialize to detect chip - main() returns chip name as string
-            const chipName = await esploader.main();
-            // Also get chip name from esploader.chip.CHIP_NAME
-            let espChipName = esploader.chip?.CHIP_NAME || chipName;
-            // Remove revision info from chip name (e.g., "ESP32-C6 (revision 2)" -> "ESP32-C6")
-            espChipName = espChipName.replace(/\s*\(revision.*\)$/, '').trim();
-            console.log('Chip detected:', chipName);
-            console.log('ESP chip name (normalized):', espChipName);
-            console.log('Terminal output:', terminalOutput);
-
-            // Parse detailed information from terminal output
-            let flashSize = 'Unknown';
-            let psramSize: string | undefined;
-            let mac = 'Unknown';
-            let features = 'Unknown';
-            let crystal = 'Unknown';
-            let revision = 'Unknown';
-            let flashId = 'Unknown';
-
-            // Parse terminal output for detailed info
-            const outputText = terminalOutput.join('\n');
-
-            // Use ROM API methods when available, fallback to parsing terminal output
-
-            // Get MAC address using ROM API
             try {
-                mac = await esploader.chip.readMac(esploader);
+                await loader.main();
+                return await operation(loader, terminalOutput);
             } catch (error) {
-                console.warn('Failed to get MAC from ROM API:', error);
-                const macMatch = outputText.match(/MAC:\s*([0-9A-Fa-f:]+)/);
-                if (macMatch) mac = macMatch[1];
+                // A holder outside this manager (a stale module after a hot
+                // reload, another tab) keeps the port open invisibly: our
+                // port.readable is null, but open() still fails. Surface it
+                // as an actionable error instead of the cryptic
+                // InvalidStateError.
+                const message = (error as any)?.message || String(error);
+                if (message.includes('already open')) {
+                    throw new Error(
+                        'Serial port is busy (held open by another session). Reload the page and reconnect the device.'
+                    );
+                }
+                throw error;
+            } finally {
+                // Same cleanup order as resetPort(): loader, then port
+                try {
+                    await loader.after();
+                } catch (e) {
+                    console.log('ESPLoader cleanup note:', (e as any).message || e);
+                }
+                await closePortQuietly();
+                esploader = null;
+                transport = null;
             }
+        });
+    }
 
-            // Get chip features using ROM API
-            try {
-                features = await esploader.chip.getChipFeatures(esploader);
-            } catch (error) {
-                console.warn('Failed to get features from ROM API:', error);
-                const featuresMatch = outputText.match(/Features:\s*(.+)/);
-                if (featuresMatch) features = featuresMatch[1];
-            }
+    // Get device information
+    // Detection runs in its own loader session; withLoader() closes the port
+    // afterwards, so no live connection is kept between operations.
+    async function getDeviceInfo(): Promise<ESPDeviceInfo | null> {
+        if (!port) return null;
 
-            // Get crystal frequency using ROM API
-            try {
-                const crystalFreq = await esploader.chip.getCrystalFreq(esploader);
-                crystal = `${crystalFreq}MHz`;
-            } catch (error) {
-                console.warn('Failed to get crystal from ROM API:', error);
-                const crystalMatch = outputText.match(/Crystal is (\d+)MHz/);
-                if (crystalMatch) crystal = `${crystalMatch[1]}MHz`;
-            }
+        try {
+            return await withLoader(
+                115200, // Use standard speed for detection
+                async (loader: any, terminalOutput: string[]) => {
+                    // Chip is already detected: withLoader() ran main() (which
+                    // opens the port, syncs and uploads the stub). Calling
+                    // main() again here re-opens the already open port and
+                    // fails with "The port is already open".
+                    let espChipName = loader.chip?.CHIP_NAME || 'Unknown';
+                    // Remove revision info from chip name (e.g., "ESP32-C6 (revision 2)" -> "ESP32-C6")
+                    espChipName = espChipName.replace(/\s*\(revision.*\)$/, '').trim();
+                    console.log('ESP chip name (normalized):', espChipName);
+                    console.log('Terminal output:', terminalOutput);
 
-            // Get chip revision using ROM API
-            try {
-                if (esploader.chip.getChipRevision) {
-                    revision = await esploader.chip.getChipRevision(esploader);
-                } else {
-                    // Fallback to parsing for chips without getChipRevision
-                    const chipMatch = outputText.match(/Chip is (.+) \(revision (.+)\)/);
-                    if (chipMatch) {
-                        revision = chipMatch[2];
+                    // Parse detailed information from terminal output
+                    let flashSize = 'Unknown';
+                    let psramSize: string | undefined;
+                    let mac = 'Unknown';
+                    let features = 'Unknown';
+                    let crystal = 'Unknown';
+                    let revision = 'Unknown';
+                    let flashId = 'Unknown';
+
+                    // Parse terminal output for detailed info
+                    const outputText = terminalOutput.join('\n');
+
+                    // Use ROM API methods when available, fallback to parsing terminal output
+
+                    // Get MAC address using ROM API
+                    try {
+                        mac = await loader.chip.readMac(loader);
+                    } catch (error) {
+                        console.warn('Failed to get MAC from ROM API:', error);
+                        const macMatch = outputText.match(/MAC:\s*([0-9A-Fa-f:]+)/);
+                        if (macMatch) mac = macMatch[1];
                     }
+
+                    // Get chip features using ROM API
+                    try {
+                        features = await loader.chip.getChipFeatures(loader);
+                    } catch (error) {
+                        console.warn('Failed to get features from ROM API:', error);
+                        const featuresMatch = outputText.match(/Features:\s*(.+)/);
+                        if (featuresMatch) features = featuresMatch[1];
+                    }
+
+                    // Get crystal frequency using ROM API
+                    try {
+                        const crystalFreq = await loader.chip.getCrystalFreq(loader);
+                        crystal = `${crystalFreq}MHz`;
+                    } catch (error) {
+                        console.warn('Failed to get crystal from ROM API:', error);
+                        const crystalMatch = outputText.match(/Crystal is (\d+)MHz/);
+                        if (crystalMatch) crystal = `${crystalMatch[1]}MHz`;
+                    }
+
+                    // Get chip revision using ROM API
+                    try {
+                        if (loader.chip.getChipRevision) {
+                            revision = await loader.chip.getChipRevision(loader);
+                        } else {
+                            // Fallback to parsing for chips without getChipRevision
+                            const chipMatch = outputText.match(/Chip is (.+) \(revision (.+)\)/);
+                            if (chipMatch) {
+                                revision = chipMatch[2];
+                            }
+                        }
+                    } catch (error) {
+                        console.warn('Failed to get revision from ROM API:', error);
+                        const chipMatch = outputText.match(/Chip is (.+) \(revision (.+)\)/);
+                        if (chipMatch) {
+                            revision = chipMatch[2];
+                        }
+                    }
+
+                    // Detect flash size using loader's detectFlashSize() (esptool-js 0.6.1 API).
+                    // Returns an already-formatted string (e.g., "8MB"); more reliable than parsing
+                    // terminal output, especially when PSRAM is present.
+                    try {
+                        const detected = await loader.detectFlashSize();
+                        if (detected) {
+                            flashSize = detected; // e.g., "4MB", "8MB", "16MB"
+                        } else {
+                            flashSize = 'Unknown';
+                        }
+                        console.log('Detected flash size via detectFlashSize():', flashSize);
+                    } catch (error) {
+                        console.warn('Failed to detect flash size using detectFlashSize():', error);
+                        // Fallback to parsing terminal output if detection fails
+                        const flashSizeMatch = outputText.match(/Embedded Flash ([0-9]+MB) /);
+                        if (flashSizeMatch) {
+                            flashSize = flashSizeMatch[1];
+                        }
+                        // If fallback also didn't work - leave flashSize as 'Unknown'
+                    }
+
+                    // Detect PSRAM size by parsing terminal output
+                    // Note: PSRAM info is only shown in terminal output, not available via ROM API
+                    const psramSizeMatch = outputText.match(/Embedded PSRAM ([0-9]+MB) /);
+                    if (psramSizeMatch) {
+                        psramSize = psramSizeMatch[1];
+                        console.log('Detected PSRAM size:', psramSize);
+                    }
+
+                    // Get Flash ID - not available via ROM API, parse from terminal output
+                    const flashIdMatch = outputText.match(/Flash ID:\s*(.+)/);
+                    if (flashIdMatch) {
+                        flashId = flashIdMatch[1];
+                    }
+
+                    const deviceInfo: ESPDeviceInfo = {
+                        chip: espChipName, // Use normalized chip name
+                        flashSize: flashSize, // May be 'Unknown' if detection failed
+                        psramSize: psramSize, // undefined if no PSRAM
+                        mac: mac,
+                        features: features,
+                        crystal: crystal,
+                        revision: revision,
+                        flashId: flashId,
+                        baudrate: 115200
+                    };
+
+                    console.log('Device detection completed, port closed (session-less mode)');
+                    console.log(`Final device chip: ${espChipName}`);
+
+                    return deviceInfo;
                 }
-            } catch (error) {
-                console.warn('Failed to get revision from ROM API:', error);
-                const chipMatch = outputText.match(/Chip is (.+) \(revision (.+)\)/);
-                if (chipMatch) {
-                    revision = chipMatch[2];
-                }
-            }
-
-            // Detect flash size using esploader's detectFlashSize() (esptool-js 0.6.1 API).
-            // Returns an already-formatted string (e.g., "8MB"); more reliable than parsing
-            // terminal output, especially when PSRAM is present.
-            try {
-                const detected = await esploader.detectFlashSize();
-                if (detected) {
-                    flashSize = detected; // e.g., "4MB", "8MB", "16MB"
-                } else {
-                    flashSize = 'Unknown';
-                }
-                console.log('Detected flash size via detectFlashSize():', flashSize);
-            } catch (error) {
-                console.warn('Failed to detect flash size using detectFlashSize():', error);
-                // Fallback to parsing terminal output if detection fails
-                const flashSizeMatch = outputText.match(/Embedded Flash ([0-9]+MB) /);
-                if (flashSizeMatch) {
-                    flashSize = flashSizeMatch[1];
-                }
-                // If fallback also didn't work - leave flashSize as 'Unknown'
-            }
-
-            // Detect PSRAM size by parsing terminal output
-            // Note: PSRAM info is only shown in terminal output, not available via ROM API
-            const psramSizeMatch = outputText.match(/Embedded PSRAM ([0-9]+MB) /);
-            if (psramSizeMatch) {
-                psramSize = psramSizeMatch[1];
-                console.log('Detected PSRAM size:', psramSize);
-            }
-
-            // Get Flash ID - not available via ROM API, parse from terminal output
-            const flashIdMatch = outputText.match(/Flash ID:\s*(.+)/);
-            if (flashIdMatch) {
-                flashId = flashIdMatch[1];
-            }
-
-            const deviceInfo: ESPDeviceInfo = {
-                chip: espChipName, // Use normalized chip name
-                flashSize: flashSize, // May be 'Unknown' if detection failed
-                psramSize: psramSize, // undefined if no PSRAM
-                mac: mac,
-                features: features,
-                crystal: crystal,
-                revision: revision,
-                flashId: flashId,
-                baudrate: 115200
-            };
-
-            // Clean up
-            await esploader.after();
-            // Don't close the port - keep it open for flashing
-            console.log('Device detection completed, port kept open for flashing');
-            console.log(`Final device chip: ${espChipName} (was: ${chipName})`);
-
-            return deviceInfo;
+            );
         } catch (error: any) {
             console.error('Failed to get device info:', error);
             throw new Error(`Failed to detect device: ${error.message || error.toString()}`);
         }
     }
 
-    // Erase flash memory
-    async function eraseFlash(
-        options: { onProgress?: (progress: FlashProgress) => void } = {}
-    ): Promise<void> {
-        if (!esploader) {
-            throw new Error('ESP loader not initialized. Please connect to device first.');
-        }
-
-        try {
-            options.onProgress?.({
-                progress: 0,
-                status: 'Erasing flash...',
-                error: ''
-            });
-
-            await esploader.eraseFlash();
-            console.log('Flash erase completed successfully');
-
-            options.onProgress?.({
-                progress: 100,
-                status: 'Flash erased successfully',
-                error: ''
-            });
-        } catch (error) {
-            console.error('Erase error:', error);
-            throw new Error(
-                `Erase failed: ${error instanceof Error ? error.message : String(error)}`
-            );
-        }
-    }
-
     // Read flash memory
+    // Runs in its own loader session at the given baudrate (session-less model).
     async function readFlashMemory(
         sizeBytes: number,
         options: {
+            baudrate?: number;
             onProgress?: (progress: FlashProgress) => void;
             abortSignal?: AbortSignal;
         } = {}
     ): Promise<{ data: Uint8Array; flashId: string }> {
-        if (!esploader) {
+        if (!port) {
             throw new Error('ESP loader not initialized. Please connect to device first.');
         }
 
@@ -929,60 +997,69 @@ export function createESPManager() {
                 error: ''
             });
 
-            console.log(`Reading ${sizeBytes} bytes from flash memory...`);
+            return await withLoader(
+                options.baudrate ?? 115200,
+                async (loader: any): Promise<{ data: Uint8Array; flashId: string }> => {
+                    console.log(`Reading ${sizeBytes} bytes from flash memory...`);
 
-            // Read flash ID first
-            let flashId = 'Unknown';
-            try {
-                // Check if aborted before reading flash ID
-                if (options.abortSignal?.aborted) {
-                    throw new Error('Backup cancelled');
-                }
+                    // Read flash ID first
+                    let flashId = 'Unknown';
+                    try {
+                        // Check if aborted before reading flash ID
+                        if (options.abortSignal?.aborted) {
+                            throw new Error('Backup cancelled');
+                        }
 
-                const flashIdResult = await esploader.flashId();
-                flashId =
-                    typeof flashIdResult === 'object'
-                        ? JSON.stringify(flashIdResult)
-                        : String(flashIdResult);
-                console.log('Flash ID:', flashId);
-            } catch (error) {
-                console.warn('Failed to read flash ID:', error);
-                // Check if error is from abort
-                if (error instanceof Error && error.message === 'Backup cancelled') {
-                    throw error;
-                }
-            }
-
-            // Read entire flash memory from address 0x0
-            // esptool-js callback signature: onPacketReceived(packet, bytesRead, totalSize)
-            const flashData = await esploader.readFlash(
-                0x0,
-                sizeBytes,
-                (packet: Uint8Array, bytesRead: number, totalSize: number) => {
-                    // Check if aborted during read
-                    if (options.abortSignal?.aborted) {
-                        throw new Error('Backup cancelled');
+                        const flashIdResult = await loader.flashId();
+                        flashId =
+                            typeof flashIdResult === 'object'
+                                ? JSON.stringify(flashIdResult)
+                                : String(flashIdResult);
+                        console.log('Flash ID:', flashId);
+                    } catch (error) {
+                        console.warn('Failed to read flash ID:', error);
+                        // Check if error is from abort
+                        if (error instanceof Error && error.message === 'Backup cancelled') {
+                            throw error;
+                        }
                     }
 
-                    const progress = Math.round((bytesRead / totalSize) * 100);
-                    console.log(`Read progress: ${bytesRead}/${totalSize} bytes (${progress}%)`);
+                    // Read entire flash memory from address 0x0
+                    // esptool-js callback signature: onPacketReceived(packet, bytesRead, totalSize)
+                    const flashData = await loader.readFlash(
+                        0x0,
+                        sizeBytes,
+                        (packet: Uint8Array, bytesRead: number, totalSize: number) => {
+                            // Check if aborted during read
+                            if (options.abortSignal?.aborted) {
+                                throw new Error('Backup cancelled');
+                            }
+
+                            const progress = Math.round((bytesRead / totalSize) * 100);
+                            console.log(
+                                `Read progress: ${bytesRead}/${totalSize} bytes (${progress}%)`
+                            );
+                            options.onProgress?.({
+                                progress: progress,
+                                status: `Reading flash memory... ${progress}%`,
+                                error: ''
+                            });
+                        }
+                    );
+
+                    console.log(
+                        `Flash read completed successfully. Total bytes: ${flashData.length}`
+                    );
+
                     options.onProgress?.({
-                        progress: progress,
-                        status: `Reading flash memory... ${progress}%`,
+                        progress: 100,
+                        status: 'Flash memory read completed',
                         error: ''
                     });
+
+                    return { data: flashData, flashId };
                 }
             );
-
-            console.log(`Flash read completed successfully. Total bytes: ${flashData.length}`);
-
-            options.onProgress?.({
-                progress: 100,
-                status: 'Flash memory read completed',
-                error: ''
-            });
-
-            return { data: flashData, flashId };
         } catch (error) {
             console.error('Flash read error:', error);
             throw new Error(
@@ -991,94 +1068,128 @@ export function createESPManager() {
         }
     }
 
-    // Flash firmware
-    async function flashFirmware(firmwareFile: FirmwareFile, options: FlashOptions): Promise<void> {
+    // Flash multiple files in a single loader session opened at `baudrate`
+    // (session-less model: the port is closed afterwards). Optionally erases
+    // the whole flash first - erase and write share the same session.
+    async function flashFiles(
+        files: { data: Uint8Array; address: string; filename: string; size: number }[],
+        options: {
+            baudrate?: number;
+            eraseBeforeFlash?: boolean;
+            onEraseProgress?: (progress: FlashProgress) => void;
+            onFileProgress?: (event: {
+                index: number;
+                total: number;
+                filename: string;
+                address: string;
+                progress: number;
+                phase: 'start' | 'progress' | 'done';
+            }) => void;
+        } = {}
+    ): Promise<void> {
         if (!port) {
             throw new Error('No port selected');
         }
 
-        if (!esploader || !transport) {
-            throw new Error('Device not properly detected. Please disconnect and reconnect.');
+        if (files.length === 0 && !options.eraseBeforeFlash) {
+            throw new Error('No files to flash');
         }
 
-        try {
-            console.log('Firmware size:', firmwareFile.content.length);
-
-            // Parse flash address
-            let address = 0x0;
-            try {
-                // Handle both decimal and hex input
-                if (typeof options.address === 'string') {
-                    if (options.address.startsWith('0x') || options.address.startsWith('0X')) {
-                        address = parseInt(options.address, 16);
-                    } else {
-                        address = parseInt(options.address, 10);
-                    }
-                } else {
-                    address = options.address;
-                }
-
-                // Validate address range
-                if (isNaN(address) || address < 0) {
-                    throw new Error('Invalid address');
-                }
-
-                console.log(
-                    `Using flash address: 0x${address.toString(16).toUpperCase()} (${address})`
-                );
-            } catch (error) {
+        // Parse and validate all addresses up front
+        const fileArray = files.map((file) => {
+            const address = parseFlashAddress(file.address);
+            if (isNaN(address) || address < 0) {
                 throw new Error(
-                    `Invalid flash address: ${options.address}. Please enter a valid address (e.g., 0x0, 0x1000, 4096)`
+                    `Invalid flash address: ${file.address} (${file.filename}). Please enter a valid address (e.g., 0x0, 0x1000, 4096)`
                 );
             }
+            console.log(
+                `${file.filename}: using flash address 0x${address.toString(16).toUpperCase()} (${address}), size ${file.size}`
+            );
+            return { data: file.data, address };
+        });
 
-            // Write firmware using proper FlashOptions
-            const flashOptions = {
-                fileArray: [
-                    {
-                        data: firmwareFile.content,
-                        address: address
-                    }
-                ],
-                flashMode: 'keep', // Keep current mode
-                flashFreq: 'keep', // Keep current frequency
-                flashSize: 'keep', // Keep current flash size
-                eraseAll: false, // Erase is now handled separately
-                compress: true,
-                reportProgress: (fileIndex: number, written: number, total: number) => {
-                    const progress = Math.round((written / total) * 100);
-                    options.onProgress?.({
-                        progress: progress, // 0-100%
-                        status: `Writing firmware... ${progress}%`,
+        try {
+            await withLoader(options.baudrate ?? 115200, async (loader: any) => {
+                // Erase first (if requested) in the same session
+                if (options.eraseBeforeFlash) {
+                    options.onEraseProgress?.({
+                        progress: 0,
+                        status: 'Erasing flash...',
                         error: ''
                     });
-                    console.log(`Progress: ${written}/${total} bytes`);
+
+                    await loader.eraseFlash();
+                    console.log('Flash erase completed successfully');
+
+                    options.onEraseProgress?.({
+                        progress: 100,
+                        status: 'Flash erased successfully',
+                        error: ''
+                    });
                 }
-            };
 
-            console.log('Flash options:', flashOptions);
-            console.log('Starting write flash...');
+                if (files.length === 0) return; // Erase-only mode
 
-            // Simple write as in example
-            console.log('Starting writeFlash...');
-            await esploader.writeFlash(flashOptions);
-            console.log('writeFlash completed successfully');
+                // Track per-file progress: esptool-js reports (fileIndex, written, totalSize);
+                // a change of fileIndex means the previous file is complete.
+                let lastIndex = -1;
+                const emit = (
+                    index: number,
+                    progress: number,
+                    phase: 'start' | 'progress' | 'done'
+                ) => {
+                    const file = files[index];
+                    options.onFileProgress?.({
+                        index,
+                        total: files.length,
+                        filename: file.filename,
+                        address: file.address,
+                        progress,
+                        phase
+                    });
+                };
 
-            console.log('Starting after() call...');
-            // Call after to reset the chip
-            await esploader.after();
-            console.log('after() completed successfully');
+                const flashOptions = {
+                    fileArray,
+                    flashMode: 'keep', // Keep current mode
+                    flashFreq: 'keep', // Keep current frequency
+                    flashSize: 'keep', // Keep current flash size
+                    eraseAll: false, // Erase is handled separately
+                    compress: true,
+                    reportProgress: (fileIndex: number, written: number, totalSize: number) => {
+                        if (fileIndex !== lastIndex) {
+                            if (lastIndex >= 0) {
+                                emit(lastIndex, 100, 'done');
+                            }
+                            emit(fileIndex, 0, 'start');
+                            lastIndex = fileIndex;
+                        }
+                        const progress =
+                            totalSize > 0 ? Math.round((written / totalSize) * 100) : 100;
+                        emit(fileIndex, progress, 'progress');
+                        console.log(`Progress: file ${fileIndex} ${written}/${totalSize} bytes`);
+                    }
+                };
+
+                console.log('Flash options:', {
+                    files: files.map((f) => ({ filename: f.filename, size: f.size })),
+                    compress: true
+                });
+                console.log('Starting writeFlash...');
+                await loader.writeFlash(flashOptions);
+                console.log('writeFlash completed successfully');
+
+                if (lastIndex >= 0) {
+                    emit(lastIndex, 100, 'done');
+                }
+            });
         } catch (error) {
             console.error('Flash error:', error);
             console.error(
                 'Error stack:',
                 error instanceof Error ? error.stack : 'No stack trace available'
             );
-            console.error('Error details:', {
-                message: error instanceof Error ? error.message : String(error),
-                name: error instanceof Error ? error.name : 'Unknown',
-                toString: error ? error.toString() : 'No toString method'
-            });
 
             // Check for common bootloader mode errors
             const errorMessage = error && error.toString ? error.toString() : String(error);
@@ -1096,50 +1207,32 @@ Then try flashing again.`);
             } else {
                 throw new Error(`Flash failed: ${errorMessage}`);
             }
-
-            // ESPLoader handles port cleanup automatically
-            port = null; // Reset port reference
         }
     }
 
     // Reset port and cleanup
     async function resetPort(): Promise<void> {
-        // Cleanup order: esploader first, then transport, then port
-        try {
-            if (esploader) {
-                await esploader.after();
-                console.log('ESPLoader cleaned up');
+        // Wait for any running session to finish before touching the port
+        await runSerialized(async () => {
+            // Cleanup order: esploader first, then port
+            try {
+                if (esploader) {
+                    await esploader.after();
+                    console.log('ESPLoader cleaned up');
+                }
+            } catch (e) {
+                // Ignore errors if port is already closed
+                console.log('ESPLoader cleanup note:', (e as any).message || e);
             }
-        } catch (e) {
-            // Ignore errors if port is already closed
-            console.log('ESPLoader cleanup note:', (e as any).message || e);
-        }
 
-        try {
-            if (transport && typeof transport.disconnect === 'function') {
-                await transport.disconnect();
-                console.log('Transport disconnected');
-            }
-        } catch (e) {
-            // Ignore errors if transport is already disconnected
-            console.log('Transport disconnect note:', (e as any).message || e);
-        }
+            // Close the port reliably (cancels the readLoop reader first)
+            await closePortQuietly();
 
-        // Try to close port directly if still open
-        try {
-            if (port && port.readable) {
-                await port.close();
-                console.log('Port closed directly');
-            }
-        } catch (e) {
-            // Port might already be closed, that's ok
-            console.log('Port close note:', (e as any).message || e);
-        }
-
-        // Reset all references
-        port = null;
-        esploader = null;
-        transport = null;
+            // Reset all references
+            port = null;
+            esploader = null;
+            transport = null;
+        });
     }
 
     // Get current port
@@ -1216,8 +1309,7 @@ Then try flashing again.`);
     return {
         connectToPort,
         getDeviceInfo,
-        flashFirmware,
-        eraseFlash,
+        flashFiles,
         readFlashMemory,
         resetPort,
         getCurrentPort,
@@ -1225,25 +1317,6 @@ Then try flashing again.`);
         generateDumpFilename,
         parseFlashAddress,
         isValidFlashAddress,
-        sanitizeAddress,
-        getCurrentBaudrate,
-        changeBaudrate
+        sanitizeAddress
     };
-
-    // Get current baudrate from esploader
-    function getCurrentBaudrate(): number {
-        return esploader?.baudrate || 115200;
-    }
-
-    // Change baudrate in esploader
-    async function changeBaudrate(newBaudrate: number): Promise<void> {
-        if (!esploader) {
-            throw new Error('ESP loader not initialized');
-        }
-
-        if (esploader.baudrate !== newBaudrate) {
-            esploader.baudrate = newBaudrate;
-            await esploader.changeBaud();
-        }
-    }
 }
