@@ -743,6 +743,24 @@ export function createESPManager() {
         return !port.readable;
     }
 
+    // Reboot the device: pulse EN via RTS with IO0 (DTR) released. The
+    // default loader.after() "hard_reset" only drops RTS, which is a no-op
+    // when RTS is already low - no reset edge, the chip stays in the flasher
+    // stub. The pulse works for classic auto-reset circuits and for the
+    // USB-JTAG-Serial peripheral alike.
+    async function hardResetDevice(loader: any): Promise<void> {
+        try {
+            await loader.transport.setDTR(false);
+            await loader.transport.setRTS(true);
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            await loader.transport.setDTR(false);
+            await loader.transport.setRTS(false);
+            console.log('Device reset via RTS pulse');
+        } catch (e) {
+            console.log('Device reset note:', (e as any).message || e);
+        }
+    }
+
     // Run an operation in a fresh loader session (session-less model):
     // opens the port, resets the chip into download mode, syncs at 115200,
     // uploads the flasher stub and switches to `baudrate` (the single proven
@@ -1129,7 +1147,11 @@ export function createESPManager() {
                     });
                 }
 
-                if (files.length === 0) return; // Erase-only mode
+                if (files.length === 0) {
+                    // Erase-only mode: still reboot the device afterwards
+                    await hardResetDevice(loader);
+                    return;
+                }
 
                 // Track per-file progress: esptool-js reports (fileIndex, written, totalSize);
                 // a change of fileIndex means the previous file is complete.
@@ -1183,6 +1205,9 @@ export function createESPManager() {
                 if (lastIndex >= 0) {
                     emit(lastIndex, 100, 'done');
                 }
+
+                // Reboot the device so the new firmware starts
+                await hardResetDevice(loader);
             });
         } catch (error) {
             console.error('Flash error:', error);

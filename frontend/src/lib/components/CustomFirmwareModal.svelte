@@ -220,6 +220,14 @@
         await espManager.resetPort();
     });
 
+    // Format elapsed milliseconds as "12.3s" or "2:05 min"
+    function formatElapsed(ms: number): string {
+        const seconds = ms / 1000;
+        if (seconds < 60) return `${seconds.toFixed(1)}s`;
+        const minutes = Math.floor(seconds / 60);
+        return `${minutes}:${String(Math.round(seconds - minutes * 60)).padStart(2, '0')} min`;
+    }
+
     // Helper function to get localized error message
     function getErrorMessage(errorCode?: number): string {
         switch (errorCode) {
@@ -793,6 +801,7 @@
             let cumulativeProcessed = willErase ? flashSizeBytes : 0;
             // Per-file throttling tracker for segment fill updates (reset on each file start)
             let lastSegmentPercent: number | undefined;
+            let fileStartTime = 0;
 
             // Read all file contents up front, before the loader session opens
             const flashEntries: {
@@ -856,6 +865,7 @@
 
                     if (event.phase === 'start') {
                         lastSegmentPercent = undefined;
+                        fileStartTime = Date.now();
                         flashStatus = `Flashing file ${event.index + 1}/${totalFiles}: ${event.filename} @ ${event.address}...`;
                         logger.info(
                             $locales('customfirmware.log_flash_file_start', {
@@ -879,7 +889,10 @@
                         flashProgress = Math.round(5 + (cumulativeProcessed / totalVolume) * 90);
                         logger.success(
                             $locales('customfirmware.log_flash_file_done', {
-                                values: { filename: event.filename }
+                                values: {
+                                    filename: event.filename,
+                                    time: formatElapsed(Date.now() - fileStartTime)
+                                }
                             })
                         );
                         // Ensure the completed file is fully filled (fraction = 1)
@@ -918,6 +931,10 @@
                     }
                 }
             });
+
+            // The device was rebooted inside flashFiles() (RTS pulse) so the
+            // new firmware starts right away
+            logger.info($locales('customfirmware.log_device_reset'));
 
             if (willErase) {
                 logger.success($locales('customfirmware.log_erase_done'));
