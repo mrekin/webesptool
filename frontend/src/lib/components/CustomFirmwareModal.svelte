@@ -157,6 +157,22 @@
         label: $locales(opt.labelKey)
     }));
 
+    // The user's chosen baudrate persists in localStorage: the last selected
+    // speed becomes the default for every future flashing session. A saved
+    // value that is no longer among the options is ignored.
+    const BAUDRATE_STORAGE_KEY = 'esp-baudrate';
+    if (typeof localStorage !== 'undefined') {
+        const savedBaudrate = Number(localStorage.getItem(BAUDRATE_STORAGE_KEY));
+        if (baudrateOptions.some((opt) => opt.value === savedBaudrate)) {
+            selectedBaudrate = savedBaudrate;
+        }
+    }
+
+    function saveBaudrate(event: Event): void {
+        const select = event.currentTarget as HTMLSelectElement;
+        localStorage.setItem(BAUDRATE_STORAGE_KEY, String(select.value));
+    }
+
     // Handle manifest data in AutoSelect mode
     $: if (isAutoSelectMode && manifestData && !metadataFile) {
         // Create a virtual metadata file from manifest data
@@ -2042,6 +2058,7 @@
                                 <select
                                     id="baudrate-select"
                                     bind:value={selectedBaudrate}
+                                    on:change={saveBaudrate}
                                     disabled={isFlashing}
                                     class="w-full rounded-md border border-gray-600 bg-gray-800 px-3 py-2 text-sm text-gray-200 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                                 >
