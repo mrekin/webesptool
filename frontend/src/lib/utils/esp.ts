@@ -762,10 +762,14 @@ export function createESPManager() {
     }
 
     // Run an operation in a fresh loader session (session-less model):
-    // opens the port, resets the chip into download mode, syncs at 115200,
-    // uploads the flasher stub and switches to `baudrate` (the single proven
-    // changeBaud() inside main()). The port is closed when the operation ends,
-    // so no live connection is kept between operations.
+    // opens the port, resets the chip into download mode, syncs and uploads
+    // the flasher stub at `baudrate` directly (ROM autobaud), then runs the
+    // operation. One open() per session: esptool-js otherwise syncs at a
+    // hardcoded romBaudrate=115200 and switches afterwards via changeBaud()
+    // which closes and reopens the port - Chrome's reopen pulses DTR/EN and
+    // kicks some boards out of the just-loaded stub. If a direct high-baud
+    // sync fails (ROM autobaud is not reliable on every chip/crystal), fall
+    // back once to that classic 115200 + changeBaud() path.
     async function withLoader<T>(
         baudrate: number,
         operation: (loader: any, terminalOutput: string[]) => Promise<T>
@@ -788,63 +792,104 @@ export function createESPManager() {
                 );
             }
 
-            // Create terminal and collect all output (used for info parsing).
-            // Full lines are also mirrored to the console so the loader
-            // messages (e.g. "Changing baudrate to ...") stay visible.
-            const terminalOutput: string[] = [];
-            const espLoaderTerminal = {
-                clean() {
-                    // console.clear();
-                },
-                writeLine(data: string) {
-                    terminalOutput.push(data);
-                    console.log(data);
-                },
-                write(data: string) {
-                    terminalOutput.push(data);
+            // One connect attempt: fresh terminal/transport/loader. With
+            // directBaud the port opens at the target speed right away
+            // (romBaudrate override), so main()'s changeBaud() never runs.
+            const attempt = async (directBaud: boolean): Promise<T> => {
+                // Create terminal and collect all output (used for info parsing).
+                // Full lines are also mirrored to the console so the loader
+                // messages (e.g. "Changing baudrate to ...") stay visible.
+                const terminalOutput: string[] = [];
+                const espLoaderTerminal = {
+                    clean() {
+                        // console.clear();
+                    },
+                    writeLine(data: string) {
+                        terminalOutput.push(data);
+                        console.log(data);
+                    },
+                    write(data: string) {
+                        terminalOutput.push(data);
+                    }
+                };
+
+                transport = new Transport(port, false);
+
+                // Create ESPLoader with minimal options
+                const loaderOptions: any = {
+                    transport,
+                    baudrate,
+                    terminal: espLoaderTerminal,
+                    debugLogging: false,
+                    enableTracing: false // Disable TRACE logs
+                };
+
+                const loader = new ESPLoader(loaderOptions);
+                esploader = loader;
+                if (directBaud) {
+                    // Not settable via loaderOptions: the constructor hardcodes
+                    // 115200 and main() opens the port at romBaudrate.
+                    (loader as any).romBaudrate = baudrate;
+                } else if (baudrate !== 115200) {
+                    // Classic path (fallback): main() switches to the target
+                    // speed via changeBaud() = close + reopen, and esptool-js
+                    // continues immediately. Some devices need a moment to
+                    // settle on the new speed before the next command arrives.
+                    const originalChangeBaud = loader.changeBaud.bind(loader);
+                    loader.changeBaud = async () => {
+                        await originalChangeBaud();
+                        await new Promise((resolve) => setTimeout(resolve, 1000));
+                    };
                 }
-            };
 
-            transport = new Transport(port, false);
-
-            // Create ESPLoader with minimal options
-            const loaderOptions: any = {
-                transport,
-                baudrate, // main() syncs at 115200 (romBaudrate) and switches to this
-                terminal: espLoaderTerminal,
-                debugLogging: false,
-                enableTracing: false // Disable TRACE logs
-            };
-
-            const loader = new ESPLoader(loaderOptions);
-            esploader = loader;
-
-            try {
-                await loader.main();
-                return await operation(loader, terminalOutput);
-            } catch (error) {
-                // A holder outside this manager (a stale module after a hot
-                // reload, another tab) keeps the port open invisibly: our
-                // port.readable is null, but open() still fails. Surface it
-                // as an actionable error instead of the cryptic
-                // InvalidStateError.
-                const message = (error as any)?.message || String(error);
-                if (message.includes('already open')) {
-                    throw new Error(
-                        'Serial port is busy (held open by another session). Reload the page and reconnect the device.'
-                    );
-                }
-                throw error;
-            } finally {
-                // Same cleanup order as resetPort(): loader, then port
                 try {
-                    await loader.after();
-                } catch (e) {
-                    console.log('ESPLoader cleanup note:', (e as any).message || e);
+                    await loader.main();
+                    return await operation(loader, terminalOutput);
+                } catch (error) {
+                    // A holder outside this manager (a stale module after a hot
+                    // reload, another tab) keeps the port open invisibly: our
+                    // port.readable is null, but open() still fails. Surface it
+                    // as an actionable error instead of the cryptic
+                    // InvalidStateError.
+                    const message = (error as any)?.message || String(error);
+                    if (message.includes('already open')) {
+                        throw new Error(
+                            'Serial port is busy (held open by another session). Reload the page and reconnect the device.'
+                        );
+                    }
+                    throw error;
+                } finally {
+                    // Same cleanup order as resetPort(): loader, then port
+                    try {
+                        await loader.after();
+                    } catch (e) {
+                        console.log('ESPLoader cleanup note:', (e as any).message || e);
+                    }
+                    await closePortQuietly();
+                    esploader = null;
+                    transport = null;
                 }
-                await closePortQuietly();
-                esploader = null;
-                transport = null;
+            };
+
+            // 115200 needs no override: romBaudrate already equals baudrate,
+            // changeBaud() is skipped by main() anyway.
+            if (baudrate === 115200) {
+                return await attempt(false);
+            }
+            try {
+                return await attempt(true);
+            } catch (error) {
+                // Autobaud at the target speed failed - retry once with the
+                // classic 115200 sync + internal changeBaud() (the previous
+                // behavior). Surface the retry's error: it matches what the
+                // classic path would have reported.
+                console.warn(
+                    `Direct ${baudrate} baud connect failed, retrying via 115200 + changeBaud:`,
+                    error
+                );
+                const retryRecovered = await closePortQuietly();
+                if (!retryRecovered) throw error;
+                return await attempt(false);
             }
         });
     }
