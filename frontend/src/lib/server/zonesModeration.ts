@@ -15,6 +15,7 @@
 
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { json } from '@sveltejs/kit';
+import { notifyRateLimited } from './zonesWebhook';
 
 const MODERATOR_TOKEN = process.env.ZONES_MODERATOR_TOKEN ?? '';
 const UPLOAD_RATE_PER_MIN = Number(process.env.ZONES_UPLOAD_RATE_PER_MIN ?? 10);
@@ -86,7 +87,13 @@ export function registerTokenFailure(ip: string): { rateLimited: boolean } {
     const w = windowFor(tokenWindows, ip, TOKEN_ATTEMPTS_PER_MIN);
     w.record();
     const rateLimited = w.exceeded();
-    if (rateLimited) console.warn('[zones-moderation] token rate limited', ip);
+    if (rateLimited) {
+        console.warn('[zones-moderation] token rate limited', ip);
+        // The window just filled (this is the transition, later requests get
+        // the early 429 in guardModeration without reaching here) — notify
+        // once per episode.
+        notifyRateLimited('token_attempts', ip);
+    }
     return { rateLimited };
 }
 
@@ -105,6 +112,9 @@ export function checkUploadRateLimit(ip: string): { ok: boolean; retryAfterS: nu
         return { ok: false, retryAfterS: 60 };
     }
     w.record();
+    // Transition into the limited state (the window just filled) — notify
+    // once per episode; subsequent requests take the 429 branch above.
+    if (w.exceeded()) notifyRateLimited('upload', ip);
     return { ok: true, retryAfterS: 0 };
 }
 

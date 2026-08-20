@@ -87,3 +87,65 @@ export function notifyPendingUpload(
         })();
     }
 }
+
+// Fire-and-forget notification about a rate-limit transition: an IP has just
+// exhausted its window (token attempts or uploads). The caller fires this
+// only on the moment the window fills, so one message per episode — not one
+// per subsequent 429.
+export function notifyRateLimited(kind: 'token_attempts' | 'upload', ip: string): void {
+    const telegram = TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID;
+    if (!WEBHOOK_URL && !telegram) {
+        console.info('[zones-webhook] skipped: not configured');
+        return;
+    }
+    if (WEBHOOK_URL) {
+        void (async () => {
+            try {
+                const text = `Rate limit exceeded (${kind}) for ${ip}`;
+                const res = await fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({
+                        event: 'zones.rate_limited',
+                        text,
+                        kind,
+                        ip,
+                        at: new Date().toISOString()
+                    }),
+                    signal: AbortSignal.timeout(TIMEOUT_MS)
+                });
+                if (!res.ok) {
+                    fail(`status ${res.status}`);
+                    return;
+                }
+                console.info('[zones-webhook] sent');
+            } catch (err) {
+                fail(err);
+            }
+        })();
+    }
+    if (telegram) {
+        void (async () => {
+            try {
+                const label = kind === 'token_attempts' ? 'попыток ввода токена' : 'загрузок';
+                const text = `Зоны: превышен лимит ${label} — ${ip}`;
+                const res = await fetch(
+                    `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+                    {
+                        method: 'POST',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text }),
+                        signal: AbortSignal.timeout(TIMEOUT_MS)
+                    }
+                );
+                if (!res.ok) {
+                    fail(`telegram status ${res.status}`);
+                    return;
+                }
+                console.info('[zones-webhook] sent');
+            } catch (err) {
+                fail(err);
+            }
+        })();
+    }
+}
