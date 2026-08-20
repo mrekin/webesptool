@@ -89,10 +89,13 @@ export function notifyPendingUpload(
 }
 
 // Fire-and-forget notification about a rate-limit transition: an IP has just
-// exhausted its window (token attempts or uploads). The caller fires this
-// only on the moment the window fills, so one message per episode — not one
-// per subsequent 429.
-export function notifyRateLimited(kind: 'token_attempts' | 'upload', ip: string): void {
+// exhausted its window (token attempts — per-IP or global, or uploads). The
+// caller fires this only on the moment the window fills, so one message per
+// episode — not one per subsequent 429.
+export function notifyRateLimited(
+    kind: 'token_attempts' | 'token_attempts_global' | 'upload',
+    ip: string
+): void {
     const telegram = TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID;
     if (!WEBHOOK_URL && !telegram) {
         console.info('[zones-webhook] skipped: not configured');
@@ -127,8 +130,13 @@ export function notifyRateLimited(kind: 'token_attempts' | 'upload', ip: string)
     if (telegram) {
         void (async () => {
             try {
-                const label = kind === 'token_attempts' ? 'попыток ввода токена' : 'загрузок';
-                const text = `Зоны: превышен лимит ${label} — ${ip}`;
+                const label =
+                    kind === 'token_attempts'
+                        ? 'лимит попыток ввода токена'
+                        : kind === 'token_attempts_global'
+                          ? 'общий лимит попыток токена'
+                          : 'лимит загрузок';
+                const text = `Зоны: превышен ${label} — ${ip}`;
                 const res = await fetch(
                     `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
                     {

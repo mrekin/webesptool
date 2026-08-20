@@ -20,6 +20,9 @@ import { notifyRateLimited } from './zonesWebhook';
 const MODERATOR_TOKEN = process.env.ZONES_MODERATOR_TOKEN ?? '';
 const UPLOAD_RATE_PER_MIN = Number(process.env.ZONES_UPLOAD_RATE_PER_MIN ?? 10);
 const TOKEN_ATTEMPTS_PER_MIN = Number(process.env.ZONES_TOKEN_ATTEMPTS_PER_MIN ?? 15);
+const TOKEN_ATTEMPTS_GLOBAL_PER_MIN = Number(
+    process.env.ZONES_TOKEN_ATTEMPTS_GLOBAL_PER_MIN ?? 150
+);
 
 // Startup recommendation (not a blocker): short tokens are easier to brute
 // force even with the per-IP attempt limit.
@@ -52,6 +55,10 @@ class SlidingWindow {
 
 const uploadWindows = new Map<string, SlidingWindow>();
 const tokenWindows = new Map<string, SlidingWindow>();
+// One shared window for FAILED token attempts from ALL IPs — the
+// distributed-bruteforce backstop (many IPs each staying under the per-IP
+// limit). Successful moderator requests never touch it.
+const globalTokenWindow = new SlidingWindow(TOKEN_ATTEMPTS_GLOBAL_PER_MIN);
 
 function windowFor(map: Map<string, SlidingWindow>, ip: string, max: number): SlidingWindow {
     let w = map.get(ip);
@@ -81,12 +88,13 @@ export function moderatorTokenOk(request: Request): boolean {
 }
 
 // Record a FAILED token attempt (wrong/absent token). Logs the attempt with
-// the IP (metric) and reports whether the per-IP window is now exhausted.
+// the IP (metric) and reports whether a token window (per-IP or global) is
+// now exhausted.
 export function registerTokenFailure(ip: string): { rateLimited: boolean } {
     console.warn('[zones-moderation] token attempt failed', ip);
     const w = windowFor(tokenWindows, ip, TOKEN_ATTEMPTS_PER_MIN);
     w.record();
-    const rateLimited = w.exceeded();
+    let rateLimited = w.exceeded();
     if (rateLimited) {
         console.warn('[zones-moderation] token rate limited', ip);
         // The window just filled (this is the transition, later requests get
@@ -94,11 +102,24 @@ export function registerTokenFailure(ip: string): { rateLimited: boolean } {
         // once per episode.
         notifyRateLimited('token_attempts', ip);
     }
+    // Global (all-IPs) window: the distributed-bruteforce backstop. Filled
+    // => every token-dependent request 429s (even with a correct token)
+    // until the window drains.
+    globalTokenWindow.record();
+    if (globalTokenWindow.exceeded()) {
+        rateLimited = true;
+        console.warn('[zones-moderation] token rate limited (global)', ip);
+        notifyRateLimited('token_attempts_global', ip);
+    }
     return { rateLimited };
 }
 
 function isTokenRateLimited(ip: string): boolean {
     return tokenWindows.get(ip)?.exceeded() ?? false;
+}
+
+function isGlobalTokenRateLimited(): boolean {
+    return TOKEN_ATTEMPTS_GLOBAL_PER_MIN > 0 && globalTokenWindow.exceeded();
 }
 
 // --- upload / mutation rate limit ---
@@ -131,11 +152,14 @@ function rateLimitedResponse(): Response {
 }
 
 // Entry guard for every token-dependent endpoint (pending list/file/approve/
-// reject): 429 when the token-attempt window is exhausted, then the token
-// check — a failure is recorded (and turns into 429 once the window fills),
-// otherwise the uniform 404. Returns null when the request may proceed.
+// reject): 429 when a token-attempt window (per-IP or global) is exhausted,
+// then the token check — a failure is recorded (and turns into 429 once a
+// window fills), otherwise the uniform 404. Returns null when the request
+// may proceed. Note: with the global window exhausted even a correct token
+// gets 429 — the accepted cost of the distributed-bruteforce backstop.
 export function guardModeration(request: Request, ip: string): Response | null {
     if (isTokenRateLimited(ip)) return rateLimitedResponse();
+    if (isGlobalTokenRateLimited()) return rateLimitedResponse();
     if (!moderatorTokenOk(request)) {
         const { rateLimited } = registerTokenFailure(ip);
         if (rateLimited) return rateLimitedResponse();
