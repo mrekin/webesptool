@@ -42,7 +42,19 @@
         PickerResult
     } from '$lib/types.js';
 
-    let { isOpen = false, onClose = () => {}, autoOpenPicker = false } = $props();
+    let {
+        isOpen = false,
+        onClose = () => {},
+        autoOpenPicker = false,
+        directPickerResult = null,
+        onDirectPickerApplied = () => {}
+    }: {
+        isOpen?: boolean;
+        onClose?: () => void;
+        autoOpenPicker?: boolean;
+        directPickerResult?: PickerResult | null;
+        onDirectPickerApplied?: () => void;
+    } = $props();
 
     // Unified command model is static, built once at init: config get<->set rows
     // and one-shot action rows share the same shape and group taxonomy.
@@ -328,6 +340,15 @@
     $effect(() => {
         if (!isOpen && isConnected && !isDisconnecting) {
             void disconnect();
+        }
+    });
+
+    // Apply a point picked in the direct-URL picker (?m=coords): the configurator
+    // may be freshly opened by Apply or already open — both paths converge here.
+    $effect(() => {
+        if (isOpen && directPickerResult) {
+            applyPickerResult(directPickerResult);
+            onDirectPickerApplied(); // the parent resets the pending result
         }
     });
 
@@ -775,6 +796,53 @@
         if (busy) return;
         // The $effect above handles disconnect when isOpen flips to false.
         onClose();
+    }
+
+    // Shared reception of a picker result (entry points: internal picker
+    // onconfirm and the direct-URL picker via the directPickerResult prop,
+    // task 78).
+    function applyPickerResult(res: PickerResult): void {
+        if (res.coords) {
+            setRowValue('lat', res.coords.lat);
+            setRowValue('lon', res.coords.lon);
+        }
+        if (res.region && res.region.status === 'hit') {
+            const r = res.region;
+            if (r.tokens.length > 0) {
+                if (regionDefSupported) {
+                    setRowValue('region def', r.tokens.join(' '));
+                    logZoneMetric('zones_hit');
+                } else {
+                    logZoneMetric('old_firmware_skipped');
+                }
+            }
+            // Apply the zone's radio preset (full `set radio`) when the
+            // configurator exposes that row.
+            if (r.radio && hasRow('radio')) {
+                setRowValue(
+                    'radio',
+                    [r.radio.freq, r.radio.bw, r.radio.sf, r.radio.cr].map(String)
+                );
+                logZoneMetric('zones_radio_applied');
+            }
+            // Apply path hash mode (firmware-gated >= 1.14).
+            if (r.pathHashMode && pathHashSupported && hasRow('path.hash.mode')) {
+                setRowValue('path.hash.mode', r.pathHashMode);
+                logZoneMetric('zones_pathhash_applied');
+            }
+            // Activate the node-name composer for the zone's template.
+            if (r.nameTemplate && hasRow('name')) {
+                applyNameTemplate(r.nameTemplate);
+                logZoneMetric('zones_nametemplate_applied');
+            }
+            // Surface the region's settings-docs link in the toolbar.
+            regionDocUrl = r.docUrl || null;
+        } else if (res.region && res.region.status === 'miss') {
+            regionDocUrl = null;
+            logZoneMetric('zones_miss');
+        } else {
+            regionDocUrl = null;
+        }
     }
 </script>
 
@@ -1376,47 +1444,7 @@
             detectCoords={pickerInitial.detectCoords}
             detectRegions={pickerInitial.detectRegions}
             onconfirm={(res: PickerResult) => {
-                if (res.coords) {
-                    setRowValue('lat', res.coords.lat);
-                    setRowValue('lon', res.coords.lon);
-                }
-                if (res.region && res.region.status === 'hit') {
-                    const r = res.region;
-                    if (r.tokens.length > 0) {
-                        if (regionDefSupported) {
-                            setRowValue('region def', r.tokens.join(' '));
-                            logZoneMetric('zones_hit');
-                        } else {
-                            logZoneMetric('old_firmware_skipped');
-                        }
-                    }
-                    // Apply the zone's radio preset (full `set radio`) when the
-                    // configurator exposes that row.
-                    if (r.radio && hasRow('radio')) {
-                        setRowValue(
-                            'radio',
-                            [r.radio.freq, r.radio.bw, r.radio.sf, r.radio.cr].map(String)
-                        );
-                        logZoneMetric('zones_radio_applied');
-                    }
-                    // Apply path hash mode (firmware-gated >= 1.14).
-                    if (r.pathHashMode && pathHashSupported && hasRow('path.hash.mode')) {
-                        setRowValue('path.hash.mode', r.pathHashMode);
-                        logZoneMetric('zones_pathhash_applied');
-                    }
-                    // Activate the node-name composer for the zone's template.
-                    if (r.nameTemplate && hasRow('name')) {
-                        applyNameTemplate(r.nameTemplate);
-                        logZoneMetric('zones_nametemplate_applied');
-                    }
-                    // Surface the region's settings-docs link in the toolbar.
-                    regionDocUrl = r.docUrl || null;
-                } else if (res.region && res.region.status === 'miss') {
-                    regionDocUrl = null;
-                    logZoneMetric('zones_miss');
-                } else {
-                    regionDocUrl = null;
-                }
+                applyPickerResult(res);
                 showMapPicker = false;
             }}
             onclose={() => (showMapPicker = false)}

@@ -24,9 +24,16 @@
         deviceSelection,
         isDeviceSelected
     } from '$lib/stores.js';
-    import { onMount } from 'svelte';
+    import { onMount, onDestroy } from 'svelte';
     import { _ as locales, locale } from 'svelte-i18n';
     import { InterfaceMode } from '$lib/types.js';
+    import type { PickerResult } from '$lib/types.js';
+    import {
+        addressableModal,
+        initAddressableModals,
+        disposeAddressableModals,
+        closeAddressableModal
+    } from '$lib/utils/modalRoutes.js';
 
     // Merged layout server data — carries the deploy-time header disclaimer
     // (see routes/+layout.server.ts). Empty string on the primary instance.
@@ -91,6 +98,31 @@
 
     function closeMeshcoreConfigModal() {
         showMeshcoreConfigModal = false;
+    }
+
+    // Direct-URL coordinate picker (task 78, ?m=coords). Loaded dynamically on
+    // first open — the picker pulls Leaflet in lazily and must not enter the
+    // main page bundle.
+    let CoordinateMapPickerComp: any = null;
+
+    // Point picked in the direct-URL picker, handed over to the configurator
+    // via its directPickerResult prop; reset by onDirectPickerApplied.
+    let pendingDirectPickerResult: PickerResult | null = null;
+
+    $: directPickerOpen = $addressableModal === 'coords';
+    $: if (directPickerOpen && !CoordinateMapPickerComp) {
+        import('$lib/components/CoordinateMapPicker.svelte').then(
+            (m) => (CoordinateMapPickerComp = m.default)
+        );
+    }
+
+    // "Apply" from the direct-URL picker: open the configurator (existing
+    // dynamic import + flag) and close the addressable modal — history.back()
+    // clears the address, the picker unmounts on popstate.
+    async function applyDirectPickerResult(res: PickerResult) {
+        pendingDirectPickerResult = res;
+        await openMeshcoreConfigModal();
+        closeAddressableModal();
     }
 
     function openModal(
@@ -172,9 +204,15 @@
 
     // Set page title on mount (browser side only)
     onMount(() => {
+        initAddressableModals();
         if (typeof document !== 'undefined') {
             document.title = pageTitle;
         }
+    });
+
+    // Addressable-modals controller teardown (hygiene for HMR/future changes).
+    onDestroy(() => {
+        disposeAddressableModals();
     });
 
     // Check if we have any available firmwares
@@ -454,6 +492,8 @@
         this={MeshcoreConfigModal}
         isOpen={showMeshcoreConfigModal}
         onClose={closeMeshcoreConfigModal}
+        directPickerResult={pendingDirectPickerResult}
+        onDirectPickerApplied={() => (pendingDirectPickerResult = null)}
     />
 {/if}
 
@@ -462,6 +502,18 @@
         this={StatsModal}
         isOpen={showStatsModal}
         onClose={closeStatsModal}
+    />
+{/if}
+
+<!-- Direct-URL coordinate picker (task 78): opened by ?m=coords over any
+     state; default picker state (no lat/lon props). Rendered last so it lies
+     above every other modal in the DOM. -->
+{#if directPickerOpen && CoordinateMapPickerComp}
+    <svelte:component
+        this={CoordinateMapPickerComp}
+        direct={true}
+        onconfirm={applyDirectPickerResult}
+        onclose={closeAddressableModal}
     />
 {/if}
 

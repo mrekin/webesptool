@@ -1034,6 +1034,15 @@ export interface PickerResult {
     region: ZoneRegionResult | null; // null when "regions" toggle is off; else lookup result
 }
 
+// --- Addressable modals (task 78): direct-URL dialogs ----------------------
+export type AddressableModalId = 'coords'; // registry member
+export type AddressableModalLayerId = 'zones' | 'geocode'; // picker nested dialogs
+// Shallow-routing state stored in history entries (pushState 2nd argument).
+export interface ModalHistoryState {
+    modal?: AddressableModalId;
+    modalLayer?: AddressableModalLayerId;
+}
+
 // --- Zone editor model (task 72 drawing tool) -----------------------------
 
 // A group assigns one `regions` value to many polygons. `name` is a human label

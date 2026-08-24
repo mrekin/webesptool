@@ -9,15 +9,23 @@
     import { fetchZoneCatalog } from '$lib/utils/zoneCatalog';
     import { lookupZoneRegion } from '$lib/utils/zoneResolver';
     import { unwrapAntimeridian } from '$lib/utils/zoneGeometry';
+    import {
+        addressableModalLayer,
+        pushAddressableModalLayer,
+        popAddressableModalLayer,
+        buildShareableModalUrl
+    } from '$lib/utils/modalRoutes.js';
 
     let {
         lat,
         lon,
+        direct = false,
         onconfirm = (_result: PickerResult) => {},
         onclose = () => {}
     }: {
         lat?: number;
         lon?: number;
+        direct?: boolean;
         detectCoords?: boolean;
         detectRegions?: boolean;
         onconfirm?: (result: PickerResult) => void;
@@ -55,6 +63,23 @@
     let geocodeLoading = $state(false);
     let geoRequestId = 0;
     let showGeocodeResponse = $state(false);
+
+    // Nested-dialog visibility (task 78): in the direct context (?m=coords)
+    // the nested dialogs are driven by the addressable modal layer store; in
+    // the regular context they stay the local flags above.
+    const activeLayer = $derived(direct ? $addressableModalLayer : null);
+    const zoneEditorVisible = $derived(direct ? activeLayer === 'zones' : showZoneEditor);
+    const geocodeResponseVisible = $derived(
+        direct ? activeLayer === 'geocode' : showGeocodeResponse
+    );
+
+    // Share-link state (window controls cluster, task 78): transient inline
+    // confirmation; when the clipboard is unavailable the URL itself is shown
+    // for manual copying instead.
+    let shareMessage = $state('');
+    let shareOk = $state(true);
+    let shareFallbackUrl = $state<string | null>(null);
+    let shareTimer: ReturnType<typeof setTimeout> | undefined;
 
     // Suppress the automatic geocode on open. The picker mounts with either the
     // device's current coords or a default — we must NOT fire a network geocode
@@ -170,6 +195,46 @@
         });
     }
 
+    // Nested-dialog routing (task 78): direct context opens/closes layers via
+    // history entries (Back closes the top layer first, then the picker);
+    // regular context toggles the local flags — no history is written.
+    function openZoneEditor(): void {
+        if (direct) pushAddressableModalLayer('zones');
+        else showZoneEditor = true;
+    }
+
+    function closeZoneEditor(): void {
+        if (direct) popAddressableModalLayer();
+        else showZoneEditor = false;
+    }
+
+    function openGeocodeView(): void {
+        if (direct) pushAddressableModalLayer('geocode');
+        else showGeocodeResponse = true;
+    }
+
+    function closeGeocodeView(): void {
+        if (direct) popAddressableModalLayer();
+        else showGeocodeResponse = false;
+    }
+
+    // Copy the direct link of this window to the clipboard. The modal stays
+    // open; on failure the URL is surfaced for manual copying (fallback row).
+    async function shareLink(): Promise<void> {
+        const url = buildShareableModalUrl('coords');
+        try {
+            await navigator.clipboard.writeText(url);
+            shareFallbackUrl = null;
+            shareOk = true;
+            shareMessage = $locales('meshcoreconfig.share_link_copied');
+            clearTimeout(shareTimer);
+            shareTimer = setTimeout(() => (shareMessage = ''), 2500);
+        } catch {
+            shareMessage = '';
+            shareFallbackUrl = url;
+        }
+    }
+
     onMount(async () => {
         try {
             L = await loadLeaflet();
@@ -199,6 +264,7 @@
     });
 
     onDestroy(() => {
+        clearTimeout(shareTimer);
         publishedLayer = null;
         if (map) {
             map.remove();
@@ -220,12 +286,62 @@
             <button
                 type="button"
                 title={$locales('meshcoreconfig.zones.editor_title')}
-                onclick={() => (showZoneEditor = true)}
+                onclick={openZoneEditor}
                 class="rounded bg-gray-700 px-2 py-1 text-sm text-orange-200 hover:bg-gray-600"
             >
                 ✏️
             </button>
+            {#if shareMessage}
+                <span
+                    class={`ml-auto text-xs ${shareOk ? 'text-green-400' : 'text-red-400'}`}
+                    role="status"
+                    aria-live="polite"
+                >
+                    {shareMessage}
+                </span>
+            {/if}
+            <!-- Window controls cluster (task 78): share link left of the
+                 close cross; the cross is identical to Cancel (both call
+                 onclose). -->
+            <div class="ml-auto flex items-center gap-1">
+                <button
+                    type="button"
+                    onclick={shareLink}
+                    title={$locales('meshcoreconfig.share_link')}
+                    aria-label={$locales('meshcoreconfig.share_link')}
+                    class="rounded bg-gray-700 px-2 py-1 text-sm text-orange-200 hover:bg-gray-600"
+                >
+                    🔗
+                </button>
+                <button
+                    type="button"
+                    onclick={onclose}
+                    title={$locales('common.close')}
+                    aria-label={$locales('common.close')}
+                    class="rounded bg-gray-700 px-2 py-1 text-sm text-orange-200 hover:bg-gray-600"
+                >
+                    &#x2715;
+                </button>
+            </div>
         </div>
+
+        {#if shareFallbackUrl}
+            <!-- Manual-copy fallback (task 78): shown when the clipboard is
+                 unavailable; clicking the field selects the URL text. -->
+            <div
+                class="mb-2 flex shrink-0 items-center gap-2 rounded-md border border-gray-700 bg-gray-900/50 px-3 py-2"
+            >
+                <span class="shrink-0 text-xs text-gray-400">
+                    {$locales('meshcoreconfig.share_link_manual_hint')}
+                </span>
+                <input
+                    readonly
+                    value={shareFallbackUrl}
+                    onclick={(e) => e.currentTarget.select()}
+                    class="min-w-0 flex-1 rounded border border-gray-600 bg-gray-700 px-2 py-1 font-mono text-xs text-gray-200 outline-none"
+                />
+            </div>
+        {/if}
 
         {#if loadError}
             <div class="flex min-h-0 flex-1 items-center justify-center rounded-md border border-gray-700 bg-gray-900 p-4 text-center text-sm text-red-300">
@@ -345,7 +461,7 @@
                         {/if}
                         <button
                             type="button"
-                            onclick={() => (showGeocodeResponse = true)}
+                            onclick={openGeocodeView}
                             disabled={!geocodeResp?.raw}
                             class="mt-1 self-start rounded bg-gray-700 px-2 py-1 text-[11px] text-white transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
                         >
@@ -389,11 +505,11 @@
 </div>
 
 <GeocodeResponseModal
-    isOpen={showGeocodeResponse}
+    isOpen={geocodeResponseVisible}
     raw={geocodeResp?.raw ?? null}
-    onclose={() => (showGeocodeResponse = false)}
+    onclose={closeGeocodeView}
 />
 
-{#if showZoneEditor}
-    <ZoneEditor onclose={() => (showZoneEditor = false)} />
+{#if zoneEditorVisible}
+    <ZoneEditor onclose={closeZoneEditor} />
 {/if}
