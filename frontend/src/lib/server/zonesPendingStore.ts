@@ -163,6 +163,7 @@ export function listPendingFiles(): PendingFileInfo[] {
                 radio: mc?.radio,
                 pathHashMode: mc?.pathHashMode,
                 nameTemplate: mc?.nameTemplate,
+                commands: mc?.commands,
                 author:
                     typeof meta.author === 'string' && meta.author.trim()
                         ? meta.author.trim()

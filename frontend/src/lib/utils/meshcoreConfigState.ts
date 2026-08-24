@@ -2,6 +2,7 @@
 // Pure functions (no Svelte, no serial): parse get-responses, compare values,
 // compute diffs and serialize set-command lines. Modeled on config.meshcore.io.
 import { getBaseCommandName } from './meshcoreCommands.js';
+import { isModeSwitchLine } from './multilineCommands.js';
 import type {
     MeshcoreConfigDiff,
     MeshcoreConfigField,
@@ -273,6 +274,87 @@ export function parseSetLine(
             ? remainder.split(',').map((p) => p.trim()).filter((p) => p !== '')
             : remainder.split(/\s+/).filter((p) => p !== '');
     return { key: field.key, values: parts };
+}
+
+/**
+ * --- Command-line classification (task 79) ---------------------------------
+ * Shared rules for "how does one command line enter the configurator" — used
+ * by the command-set file load (MeshcoreConfigModal.handleSetSelected) and by
+ * the zone preset's extra commands (applyZoneCommands). Both consumers differ
+ * only in their queue-write strategy; the classification itself lives here in
+ * one copy.
+ */
+
+/**
+ * Find the row whose baseCommand is the longest prefix of `t` (most specific).
+ */
+export function matchRowForLine(rows: MeshcoreCommandRow[], t: string): MeshcoreCommandRow | null {
+    let match: MeshcoreCommandRow | null = null;
+    for (const r of rows) {
+        const base = r.baseCommand;
+        if (t === base || t.startsWith(base + ' ')) {
+            if (!match || base.length > match.baseCommand.length) match = r;
+        }
+    }
+    return match;
+}
+
+/**
+ * Parse a value out of a loaded line for a config/param row (inverse of
+ * buildCommand).
+ */
+export function parseRowValue(row: MeshcoreCommandRow, t: string): MeshcoreConfigValue {
+    const remainder = t.slice(row.baseCommand.length).trim();
+    if (row.variadic) return remainder;
+    const sepRe = row.separator === 'comma' ? ',' : /\s+/;
+    const vals = remainder
+        .split(sepRe)
+        .map((p) => p.trim())
+        .filter((p) => p !== '');
+    return coerceValue(row, vals);
+}
+
+/**
+ * Config rows and param-action rows go through the Apply queue; only direct
+ * (0-param) actions run immediately via their own Run button. 'time' keeps its
+ * immediate "now" send (own card button) and is not queued.
+ */
+export function isQueueable(r: MeshcoreCommandRow): boolean {
+    if (r.kind === 'config') return true;
+    return r.kind === 'action' && r.params.length > 0 && r.id !== 'time';
+}
+
+// What one command line is, relative to the configurator's command rows:
+//  - 'skip': empty, '/mc' mode-switch or an INI '[header]' line;
+//  - 'value': a known config/param row line, with the coerced value;
+//  - 'arm': a 0-param non-urgent action (armed for the Apply queue);
+//  - 'raw': 'time', urgent actions and unknown lines (verbatim queue entries).
+export type CommandLineClassification =
+    | { kind: 'skip' }
+    | { kind: 'value'; row: MeshcoreCommandRow; value: MeshcoreConfigValue }
+    | { kind: 'arm'; row: MeshcoreCommandRow }
+    | { kind: 'raw' };
+
+/**
+ * Classify one command line against the unified command rows. Mirrors the
+ * historical file-load rules: trim, drop empty/mode-switch/'['-header lines,
+ * then the longest matching base decides — queueable rows yield a value,
+ * 0-param non-urgent actions arm, everything else stays raw.
+ */
+export function classifyCommandLine(
+    line: string,
+    rows: MeshcoreCommandRow[]
+): CommandLineClassification {
+    const t = line.trim();
+    if (!t || isModeSwitchLine(t) || t.startsWith('[')) return { kind: 'skip' };
+    const row = matchRowForLine(rows, t);
+    if (row && isQueueable(row)) {
+        return { kind: 'value', row, value: parseRowValue(row, t) };
+    }
+    if (row && row.kind === 'action' && row.params.length === 0 && !row.urgent) {
+        return { kind: 'arm', row };
+    }
+    return { kind: 'raw' };
 }
 
 /**

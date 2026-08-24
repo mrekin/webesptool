@@ -80,6 +80,11 @@
         return `${r.freq}/${r.bw}/${r.sf}/${r.cr}`;
     }
 
+    // Localized tooltip of the extra-commands chip in the preset summary.
+    function commandsTitle(n: number): string {
+        return $locales('meshcoreconfig.zones.commands_chip').replace('{n}', String(n));
+    }
+
     function receivedAt(iso: string): string {
         const d = new Date(iso);
         return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
@@ -213,6 +218,11 @@
                             {#if f.nameTemplate}
                                 <span title={$locales('meshcoreconfig.zones.result_name_template')}>
                                     {f.nameTemplate}
+                                </span>
+                            {/if}
+                            {#if f.commands && f.commands.length > 0}
+                                <span title={commandsTitle(f.commands.length)}>
+                                    cmd {f.commands.length}
                                 </span>
                             {/if}
                         </div>

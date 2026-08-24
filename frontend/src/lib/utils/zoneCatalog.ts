@@ -173,6 +173,7 @@ export function parseGroupFile(
             nameTemplate: metaMc.nameTemplate,
             docUrl: metaMc.docUrl,
             level,
+            commands: metaMc.commands,
             author: typeof meta.author === 'string' && meta.author.trim() ? meta.author.trim() : undefined,
             features
         } satisfies GroupFile;

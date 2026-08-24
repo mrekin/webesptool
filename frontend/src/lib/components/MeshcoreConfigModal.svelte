@@ -6,8 +6,8 @@
     import { buildCommandRows } from '$lib/utils/meshcoreConfigFields.js';
     import {
         parseGetResponse,
-        coerceValue,
-        buildCommand
+        buildCommand,
+        classifyCommandLine
     } from '$lib/utils/meshcoreConfigState.js';
     import {
         splitIntoCommandLines,
@@ -265,12 +265,8 @@
     );
 
     // Config rows and param-action rows go through the Apply queue; only direct
-    // (0-param) actions run immediately via their own Run button. 'time' keeps its
-    // immediate "now" send (own card button) and is not queued.
-    function isQueueable(r: MeshcoreCommandRow): boolean {
-        if (r.kind === 'config') return true;
-        return r.kind === 'action' && r.params.length > 0 && r.id !== 'time';
-    }
+    // (0-param) actions run immediately via their own Run button — the queueable
+    // rule lives in meshcoreConfigState.isQueueable (shared with the classifier).
 
     function inQueue(r: MeshcoreCommandRow): boolean {
         return commandQueue.some((e) => e.rowId === r.id);
@@ -565,29 +561,9 @@
         }
     }
 
-    // Find the row whose baseCommand is the longest prefix of `line` (most specific).
-    function matchRowForLine(t: string): MeshcoreCommandRow | null {
-        let match: MeshcoreCommandRow | null = null;
-        for (const r of rows) {
-            const base = r.baseCommand;
-            if (t === base || t.startsWith(base + ' ')) {
-                if (!match || base.length > match.baseCommand.length) match = r;
-            }
-        }
-        return match;
-    }
-
-    // Parse a value out of a loaded line for a config/param row (inverse of buildCommand).
-    function parseRowValue(row: MeshcoreCommandRow, t: string): MeshcoreConfigValue {
-        const remainder = t.slice(row.baseCommand.length).trim();
-        if (row.variadic) return remainder;
-        const sepRe = row.separator === 'comma' ? ',' : /\s+/;
-        const vals = remainder
-            .split(sepRe)
-            .map((p) => p.trim())
-            .filter((p) => p !== '');
-        return coerceValue(row, vals);
-    }
+    // Command-line classification (longest base match, skip rules, queueable /
+    // arm / raw) lives in meshcoreConfigState.classifyCommandLine — shared with
+    // applyZoneCommands so the file load and the zone commands evolve together.
 
     function handleSetSelected(content: string): void {
         // Load the file into the queue IN FILE ORDER: every command line becomes
@@ -597,14 +573,14 @@
         const lines = trimTrailingEmptyLine(splitIntoCommandLines(content));
         const queue: QueueEntry[] = [];
         for (const line of lines) {
+            const c = classifyCommandLine(line, rows);
+            if (c.kind === 'skip') continue;
             const t = line.trim();
-            if (!t || isModeSwitchLine(t) || t.startsWith('[')) continue;
-            const row = matchRowForLine(t);
-            if (row && isQueueable(row)) {
-                rowValues[row.id] = parseRowValue(row, t);
-                queue.push({ line: t, rowId: row.id });
-            } else if (row && row.kind === 'action' && row.params.length === 0 && !row.urgent) {
-                queue.push({ line: t, rowId: row.id });
+            if (c.kind === 'value') {
+                rowValues[c.row.id] = c.value;
+                queue.push({ line: t, rowId: c.row.id });
+            } else if (c.kind === 'arm') {
+                queue.push({ line: t, rowId: c.row.id });
             } else {
                 queue.push({ line: t });
             }
@@ -798,6 +774,30 @@
         onClose();
     }
 
+    // Apply the extra command lines of a zone preset (task 79): same
+    // classification as a loaded command-set file, but ADDS to the existing
+    // queue instead of replacing it (specialized preset fields are applied
+    // first; a later value wins). Known rows fill their card via setRowValue
+    // (queue entry updated in place / created); 0-param non-urgent actions arm
+    // and time/urgent/unknown lines go in as raw verbatim entries.
+    function applyZoneCommands(commands: string[]): void {
+        for (const line of commands) {
+            const c = classifyCommandLine(line, rows);
+            if (c.kind === 'skip') continue;
+            if (c.kind === 'value') {
+                // A `set name` line supersedes the zone's template composer:
+                // drop the structured controls first so the free-text card and
+                // the queue entry cannot diverge.
+                if (c.row.id === 'name' && activeNameTemplate !== null) clearNameTemplate();
+                setRowValue(c.row.id, c.value);
+            } else if (c.kind === 'arm') {
+                commandQueue = [...commandQueue, { line: line.trim(), rowId: c.row.id }];
+            } else {
+                commandQueue = [...commandQueue, { line: line.trim() }];
+            }
+        }
+    }
+
     // Shared reception of a picker result (entry points: internal picker
     // onconfirm and the direct-URL picker via the directPickerResult prop,
     // task 78).
@@ -834,6 +834,12 @@
             if (r.nameTemplate && hasRow('name')) {
                 applyNameTemplate(r.nameTemplate);
                 logZoneMetric('zones_nametemplate_applied');
+            }
+            // Apply the zone's extra commands AFTER the specialized fields
+            // (later application wins on conflicts).
+            if (r.commands && r.commands.length > 0) {
+                applyZoneCommands(r.commands);
+                logZoneMetric('zones_commands_applied');
             }
             // Surface the region's settings-docs link in the toolbar.
             regionDocUrl = r.docUrl || null;

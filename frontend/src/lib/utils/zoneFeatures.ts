@@ -31,11 +31,11 @@ function parseRadio(raw: unknown): RadioSpec | null {
 // Read the meshcore preset from a raw properties/metadata object. `regions` is
 // read from the nested `meshcore.regions` first, then falls back to a flat
 // legacy `regions`, then to `fallbackRegions`. radio/pathHashMode/nameTemplate/
-// docUrl/level come only from the nested `meshcore` block. Returns the resolved
-// regions (possibly '') and the optional preset fields. `level` is the zone
-// hierarchy level (1-5); undefined when not specified (coalesced to the default
-// at use sites — resolver/overlap — so "unspecified" stays distinguishable from
-// an explicit 1 during group detection/merge).
+// docUrl/level/commands come only from the nested `meshcore` block. Returns the
+// resolved regions (possibly '') and the optional preset fields. `level` is the
+// zone hierarchy level (1-5); undefined when not specified (coalesced to the
+// default at use sites — resolver/overlap — so "unspecified" stays
+// distinguishable from an explicit 1 during group detection/merge).
 export function readMeshcore(
     props: Record<string, unknown> | null | undefined,
     fallbackRegions = ''
@@ -46,6 +46,7 @@ export function readMeshcore(
     nameTemplate?: string;
     docUrl?: string;
     level?: number; // 1-5; undefined when not specified
+    commands?: string[]; // trimmed non-empty strings; undefined when none survive
 } {
     const mcRaw = props?.meshcore;
     const mc =
@@ -57,6 +58,7 @@ export function readMeshcore(
                   nameTemplate?: unknown;
                   docUrl?: unknown;
                   level?: unknown;
+                  commands?: unknown;
               })
             : null;
     const regions =
@@ -70,13 +72,26 @@ export function readMeshcore(
         const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() ? Number(v) : NaN;
         return Number.isInteger(n) && n >= 1 && n <= 5 ? n : undefined;
     };
+    // Coerce a raw `commands` value: only a real array is considered, only its
+    // string entries are kept (trimmed, non-empty); anything else is silently
+    // ignored (a hand-made/hostile file cannot smuggle other JSON shapes).
+    // Duplicates are preserved — the list is applied verbatim.
+    const optCommands = (v: unknown): string[] | undefined => {
+        if (!Array.isArray(v)) return undefined;
+        const cmds = v
+            .filter((c): c is string => typeof c === 'string')
+            .map((c) => c.trim())
+            .filter((c) => c !== '');
+        return cmds.length > 0 ? cmds : undefined;
+    };
     return {
         regions,
         radio: mc ? parseRadio(mc.radio) ?? undefined : undefined,
         pathHashMode: mc ? optStr(mc.pathHashMode) : undefined,
         nameTemplate: mc ? optStr(mc.nameTemplate) : undefined,
         docUrl: mc ? optStr(mc.docUrl) : undefined,
-        level: mc ? optLevel(mc.level) : undefined
+        level: mc ? optLevel(mc.level) : undefined,
+        commands: mc ? optCommands(mc.commands) : undefined
     };
 }
 
@@ -122,6 +137,7 @@ export function parseZoneFeatures(rawFeatures: unknown, fallbackRegions = ''): Z
                 nameTemplate: mc.nameTemplate,
                 docUrl: mc.docUrl,
                 level: mc.level,
+                commands: mc.commands,
                 properties: props
             });
         } catch (err) {
@@ -157,6 +173,7 @@ export function detectGroupMeshcore(fc: GeoJSON.FeatureCollection): MeshcoreZone
             if (!merged.nameTemplate && fs.nameTemplate) merged.nameTemplate = fs.nameTemplate;
             if (!merged.docUrl && fs.docUrl) merged.docUrl = fs.docUrl;
             if (merged.level == null && fs.level != null) merged.level = fs.level;
+            if (!merged.commands && fs.commands) merged.commands = fs.commands;
         }
     }
     const hasField = !!(
@@ -165,7 +182,8 @@ export function detectGroupMeshcore(fc: GeoJSON.FeatureCollection): MeshcoreZone
         merged.pathHashMode ||
         merged.nameTemplate ||
         merged.docUrl ||
-        merged.level
+        merged.level ||
+        merged.commands
     );
     if (!isGroupByName && !hasField) return null;
     const out: MeshcoreZoneSettings = {};
@@ -175,5 +193,6 @@ export function detectGroupMeshcore(fc: GeoJSON.FeatureCollection): MeshcoreZone
     if (merged.nameTemplate) out.nameTemplate = merged.nameTemplate;
     if (merged.docUrl) out.docUrl = merged.docUrl;
     if (merged.level != null) out.level = merged.level;
+    if (merged.commands) out.commands = merged.commands;
     return out;
 }

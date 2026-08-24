@@ -62,6 +62,9 @@ function buildMeshcoreBlock(p: MeshcoreZoneSettings): MeshcoreZoneSettings | und
     if (p.nameTemplate && p.nameTemplate.trim()) block.nameTemplate = p.nameTemplate;
     if (p.docUrl && p.docUrl.trim()) block.docUrl = p.docUrl;
     if (p.level != null) block.level = p.level;
+    // Extra commands ride along only when the list is non-empty (an empty list
+    // writes no key, same rule as every other empty preset field).
+    if (p.commands && p.commands.length > 0) block.commands = p.commands;
     return Object.keys(block).length > 0 ? block : undefined;
 }
 
@@ -97,7 +100,8 @@ export function serializeGroup(
                 pathHashMode: meshcore.pathHashMode,
                 nameTemplate: meshcore.nameTemplate,
                 docUrl: meshcore.docUrl,
-                level: z.level ?? meshcore.level
+                level: z.level ?? meshcore.level,
+                commands: meshcore.commands
             });
             const properties: Record<string, unknown> = {
                 ...z.properties,

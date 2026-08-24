@@ -1,8 +1,9 @@
 <script lang="ts">
     // Small modal that edits a zone group's full meshcore preset: `regions`
-    // (region def), the radio preset `set radio {freq},{bw},{sf},{cr}` and
-    // `set path.hash.mode`. The modal is mounted fresh on each open, so $state
-    // initializers read the current props once.
+    // (region def), the radio preset `set radio {freq},{bw},{sf},{cr}`,
+    // `set path.hash.mode` and the extra-commands list (task 79). The modal is
+    // mounted fresh on each open, so $state initializers read the current
+    // props once.
 
     import { _ as locales } from 'svelte-i18n';
     import { untrack } from 'svelte';
@@ -10,7 +11,7 @@
     import { isValidRegions } from '$lib/utils/zoneExport';
     import { parseNameTemplate } from '$lib/utils/nameTemplate';
     import { fillHint } from '$lib/actions/fillHint.js';
-    import type { RadioSpec } from '$lib/types';
+    import type { MeshcoreZoneSettings, RadioSpec } from '$lib/types';
 
     let {
         regions = '',
@@ -19,17 +20,10 @@
         nameTemplate = undefined,
         docUrl = undefined,
         level = undefined,
+        commands = undefined,
         author = undefined,
         editAuthor = false,
-        onsave = (
-            _regions: string,
-            _radio: RadioSpec | undefined,
-            _pathHashMode: string | undefined,
-            _nameTemplate: string | undefined,
-            _docUrl: string | undefined,
-            _level: number,
-            _author: string | undefined
-        ) => {},
+        onsave = (_preset: MeshcoreZoneSettings, _author?: string) => {},
         onclose = () => {}
     }: {
         regions?: string;
@@ -38,20 +32,14 @@
         nameTemplate?: string;
         docUrl?: string;
         level?: number;
+        /** Extra meshcore command lines (task 79), edited as a plain string list. */
+        commands?: string[];
         /** Current author (metadata), shown when editAuthor is set. */
         author?: string;
         /** Render the author field (used by the pending-file edit; in-session
          groups edit the author in their card instead). */
         editAuthor?: boolean;
-        onsave?: (
-            regions: string,
-            radio: RadioSpec | undefined,
-            pathHashMode: string | undefined,
-            nameTemplate: string | undefined,
-            docUrl: string | undefined,
-            level: number,
-            author: string | undefined
-        ) => void;
+        onsave?: (preset: MeshcoreZoneSettings, author?: string) => void;
         onclose?: () => void;
     } = $props();
 
@@ -74,6 +62,10 @@
     let docUrlVal = $state(untrack(() => docUrl ?? ''));
     let levelVal = $state(untrack(() => level ?? ZONE_LEVEL_DEFAULT));
     let authorVal = $state(untrack(() => author ?? ''));
+    // Extra command lines (task 79): a plain editable string list — no
+    // validation, no autocomplete (the point is NOT to rebuild the
+    // configurator here). Copied so edits never mutate the caller's array.
+    let commandsVal = $state<string[]>(untrack(() => [...(commands ?? [])]));
 
     // Live preview of the parsed template tokens (enum/free/literal).
     const templateTokens = $derived(parseNameTemplate(nameTemplateVal));
@@ -89,8 +81,44 @@
     });
 
     const regionsValid = $derived(isValidRegions(regionsVal));
-    // nameTemplate/docUrl are optional metadata — they never block save.
+    // nameTemplate/docUrl/commands are optional metadata — they never block save.
     const canSave = $derived(regionsValid && radioValid);
+    // A non-blank (after trim) command list enables the "copy all" button.
+    const hasCommandsToCopy = $derived(commandsVal.some((c) => c.trim() !== ''));
+
+    // Extra-commands list editing: append a blank row, drop one row, edit one.
+    function addCommandRow(): void {
+        commandsVal = [...commandsVal, ''];
+    }
+    function removeCommandRow(index: number): void {
+        commandsVal = commandsVal.filter((_, i) => i !== index);
+    }
+    function updateCommandRow(index: number, value: string): void {
+        commandsVal = commandsVal.map((c, i) => (i === index ? value : c));
+    }
+    // Multi-line paste into a command row: split the pasted text by lines —
+    // the first line lands in the pasted field, the remaining lines become
+    // new rows right after it (order kept). Trailing blank lines (from a
+    // trailing newline) are dropped; a single-line paste is left to the
+    // browser default.
+    function onCommandPaste(index: number, e: ClipboardEvent): void {
+        const text = e.clipboardData?.getData('text') ?? '';
+        if (!/\r|\n/.test(text)) return;
+        e.preventDefault();
+        const lines = text.split(/\r?\n/);
+        while (lines.length > 1 && lines[lines.length - 1].trim() === '') lines.pop();
+        commandsVal = [...commandsVal.slice(0, index), ...lines, ...commandsVal.slice(index + 1)];
+    }
+    // Copy every non-empty command line to the clipboard, one command per
+    // line. The modal has no notice mechanism, so a clipboard failure is a
+    // silent no-op (same as the shared terminalClipboard helpers).
+    function copyAllCommands(): void {
+        const text = commandsVal.map((c) => c.trim()).filter((c) => c !== '').join('\n');
+        if (text === '') return;
+        navigator.clipboard.writeText(text).catch(() => {
+            /* clipboard unavailable — ignore */
+        });
+    }
 
     function save(): void {
         if (!canSave) return;
@@ -104,15 +132,20 @@
                   cr: Number(parts[3])
               }
             : undefined;
-        onsave(
-            regionsVal.trim(),
-            resolvedRadio,
-            pathHash || undefined,
-            nameTemplateVal.trim() || undefined,
-            docUrlVal.trim() || undefined,
-            levelVal,
-            authorVal.trim() || undefined
-        );
+        // Blank/whitespace command rows are dropped on save (order kept,
+        // duplicates kept); the key is set to undefined when nothing remains so
+        // an emptied list CLEARS the stored preset field on spread.
+        const cleanedCommands = commandsVal.map((c) => c.trim()).filter((c) => c !== '');
+        const preset: MeshcoreZoneSettings = {
+            regions: regionsVal.trim(),
+            radio: resolvedRadio,
+            pathHashMode: pathHash || undefined,
+            nameTemplate: nameTemplateVal.trim() || undefined,
+            docUrl: docUrlVal.trim() || undefined,
+            level: levelVal,
+            commands: cleanedCommands.length > 0 ? cleanedCommands : undefined
+        };
+        onsave(preset, authorVal.trim() || undefined);
     }
 </script>
 
@@ -308,6 +341,61 @@
                 use:fillHint
                 class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
             />
+        </div>
+
+        <!-- Extra commands (task 79): numbered list of arbitrary one-line
+             meshcore commands, no validation/autocomplete by design. -->
+        <div class="mb-1 mt-3 rounded-md border border-gray-700 bg-gray-900/50 p-2">
+            <div class="mb-1 flex items-center justify-between gap-2">
+                <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                    {$locales('meshcoreconfig.zones.commands_label')}
+                </span>
+                {#if hasCommandsToCopy}
+                    <button
+                        type="button"
+                        onclick={copyAllCommands}
+                        title={$locales('meshcoreconfig.zones.commands_copy')}
+                        aria-label={$locales('meshcoreconfig.zones.commands_copy')}
+                        class="rounded px-1.5 py-0.5 text-xs text-gray-400 transition-colors hover:bg-gray-700 hover:text-orange-200"
+                    >
+                        ⧉
+                    </button>
+                {/if}
+            </div>
+            <div class="space-y-1">
+                {#each commandsVal as cmd, i (i)}
+                    <div class="flex items-center gap-1">
+                        <span class="w-4 shrink-0 text-right text-[10px] text-gray-500">{i + 1}</span>
+                        <input
+                            type="text"
+                            value={cmd}
+                            oninput={(e) => updateCommandRow(i, (e.currentTarget as HTMLInputElement).value)}
+                            onpaste={(e) => onCommandPaste(i, e)}
+                            use:fillHint
+                            class="min-w-0 flex-1 rounded-md border border-gray-600 bg-gray-700 px-2 py-1 font-mono text-xs text-gray-100 outline-none focus:border-orange-500"
+                        />
+                        <button
+                            type="button"
+                            onclick={() => removeCommandRow(i)}
+                            title={$locales('meshcoreconfig.zones.commands_remove')}
+                            aria-label={$locales('meshcoreconfig.zones.commands_remove')}
+                            class="shrink-0 rounded px-1.5 py-1 text-xs text-gray-400 transition-colors hover:bg-gray-700 hover:text-red-300"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                {/each}
+                <button
+                    type="button"
+                    onclick={addCommandRow}
+                    class="rounded bg-gray-700 px-2 py-1 text-xs text-orange-200 transition-colors hover:bg-gray-600"
+                >
+                    + {$locales('meshcoreconfig.zones.commands_add')}
+                </button>
+            </div>
+            <span class="mt-1 block text-[10px] text-gray-500">
+                {$locales('meshcoreconfig.zones.commands_hint')}
+            </span>
         </div>
 
         <!-- Author: plain catalog metadata (who filled the group in), not a

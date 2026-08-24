@@ -952,7 +952,9 @@ export interface RadioSpec {
 // a zone may carry any subset (including none) — it is valid as long as it has a
 // geometry. `regions` is the region-def characteristic; `radio`/`pathHashMode`
 // the radio preset; `nameTemplate` a node-name composer template; `docUrl` a link
-// to a settings document. In-memory models keep `regions` as a `string` ('' =
+// to a settings document. `commands` is an optional list of arbitrary meshcore
+// command lines (task 79) — no validation, applied verbatim by the configurator.
+// In-memory models keep `regions` as a `string` ('' =
 // not set) for lookup convenience; the nested structure is assembled at
 // serialization boundaries (zoneExport.serializeGroup), omitting empty fields.
 export interface MeshcoreZoneSettings {
@@ -962,6 +964,7 @@ export interface MeshcoreZoneSettings {
     nameTemplate?: string; // e.g. "[NN|DZ|BOR]-[AVT|KAN]-[ID]" (parsed by nameTemplate.ts)
     docUrl?: string; // link to a settings document
     level?: number; // zone hierarchy level 1-5 (1=country broadest, 5=city district); default 1
+    commands?: string[]; // extra meshcore command lines, applied as-is (task 79)
 }
 
 // One normalized catalog feature. `bbox` is precomputed at parse time for the
@@ -977,6 +980,7 @@ export interface ZoneFeature {
     nameTemplate?: string; // per-zone node-name template (from properties.meshcore.nameTemplate)
     docUrl?: string; // per-zone settings-document link (from properties.meshcore.docUrl)
     level?: number; // zone hierarchy level 1-5 (default 1; 1=country, 5=city district)
+    commands?: string[]; // extra meshcore command lines (from properties.meshcore.commands)
     properties: Record<string, unknown>; // open object — extensible characteristics
 }
 
@@ -1001,6 +1005,7 @@ export interface GroupFile {
     nameTemplate?: string; // group node-name template (from metadata.meshcore.nameTemplate)
     docUrl?: string; // group settings-document link (from metadata.meshcore.docUrl)
     level?: number; // group zone hierarchy level 1-5 (default 1)
+    commands?: string[]; // extra meshcore command lines (from metadata.meshcore.commands)
     author?: string; // who filled the group in (from metadata.author)
     features: ZoneFeature[];
 }
@@ -1025,6 +1030,7 @@ export interface ZoneRegionResult {
     nameTemplate?: string; // per-zone node-name template on hit
     docUrl?: string; // per-zone settings-document link on hit
     level?: number; // zone hierarchy level of the resolved (most specific) zone on hit
+    commands?: string[]; // extra meshcore command lines of the resolved zone on hit
     reason?: 'empty_catalog' | 'fetch_failed' | 'invalid'; // when unavailable
 }
 
@@ -1058,6 +1064,7 @@ export interface ZoneGroup {
     nameTemplate?: string; // group node-name template
     docUrl?: string; // group settings-document link
     level?: number; // group zone hierarchy level 1-5 (default 1)
+    commands?: string[]; // extra meshcore command lines (task 79)
     author?: string; // who filled the group in (optional catalog metadata)
     originUrl?: string;
 }
@@ -1148,6 +1155,7 @@ export interface PendingFileInfo {
     radio?: RadioSpec;
     pathHashMode?: string;
     nameTemplate?: string;
+    commands?: string[]; // extra meshcore command lines of the preset
     author?: string;
     featureCount: number;
 }

@@ -72,7 +72,6 @@
         GroupFile,
         MeshcoreZoneSettings,
         PendingFileInfo,
-        RadioSpec,
         ZoneConflictPair,
         ZoneGeometry,
         ZonesUploadError,
@@ -1113,6 +1112,7 @@
                 nameTemplate: gf.nameTemplate,
                 docUrl: gf.docUrl,
                 level: gf.level,
+                commands: gf.commands,
                 author: gf.author,
                 originUrl: gf.url
             }
@@ -1143,6 +1143,7 @@
                 nameTemplate: gf.nameTemplate,
                 docUrl: gf.docUrl,
                 level: gf.level,
+                commands: gf.commands,
                 author: gf.author
             }
         ];
@@ -1170,6 +1171,7 @@
                 nameTemplate: src.nameTemplate,
                 docUrl: src.docUrl,
                 level: src.level,
+                commands: src.commands,
                 author: src.author
             }
         ];
@@ -1186,24 +1188,13 @@
         groups = groups.map((g) => (g.id === id ? { ...g, author: author.trim() || undefined } : g));
     }
     // Update a group's full meshcore preset (regions + radio + path.hash.mode +
-    // name template + doc URL) from the settings modal. No pushHistory: a
-    // settings-modal edit is not a geometric/structural change worth an undo
-    // step, same as the group name.
-    function updateGroupMeshcore(
-        id: string,
-        regions: string,
-        radio: RadioSpec | undefined,
-        pathHashMode: string | undefined,
-        nameTemplate: string | undefined,
-        docUrl: string | undefined,
-        level: number
-    ): void {
-        groups = groups.map(
-            (g) =>
-                g.id === id
-                    ? { ...g, regions, radio, pathHashMode, nameTemplate, docUrl, level }
-                    : g
-        );
+    // name template + doc URL + extra commands) from the settings modal. The
+    // modal returns the whole preset object, so an emptied field (e.g. commands)
+    // clears the stored value via the spread. No pushHistory: a settings-modal
+    // edit is not a geometric/structural change worth an undo step, same as the
+    // group name.
+    function updateGroupMeshcore(id: string, preset: MeshcoreZoneSettings): void {
+        groups = groups.map((g) => (g.id === id ? { ...g, ...preset } : g));
         meshcoreEditId = null;
     }
     function removeGroup(id: string): void {
@@ -1385,6 +1376,7 @@
                 nameTemplate: meshcore.nameTemplate,
                 docUrl: meshcore.docUrl,
                 level: meshcore.level ?? ZONE_LEVEL_DEFAULT,
+                commands: meshcore.commands,
                 author:
                     typeof meta.author === 'string' && meta.author.trim()
                         ? meta.author.trim()
@@ -1446,7 +1438,8 @@
                     pathHashMode: g.pathHashMode,
                     nameTemplate: g.nameTemplate,
                     docUrl: g.docUrl,
-                    level: g.level
+                    level: g.level,
+                    commands: g.commands
                 },
                 zones,
                 g.author
@@ -1480,6 +1473,11 @@
         return $locales(`meshcoreconfig.zones.upload_err_${key}`);
     }
 
+    // Localized tooltip of the extra-commands chip in the group preset summary.
+    function commandsChipTitle(n: number): string {
+        return $locales('meshcoreconfig.zones.commands_chip').replace('{n}', String(n));
+    }
+
     // Send one group to the pending catalog (same serialization + file name as
     // the export download, so a re-upload replaces the awaiting version).
     async function uploadOne(g: ZoneGroup): Promise<boolean> {
@@ -1499,7 +1497,8 @@
                     pathHashMode: g.pathHashMode,
                     nameTemplate: g.nameTemplate,
                     docUrl: g.docUrl,
-                    level: g.level
+                    level: g.level,
+                    commands: g.commands
                 },
                 zones,
                 g.author
@@ -1626,30 +1625,13 @@
     // layer and conflict record (the pending $effect redraws and re-runs the
     // client conflict check), and the queue row (preset summary).
     async function savePendingEdit(
-        regions: string,
-        radio: RadioSpec | undefined,
-        pathHashMode: string | undefined,
-        nameTemplate: string | undefined,
-        docUrl: string | undefined,
-        level: number,
-        author: string | undefined
+        preset: MeshcoreZoneSettings,
+        author?: string
     ): Promise<void> {
         const file = pendingEditFile;
         if (!file || !moderatorToken) return;
         moderationBusy = true;
-        const res = await updatePendingFile(
-            moderatorToken,
-            file.filename,
-            {
-                regions,
-                radio,
-                pathHashMode,
-                nameTemplate,
-                docUrl,
-                level
-            },
-            author
-        );
+        const res = await updatePendingFile(moderatorToken, file.filename, preset, author);
         moderationBusy = false;
         if (res.ok) {
             showNotice(
@@ -2294,6 +2276,12 @@
                                     {#if g.docUrl}
                                         <span class="text-sky-400">· doc</span>
                                     {/if}
+                                    {#if g.commands?.length}
+                                        <span
+                                            class="text-gray-500"
+                                            title={commandsChipTitle(g.commands.length)}
+                                        >· cmd {g.commands.length}</span>
+                                    {/if}
                                 </div>
 
                                 <div class="mt-1 space-y-1">
@@ -2404,16 +2392,8 @@
         nameTemplate={meshcoreEditGroup.nameTemplate}
         docUrl={meshcoreEditGroup.docUrl}
         level={meshcoreEditGroup.level}
-        onsave={(regions, radio, pathHashMode, nameTemplate, docUrl, level) =>
-            updateGroupMeshcore(
-                meshcoreEditGroup.id,
-                regions,
-                radio,
-                pathHashMode,
-                nameTemplate,
-                docUrl,
-                level
-            )}
+        commands={meshcoreEditGroup.commands}
+        onsave={(preset) => updateGroupMeshcore(meshcoreEditGroup.id, preset)}
         onclose={() => (meshcoreEditId = null)}
     />
 {/if}
@@ -2426,6 +2406,7 @@
         nameTemplate={pendingEditFile.nameTemplate}
         docUrl={pendingEditFile.docUrl}
         level={pendingEditFile.level}
+        commands={pendingEditFile.commands}
         author={pendingEditFile.author ?? ''}
         editAuthor={true}
         onsave={savePendingEdit}

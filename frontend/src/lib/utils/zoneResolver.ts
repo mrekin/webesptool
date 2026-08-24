@@ -62,7 +62,8 @@ export function lookupZoneRegion(
                     pathHashMode: feature.pathHashMode,
                     nameTemplate: feature.nameTemplate,
                     docUrl: feature.docUrl,
-                    level
+                    level,
+                    commands: feature.commands
                 }
             };
         } catch (err) {

@@ -14,8 +14,9 @@ import type { MeshcoreZoneSettings } from '$lib/types';
 
 // Coerce a client-supplied preset into the typed shape (the client is not
 // trusted): empty/absent fields are dropped, radio requires all four finite
-// numbers, level must be an integer 1-5. Mirrors the reading coercion of
-// zoneFeatures.readMeshcore so an update can never inject arbitrary JSON.
+// numbers, level must be an integer 1-5, commands accepts only an array of
+// non-empty strings. Mirrors the reading coercion of zoneFeatures.readMeshcore
+// so an update can never inject arbitrary JSON.
 function coercePreset(raw: unknown): MeshcoreZoneSettings {
     const p = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
     const out: MeshcoreZoneSettings = {};
@@ -37,6 +38,15 @@ function coercePreset(raw: unknown): MeshcoreZoneSettings {
     if (typeof p.docUrl === 'string' && p.docUrl.trim()) out.docUrl = p.docUrl.trim();
     const level = Number(p.level);
     if (Number.isInteger(level) && level >= 1 && level <= 5) out.level = level;
+    // Extra commands: only a real array is considered, only its non-empty
+    // string entries survive (trimmed); anything else is ignored and an empty
+    // result writes no key (mirrors readMeshcore's coercion).
+    if (Array.isArray(p.commands)) {
+        const cmds = p.commands
+            .filter((c): c is string => typeof c === 'string' && c.trim() !== '')
+            .map((c) => c.trim());
+        if (cmds.length > 0) out.commands = cmds;
+    }
     return out;
 }
 
