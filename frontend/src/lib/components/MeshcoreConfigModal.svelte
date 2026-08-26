@@ -718,6 +718,9 @@
 
     async function doApply(): Promise<void> {
         if (!cliManager || !isConnected) return;
+        // Jump to the terminal so the user sees the run: command echoes, device
+        // replies and delay countdowns (selectTab mounts the xterm on first open).
+        selectTab('terminal');
         busy = true;
         errorMessage = '';
         statusMessage = '';
@@ -739,7 +742,14 @@
                         throw new Error($locales('meshcoreconfig.apply_error'));
                     }
                 }
-                const resp = await cliManager.sendCommand(parsed ? parsed.command : raw);
+                const cmd = parsed ? parsed.command : raw;
+                // `reboot` never gets a framed response (the device just resets):
+                // a framed send would always time out and abort the queue. Send it
+                // write-only; the next line's [dN] countdown paces the boot time.
+                const resp =
+                    cmd === 'reboot'
+                        ? await cliManager.reboot()
+                        : await cliManager.sendCommand(cmd);
                 // Device signals trouble with "Err ...", "??: ..." or "... fail(ed)".
                 if (/^(Err|\?\?)/i.test(resp) || /fail/i.test(resp)) {
                     failures.push(`${raw} → ${resp}`);

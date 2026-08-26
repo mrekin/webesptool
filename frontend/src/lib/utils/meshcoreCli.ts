@@ -198,7 +198,9 @@ export function createMeshcoreCliManager(options?: MeshcoreCliManagerOptions) {
 
     const getVariable = (key: string) => sendCommand(`get ${key}`);
     const setVariable = (key: string, value: string) => sendCommand(`set ${key} ${value}`);
-    const reboot = () => sendCommand('reboot');
+    // The device never sends a framed response to `reboot` — it just resets —
+    // so a framed wait would always time out. Write-only (echo still emitted).
+    const reboot = () => sendCommand('reboot', false);
 
     return {
         connect,
