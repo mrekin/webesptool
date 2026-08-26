@@ -287,6 +287,7 @@
     "tab_settings": "Settings",
     "tab_terminal": "Terminal",
     "terminal_input_placeholder": "Enter a command…",
+    "terminal_delay_clamped": "Delay exceeds the maximum, capped at {max} s",
     "geocode": {
       "location_label": "Location",
       "no_data": "No description for this point",
@@ -536,6 +537,7 @@
     "terminal_multiline_newline_tooltip": "New line (Shift+Enter)",
     "terminal_multiline_limit_exceeded": "Command limit exceeded ({max}). Extra lines will not be sent.",
     "terminal_multiline_progress": "Sent {sent} of {total}",
+    "terminal_delay_clamped": "Delay exceeds the maximum, capped at {max} s",
     "meshcore_configurator": "Meshcore Configurator",
     "log_title": "Operation Log",
     "log_copy": "Copy log",

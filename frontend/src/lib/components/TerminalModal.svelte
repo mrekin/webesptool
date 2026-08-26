@@ -24,6 +24,14 @@
     import { TERMINAL_CONFIG } from '$lib/config/terminalConfig.js';
     import { ResponseDetector } from '$lib/utils/responseDetector.js';
     import {
+        parseCommandDelay,
+        clampDelaySeconds,
+        createDelayCountdown,
+        attachDelayCountdownLinks,
+        type DelayCountdownHandle,
+        type DelayCountdownOutcome
+    } from '$lib/utils/commandDelay.js';
+    import {
         splitIntoCommandLines,
         applyCommandLimit,
         trimTrailingEmptyLine,
@@ -76,6 +84,14 @@
     let massStopRequested = false;
     let lastSentIndex = $state(-1);
     let multilineLimitExceeded = $state(false);
+
+    // Delay countdown state (task 80): one active countdown at most — sends are
+    // blocked while it is waiting. `isDelayWaiting` covers single-line waits;
+    // during a mass run `isMassRunning` already blocks the UI.
+    let isDelayWaiting = $state(false);
+    let activeCountdown: DelayCountdownHandle | null = null;
+    // Countdown link provider disposer (double click = early send).
+    let disposeDelayLinks: (() => void) | null = null;
 
     // Experimental features flag
     let experimentalFeatures = $state($uiState.experimentalFeatures);
@@ -163,6 +179,10 @@
 
         // Wire Ctrl/Cmd+C copy handling (shared with MeshcoreConfigModal).
         attachTerminalCopy(term);
+
+        // Countdown timer links: double click on the active countdown line sends early.
+        disposeDelayLinks?.();
+        disposeDelayLinks = attachDelayCountdownLinks(term);
 
         try {
             // Dynamically import and load addons
@@ -379,6 +399,8 @@
 
         // Abort any in-flight response detection (mass run / manual await) -> stops the run
         responseDetector?.cancel();
+        // A pending delay countdown must not send its command after the loss.
+        activeCountdown?.cancel('aborted');
 
         if (reader) {
             try {
@@ -437,9 +459,21 @@
         }
     }
 
+    // Console write helper (xterm + autoscroll by flag) — the readSerialLoop
+    // pattern, reused by the delay countdown (task 80).
+    function writeToConsole(chunk: string): void {
+        if (!terminal) return;
+        terminal.write(chunk);
+        if (autoScroll) {
+            terminal.scrollToBottom();
+        }
+    }
+
     // Core write: encode + write to port + echo + history. Returns success.
     // Does NOT clear the input field and does NOT trim-skip empty lines (multiline needs empty lines sent as-is, OQ-4).
-    async function writeCommand(line: string): Promise<boolean> {
+    // `historyAs` (task 80): the line goes to the device clean, while history
+    // keeps the line as typed (with its `[dN]` prefix) so recall reproduces the delay.
+    async function writeCommand(line: string, historyAs?: string): Promise<boolean> {
         if (!port || !isConnected || !terminal) return false;
 
         let writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
@@ -459,7 +493,7 @@
             terminal.writeln(`\x1b[1;36m>> ${line}\x1b[0m`);
 
             // Add to history (FIFO cap)
-            commandHistory.push(line);
+            commandHistory.push(historyAs ?? line);
             if (commandHistory.length > TERMINAL_CONFIG.maxHistory) {
                 commandHistory.shift();
             }
@@ -484,12 +518,46 @@
         }
     }
 
+    // Run the delay countdown for a line carrying a positive `[dN]` directive:
+    // clamp (with a localized notice), wait for the outcome. Returns null when
+    // the line has no directive or a zero delay (no countdown at all).
+    async function awaitDelay(raw: string): Promise<DelayCountdownOutcome | null> {
+        const parsed = parseCommandDelay(raw);
+        if (!parsed || parsed.delaySeconds <= 0) return null;
+        const { seconds, clamped } = clampDelaySeconds(parsed.delaySeconds);
+        let notice: string | undefined;
+        if (clamped) {
+            notice = $locales('customfirmware.terminal_delay_clamped', {
+                values: { max: TERMINAL_CONFIG.maxDelaySeconds }
+            });
+        }
+        activeCountdown = createDelayCountdown({
+            delaySeconds: seconds,
+            displayLine: parsed.command,
+            write: writeToConsole,
+            clampedNotice: notice,
+            terminal: terminal ?? undefined
+        });
+        const outcome = await activeCountdown.promise;
+        activeCountdown = null;
+        return outcome;
+    }
+
     // Send command to serial port (called from CommandInput or Send button) — single-line path.
     async function sendCommand(command?: string): Promise<void> {
-        const cmd = (command ?? commandInput).trim();
-        if (!cmd) return;
-        const ok = await writeCommand(cmd);
-        if (ok) {
+        if (isDelayWaiting || isMassRunning) return;
+        const raw = (command ?? commandInput).trim();
+        if (!raw) return;
+        const parsed = parseCommandDelay(raw);
+        if (parsed && parsed.delaySeconds > 0) {
+            isDelayWaiting = true;
+            const outcome = await awaitDelay(raw);
+            isDelayWaiting = false;
+            // Cancelled (Stop) or aborted (disconnect): the command must not go out.
+            if (outcome !== 'elapsed' && outcome !== 'early') return;
+        }
+        const ok = await writeCommand(parsed ? parsed.command : raw, raw);
+        if (ok && command === undefined) {
             commandInput = '';
         }
     }
@@ -500,14 +568,14 @@
     }
 
     // Send a single line and await device response completion (silence-timeout heuristic).
-    async function sendLineAndAwait(line: string): Promise<boolean> {
+    async function sendLineAndAwait(line: string, historyAs?: string): Promise<boolean> {
         if (isInFlight) return false; // writer must not be grabbed twice
         isInFlight = true;
         responseDetector = new ResponseDetector({
             silenceTimeoutMs: TERMINAL_CONFIG.silenceTimeoutMs
         });
         try {
-            const ok = await writeCommand(line);
+            const ok = await writeCommand(line, historyAs);
             if (!ok) return false;
             await responseDetector.start(); // resolves on silence timeout
             return true;
@@ -535,7 +603,8 @@
 
     /** Mass send: split commandInput into lines and send sequentially, awaiting
      *  response completion between sends. Triggers: Enter in multiline textarea,
-     *  "Send all" button, Ctrl/Cmd+Enter. */
+     *  "Send all" button, Ctrl/Cmd+Enter. Lines with a `[dN]` prefix run their
+     *  countdown first; the progress counter only moves at the actual send. */
     async function runMassSend(): Promise<void> {
         if (isMassRunning) return;
         const lines = computeMultilineLines();
@@ -554,9 +623,15 @@
                     toggleTerminalMode();
                     continue;
                 }
+                const outcome = await awaitDelay(line);
+                if (outcome !== null && outcome !== 'elapsed' && outcome !== 'early') {
+                    break; // cancelled (Stop) / aborted (disconnect)
+                }
+                // Count the line only at its actual send moment — not while waiting.
                 sendableIndex++;
                 lastSentIndex = sendableIndex;
-                const ok = await sendLineAndAwait(line);
+                const parsed = parseCommandDelay(line);
+                const ok = await sendLineAndAwait(parsed ? parsed.command : line, line);
                 if (!ok) break; // write error / no response / disconnect (OQ-6)
             }
         } finally {
@@ -569,10 +644,12 @@
         return commandInput.includes('\n');
     }
 
-    // Stop the running mass send: remaining lines are not sent.
+    // Stop the running mass send (and any single-line delay wait): remaining
+    // lines are not sent, the awaited countdown resolves as cancelled.
     function stopMassSend(): void {
         massStopRequested = true;
         responseDetector?.cancel(); // unblock the awaited start()
+        activeCountdown?.cancel('cancelled');
     }
 
     /** Replace the command input with a selected MeshCore command set/section (pure replacement). */
@@ -605,9 +682,14 @@
         }
 
         terminal = null;
+        // Remove the countdown link provider and stop any pending countdown.
+        disposeDelayLinks?.();
+        disposeDelayLinks = null;
+        activeCountdown?.cancel('cancelled');
         // Stop any running mass send and clear multiline state
         stopMassSend();
         isMassRunning = false;
+        isDelayWaiting = false;
         multilineLimitExceeded = false;
         lastSentIndex = -1;
 
@@ -624,6 +706,8 @@
             window.removeEventListener('resize', resizeHandler);
             resizeHandler = null;
         }
+        disposeDelayLinks?.();
+        disposeDelayLinks = null;
         await disconnect();
     });
 
@@ -715,9 +799,10 @@
                     bind:value={commandInput}
                     {isConnected}
                     isMassRunning={isMassRunning}
+                    isSendBlocked={isMassRunning || isDelayWaiting}
                     onSubmit={handleSubmitCommand}
                     onsendall={runMassSend}
-                    onsendline={(line: string) => writeCommand(line)}
+                    onsendline={(line: string) => sendCommand(line)}
                     placeholder={$locales('customfirmware.terminal_input_placeholder')}
                     {commandHistory}
                     {showCommandShortDescriptions}
@@ -725,12 +810,14 @@
                     bind:currentLine
                 />
 
-                {#if isMultilineState()}
-                    <!-- Multiline: mass-send controls inline (no separate row). Enter in textarea also triggers runMassSend. -->
+                {#if isMultilineState() || isDelayWaiting}
+                    <!-- Multiline: mass-send controls inline (no separate row). Enter in textarea also triggers runMassSend.
+                         Also rendered for a single-line delay wait, where Stop cancels the countdown. -->
                     <MultilineControls
                         isMultiline={true}
                         {isConnected}
                         {isMassRunning}
+                        isWaiting={isDelayWaiting}
                         {lastSentIndex}
                         totalLines={sendableLineCount()}
                         limitExceeded={multilineLimitExceeded}

@@ -3,6 +3,7 @@
 // compute diffs and serialize set-command lines. Modeled on config.meshcore.io.
 import { getBaseCommandName } from './meshcoreCommands.js';
 import { isModeSwitchLine } from './multilineCommands.js';
+import { parseCommandDelay } from './commandDelay.js';
 import type {
     MeshcoreConfigDiff,
     MeshcoreConfigField,
@@ -340,16 +341,23 @@ export type CommandLineClassification =
  * historical file-load rules: trim, drop empty/mode-switch/'['-header lines,
  * then the longest matching base decides — queueable rows yield a value,
  * 0-param non-urgent actions arm, everything else stays raw.
+ * A `[dN]` delay prefix is stripped first (task 80): classification runs on
+ * the clean command, while the queue keeps the line verbatim with its prefix;
+ * lines that only carry brackets (no directive) still take the '['-skip path.
  */
 export function classifyCommandLine(
     line: string,
     rows: MeshcoreCommandRow[]
 ): CommandLineClassification {
     const t = line.trim();
-    if (!t || isModeSwitchLine(t) || t.startsWith('[')) return { kind: 'skip' };
-    const row = matchRowForLine(rows, t);
+    const delay = parseCommandDelay(t);
+    const clean = delay ? delay.command : t;
+    if (!clean || isModeSwitchLine(clean) || (!delay && clean.startsWith('['))) {
+        return { kind: 'skip' };
+    }
+    const row = matchRowForLine(rows, clean);
     if (row && isQueueable(row)) {
-        return { kind: 'value', row, value: parseRowValue(row, t) };
+        return { kind: 'value', row, value: parseRowValue(row, clean) };
     }
     if (row && row.kind === 'action' && row.params.length === 0 && !row.urgent) {
         return { kind: 'arm', row };

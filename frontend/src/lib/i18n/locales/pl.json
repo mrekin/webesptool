@@ -287,6 +287,7 @@
     "tab_settings": "Ustawienia",
     "tab_terminal": "Terminal",
     "terminal_input_placeholder": "Wpisz polecenie…",
+    "terminal_delay_clamped": "Opóźnienie przekracza maksimum, ograniczono do {max} s",
     "geocode": {
       "location_label": "Miejsce",
       "no_data": "Brak opisu dla tego punktu",
@@ -536,6 +537,7 @@
     "terminal_multiline_newline_tooltip": "Nowy wiersz (Shift+Enter)",
     "terminal_multiline_limit_exceeded": "Przekroczono limit poleceń ({max}). Dodatkowe wiersze nie zostaną wysłane.",
     "terminal_multiline_progress": "Wysłano {sent} z {total}",
+    "terminal_delay_clamped": "Opóźnienie przekracza maksimum, ograniczono do {max} s",
     "meshcore_configurator": "Konfigurator Meshcore",
     "log_title": "Dziennik operacji",
     "log_copy": "Kopiuj dziennik",

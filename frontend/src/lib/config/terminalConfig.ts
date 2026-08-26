@@ -12,5 +12,9 @@ export const TERMINAL_CONFIG = {
      *  fallback for browsers without `field-sizing` support (Firefox/Safari). */
     approxLineHeightRem: 1.5,
     /** Maximum command history entries. */
-    maxHistory: 50
+    maxHistory: 50,
+    /** Ceiling for the [dN] command delay (seconds); excess is clamped with a console notice. */
+    maxDelaySeconds: 999,
+    /** Double-click window on the countdown timer line that sends the command early (ms). */
+    delayEarlySendDoubleClickMs: 500
 } as const;

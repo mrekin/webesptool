@@ -17,6 +17,7 @@
         value = $bindable(),
         isConnected = false,
         isMassRunning = false, // textarea disabled during mass run (no editing)
+        isSendBlocked = false, // sends blocked while a delay countdown is waiting (editing stays enabled)
         onSubmit = (_cmd: string) => {}, // single-line Enter -> sendCommand
         onsendall = () => {}, // multiline Enter / Ctrl+Cmd+Enter -> runMassSend
         placeholder = '',
@@ -250,7 +251,7 @@
         // Ctrl/Cmd+Enter - mass send (works for single-line too -> paced send)
         if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
             event.preventDefault();
-            if (isConnected && !isMassRunning && value.trim()) {
+            if (isConnected && !isMassRunning && !isSendBlocked && value.trim()) {
                 onsendall();
             }
             return;
@@ -274,7 +275,7 @@
             }
 
             // Everything below actually sends to the device -> needs a connection.
-            if (!isConnected || isMassRunning) return;
+            if (!isConnected || isMassRunning || isSendBlocked) return;
 
             if (isMultiline()) {
                 // Multiline -> mass send of all lines (runMassSend).
@@ -436,7 +437,7 @@
                 class="send-line-btn absolute right-2 flex items-center justify-center text-gray-500 transition-colors hover:text-green-400 disabled:cursor-not-allowed disabled:opacity-40"
                 style="top: {caretCoords.top}px; height: {caretCoords.height}px; line-height: {caretCoords.height}px;"
                 title={$locales('customfirmware.terminal_send_tooltip')}
-                disabled={!isConnected || isMassRunning}
+                disabled={!isConnected || isMassRunning || isSendBlocked}
                 onclick={() => onsendline(currentLine)}
             >▶</button>
         {/if}

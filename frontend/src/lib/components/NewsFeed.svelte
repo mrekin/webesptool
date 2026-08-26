@@ -75,7 +75,7 @@
             {$locales('news.title')}
         </h2>
         <button
-            onclick={handleOpenModal}
+            onclick={() => handleOpenModal()}
             class="text-sm text-orange-400 hover:text-orange-300 hover:underline"
         >
             {$locales('news.all')}

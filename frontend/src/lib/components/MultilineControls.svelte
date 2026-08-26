@@ -3,9 +3,10 @@
     import { TERMINAL_CONFIG } from '$lib/config/terminalConfig.js';
 
     let {
-        isMultiline = false, // show only when true
+        isMultiline = false, // show only when true (or while waiting on a delay)
         isConnected = false,
         isMassRunning = false,
+        isWaiting = false, // a delay countdown is waiting: Stop is available even single-line
         lastSentIndex = -1,
         totalLines = 0,
         limitExceeded = false,
@@ -14,7 +15,7 @@
     } = $props();
 </script>
 
-{#if isMultiline}
+{#if isMultiline || isWaiting}
     <div class="flex flex-shrink-0 items-center gap-2">
         {#if limitExceeded}
             <span
@@ -25,8 +26,8 @@
             >⚠</span>
         {/if}
 
-        {#if isMassRunning}
-            {#if lastSentIndex >= 0}
+        {#if isMassRunning || isWaiting}
+            {#if isMassRunning && lastSentIndex >= 0}
                 <span class="text-xs text-gray-400">
                     {$locales('customfirmware.terminal_multiline_progress', {
                         values: { sent: lastSentIndex + 1, total: totalLines }

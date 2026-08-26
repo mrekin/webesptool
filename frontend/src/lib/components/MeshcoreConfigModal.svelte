@@ -18,6 +18,15 @@
     import { attachTerminalCopy } from '$lib/utils/terminalClipboard.js';
     import { setTerminalMode, resetTerminalMode, uiState } from '$lib/stores.js';
     import { TERMINAL_CONFIG } from '$lib/config/terminalConfig.js';
+    import { ResponseDetector } from '$lib/utils/responseDetector.js';
+    import {
+        parseCommandDelay,
+        clampDelaySeconds,
+        createDelayCountdown,
+        attachDelayCountdownLinks,
+        type DelayCountdownHandle,
+        type DelayCountdownOutcome
+    } from '$lib/utils/commandDelay.js';
     import McCommandSetPicker from './McCommandSetPicker.svelte';
     import MeshcoreConfigRow from './MeshcoreConfigRow.svelte';
     import MeshcoreConfigCommandList from './MeshcoreConfigCommandList.svelte';
@@ -220,6 +229,15 @@
     let isMassRunning = $state(false);
     let stopMassRequested = false;
     let massSentIndex = $state(-1);
+    // Delay countdown state (task 80) — mirrors TerminalModal: one active
+    // countdown at most; sends from this terminal are blocked while waiting.
+    let isTermWaiting = $state(false);
+    let activeTermCountdown: DelayCountdownHandle | null = null;
+    // Response detector for the terminal-tab mass send — unified with the
+    // firmware terminal: fed from onChunk, resolves on response silence.
+    let termResponseDetector: ResponseDetector | null = null;
+    // Countdown link provider disposer (double click = early send).
+    let disposeDelayLinks: (() => void) | null = null;
 
     // xterm options — same theme as TerminalModal.
     const terminalOptions = {
@@ -290,24 +308,38 @@
         return err instanceof Error ? err.message : String(err);
     }
 
+    // Terminal output helper: write to the mounted xterm (autoscroll by flag) or
+    // buffer into pendingTermChunks until the xterm mounts. Shared by onChunk
+    // and the delay countdown (which must be visible even before the mount).
+    function writeToConsole(chunk: string): void {
+        if (terminal) {
+            terminal.write(chunk);
+            if (autoScroll) terminal.scrollToBottom();
+        } else {
+            pendingTermChunks.push(chunk);
+        }
+    }
+
     onMount(() => {
         // CommandInput reads the global terminalMode store for meshcore autocomplete.
         setTerminalMode('meshcore');
         cliManager = createMeshcoreCliManager({
             onStatusChange: (s) => {
                 status = s;
+                if (s === 'disconnected') {
+                    // Connection loss: a pending countdown must not send its
+                    // command, and an awaited response detection stops the run.
+                    termResponseDetector?.cancel();
+                    activeTermCountdown?.cancel('aborted');
+                }
             },
             // Every decoded device chunk (and the cyan `>> cmd` echo of sent
-            // commands) is teed here — write it straight to the xterm, or buffer
-            // it until the xterm mounts (it is lazily created on first Terminal
-            // tab open, so traffic before that would otherwise be lost).
+            // commands) is teed here — write it straight to the xterm (or buffer
+            // it until the lazily-mounted Terminal tab opens) and feed the
+            // terminal-tab response detector (unified mass send, task 80).
             onChunk: (data) => {
-                if (terminal) {
-                    terminal.write(data);
-                    if (autoScroll) terminal.scrollToBottom();
-                } else {
-                    pendingTermChunks.push(data);
-                }
+                termResponseDetector?.notifyData();
+                writeToConsole(data);
             }
         });
         isSupported = cliManager.isSupported();
@@ -327,6 +359,8 @@
             window.removeEventListener('resize', resizeHandler);
             resizeHandler = null;
         }
+        disposeDelayLinks?.();
+        disposeDelayLinks = null;
         if (cliManager && !isDisconnecting) {
             void cliManager.disconnect();
         }
@@ -378,6 +412,9 @@
         terminal = term;
         // Wire Ctrl/Cmd+C copy handling (shared with TerminalModal).
         attachTerminalCopy(term);
+        // Countdown timer links: double click on the active countdown line sends early.
+        disposeDelayLinks?.();
+        disposeDelayLinks = attachDelayCountdownLinks(term);
         term.writeln('\x1b[1;33mMeshcore terminal\x1b[0m');
         term.writeln('\x1b[90mConnect to the device to see traffic.\x1b[0m\r\n');
         // Replay output that arrived before the xterm mounted (lazy mount on
@@ -439,45 +476,109 @@
         historyIndex = commandHistory.length;
     }
 
-    // Manual single-line send from the terminal input. frame=false: just write,
-    // the device's output (and the cyan `>> cmd` echo) arrives via onChunk.
-    async function handleTermSubmit(cmd: string): Promise<void> {
-        if (!cliManager || !isConnected || isMassRunning) return;
+    // Run the delay countdown for a line carrying a positive `[dN]` directive:
+    // clamp (with a localized notice), wait for the outcome. Returns null when
+    // the line has no directive or a zero delay (no countdown at all). The
+    // countdown is written via writeToConsole, so it lands in the xterm or in
+    // the pending buffer (visible on the first Terminal-tab open) either way.
+    async function awaitTermDelay(raw: string): Promise<DelayCountdownOutcome | null> {
+        const parsed = parseCommandDelay(raw);
+        if (!parsed || parsed.delaySeconds <= 0) return null;
+        const { seconds, clamped } = clampDelaySeconds(parsed.delaySeconds);
+        let notice: string | undefined;
+        if (clamped) {
+            notice = $locales('meshcoreconfig.terminal_delay_clamped', {
+                values: { max: TERMINAL_CONFIG.maxDelaySeconds }
+            });
+        }
+        activeTermCountdown = createDelayCountdown({
+            delaySeconds: seconds,
+            displayLine: parsed.command,
+            write: writeToConsole,
+            clampedNotice: notice,
+            terminal: terminal ?? undefined
+        });
+        const outcome = await activeTermCountdown.promise;
+        activeTermCountdown = null;
+        return outcome;
+    }
+
+    /** Whether the line carries a `[dN]` directive with a positive delay. */
+    function hasPositiveDelay(line: string): boolean {
+        const parsed = parseCommandDelay(line);
+        return parsed !== null && parsed.delaySeconds > 0;
+    }
+
+    // Common single-send path for the terminal tab (manual Enter + per-line ▶):
+    // parse the `[dN]` prefix, run the countdown, then send the CLEAN command
+    // (frame=false) and push the line AS TYPED into the history.
+    async function sendTermCommand(raw: string): Promise<void> {
+        if (!cliManager || !isConnected || isMassRunning || isTermWaiting) return;
+        const line = raw.trim();
+        if (!line) return;
+        const parsed = parseCommandDelay(line);
+        if (parsed && parsed.delaySeconds > 0) {
+            isTermWaiting = true;
+            const outcome = await awaitTermDelay(line);
+            isTermWaiting = false;
+            // Cancelled (Stop) or aborted (disconnect): the command must not go out.
+            if (outcome !== 'elapsed' && outcome !== 'early') return;
+        }
         try {
-            await cliManager.sendCommand(cmd, false);
-            pushHistory(cmd);
+            await cliManager.sendCommand(parsed ? parsed.command : line, false);
+            pushHistory(line);
         } catch {
             /* errors are surfaced through the xterm via onChunk */
         }
     }
 
-    // Per-line Send (the ▶ button in CommandInput): same as a manual send.
-    async function sendTermLine(line: string): Promise<void> {
-        if (!cliManager || !isConnected || isMassRunning) return;
-        try {
-            await cliManager.sendCommand(line, false);
-            pushHistory(line);
-        } catch {
-            /* ignore — device output is visible in the xterm */
-        }
+    // Manual single-line send from the terminal input. frame=false: just write,
+    // the device's output (and the cyan `>> cmd` echo) arrives via onChunk.
+    function handleTermSubmit(cmd: string): void {
+        void sendTermCommand(cmd);
     }
 
-    // Multiline "Send all": pace lines so the device has time to process each.
+    // Per-line Send (the ▶ button in CommandInput): same as a manual send.
+    function sendTermLine(line: string): void {
+        void sendTermCommand(line);
+    }
+
+    // Multiline "Send all" — unified with the firmware terminal (task 80):
+    // send a line, await the device response completion (silence heuristic fed
+    // from onChunk), then the next line. Delayed lines run their countdown
+    // first; the progress counter only moves at the actual send.
     async function runTermMassSend(): Promise<void> {
-        if (!cliManager || !isConnected || isMassRunning) return;
+        if (!cliManager || !isConnected || isMassRunning || isTermWaiting) return;
         const lines = splitIntoCommandLines(termInput)
             .map((l) => l.trim())
             .filter((l) => l && !isModeSwitchLine(l));
         if (lines.length === 0) return;
         isMassRunning = true;
         stopMassRequested = false;
+        massSentIndex = -1;
         try {
             for (let i = 0; i < lines.length; i++) {
-                if (stopMassRequested) break;
+                if (stopMassRequested || !isConnected) break;
+                const line = lines[i];
+                const outcome = await awaitTermDelay(line);
+                if (outcome !== null && outcome !== 'elapsed' && outcome !== 'early') {
+                    break; // cancelled (Stop) / aborted (disconnect)
+                }
+                // Count the line only at its actual send moment — not while waiting.
                 massSentIndex = i;
-                await cliManager.sendCommand(lines[i], false);
-                pushHistory(lines[i]);
-                await new Promise((r) => setTimeout(r, 150));
+                const parsed = parseCommandDelay(line);
+                termResponseDetector = new ResponseDetector({
+                    silenceTimeoutMs: TERMINAL_CONFIG.silenceTimeoutMs
+                });
+                try {
+                    await cliManager.sendCommand(parsed ? parsed.command : line, false);
+                    pushHistory(line);
+                    await termResponseDetector.start(); // resolves on response silence
+                } catch {
+                    break; // send error / aborted detector (Stop / disconnect)
+                } finally {
+                    termResponseDetector = null;
+                }
             }
         } finally {
             isMassRunning = false;
@@ -485,8 +586,12 @@
         }
     }
 
+    // Stop the mass send (and any single-line delay wait): remaining lines are
+    // not sent, the awaited countdown/detector resolve as cancelled/aborted.
     function stopTermMassSend(): void {
         stopMassRequested = true;
+        termResponseDetector?.cancel();
+        activeTermCountdown?.cancel('cancelled');
     }
 
     async function connect(): Promise<void> {
@@ -622,13 +727,27 @@
         const failures: string[] = [];
         try {
             for (let i = 0; i < lines.length; i++) {
-                const resp = await cliManager.sendCommand(lines[i]);
+                const raw = lines[i];
+                const parsed = parseCommandDelay(raw);
+                if (parsed && parsed.delaySeconds > 0) {
+                    // Delayed line: run the countdown (visible in the terminal
+                    // console — buffered until the tab is first opened).
+                    const outcome = await awaitTermDelay(raw);
+                    if (outcome !== 'elapsed' && outcome !== 'early') {
+                        // Cancelled/aborted (connection loss): stop the apply the
+                        // usual error way — unsent lines stay in the queue.
+                        throw new Error($locales('meshcoreconfig.apply_error'));
+                    }
+                }
+                const resp = await cliManager.sendCommand(parsed ? parsed.command : raw);
                 // Device signals trouble with "Err ...", "??: ..." or "... fail(ed)".
                 if (/^(Err|\?\?)/i.test(resp) || /fail/i.test(resp)) {
-                    failures.push(`${lines[i]} → ${resp}`);
+                    failures.push(`${raw} → ${resp}`);
                 }
-                // Give the device time to finish the previous command before the next.
-                if (i < lines.length - 1) {
+                // Give the device time to finish the previous command before the
+                // next — unless the next line is delayed: its countdown already
+                // paces the queue (a delay REPLACES the pause, never stacks on it).
+                if (i < lines.length - 1 && !hasPositiveDelay(lines[i + 1])) {
                     await new Promise((r) => setTimeout(r, 150));
                 }
             }
@@ -790,6 +909,19 @@
                 // the queue entry cannot diverge.
                 if (c.row.id === 'name' && activeNameTemplate !== null) clearNameTemplate();
                 setRowValue(c.row.id, c.value);
+                // A delayed value line must keep its `[dN]` prefix in the queue
+                // (same semantics as a loaded command file): setRowValue rebuilds
+                // the line from the card value, so patch the entry back to the
+                // verbatim original. Manual card edits later drop the prefix (PRD 5.5).
+                if (parseCommandDelay(line) !== null) {
+                    const idx = commandQueue.findIndex((e) => e.rowId === c.row.id);
+                    if (idx >= 0) {
+                        const t = line.trim();
+                        commandQueue = commandQueue.map((e, i) =>
+                            i === idx ? { ...e, line: t } : e
+                        );
+                    }
+                }
             } else if (c.kind === 'arm') {
                 commandQueue = [...commandQueue, { line: line.trim(), rowId: c.row.id }];
             } else {
@@ -1378,6 +1510,7 @@
                             bind:value={termInput}
                             isConnected={isConnected}
                             isMassRunning={isMassRunning}
+                            isSendBlocked={isMassRunning || isTermWaiting}
                             onSubmit={handleTermSubmit}
                             onsendall={runTermMassSend}
                             onsendline={sendTermLine}
@@ -1392,6 +1525,7 @@
                         isMultiline={true}
                         isConnected={isConnected}
                         isMassRunning={isMassRunning}
+                        isWaiting={isTermWaiting}
                         lastSentIndex={massSentIndex}
                         totalLines={splitIntoCommandLines(termInput).filter(
                             (l) => l.trim() && !isModeSwitchLine(l)
