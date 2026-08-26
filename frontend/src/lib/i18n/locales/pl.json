@@ -299,7 +299,7 @@
       "source_live": "na żywo"
     },
     "zones": {
-      "detect_regions": "Wykryj regiony",
+      "detect_regions": "Wykryj ustawienia",
       "result_label": "Region",
       "status_hit": "Wewnątrz strefy",
       "status_miss": "Brak strefy dla tego punktu",

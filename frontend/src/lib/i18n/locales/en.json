@@ -299,7 +299,7 @@
       "source_live": "live"
     },
     "zones": {
-      "detect_regions": "Detect regions",
+      "detect_regions": "Detect settings",
       "result_label": "Region",
       "status_hit": "Inside zone",
       "status_miss": "Zone not defined for this point",

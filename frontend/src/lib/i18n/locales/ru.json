@@ -299,7 +299,7 @@
       "source_live": "напрямую"
     },
     "zones": {
-      "detect_regions": "Определять регионы",
+      "detect_regions": "Определять настройки",
       "result_label": "Регион",
       "status_hit": "Внутри зоны",
       "status_miss": "Зона не определена для этой точки",
