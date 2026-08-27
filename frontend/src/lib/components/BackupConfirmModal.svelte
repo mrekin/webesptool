@@ -1,11 +1,21 @@
 <script lang="ts">
     import { _ as locales } from 'svelte-i18n';
 
-    export let isOpen = false;
-    export let onConfirm = () => {};
-    export let onCancel = () => {};
-    export let deviceInfo: any = null;
-    export let flashSizeBytes = 0;
+    interface Props {
+        isOpen?: boolean;
+        onConfirm?: () => void;
+        onCancel?: () => void;
+        deviceInfo?: any;
+        flashSizeBytes?: number;
+    }
+
+    let {
+        isOpen = false,
+        onConfirm = () => {},
+        onCancel = () => {},
+        deviceInfo = null,
+        flashSizeBytes = 0
+    }: Props = $props();
 
     function formatFileSize(bytes: number): string {
         const mb = bytes / (1024 * 1024);
@@ -16,7 +26,7 @@
 {#if isOpen && deviceInfo}
     <div
         class="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
-        on:keydown={(e) => e.key === 'Escape' && onCancel()}
+        onkeydown={(e) => e.key === 'Escape' && onCancel()}
         role="dialog"
         aria-modal="true"
         tabindex="-1"
@@ -29,8 +39,8 @@
                     {$locales('backupconfirm.title')}
                 </h3>
                 <button
-                    on:click={onCancel}
-                    on:keydown={(e) => e.key === 'Escape' && onCancel()}
+                    onclick={onCancel}
+                    onkeydown={(e) => e.key === 'Escape' && onCancel()}
                     class="text-gray-400 transition-colors hover:text-gray-200"
                     aria-label="Close modal"
                 >
@@ -59,13 +69,13 @@
                 </div>
                 <div class="flex justify-end space-x-3">
                     <button
-                        on:click={onCancel}
+                        onclick={onCancel}
                         class="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-600"
                     >
                         {$locales('backupconfirm.cancel')}
                     </button>
                     <button
-                        on:click={onConfirm}
+                        onclick={onConfirm}
                         class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700"
                     >
                         {$locales('backupconfirm.confirm')}

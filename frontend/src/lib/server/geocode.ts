@@ -4,8 +4,7 @@ import type { GeocodeResponse } from '$lib/types';
 // Server-only reverse-geocoding proxy for Nominatim. Reads configuration from
 // env variables (see RSR §7.8); nothing here is reachable from the browser.
 
-const NOMINATIM_URL =
-    process.env.NOMINATIM_URL || 'https://nominatim.openstreetmap.org/reverse';
+const NOMINATIM_URL = process.env.NOMINATIM_URL || 'https://nominatim.openstreetmap.org/reverse';
 const NOMINATIM_USER_AGENT =
     process.env.NOMINATIM_USER_AGENT || 'webesptool-frontend (geocoding proxy)';
 const NOMINATIM_REFERER = process.env.NOMINATIM_REFERER || '';
@@ -74,11 +73,7 @@ type FetchResult =
 // External call to Nominatim. Returns null-shaped result on any failure so the
 // caller can decide not to cache transients. Empty User-Agent is refused
 // outright (Nominatim policy blocks stock/empty UAs).
-async function fetchNominatim(
-    lat3: string,
-    lon3: string,
-    zoom: number
-): Promise<FetchResult> {
+async function fetchNominatim(lat3: string, lon3: string, zoom: number): Promise<FetchResult> {
     if (!NOMINATIM_USER_AGENT) {
         console.warn('[geocode] NOMINATIM_USER_AGENT is empty; external call skipped');
         return { ok: false, reason: 'error' };

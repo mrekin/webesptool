@@ -255,7 +255,11 @@ export function movePendingToGroups(
 // same reading the /api/zones/groups endpoint does, parsed with the shared pure
 // reader. Group level comes from the merged preset (metadata first, features
 // fill gaps), matching parseGroupFile's coalescing.
-export function loadPublishedGroupEntries(): { file: string; level?: number; features: ZoneFeature[] }[] {
+export function loadPublishedGroupEntries(): {
+    file: string;
+    level?: number;
+    features: ZoneFeature[];
+}[] {
     const out: { file: string; level?: number; features: ZoneFeature[] }[] = [];
     let names: string[] = [];
     try {

@@ -89,13 +89,13 @@
                     <div class="my-1 flex items-center gap-2 text-gray-500">
                         <span class="h-px flex-1 bg-gray-700"></span>
                         <span class="text-[10px]">[{formatTime(entry.timestamp)}]</span>
-                        <span class="uppercase tracking-wider">{entry.message}</span>
+                        <span class="tracking-wider uppercase">{entry.message}</span>
                         <span class="h-px flex-1 bg-gray-700"></span>
                     </div>
                 {:else}
                     <div
-                        class="whitespace-pre-wrap break-words {levelClass[entry.level] ??
-                        'text-gray-300'}"
+                        class="break-words whitespace-pre-wrap {levelClass[entry.level] ??
+                            'text-gray-300'}"
                     >
                         <span class="text-gray-500">[{formatTime(entry.timestamp)}]</span>
                         {entry.message}

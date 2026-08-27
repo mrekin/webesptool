@@ -255,11 +255,15 @@
             configSelection = {
                 localConfig: {
                     enabled: hasLocalConfig,
-                    sections: hasLocalConfig ? Object.keys(normalizedConfig.localConfig as Record<string, any>) : []
+                    sections: hasLocalConfig
+                        ? Object.keys(normalizedConfig.localConfig as Record<string, any>)
+                        : []
                 },
                 moduleConfig: {
                     enabled: hasModuleConfig,
-                    sections: hasModuleConfig ? Object.keys(normalizedConfig.moduleConfig as Record<string, any>) : []
+                    sections: hasModuleConfig
+                        ? Object.keys(normalizedConfig.moduleConfig as Record<string, any>)
+                        : []
                 },
                 includeChannels: hasChannels,
                 includeOwner: hasOwner
@@ -507,13 +511,16 @@
             );
 
             // Check what sections are present
-            const hasLocalConfig =
-                !!(normalizedConfig.localConfig &&
-                Object.keys(normalizedConfig.localConfig).length > 0);
-            const hasModuleConfig =
-                !!(normalizedConfig.moduleConfig &&
-                Object.keys(normalizedConfig.moduleConfig).length > 0);
-            const hasChannels = !!(normalizedConfig.channels && normalizedConfig.channels.length > 0);
+            const hasLocalConfig = !!(
+                normalizedConfig.localConfig && Object.keys(normalizedConfig.localConfig).length > 0
+            );
+            const hasModuleConfig = !!(
+                normalizedConfig.moduleConfig &&
+                Object.keys(normalizedConfig.moduleConfig).length > 0
+            );
+            const hasChannels = !!(
+                normalizedConfig.channels && normalizedConfig.channels.length > 0
+            );
             const hasOwner = !!normalizedConfig.owner;
 
             // Store parsed config
@@ -525,11 +532,15 @@
             configSelection = {
                 localConfig: {
                     enabled: hasLocalConfig,
-                    sections: hasLocalConfig ? Object.keys(normalizedConfig.localConfig as Record<string, any>) : []
+                    sections: hasLocalConfig
+                        ? Object.keys(normalizedConfig.localConfig as Record<string, any>)
+                        : []
                 },
                 moduleConfig: {
                     enabled: hasModuleConfig,
-                    sections: hasModuleConfig ? Object.keys(normalizedConfig.moduleConfig as Record<string, any>) : []
+                    sections: hasModuleConfig
+                        ? Object.keys(normalizedConfig.moduleConfig as Record<string, any>)
+                        : []
                 },
                 includeChannels: hasChannels,
                 includeOwner: hasOwner
@@ -1483,7 +1494,10 @@
     {#if tooltipState.visible}
         <div
             class="pointer-events-none fixed z-[60] max-w-xs rounded-md border border-yellow-600 bg-gray-900 p-3 text-xs whitespace-pre-line text-yellow-200 shadow-xl"
-            style="left: {Math.min(tooltipState.x + 12, (typeof window !== 'undefined' ? window.innerWidth : 9999) - 320)}px; top: {Math.min(
+            style="left: {Math.min(
+                tooltipState.x + 12,
+                (typeof window !== 'undefined' ? window.innerWidth : 9999) - 320
+            )}px; top: {Math.min(
                 tooltipState.y + 12,
                 (typeof window !== 'undefined' ? window.innerHeight : 9999) - 100
             )}px;"

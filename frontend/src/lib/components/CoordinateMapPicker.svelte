@@ -242,7 +242,9 @@
             loadError = true;
             return;
         }
-        const center: [number, number] = hasCoords ? [lat as number, lon as number] : [55.75, 37.62];
+        const center: [number, number] = hasCoords
+            ? [lat as number, lon as number]
+            : [55.75, 37.62];
         map = L.map(container).setView(center, hasCoords ? 13 : 4);
         // Drop the Leaflet logo flag from the attribution control (keep OSM credit).
         map.attributionControl.setPrefix(false);
@@ -278,7 +280,9 @@
     role="dialog"
     aria-modal="true"
 >
-    <div class="flex h-[95vh] w-[95vw] flex-col rounded-lg border border-orange-600 bg-gray-800 p-4 shadow-2xl">
+    <div
+        class="flex h-[95vh] w-[95vw] flex-col rounded-lg border border-orange-600 bg-gray-800 p-4 shadow-2xl"
+    >
         <div class="mb-3 flex shrink-0 items-center gap-2">
             <h3 class="text-lg font-semibold text-orange-200">
                 {$locales('meshcoreconfig.pick_on_map')}
@@ -344,7 +348,9 @@
         {/if}
 
         {#if loadError}
-            <div class="flex min-h-0 flex-1 items-center justify-center rounded-md border border-gray-700 bg-gray-900 p-4 text-center text-sm text-red-300">
+            <div
+                class="flex min-h-0 flex-1 items-center justify-center rounded-md border border-gray-700 bg-gray-900 p-4 text-center text-sm text-red-300"
+            >
                 {$locales('meshcoreconfig.map_load_error')}
             </div>
         {:else}
@@ -356,10 +362,14 @@
 
                 <!-- Right-side point-info panel. Fixed width so loading region/
                      geocode data no longer resizes the card; content scrolls here. -->
-                <div class="flex w-80 shrink-0 flex-col gap-3 overflow-y-auto rounded-md border border-gray-700 bg-gray-900/50 p-3">
+                <div
+                    class="flex w-80 shrink-0 flex-col gap-3 overflow-y-auto rounded-md border border-gray-700 bg-gray-900/50 p-3"
+                >
                     <!-- Coordinates -->
                     <div class="flex flex-col gap-0.5">
-                        <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                        <span
+                            class="text-[11px] font-semibold tracking-wide text-gray-400 uppercase"
+                        >
                             {$locales('meshcoreconfig.coordinates')}
                         </span>
                         <span class="font-mono text-xs text-gray-300">
@@ -369,23 +379,36 @@
 
                     <!-- Region lookup -->
                     <div class="flex flex-col gap-1">
-                        <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                        <span
+                            class="text-[11px] font-semibold tracking-wide text-gray-400 uppercase"
+                        >
                             {$locales('meshcoreconfig.zones.result_label')}
                         </span>
                         {#if useRegions && regionResult}
                             {#if regionResult.status === 'hit'}
                                 {#if regionResult.tokens.length > 0}
-                                    <span class="font-mono text-xs text-orange-200" title={regionResult.regions}>
+                                    <span
+                                        class="font-mono text-xs text-orange-200"
+                                        title={regionResult.regions}
+                                    >
                                         {regionResult.tokens.join(' ')}
                                     </span>
                                 {/if}
                                 {#if regionResult.level != null}
-                                    <span class="font-mono text-[11px] text-gray-500" title={$locales('meshcoreconfig.zones.zone_level')}>
-                                        L{regionResult.level} · {$locales(`meshcoreconfig.zones.zone_level_${regionResult.level}`)}
+                                    <span
+                                        class="font-mono text-[11px] text-gray-500"
+                                        title={$locales('meshcoreconfig.zones.zone_level')}
+                                    >
+                                        L{regionResult.level} · {$locales(
+                                            `meshcoreconfig.zones.zone_level_${regionResult.level}`
+                                        )}
                                     </span>
                                 {/if}
                                 {#if regionResult.radio}
-                                    <span class="font-mono text-[11px] text-gray-400" title={$locales('meshcoreconfig.zones.radio_label')}>
+                                    <span
+                                        class="font-mono text-[11px] text-gray-400"
+                                        title={$locales('meshcoreconfig.zones.radio_label')}
+                                    >
                                         {$locales('meshcoreconfig.zones.result_radio', {
                                             values: { freq: regionResult.radio.freq }
                                         })}
@@ -399,7 +422,10 @@
                                     </span>
                                 {/if}
                                 {#if regionResult.nameTemplate}
-                                    <span class="font-mono text-[11px] text-gray-400" title={regionResult.nameTemplate}>
+                                    <span
+                                        class="font-mono text-[11px] text-gray-400"
+                                        title={regionResult.nameTemplate}
+                                    >
                                         {$locales('meshcoreconfig.zones.result_name_template')}: {regionResult.nameTemplate}
                                     </span>
                                 {/if}
@@ -414,9 +440,13 @@
                                     </a>
                                 {/if}
                             {:else if regionResult.status === 'miss'}
-                                <span class="text-[11px] text-gray-500">{$locales('meshcoreconfig.zones.status_miss')}</span>
+                                <span class="text-[11px] text-gray-500"
+                                    >{$locales('meshcoreconfig.zones.status_miss')}</span
+                                >
                             {:else}
-                                <span class="text-[11px] text-gray-500">{$locales('meshcoreconfig.zones.status_unavailable')}</span>
+                                <span class="text-[11px] text-gray-500"
+                                    >{$locales('meshcoreconfig.zones.status_unavailable')}</span
+                                >
                             {/if}
                         {:else}
                             <span class="text-[11px] text-gray-500">—</span>
@@ -425,24 +455,35 @@
 
                     <!-- Reverse geocode (address) -->
                     <div class="flex flex-col gap-1">
-                        <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                        <span
+                            class="text-[11px] font-semibold tracking-wide text-gray-400 uppercase"
+                        >
                             {$locales('meshcoreconfig.geocode.location_label')}
                         </span>
                         {#if geocodeDisplay}
                             {#if geocodeDisplay.kind === 'loading'}
                                 <span class="flex items-center gap-2 text-xs text-gray-400">
-                                    <span class="inline-block h-3 w-3 animate-spin rounded-full border border-gray-500 border-t-transparent"></span>
+                                    <span
+                                        class="inline-block h-3 w-3 animate-spin rounded-full border border-gray-500 border-t-transparent"
+                                    ></span>
                                     {$locales('meshcoreconfig.geocode.loading')}
                                 </span>
                             {:else if geocodeDisplay.kind === 'ok'}
                                 <span class="flex items-center gap-1.5 text-xs text-gray-300">
-                                    📍 <span class="min-w-0 flex-1 break-words" title={geocodeDisplay.text}>{geocodeDisplay.text}</span>
+                                    📍 <span
+                                        class="min-w-0 flex-1 break-words"
+                                        title={geocodeDisplay.text}>{geocodeDisplay.text}</span
+                                    >
                                     {#if geocodeDisplay.source === 'cache'}
-                                        <span class="shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-[10px] text-gray-400">
+                                        <span
+                                            class="shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-[10px] text-gray-400"
+                                        >
                                             {$locales('meshcoreconfig.geocode.source_cache')}
                                         </span>
                                     {:else if geocodeDisplay.source === 'live'}
-                                        <span class="shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-[10px] text-gray-400">
+                                        <span
+                                            class="shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-[10px] text-gray-400"
+                                        >
                                             {$locales('meshcoreconfig.geocode.source_live')}
                                         </span>
                                     {/if}
@@ -452,9 +493,13 @@
                                     {$locales('meshcoreconfig.geocode.rate_limited')}
                                 </span>
                             {:else if geocodeDisplay.kind === 'no_data'}
-                                <span class="text-xs text-gray-500">{$locales('meshcoreconfig.geocode.no_data')}</span>
+                                <span class="text-xs text-gray-500"
+                                    >{$locales('meshcoreconfig.geocode.no_data')}</span
+                                >
                             {:else if geocodeDisplay.kind === 'error'}
-                                <span class="text-xs text-gray-500">{$locales('meshcoreconfig.geocode.error')}</span>
+                                <span class="text-xs text-gray-500"
+                                    >{$locales('meshcoreconfig.geocode.error')}</span
+                                >
                             {/if}
                         {:else}
                             <span class="text-[11px] text-gray-500">—</span>

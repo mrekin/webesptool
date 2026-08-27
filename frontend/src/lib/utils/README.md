@@ -5,11 +5,7 @@
 ## Установка и импорт
 
 ```typescript
-import {
-  createClickOutside,
-  createKeyboardNavigation,
-  createDropdownUtils
-} from '$lib/utils';
+import { createClickOutside, createKeyboardNavigation, createDropdownUtils } from '$lib/utils';
 ```
 
 ## Основные компоненты
@@ -22,7 +18,7 @@ import {
 import { createClickOutside } from '$lib/utils';
 
 function handleClickOutside() {
-  console.log('Clicked outside!');
+    console.log('Clicked outside!');
 }
 
 // Использование в Svelte компоненте
@@ -51,7 +47,7 @@ const config = {
 const handleKeydown = createKeyboardNavigation(config);
 
 // В Svelte компоненте
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window keydown={handleKeydown} />
 ```
 
 ### 3. Complete Dropdown Utils
@@ -65,26 +61,26 @@ import { createDropdownUtils } from '$lib/utils';
 let element: HTMLElement;
 
 onMount(() => {
-  const dropdown = createDropdownUtils({
-    element,
-    dropdownType: 'custom',
-    items: ['Option 1', 'Option 2'],
-    selectedIndex: -1,
-    onSelection: (item, index) => {
-      // Обработка выбора
-    },
-    onClose: () => {
-      // Обработка закрытия
-    },
-    onIndexChange: (index) => {
-      // Обработка изменения индекса
-    }
-  });
+    const dropdown = createDropdownUtils({
+        element,
+        dropdownType: 'custom',
+        items: ['Option 1', 'Option 2'],
+        selectedIndex: -1,
+        onSelection: (item, index) => {
+            // Обработка выбора
+        },
+        onClose: () => {
+            // Обработка закрытия
+        },
+        onIndexChange: (index) => {
+            // Обработка изменения индекса
+        }
+    });
 
-  // Управление состоянием
-  dropdown.open();
-  dropdown.close();
-  dropdown.toggle();
+    // Управление состоянием
+    dropdown.open();
+    dropdown.close();
+    dropdown.toggle();
 });
 ```
 
@@ -96,9 +92,9 @@ onMount(() => {
 import { createSimpleDropdown } from '$lib/utils';
 
 const dropdown = createSimpleDropdown(element, {
-  items: ['Item 1', 'Item 2', 'Item 3'],
-  onSelect: (item, index) => console.log('Selected:', item),
-  onClose: () => console.log('Closed')
+    items: ['Item 1', 'Item 2', 'Item 3'],
+    onSelect: (item, index) => console.log('Selected:', item),
+    onClose: () => console.log('Closed')
 });
 
 dropdown.open();
@@ -110,61 +106,59 @@ dropdown.toggle();
 
 ```svelte
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { createDropdownUtils } from '$lib/utils';
+    import { onMount } from 'svelte';
+    import { createDropdownUtils } from '$lib/utils';
 
-  let element: HTMLElement;
-  let isOpen = false;
-  let selectedIndex = -1;
+    let element: HTMLElement;
+    let isOpen = false;
+    let selectedIndex = -1;
 
-  const items = ['Option 1', 'Option 2', 'Option 3'];
+    const items = ['Option 1', 'Option 2', 'Option 3'];
 
-  onMount(() => {
-    const dropdown = createDropdownUtils({
-      element,
-      dropdownType: 'custom',
-      items,
-      selectedIndex,
-      onSelection: (item, index) => {
-        console.log('Selected:', item);
-        isOpen = false;
-        selectedIndex = -1;
-      },
-      onClose: () => {
-        console.log('Dropdown closed');
-        isOpen = false;
-        selectedIndex = -1;
-      },
-      onStateChange: (open, index) => {
-        isOpen = open;
-        selectedIndex = index;
-      }
+    onMount(() => {
+        const dropdown = createDropdownUtils({
+            element,
+            dropdownType: 'custom',
+            items,
+            selectedIndex,
+            onSelection: (item, index) => {
+                console.log('Selected:', item);
+                isOpen = false;
+                selectedIndex = -1;
+            },
+            onClose: () => {
+                console.log('Dropdown closed');
+                isOpen = false;
+                selectedIndex = -1;
+            },
+            onStateChange: (open, index) => {
+                isOpen = open;
+                selectedIndex = index;
+            }
+        });
     });
-  });
 
-  function toggleDropdown() {
-    isOpen = !isOpen;
-    if (!isOpen) selectedIndex = -1;
-  }
+    function toggleDropdown() {
+        isOpen = !isOpen;
+        if (!isOpen) selectedIndex = -1;
+    }
 </script>
 
 <div bind:this={element}>
-  <button on:click={toggleDropdown}>
-    Toggle Dropdown
-  </button>
+    <button onclick={toggleDropdown}> Toggle Dropdown </button>
 
-  {#if isOpen}
-    <div class="dropdown-list">
-      {#each items as item, i}
-        <div
-          class:item-selected={selectedIndex === i}
-          on:click={() => dropdown.select(item, i)}
-        >
-          {item}
+    {#if isOpen}
+        <div class="dropdown-list">
+            {#each items as item, i}
+                <div
+                    class:item-selected={selectedIndex === i}
+                    onclick={() => dropdown.select(item, i)}
+                >
+                    {item}
+                </div>
+            {/each}
         </div>
-      {/each}
-    </div>
-  {/if}
+    {/if}
 </div>
 ```
 
@@ -178,7 +172,7 @@ import { createClickOutside } from '$lib/utils';
 
 // Замена существующего handleClickOutside
 function handleClickOutside(event: MouseEvent) {
-  // Старая логика...
+    // Старая логика...
 }
 
 // Новая версия с утилитой
@@ -190,18 +184,18 @@ createClickOutside(element, handleClickOutside, '.dropdown-list');
 
 ```typescript
 interface KeyboardNavigationConfig {
-  items: any[];
-  selectedIndex: number;
-  onSelection: (item: any, index: number) => void;
-  onClose?: () => void;
-  onIndexChange?: (index: number) => void;
-  enabled?: boolean;
+    items: any[];
+    selectedIndex: number;
+    onSelection: (item: any, index: number) => void;
+    onClose?: () => void;
+    onIndexChange?: (index: number) => void;
+    enabled?: boolean;
 }
 
 interface DropdownUtilsConfig extends KeyboardNavigationConfig {
-  element: HTMLElement;
-  excludeSelector?: string;
-  onStateChange?: (isOpen: boolean, selectedIndex: number) => void;
+    element: HTMLElement;
+    excludeSelector?: string;
+    onStateChange?: (isOpen: boolean, selectedIndex: number) => void;
 }
 ```
 

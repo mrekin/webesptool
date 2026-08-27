@@ -71,14 +71,21 @@ const KNOWN_CODES: ReadonlySet<ZonesUploadErrorCode> = new Set([
 async function parseErrorResponse(res: Response): Promise<ZonesUploadError> {
     try {
         const data = (await res.json()) as {
-            error?: { code?: unknown; message?: unknown; conflicts?: unknown; retry_after_s?: unknown };
+            error?: {
+                code?: unknown;
+                message?: unknown;
+                conflicts?: unknown;
+                retry_after_s?: unknown;
+            };
         };
         const e = data?.error;
         if (e && typeof e.code === 'string' && KNOWN_CODES.has(e.code as ZonesUploadErrorCode)) {
             return {
                 code: e.code as ZonesUploadErrorCode,
                 message: typeof e.message === 'string' ? e.message : undefined,
-                conflicts: Array.isArray(e.conflicts) ? (e.conflicts as ZoneConflictPair[]) : undefined,
+                conflicts: Array.isArray(e.conflicts)
+                    ? (e.conflicts as ZoneConflictPair[])
+                    : undefined,
                 retryAfterS: typeof e.retry_after_s === 'number' ? e.retry_after_s : undefined
             };
         }
@@ -135,10 +142,7 @@ export function fetchModerationConfig(): Promise<boolean> {
 // Groups admitted for upload: the export criteria (valid regions + at least
 // one polygon) PLUS a non-empty docUrl (client-side precheck of the server's
 // doc_url_missing rejection; the server stays authoritative).
-export function submittableGroups(
-    groups: ZoneGroup[],
-    polygons: EditorPolygon[]
-): ZoneGroup[] {
+export function submittableGroups(groups: ZoneGroup[], polygons: EditorPolygon[]): ZoneGroup[] {
     return groups.filter(
         (g) =>
             isValidRegions(g.regions) &&
@@ -173,15 +177,16 @@ export async function uploadZoneFile(
 
 // --- pending moderation (token-guarded) ---
 
-export async function fetchPendingFiles(
-    token: string
-): Promise<PendingResult<PendingFileInfo[]>> {
+export async function fetchPendingFiles(token: string): Promise<PendingResult<PendingFileInfo[]>> {
     const res = await tokenRequest(token, 'api/zones/pending');
     if (!res) return { ok: false, error: { code: 'network' } };
     if (!res.ok) return { ok: false, error: await parseErrorResponse(res) };
     try {
         const data = (await res.json()) as { files?: unknown };
-        return { ok: true, value: Array.isArray(data?.files) ? (data.files as PendingFileInfo[]) : [] };
+        return {
+            ok: true,
+            value: Array.isArray(data?.files) ? (data.files as PendingFileInfo[]) : []
+        };
     } catch {
         return { ok: false, error: { code: 'internal' } };
     }

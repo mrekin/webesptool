@@ -88,7 +88,11 @@ export function findZoneConflicts(
             if (!levelsConflict(aLvl, bLvl)) continue;
             if (!bboxesOverlap(a.bbox, b.bbox)) continue;
             if (overlapAreaM2(a, b) <= ZONE_MIN_AREA_M2) continue;
-            pairs.push({ kind: 'within', a: refOf(pending.file, a, aLvl), b: refOf(pending.file, b, bLvl) });
+            pairs.push({
+                kind: 'within',
+                a: refOf(pending.file, a, aLvl),
+                b: refOf(pending.file, b, bLvl)
+            });
         }
         for (const pub of published) {
             for (const b of pub.features) {

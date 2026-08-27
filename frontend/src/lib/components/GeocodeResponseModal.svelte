@@ -34,7 +34,11 @@
                 </button>
             </div>
             <pre
-                class="overflow-auto rounded-md border border-gray-700 bg-gray-900 p-3 text-xs text-gray-200">{JSON.stringify(raw, null, 2)}</pre>
+                class="overflow-auto rounded-md border border-gray-700 bg-gray-900 p-3 text-xs text-gray-200">{JSON.stringify(
+                    raw,
+                    null,
+                    2
+                )}</pre>
         </div>
     </div>
 {/if}

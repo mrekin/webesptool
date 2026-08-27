@@ -61,7 +61,11 @@
         updatePendingFile,
         uploadZoneFile
     } from '$lib/utils/zonesUpload';
-    import { OSM_TILE_ATTRIBUTION, OSM_TILE_URL, ZONE_LEVEL_DEFAULT } from '$lib/config/meshcoreZoneConfig';
+    import {
+        OSM_TILE_ATTRIBUTION,
+        OSM_TILE_URL,
+        ZONE_LEVEL_DEFAULT
+    } from '$lib/config/meshcoreZoneConfig';
     import { fillHint } from '$lib/actions/fillHint.js';
     import JSZip from 'jszip';
     import ZoneMeshcoreSettingsModal from './ZoneMeshcoreSettingsModal.svelte';
@@ -195,28 +199,53 @@
     const genId = (prefix: string) => `${prefix}${++idSeq}`;
 
     const BOUNDARY_STYLE = {
-        color: '#94a3b8', weight: 1, fillColor: '#94a3b8', fillOpacity: 0.05, dashArray: '4,2'
+        color: '#94a3b8',
+        weight: 1,
+        fillColor: '#94a3b8',
+        fillOpacity: 0.05,
+        dashArray: '4,2'
     };
     const BOUNDARY_HOVER = { color: '#f97316', fillColor: '#f97316', weight: 3, fillOpacity: 0.2 };
     const PUBLISHED_STYLE = {
-        color: '#38bdf8', weight: 1.5, fillColor: '#38bdf8', fillOpacity: 0.18
+        color: '#38bdf8',
+        weight: 1.5,
+        fillColor: '#38bdf8',
+        fillOpacity: 0.18
     };
     const PUBLISHED_HOVER = {
-        color: '#38bdf8', weight: 3, fillColor: '#38bdf8', fillOpacity: 0.4
+        color: '#38bdf8',
+        weight: 3,
+        fillColor: '#38bdf8',
+        fillOpacity: 0.4
     };
     const GROUP_COLORS = [
-        '#f97316', '#22c55e', '#a855f7', '#ec4899', '#eab308',
-        '#14b8a6', '#ef4444', '#8b5cf6', '#06b6d4', '#f43f5e'
+        '#f97316',
+        '#22c55e',
+        '#a855f7',
+        '#ec4899',
+        '#eab308',
+        '#14b8a6',
+        '#ef4444',
+        '#8b5cf6',
+        '#06b6d4',
+        '#f43f5e'
     ];
     // Pending ("awaiting review") file style (task 77): dashed orange over the
     // published groups (semi-transparent fill keeps overlaps visible); the red
     // overlay marks pending polygons involved in a conflict pair. Drawn in
     // dedicated panes ABOVE the published layers (overlayPane is 400).
     const PENDING_STYLE = {
-        color: '#f59e0b', weight: 2, fillColor: '#f59e0b', fillOpacity: 0.25, dashArray: '6,4'
+        color: '#f59e0b',
+        weight: 2,
+        fillColor: '#f59e0b',
+        fillOpacity: 0.25,
+        dashArray: '6,4'
     };
     const PENDING_CONFLICT_STYLE = {
-        color: '#ef4444', weight: 3, fillColor: '#ef4444', fillOpacity: 0.35
+        color: '#ef4444',
+        weight: 3,
+        fillColor: '#ef4444',
+        fillOpacity: 0.35
     };
     const PENDING_PANE = 'zones-pending';
     const PENDING_CONFLICT_PANE = 'zones-conflict';
@@ -347,7 +376,10 @@
             const c = layer.getLatLng();
             return {
                 kind: 'circle',
-                geom: { type: 'Polygon', coordinates: circleToPolygon([c.lat, c.lng], layer.getRadius()) }
+                geom: {
+                    type: 'Polygon',
+                    coordinates: circleToPolygon([c.lat, c.lng], layer.getRadius())
+                }
             };
         }
         return { kind: 'polygon', geom: layerToPolygonGeom(layer) };
@@ -383,7 +415,10 @@
     function commitZone(kind: 'polygon' | 'circle', geom: ZoneGeometry, label?: string): void {
         const result = subtractExisting(
             geom,
-            overlapGeometries({ excludeOriginUrl: activeOriginUrl(), level: groupLevel(activeGroupId) })
+            overlapGeometries({
+                excludeOriginUrl: activeOriginUrl(),
+                level: groupLevel(activeGroupId)
+            })
         );
         if (!result.ok) {
             console.info('[meshcore-zone]', 'overlap_discarded', result.reason);
@@ -557,17 +592,31 @@
         if (target) {
             const merged = unionInto(target.geom as ZoneGeometry, free.geometry);
             if (merged.ok) {
-                polygons = polygons.map((p) => (p.id === target.id ? { ...p, geom: merged.geometry } : p));
+                polygons = polygons.map((p) =>
+                    p.id === target.id ? { ...p, geom: merged.geometry } : p
+                );
             } else {
                 polygons = [
                     ...polygons,
-                    { id: genId('z'), groupId: target.groupId, kind: 'polygon', geom: free.geometry, label: 'brush' }
+                    {
+                        id: genId('z'),
+                        groupId: target.groupId,
+                        kind: 'polygon',
+                        geom: free.geometry,
+                        label: 'brush'
+                    }
                 ];
             }
         } else {
             polygons = [
                 ...polygons,
-                { id: genId('z'), groupId: activeGroupId, kind: 'polygon', geom: free.geometry, label: 'brush' }
+                {
+                    id: genId('z'),
+                    groupId: activeGroupId,
+                    kind: 'polygon',
+                    geom: free.geometry,
+                    label: 'brush'
+                }
             ];
         }
         console.info('[meshcore-zone]', 'brush_painted');
@@ -693,9 +742,7 @@
         // Paint by level ascending so the most specific (highest-level) zones
         // render on top and stay visible/clickable over the broader ones below.
         const lvlOf = (id: string | null): number => groupLevel(id) ?? 0;
-        const ordered = [...polygons].sort(
-            (a, b) => lvlOf(a.groupId) - lvlOf(b.groupId)
-        );
+        const ordered = [...polygons].sort((a, b) => lvlOf(a.groupId) - lvlOf(b.groupId));
         const fc = {
             type: 'FeatureCollection',
             features: ordered.map((p) => ({
@@ -795,8 +842,14 @@
                     features: [...fc.features].sort((a, b) => {
                         const ga = a.geometry as ZoneGeometry | null;
                         const gb = b.geometry as ZoneGeometry | null;
-                        const aa = ga && (ga.type === 'Polygon' || ga.type === 'MultiPolygon') ? computeArea(ga) : 0;
-                        const ab = gb && (gb.type === 'Polygon' || gb.type === 'MultiPolygon') ? computeArea(gb) : 0;
+                        const aa =
+                            ga && (ga.type === 'Polygon' || ga.type === 'MultiPolygon')
+                                ? computeArea(ga)
+                                : 0;
+                        const ab =
+                            gb && (gb.type === 'Polygon' || gb.type === 'MultiPolygon')
+                                ? computeArea(gb)
+                                : 0;
                         return ab - aa;
                     })
                 };
@@ -822,7 +875,8 @@
                 const layer = L.geoJSON(renderFc, {
                     style: () => BOUNDARY_STYLE,
                     onEachFeature: (feature: any, l: any) => {
-                        const name = feature?.properties?.name ?? feature?.properties?.name_en ?? '';
+                        const name =
+                            feature?.properties?.name ?? feature?.properties?.name_en ?? '';
                         if (name) l.bindTooltip(String(name));
                         l.on('mouseover', () => l.setStyle(BOUNDARY_HOVER));
                         l.on('mouseout', () => l.setStyle(BOUNDARY_STYLE));
@@ -863,8 +917,14 @@
             const sortedFeatures = [...gf.features].sort((a, b) => {
                 const ga = a.geometry as ZoneGeometry | null;
                 const gb = b.geometry as ZoneGeometry | null;
-                const aa = ga && (ga.type === 'Polygon' || ga.type === 'MultiPolygon') ? computeArea(ga) : 0;
-                const ab = gb && (gb.type === 'Polygon' || gb.type === 'MultiPolygon') ? computeArea(gb) : 0;
+                const aa =
+                    ga && (ga.type === 'Polygon' || ga.type === 'MultiPolygon')
+                        ? computeArea(ga)
+                        : 0;
+                const ab =
+                    gb && (gb.type === 'Polygon' || gb.type === 'MultiPolygon')
+                        ? computeArea(gb)
+                        : 0;
                 return ab - aa;
             });
             const fc = {
@@ -978,9 +1038,7 @@
     // so single-child chains display as one node with the joined original name
     // (nng > obl > [1,2] -> nng-obl > [1,2]). Bottom-up, repeated so chains of
     // any length collapse fully.
-    function collapseSingleChildren(
-        nodes: Map<string, GroupTreeNode>
-    ): Map<string, GroupTreeNode> {
+    function collapseSingleChildren(nodes: Map<string, GroupTreeNode>): Map<string, GroupTreeNode> {
         for (const node of nodes.values()) {
             if (node.children.size > 0) {
                 node.children = collapseSingleChildren(node.children);
@@ -1185,7 +1243,9 @@
     // Update the optional author field (catalog metadata — who filled the group
     // in). No pushHistory: a text edit, same as the group name.
     function updateGroupAuthor(id: string, author: string): void {
-        groups = groups.map((g) => (g.id === id ? { ...g, author: author.trim() || undefined } : g));
+        groups = groups.map((g) =>
+            g.id === id ? { ...g, author: author.trim() || undefined } : g
+        );
     }
     // Update a group's full meshcore preset (regions + radio + path.hash.mode +
     // name template + doc URL + extra commands) from the settings modal. The
@@ -1345,8 +1405,9 @@
         filename: string,
         meshcore: MeshcoreZoneSettings
     ): void {
-        const meta = (fc as { metadata?: { group?: unknown; name?: unknown; author?: unknown } })
-            .metadata ?? {};
+        const meta =
+            (fc as { metadata?: { group?: unknown; name?: unknown; author?: unknown } }).metadata ??
+            {};
         const name =
             (typeof meta.group === 'string' && meta.group) ||
             (typeof meta.name === 'string' && meta.name) ||
@@ -1466,8 +1527,13 @@
     function uploadErrorText(err?: ZonesUploadError): string {
         const code = err?.code ?? 'network';
         const keyed = [
-            'file_too_large', 'quota_exceeded', 'invalid_json', 'invalid_format',
-            'doc_url_missing', 'rate_limited', 'network'
+            'file_too_large',
+            'quota_exceeded',
+            'invalid_json',
+            'invalid_format',
+            'doc_url_missing',
+            'rate_limited',
+            'network'
         ];
         const key = keyed.includes(code) ? code : 'network';
         return $locales(`meshcoreconfig.zones.upload_err_${key}`);
@@ -1624,10 +1690,7 @@
     // place, then refresh everything derived from its content — cache, drawn
     // layer and conflict record (the pending $effect redraws and re-runs the
     // client conflict check), and the queue row (preset summary).
-    async function savePendingEdit(
-        preset: MeshcoreZoneSettings,
-        author?: string
-    ): Promise<void> {
+    async function savePendingEdit(preset: MeshcoreZoneSettings, author?: string): Promise<void> {
         const file = pendingEditFile;
         if (!file || !moderatorToken) return;
         moderationBusy = true;
@@ -1972,7 +2035,9 @@
     role="dialog"
     aria-modal="true"
 >
-    <div class="flex h-[95vh] w-[95vw] min-w-0 flex-col rounded-lg border border-orange-600 bg-gray-800 p-4 shadow-2xl">
+    <div
+        class="flex h-[95vh] w-[95vw] min-w-0 flex-col rounded-lg border border-orange-600 bg-gray-800 p-4 shadow-2xl"
+    >
         <div class="mb-3 flex items-center justify-between gap-2">
             <h3 class="text-lg font-semibold text-orange-200">
                 {$locales('meshcoreconfig.zones.editor_title')}
@@ -1980,7 +2045,9 @@
         </div>
 
         {#if loadError}
-            <div class="flex h-72 items-center justify-center rounded-md border border-gray-700 bg-gray-900 p-4 text-center text-sm text-red-300">
+            <div
+                class="flex h-72 items-center justify-center rounded-md border border-gray-700 bg-gray-900 p-4 text-center text-sm text-red-300"
+            >
                 {$locales('meshcoreconfig.map_load_error')}
             </div>
         {:else}
@@ -1992,9 +2059,13 @@
                         class="h-full min-h-[300px] w-full overflow-hidden rounded-md border border-gray-700 bg-gray-900"
                     ></div>
 
-                    <div class="pointer-events-none absolute left-2 top-2 z-[1000] flex items-start gap-1">
+                    <div
+                        class="pointer-events-none absolute top-2 left-2 z-[1000] flex items-start gap-1"
+                    >
                         <!-- Main tool palette -->
-                        <div class="pointer-events-auto flex flex-col gap-1 rounded-md border border-gray-700 bg-gray-900/90 p-1 shadow-lg">
+                        <div
+                            class="pointer-events-auto flex flex-col gap-1 rounded-md border border-gray-700 bg-gray-900/90 p-1 shadow-lg"
+                        >
                             {#each TOOLS as t (t.id)}
                                 <button
                                     type="button"
@@ -2027,7 +2098,9 @@
 
                         <!-- Polygon sub-variants: expand right from the palette -->
                         {#if mode === 'polygon'}
-                            <div class="pointer-events-auto flex flex-col gap-1 rounded-md border border-gray-700 bg-gray-900/90 p-1 shadow-lg">
+                            <div
+                                class="pointer-events-auto flex flex-col gap-1 rounded-md border border-gray-700 bg-gray-900/90 p-1 shadow-lg"
+                            >
                                 <button
                                     type="button"
                                     title={$locales('meshcoreconfig.zones.polygon_by_points')}
@@ -2049,7 +2122,9 @@
 
                         <!-- Coordinate input (polygon by coordinates) -->
                         {#if mode === 'polygon' && polygonVariant === 'coords'}
-                            <div class="pointer-events-auto flex w-[230px] flex-col gap-1 rounded-md border border-gray-700 bg-gray-900/90 p-2 text-[11px] text-gray-200 shadow-lg">
+                            <div
+                                class="pointer-events-auto flex w-[230px] flex-col gap-1 rounded-md border border-gray-700 bg-gray-900/90 p-2 text-[11px] text-gray-200 shadow-lg"
+                            >
                                 <textarea
                                     bind:value={coordText}
                                     rows="6"
@@ -2059,9 +2134,18 @@
                                     class="w-full resize-y rounded border border-gray-600 bg-gray-700 px-1.5 py-1 font-mono text-[11px] text-gray-100 outline-none focus:border-orange-500"
                                 ></textarea>
                                 {#if coordParse.ok}
-                                    <span class="text-[10px] text-emerald-400">{$locales('meshcoreconfig.zones.coords_count').replace('{n}', String(coordParse.pointCount))}</span>
+                                    <span class="text-[10px] text-emerald-400"
+                                        >{$locales('meshcoreconfig.zones.coords_count').replace(
+                                            '{n}',
+                                            String(coordParse.pointCount)
+                                        )}</span
+                                    >
                                 {:else if !coordParse.ok && coordText.trim() !== ''}
-                                    <span class="text-[10px] text-red-400">{$locales(`meshcoreconfig.zones.coords_err_${coordParse.reason}`)}</span>
+                                    <span class="text-[10px] text-red-400"
+                                        >{$locales(
+                                            `meshcoreconfig.zones.coords_err_${coordParse.reason}`
+                                        )}</span
+                                    >
                                 {/if}
                                 <div class="flex gap-1">
                                     <button
@@ -2087,14 +2171,19 @@
 
                         <!-- Brush radius -->
                         {#if mode === 'brush'}
-                            <label class="pointer-events-auto flex items-center gap-1 rounded-md border border-gray-700 bg-gray-900/90 px-2 py-1 text-[11px] text-gray-200 shadow-lg">
+                            <label
+                                class="pointer-events-auto flex items-center gap-1 rounded-md border border-gray-700 bg-gray-900/90 px-2 py-1 text-[11px] text-gray-200 shadow-lg"
+                            >
                                 <span>{$locales('meshcoreconfig.zones.brush_radius')}</span>
                                 <input
                                     type="number"
                                     min="0.5"
                                     step="0.5"
                                     value={brushRadiusM / 1000}
-                                    oninput={(e) => setBrushRadiusKm(Number((e.currentTarget as HTMLInputElement).value))}
+                                    oninput={(e) =>
+                                        setBrushRadiusKm(
+                                            Number((e.currentTarget as HTMLInputElement).value)
+                                        )}
                                     class="w-16 rounded border border-gray-600 bg-gray-700 px-1 py-0.5 text-xs text-gray-100 outline-none focus:border-orange-500"
                                 />
                                 <span>km</span>
@@ -2106,31 +2195,58 @@
                 <div class="flex w-72 shrink-0 flex-col gap-3 overflow-y-auto pr-1">
                     <!-- Load a user GeoJSON (auto: group if it has regions, else boundary) -->
                     <div>
-                        <input bind:this={fileInput} type="file" accept=".geojson,application/geo+json,application/json,.zip,application/zip,.gz,application/gzip" class="hidden" onchange={onFilePicked} />
-                        <button type="button" onclick={() => fileInput?.click()} title={$locales('meshcoreconfig.zones.load_file_hint')} class="w-full rounded bg-gray-700 px-2 py-1 text-xs text-orange-200 hover:bg-gray-600">
+                        <input
+                            bind:this={fileInput}
+                            type="file"
+                            accept=".geojson,application/geo+json,application/json,.zip,application/zip,.gz,application/gzip"
+                            class="hidden"
+                            onchange={onFilePicked}
+                        />
+                        <button
+                            type="button"
+                            onclick={() => fileInput?.click()}
+                            title={$locales('meshcoreconfig.zones.load_file_hint')}
+                            class="w-full rounded bg-gray-700 px-2 py-1 text-xs text-orange-200 hover:bg-gray-600"
+                        >
                             📁 {$locales('meshcoreconfig.zones.load_file')}
                         </button>
                     </div>
 
                     <!-- Base boundary files -->
                     <div class="rounded-md border border-gray-700 bg-gray-900/50 p-2">
-                        <span class="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                        <span
+                            class="mb-1 flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-gray-400 uppercase"
+                        >
                             {$locales('meshcoreconfig.zones.boundaries_section')}
                             <a
                                 href="https://osm-boundaries.com/map"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 title={$locales('meshcoreconfig.zones.boundaries_help')}
-                                class="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-gray-500 normal-case text-[9px] font-normal leading-none text-gray-400 hover:border-orange-400 hover:text-orange-200"
-                            >i</a>
+                                class="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-gray-500 text-[9px] leading-none font-normal text-gray-400 normal-case hover:border-orange-400 hover:text-orange-200"
+                                >i</a
+                            >
                         </span>
                         <div class="space-y-1">
                             {#each boundaryEntries as b (b.key)}
                                 <label class="flex items-center gap-2 text-[11px] text-gray-300">
-                                    <input type="checkbox" class="h-3 w-3" checked={shownBoundaries.has(b.key)} onchange={() => (shownBoundaries = toggleSet(shownBoundaries, b.key))} />
-                                    <span class="min-w-0 flex-1 truncate" title={b.filename}>{b.filename}</span>
+                                    <input
+                                        type="checkbox"
+                                        class="h-3 w-3"
+                                        checked={shownBoundaries.has(b.key)}
+                                        onchange={() =>
+                                            (shownBoundaries = toggleSet(shownBoundaries, b.key))}
+                                    />
+                                    <span class="min-w-0 flex-1 truncate" title={b.filename}
+                                        >{b.filename}</span
+                                    >
                                     {#if b.key.startsWith('user://')}
-                                        <button type="button" onclick={() => removeUserBoundary(b.key)} class="shrink-0 text-[10px] text-gray-400 hover:text-red-300">✕</button>
+                                        <button
+                                            type="button"
+                                            onclick={() => removeUserBoundary(b.key)}
+                                            class="shrink-0 text-[10px] text-gray-400 hover:text-red-300"
+                                            >✕</button
+                                        >
                                     {/if}
                                 </label>
                             {/each}
@@ -2142,17 +2258,22 @@
 
                     <!-- Published groups -->
                     <div class="rounded-md border border-gray-700 bg-gray-900/50 p-2">
-                        <span class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                        <span
+                            class="mb-1 block text-[11px] font-semibold tracking-wide text-gray-400 uppercase"
+                        >
                             {$locales('meshcoreconfig.zones.published_section')}
                         </span>
                         <div class="space-y-0.5">
                             {#each groupTreeRows as row (row.key)}
-                                <div class="flex items-center gap-1 text-[11px] text-gray-300" style={`padding-left:${row.depth * 12}px`}>
+                                <div
+                                    class="flex items-center gap-1 text-[11px] text-gray-300"
+                                    style={`padding-left:${row.depth * 12}px`}
+                                >
                                     {#if row.kind === 'branch'}
                                         <button
                                             type="button"
                                             onclick={() => toggleGroupExpand(row.key)}
-                                            class="shrink-0 w-4 text-center text-gray-400 hover:text-gray-200"
+                                            class="w-4 shrink-0 text-center text-gray-400 hover:text-gray-200"
                                         >
                                             {expandedGroupNodes.has(row.key) ? '▾' : '▸'}
                                         </button>
@@ -2163,20 +2284,71 @@
                                             checked={branchCheckState(row.childUrls) === 'on'}
                                             onchange={() => toggleBranchUrls(row.childUrls)}
                                         />
-                                        <span class="min-w-0 flex-1 truncate font-medium text-gray-200">{row.label}</span>
+                                        <span
+                                            class="min-w-0 flex-1 truncate font-medium text-gray-200"
+                                            >{row.label}</span
+                                        >
                                         <span class="shrink-0 text-gray-500">{row.childCount}</span>
                                         {#if row.group}
-                                            <button type="button" onclick={() => editGroup(row.group!)} disabled={isEditing(row.group!.url)} title={isEditing(row.group!.url) ? $locales('meshcoreconfig.zones.editing_published') : $locales('meshcoreconfig.zones.edit_hint')} class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-orange-200 hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-40">✎</button>
-                                            <button type="button" onclick={() => duplicateGroup(row.group!)} title={$locales('meshcoreconfig.zones.duplicate_hint')} class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-orange-200 hover:bg-gray-600">📋</button>
+                                            <button
+                                                type="button"
+                                                onclick={() => editGroup(row.group!)}
+                                                disabled={isEditing(row.group!.url)}
+                                                title={isEditing(row.group!.url)
+                                                    ? $locales(
+                                                          'meshcoreconfig.zones.editing_published'
+                                                      )
+                                                    : $locales('meshcoreconfig.zones.edit_hint')}
+                                                class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-orange-200 hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
+                                                >✎</button
+                                            >
+                                            <button
+                                                type="button"
+                                                onclick={() => duplicateGroup(row.group!)}
+                                                title={$locales(
+                                                    'meshcoreconfig.zones.duplicate_hint'
+                                                )}
+                                                class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-orange-200 hover:bg-gray-600"
+                                                >📋</button
+                                            >
                                         {/if}
                                     {:else}
-                                        <span class="shrink-0 w-4"></span>
-                                        <input type="checkbox" class="h-3 w-3 shrink-0" checked={shownGroups.has(row.group!.url)} onchange={() => (shownGroups = toggleSet(shownGroups, row.group!.url))} />
-                                        <span class="min-w-0 flex-1 truncate" title={row.group!.name}>
-                                            {row.label}<span class="text-gray-500"> · L{row.group!.level ?? 1}</span>
+                                        <span class="w-4 shrink-0"></span>
+                                        <input
+                                            type="checkbox"
+                                            class="h-3 w-3 shrink-0"
+                                            checked={shownGroups.has(row.group!.url)}
+                                            onchange={() =>
+                                                (shownGroups = toggleSet(
+                                                    shownGroups,
+                                                    row.group!.url
+                                                ))}
+                                        />
+                                        <span
+                                            class="min-w-0 flex-1 truncate"
+                                            title={row.group!.name}
+                                        >
+                                            {row.label}<span class="text-gray-500">
+                                                · L{row.group!.level ?? 1}</span
+                                            >
                                         </span>
-                                        <button type="button" onclick={() => editGroup(row.group!)} disabled={isEditing(row.group!.url)} title={isEditing(row.group!.url) ? $locales('meshcoreconfig.zones.editing_published') : $locales('meshcoreconfig.zones.edit_hint')} class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-orange-200 hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-40">✎</button>
-                                        <button type="button" onclick={() => duplicateGroup(row.group!)} title={$locales('meshcoreconfig.zones.duplicate_hint')} class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-orange-200 hover:bg-gray-600">📋</button>
+                                        <button
+                                            type="button"
+                                            onclick={() => editGroup(row.group!)}
+                                            disabled={isEditing(row.group!.url)}
+                                            title={isEditing(row.group!.url)
+                                                ? $locales('meshcoreconfig.zones.editing_published')
+                                                : $locales('meshcoreconfig.zones.edit_hint')}
+                                            class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-orange-200 hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
+                                            >✎</button
+                                        >
+                                        <button
+                                            type="button"
+                                            onclick={() => duplicateGroup(row.group!)}
+                                            title={$locales('meshcoreconfig.zones.duplicate_hint')}
+                                            class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-orange-200 hover:bg-gray-600"
+                                            >📋</button
+                                        >
                                     {/if}
                                 </div>
                             {/each}
@@ -2208,21 +2380,55 @@
                     <!-- Session groups -->
                     <div class="rounded-md border border-gray-700 bg-gray-900/50 p-2">
                         <div class="mb-2 flex items-center justify-between">
-                            <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                            <span
+                                class="text-[11px] font-semibold tracking-wide text-gray-400 uppercase"
+                            >
                                 {$locales('meshcoreconfig.zones.group_label')}
                             </span>
-                            <button type="button" onclick={addGroup} class="rounded bg-gray-700 px-2 py-0.5 text-xs text-orange-200 hover:bg-gray-600">
+                            <button
+                                type="button"
+                                onclick={addGroup}
+                                class="rounded bg-gray-700 px-2 py-0.5 text-xs text-orange-200 hover:bg-gray-600"
+                            >
                                 + {$locales('meshcoreconfig.zones.group_new')}
                             </button>
                         </div>
 
                         {#each groups as g (g.id)}
                             <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-                            <div class={`mb-2 cursor-pointer rounded border-l-4 bg-gray-800 p-2 ${activeGroupId === g.id ? 'ring-1 ring-orange-500' : ''}`} style={`border-left-color: ${groupColor(g.id)}`} onclick={() => activateGroup(g.id)}>
+                            <div
+                                class={`mb-2 cursor-pointer rounded border-l-4 bg-gray-800 p-2 ${activeGroupId === g.id ? 'ring-1 ring-orange-500' : ''}`}
+                                style={`border-left-color: ${groupColor(g.id)}`}
+                                onclick={() => activateGroup(g.id)}
+                            >
                                 <div class="flex items-center gap-1">
-                                    <span class="inline-block h-3 w-3 shrink-0 rounded-sm" style={`background-color: ${groupColor(g.id)}`}></span>
-                                    <input type="text" value={g.name} oninput={(e) => updateGroupName(g.id, (e.currentTarget as HTMLInputElement).value)} placeholder={$locales('meshcoreconfig.zones.group_name_prompt')} use:fillHint class={`min-w-0 flex-1 rounded-md border bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500 ${g.name.trim() ? 'border-gray-600' : 'border-red-500'}`} />
-                                    <button type="button" onclick={(e) => { e.stopPropagation(); meshcoreEditId = g.id; }} title={$locales('meshcoreconfig.zones.meshcore_settings')} class={`shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-xs hover:bg-gray-600 ${g.radio || g.pathHashMode ? 'text-orange-200' : 'text-gray-300'}`}>
+                                    <span
+                                        class="inline-block h-3 w-3 shrink-0 rounded-sm"
+                                        style={`background-color: ${groupColor(g.id)}`}
+                                    ></span>
+                                    <input
+                                        type="text"
+                                        value={g.name}
+                                        oninput={(e) =>
+                                            updateGroupName(
+                                                g.id,
+                                                (e.currentTarget as HTMLInputElement).value
+                                            )}
+                                        placeholder={$locales(
+                                            'meshcoreconfig.zones.group_name_prompt'
+                                        )}
+                                        use:fillHint
+                                        class={`min-w-0 flex-1 rounded-md border bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500 ${g.name.trim() ? 'border-gray-600' : 'border-red-500'}`}
+                                    />
+                                    <button
+                                        type="button"
+                                        onclick={(e) => {
+                                            e.stopPropagation();
+                                            meshcoreEditId = g.id;
+                                        }}
+                                        title={$locales('meshcoreconfig.zones.meshcore_settings')}
+                                        class={`shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-xs hover:bg-gray-600 ${g.radio || g.pathHashMode ? 'text-orange-200' : 'text-gray-300'}`}
+                                    >
                                         ⚙
                                     </button>
                                     <button
@@ -2236,7 +2442,11 @@
                                     >
                                         📋
                                     </button>
-                                    <button type="button" onclick={() => removeGroup(g.id)} class="shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-xs text-gray-300 hover:bg-gray-600">
+                                    <button
+                                        type="button"
+                                        onclick={() => removeGroup(g.id)}
+                                        class="shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-xs text-gray-300 hover:bg-gray-600"
+                                    >
                                         ✕
                                     </button>
                                 </div>
@@ -2245,25 +2455,42 @@
                                 <input
                                     type="text"
                                     value={g.author ?? ''}
-                                    oninput={(e) => updateGroupAuthor(g.id, (e.currentTarget as HTMLInputElement).value)}
-                                    placeholder={$locales('meshcoreconfig.zones.group_author_prompt')}
+                                    oninput={(e) =>
+                                        updateGroupAuthor(
+                                            g.id,
+                                            (e.currentTarget as HTMLInputElement).value
+                                        )}
+                                    placeholder={$locales(
+                                        'meshcoreconfig.zones.group_author_prompt'
+                                    )}
                                     use:fillHint
                                     class="mt-1 w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
                                 />
                                 {#if g.originUrl}
-                                    <span class="mt-0.5 block text-[10px] text-sky-300">✎ {$locales('meshcoreconfig.zones.editing_published')}</span>
+                                    <span class="mt-0.5 block text-[10px] text-sky-300"
+                                        >✎ {$locales(
+                                            'meshcoreconfig.zones.editing_published'
+                                        )}</span
+                                    >
                                 {/if}
                                 <!-- Meshcore preset summary (edited via the ⚙ modal):
                                 regions + optional radio/path hash. -->
-                                <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] leading-snug">
+                                <div
+                                    class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] leading-snug"
+                                >
                                     <span
                                         class="rounded bg-gray-700 px-1 font-mono text-orange-300"
                                         title={$locales('meshcoreconfig.zones.zone_level')}
-                                    >L{g.level ?? 1}</span>
+                                        >L{g.level ?? 1}</span
+                                    >
                                     <span
                                         class={`font-mono ${isValidRegions(g.regions) ? 'text-gray-300' : 'text-red-400'}`}
                                         title={$locales('meshcoreconfig.zones.regions_label')}
-                                    >{g.regions || $locales('meshcoreconfig.zones.regions_placeholder')}</span>
+                                        >{g.regions ||
+                                            $locales(
+                                                'meshcoreconfig.zones.regions_placeholder'
+                                            )}</span
+                                    >
                                     {#if g.radio}
                                         <span class="text-gray-500">· {g.radio.freq}</span>
                                     {/if}
@@ -2271,7 +2498,9 @@
                                         <span class="text-gray-500">· path {g.pathHashMode}</span>
                                     {/if}
                                     {#if g.nameTemplate}
-                                        <span class="text-gray-500" title={g.nameTemplate}>· name tpl</span>
+                                        <span class="text-gray-500" title={g.nameTemplate}
+                                            >· name tpl</span
+                                        >
                                     {/if}
                                     {#if g.docUrl}
                                         <span class="text-sky-400">· doc</span>
@@ -2280,20 +2509,58 @@
                                         <span
                                             class="text-gray-500"
                                             title={commandsChipTitle(g.commands.length)}
-                                        >· cmd {g.commands.length}</span>
+                                            >· cmd {g.commands.length}</span
+                                        >
                                     {/if}
                                 </div>
 
                                 <div class="mt-1 space-y-1">
                                     {#each zonesIn(g.id) as p (p.id)}
-                                        <div class="flex items-center gap-1 text-[11px] text-gray-300">
-                                            <span class="shrink-0">{p.kind === 'circle' ? '◯' : '⬠'}</span>
-                                            <input type="text" value={p.label ?? ''} oninput={(e) => updateZoneLabel(p.id, (e.currentTarget as HTMLInputElement).value)} placeholder={$locales('meshcoreconfig.zones.zone_name')} use:fillHint title={p.id} class="min-w-0 flex-1 rounded border border-gray-700 bg-gray-900 px-1 py-0.5 text-[11px] text-gray-100 outline-none focus:border-orange-500" />
-                                            <select class="max-w-[5rem] shrink-0 truncate rounded border border-gray-600 bg-gray-700 px-1 py-0.5 text-[10px] text-gray-100 outline-none" value={p.groupId ?? ''} onchange={(e) => setZoneGroup(p.id, (e.currentTarget as HTMLSelectElement).value)}>
-                                                <option value="">{$locales('meshcoreconfig.zones.no_group')}</option>
-                                                {#each groups as og (og.id)}<option value={og.id}>{og.name}</option>{/each}
+                                        <div
+                                            class="flex items-center gap-1 text-[11px] text-gray-300"
+                                        >
+                                            <span class="shrink-0"
+                                                >{p.kind === 'circle' ? '◯' : '⬠'}</span
+                                            >
+                                            <input
+                                                type="text"
+                                                value={p.label ?? ''}
+                                                oninput={(e) =>
+                                                    updateZoneLabel(
+                                                        p.id,
+                                                        (e.currentTarget as HTMLInputElement).value
+                                                    )}
+                                                placeholder={$locales(
+                                                    'meshcoreconfig.zones.zone_name'
+                                                )}
+                                                use:fillHint
+                                                title={p.id}
+                                                class="min-w-0 flex-1 rounded border border-gray-700 bg-gray-900 px-1 py-0.5 text-[11px] text-gray-100 outline-none focus:border-orange-500"
+                                            />
+                                            <select
+                                                class="max-w-[5rem] shrink-0 truncate rounded border border-gray-600 bg-gray-700 px-1 py-0.5 text-[10px] text-gray-100 outline-none"
+                                                value={p.groupId ?? ''}
+                                                onchange={(e) =>
+                                                    setZoneGroup(
+                                                        p.id,
+                                                        (e.currentTarget as HTMLSelectElement).value
+                                                    )}
+                                            >
+                                                <option value=""
+                                                    >{$locales(
+                                                        'meshcoreconfig.zones.no_group'
+                                                    )}</option
+                                                >
+                                                {#each groups as og (og.id)}<option value={og.id}
+                                                        >{og.name}</option
+                                                    >{/each}
                                             </select>
-                                            <button type="button" onclick={() => removePolygon(p.id)} class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-gray-400 hover:bg-gray-600">✕</button>
+                                            <button
+                                                type="button"
+                                                onclick={() => removePolygon(p.id)}
+                                                class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-gray-400 hover:bg-gray-600"
+                                                >✕</button
+                                            >
                                         </div>
                                     {/each}
                                 </div>
@@ -2302,17 +2569,56 @@
 
                         {#if zonesIn(null).length > 0}
                             <div class="mt-1 rounded border-l-4 border-gray-500 bg-gray-800/60 p-2">
-                                <span class="text-[11px] font-medium text-gray-400">{$locales('meshcoreconfig.zones.no_group')}</span>
+                                <span class="text-[11px] font-medium text-gray-400"
+                                    >{$locales('meshcoreconfig.zones.no_group')}</span
+                                >
                                 <div class="mt-1 space-y-1">
                                     {#each zonesIn(null) as p (p.id)}
-                                        <div class="flex items-center gap-1 text-[11px] text-gray-300">
-                                            <span class="shrink-0">{p.kind === 'circle' ? '◯' : '⬠'}</span>
-                                            <input type="text" value={p.label ?? ''} oninput={(e) => updateZoneLabel(p.id, (e.currentTarget as HTMLInputElement).value)} placeholder={$locales('meshcoreconfig.zones.zone_name')} use:fillHint title={p.id} class="min-w-0 flex-1 rounded border border-gray-700 bg-gray-900 px-1 py-0.5 text-[11px] text-gray-100 outline-none focus:border-orange-500" />
-                                            <select class="max-w-[5rem] shrink-0 truncate rounded border border-gray-600 bg-gray-700 px-1 py-0.5 text-[10px] text-gray-100 outline-none" value="" onchange={(e) => setZoneGroup(p.id, (e.currentTarget as HTMLSelectElement).value)}>
-                                                <option value="">{$locales('meshcoreconfig.zones.no_group')}</option>
-                                                {#each groups as og (og.id)}<option value={og.id}>{og.name}</option>{/each}
+                                        <div
+                                            class="flex items-center gap-1 text-[11px] text-gray-300"
+                                        >
+                                            <span class="shrink-0"
+                                                >{p.kind === 'circle' ? '◯' : '⬠'}</span
+                                            >
+                                            <input
+                                                type="text"
+                                                value={p.label ?? ''}
+                                                oninput={(e) =>
+                                                    updateZoneLabel(
+                                                        p.id,
+                                                        (e.currentTarget as HTMLInputElement).value
+                                                    )}
+                                                placeholder={$locales(
+                                                    'meshcoreconfig.zones.zone_name'
+                                                )}
+                                                use:fillHint
+                                                title={p.id}
+                                                class="min-w-0 flex-1 rounded border border-gray-700 bg-gray-900 px-1 py-0.5 text-[11px] text-gray-100 outline-none focus:border-orange-500"
+                                            />
+                                            <select
+                                                class="max-w-[5rem] shrink-0 truncate rounded border border-gray-600 bg-gray-700 px-1 py-0.5 text-[10px] text-gray-100 outline-none"
+                                                value=""
+                                                onchange={(e) =>
+                                                    setZoneGroup(
+                                                        p.id,
+                                                        (e.currentTarget as HTMLSelectElement).value
+                                                    )}
+                                            >
+                                                <option value=""
+                                                    >{$locales(
+                                                        'meshcoreconfig.zones.no_group'
+                                                    )}</option
+                                                >
+                                                {#each groups as og (og.id)}<option value={og.id}
+                                                        >{og.name}</option
+                                                    >{/each}
                                             </select>
-                                            <button type="button" onclick={() => removePolygon(p.id)} class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-gray-400 hover:bg-gray-600">✕</button>
+                                            <button
+                                                type="button"
+                                                onclick={() => removePolygon(p.id)}
+                                                class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-gray-400 hover:bg-gray-600"
+                                                >✕</button
+                                            >
                                         </div>
                                     {/each}
                                 </div>
@@ -2349,10 +2655,15 @@
 
         <div class="mt-3 flex items-center justify-between gap-3">
             <span class="text-xs text-gray-500">
-                {$locales('meshcoreconfig.zones.export')}: {exportableGroups.length}/{groups.length} · {polygons.length}
+                {$locales('meshcoreconfig.zones.export')}: {exportableGroups.length}/{groups.length}
+                · {polygons.length}
             </span>
             <div class="flex gap-3">
-                <button type="button" onclick={onclose} class="rounded-md bg-gray-700 px-4 py-2 text-sm text-white transition-colors hover:bg-gray-600">
+                <button
+                    type="button"
+                    onclick={onclose}
+                    class="rounded-md bg-gray-700 px-4 py-2 text-sm text-white transition-colors hover:bg-gray-600"
+                >
                     {$locales('common.cancel')}
                 </button>
                 {#if moderationEnabled}
@@ -2376,7 +2687,12 @@
                 >
                     📤 {$locales('meshcoreconfig.zones.upload')} ({uploadableGroups.length})
                 </button>
-                <button type="button" onclick={doExport} disabled={loadError || exportableGroups.length === 0} class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50">
+                <button
+                    type="button"
+                    onclick={doExport}
+                    disabled={loadError || exportableGroups.length === 0}
+                    class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
                     {$locales('meshcoreconfig.zones.export')}
                 </button>
             </div>

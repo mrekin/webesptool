@@ -22,8 +22,8 @@
                 class="text-yellow-500"
                 title={$locales('customfirmware.terminal_multiline_limit_exceeded', {
                     values: { max: TERMINAL_CONFIG.maxCommandLines }
-                })}
-            >⚠</span>
+                })}>⚠</span
+            >
         {/if}
 
         {#if isMassRunning || isWaiting}

@@ -225,7 +225,18 @@
 
     function handleKeyUp(event: KeyboardEvent) {
         // Refresh caret coords on caret-moving keys not handled in keydown
-        if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(event.key)) {
+        if (
+            [
+                'ArrowLeft',
+                'ArrowRight',
+                'ArrowUp',
+                'ArrowDown',
+                'Home',
+                'End',
+                'PageUp',
+                'PageDown'
+            ].includes(event.key)
+        ) {
             updateOverlay();
         }
     }
@@ -332,7 +343,11 @@
             }
             if (suggestion) {
                 event.preventDefault();
-                const next = getNextSuggestion(getCurrentLine(), suggestion, showCommandShortDescriptions);
+                const next = getNextSuggestion(
+                    getCurrentLine(),
+                    suggestion,
+                    showCommandShortDescriptions
+                );
                 if (next) suggestion = next;
                 return;
             }
@@ -359,7 +374,11 @@
             }
             if (suggestion) {
                 event.preventDefault();
-                const prev = getPreviousSuggestion(getCurrentLine(), suggestion, showCommandShortDescriptions);
+                const prev = getPreviousSuggestion(
+                    getCurrentLine(),
+                    suggestion,
+                    showCommandShortDescriptions
+                );
                 if (prev) suggestion = prev;
                 return;
             }
@@ -407,7 +426,8 @@
             autocomplete="off"
             autocapitalize="off"
             class="command-input relative w-full resize-none rounded-md border border-gray-600 bg-gray-700 py-2 pr-8 pl-3 text-sm text-white placeholder-gray-400 focus:border-orange-600 focus:ring-1 focus:ring-orange-600 focus:outline-none"
-            style="font-family: Consolas, 'Courier New', monospace; field-sizing: content; max-height: {TERMINAL_CONFIG.maxVisibleLines * TERMINAL_CONFIG.approxLineHeightRem}rem; overflow-y: auto;"
+            style="font-family: Consolas, 'Courier New', monospace; field-sizing: content; max-height: {TERMINAL_CONFIG.maxVisibleLines *
+                TERMINAL_CONFIG.approxLineHeightRem}rem; overflow-y: auto;"
         ></textarea>
 
         <!-- Autocomplete ghost + per-line command descriptions (every line at its end). -->
@@ -421,7 +441,8 @@
                         <span class="whitespace-pre text-gray-400">{suggestion.text}</span>
                     {/if}
                     {#if d.desc}
-                        <span class="ml-2 overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 italic"
+                        <span
+                            class="ml-2 overflow-hidden text-ellipsis whitespace-nowrap text-gray-500 italic"
                             >- {d.desc}</span
                         >
                     {/if}
@@ -438,8 +459,8 @@
                 style="top: {caretCoords.top}px; height: {caretCoords.height}px; line-height: {caretCoords.height}px;"
                 title={$locales('customfirmware.terminal_send_tooltip')}
                 disabled={!isConnected || isMassRunning || isSendBlocked}
-                onclick={() => onsendline(currentLine)}
-            >▶</button>
+                onclick={() => onsendline(currentLine)}>▶</button
+            >
         {/if}
     </div>
 </div>

@@ -1,6 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { guardModeration, checkUploadRateLimit, pendingNotFound } from '$lib/server/zonesModeration';
+import {
+    guardModeration,
+    checkUploadRateLimit,
+    pendingNotFound
+} from '$lib/server/zonesModeration';
 import {
     loadPublishedGroupEntries,
     movePendingToGroups,
@@ -24,7 +28,10 @@ export const POST: RequestHandler = async (event) => {
     // Moderator mutations share the per-IP mutation rate limit.
     const rl = checkUploadRateLimit(event.getClientAddress());
     if (!rl.ok) {
-        return json({ error: { code: 'rate_limited', retry_after_s: rl.retryAfterS } }, { status: 429 });
+        return json(
+            { error: { code: 'rate_limited', retry_after_s: rl.retryAfterS } },
+            { status: 429 }
+        );
     }
 
     let body: unknown;
@@ -68,10 +75,7 @@ export const POST: RequestHandler = async (event) => {
     );
     if (conflicts.length > 0) {
         console.warn('[zones-moderation] approve blocked by conflicts', filename, conflicts.length);
-        return json(
-            { error: { code: 'conflicts', conflicts } },
-            { status: 409 }
-        );
+        return json({ error: { code: 'conflicts', conflicts } }, { status: 409 });
     }
 
     // Name clash with a published file: the moderator must confirm (overwrite).

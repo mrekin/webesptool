@@ -10,15 +10,19 @@
     import type { PinInfo, PinCategory, ConfigInfo } from '$lib/types';
     import { onMount, onDestroy } from 'svelte';
 
-    export let isOpen: boolean = false;
-    export let onClose: () => void = () => {};
-    export let devicePioTarget: string = '';
+    interface Props {
+        isOpen?: boolean;
+        onClose?: () => void;
+        devicePioTarget?: string;
+    }
 
-    let currentTab: 'pins' | 'configs' = 'pins';
-    let selectedPin: PinInfo | null = null;
+    let { isOpen = false, onClose = () => {}, devicePioTarget = '' }: Props = $props();
+
+    let currentTab = $state<'pins' | 'configs'>('pins');
+    let selectedPin = $state<PinInfo | null>(null);
 
     // Get board variant data
-    $: boardVariant = (() => {
+    const boardVariant = $derived.by(() => {
         const catalog = $pinoutStore.data;
         if (!catalog || !devicePioTarget) return null;
 
@@ -26,18 +30,20 @@
         if (!mapping) return null;
 
         return mapping.variant;
-    })();
+    });
 
     // Extract and filter pins
-    $: allPins = boardVariant
-        ? extractPinsFromVariant(boardVariant, $deviceDisplayInfo?.deviceType || null)
-        : [];
+    const allPins = $derived(
+        boardVariant
+            ? extractPinsFromVariant(boardVariant, $deviceDisplayInfo?.deviceType || null)
+            : []
+    );
 
     // Extract configs
-    $: allConfigs = boardVariant ? extractConfigsFromVariant(boardVariant) : [];
+    const allConfigs = $derived(boardVariant ? extractConfigsFromVariant(boardVariant) : []);
 
     // Group pins by category
-    $: pinsByCategory = (() => {
+    const pinsByCategory = $derived.by(() => {
         const grouped: Record<string, PinInfo[]> = {};
 
         for (const pin of allPins) {
@@ -48,10 +54,10 @@
         }
 
         return grouped;
-    })();
+    });
 
     // Group configs by category
-    $: configsByCategory = (() => {
+    const configsByCategory = $derived.by(() => {
         const grouped: Record<string, ConfigInfo[]> = {};
 
         for (const config of allConfigs) {
@@ -62,12 +68,12 @@
         }
 
         return grouped;
-    })();
+    });
 
     // Group pins for diagram display - split into two columns
     // Group identical pins by pinNumber and combine their names
     // Exclude negative pins from diagram (but show in peripherals list)
-    $: diagramPins = (() => {
+    const diagramPins = $derived.by(() => {
         const pinGroups = new Map<string, PinInfo[]>();
 
         // Group pins by pinNumber, only include non-negative pins
@@ -123,25 +129,27 @@
             left: groupedPins.slice(0, midPoint),
             right: groupedPins.slice(midPoint)
         };
-    })();
+    });
 
     // Calculate total text lines in a column (each pin in a group = 1 line)
-    $: totalLinesInColumn = (groups: typeof diagramPins.left) => {
+    function totalLinesInColumn(groups: typeof diagramPins.left) {
         return groups.reduce((total, group) => total + group.pins.length, 0);
-    };
+    }
 
     // MCU height: padding (1.5rem top + 1.5rem bottom = 3rem) + lines * 1rem + spacing
-    $: mcuHeight =
+    const mcuHeight = $derived(
         3 +
-        Math.max(totalLinesInColumn(diagramPins.left), totalLinesInColumn(diagramPins.right)) * 1.5;
+            Math.max(totalLinesInColumn(diagramPins.left), totalLinesInColumn(diagramPins.right)) *
+                1.5
+    );
 
     // Mobile MCU height: based on total number of pins (left + right)
-    $: mobileMcuHeight = 3 + [...diagramPins.left, ...diagramPins.right].length * 1.5;
+    const mobileMcuHeight = $derived(3 + [...diagramPins.left, ...diagramPins.right].length * 1.5);
 
     // Auto-scale for medium layout (600px-1024px)
-    let mediumContainer: HTMLDivElement;
-    let mediumScale = 1;
-    let resizeObserver: ResizeObserver | null = null;
+    let mediumContainer = $state<HTMLDivElement | null>(null);
+    let mediumScale = $state(1);
+    let resizeObserver = $state<ResizeObserver | null>(null);
 
     function updateMediumScale() {
         if (!mediumContainer) return;
@@ -166,10 +174,12 @@
     });
 
     // Observe container when it changes
-    $: if (mediumContainer && resizeObserver) {
-        resizeObserver.observe(mediumContainer);
-        updateMediumScale();
-    }
+    $effect(() => {
+        if (mediumContainer && resizeObserver) {
+            resizeObserver.observe(mediumContainer);
+            updateMediumScale();
+        }
+    });
 
     // Handle keyboard close
     function handleKeydown(event: KeyboardEvent) {
@@ -182,7 +192,7 @@
 {#if isOpen}
     <div
         class="animate-fade-in fixed inset-0 z-50 overflow-y-auto bg-black/50 p-4 backdrop-blur-sm"
-        on:keydown={handleKeydown}
+        onkeydown={handleKeydown}
         role="dialog"
         aria-modal="true"
         aria-labelledby="pinout-modal-title"
@@ -207,7 +217,7 @@
                         {/if}
                     </div>
                     <button
-                        on:click={onClose}
+                        onclick={onClose}
                         class="text-2xl text-gray-400 transition-colors hover:text-gray-200"
                         aria-label="Close modal"
                     >
@@ -249,7 +259,7 @@
                                             <div
                                                 class="absolute top-0 -left-48 flex h-full flex-col justify-between py-6"
                                             >
-                                                {#each diagramPins.left as pinGroup}
+                                                {#each diagramPins.left as pinGroup (pinGroup.name)}
                                                     {@const isSelected = pinGroup.pins.some(
                                                         (p) =>
                                                             p.pinNumber === selectedPin?.pinNumber
@@ -260,7 +270,7 @@
                                                                 <div
                                                                     class="space-y-0.5 text-xs text-gray-400"
                                                                 >
-                                                                    {#each pinGroup.pins as pin, index}
+                                                                    {#each pinGroup.pins as pin, index (pin.name)}
                                                                         <span class="block"
                                                                             >{pin.name}</span
                                                                         >
@@ -287,7 +297,7 @@
                                                                 style="background-color: {getCategoryColor(
                                                                     pinGroup.category
                                                                 )}"
-                                                                on:click={() =>
+                                                                onclick={() =>
                                                                     (selectedPin =
                                                                         pinGroup.pins[0])}
                                                                 title="{pinGroup.name}: {pinGroup.description}"
@@ -304,7 +314,7 @@
                                             <div
                                                 class="absolute top-0 -right-48 flex h-full flex-col justify-between py-6"
                                             >
-                                                {#each diagramPins.right as pinGroup}
+                                                {#each diagramPins.right as pinGroup (pinGroup.name)}
                                                     {@const isSelected = pinGroup.pins.some(
                                                         (p) =>
                                                             p.pinNumber === selectedPin?.pinNumber
@@ -318,7 +328,7 @@
                                                                 style="background-color: {getCategoryColor(
                                                                     pinGroup.category
                                                                 )}"
-                                                                on:click={() =>
+                                                                onclick={() =>
                                                                     (selectedPin =
                                                                         pinGroup.pins[0])}
                                                                 title="{pinGroup.name}: {pinGroup.description}"
@@ -339,7 +349,7 @@
                                                                 <div
                                                                     class="space-y-0.5 text-xs text-gray-400"
                                                                 >
-                                                                    {#each pinGroup.pins as pin, index}
+                                                                    {#each pinGroup.pins as pin, index (pin.name)}
                                                                         <span class="block"
                                                                             >{pin.name}</span
                                                                         >
@@ -381,7 +391,7 @@
                                             <div
                                                 class="absolute top-0 -left-48 flex h-full flex-col justify-between py-6"
                                             >
-                                                {#each diagramPins.left as pinGroup}
+                                                {#each diagramPins.left as pinGroup (pinGroup.name)}
                                                     {@const isSelected = pinGroup.pins.some(
                                                         (p) =>
                                                             p.pinNumber === selectedPin?.pinNumber
@@ -392,7 +402,7 @@
                                                                 <div
                                                                     class="space-y-0.5 text-xs text-gray-400"
                                                                 >
-                                                                    {#each pinGroup.pins as pin, index}
+                                                                    {#each pinGroup.pins as pin, index (pin.name)}
                                                                         <span class="block"
                                                                             >{pin.name}</span
                                                                         >
@@ -419,7 +429,7 @@
                                                                 style="background-color: {getCategoryColor(
                                                                     pinGroup.category
                                                                 )}"
-                                                                on:click={() =>
+                                                                onclick={() =>
                                                                     (selectedPin =
                                                                         pinGroup.pins[0])}
                                                                 title="{pinGroup.name}: {pinGroup.description}"
@@ -436,7 +446,7 @@
                                             <div
                                                 class="absolute top-0 -right-48 flex h-full flex-col justify-between py-6"
                                             >
-                                                {#each diagramPins.right as pinGroup}
+                                                {#each diagramPins.right as pinGroup (pinGroup.name)}
                                                     {@const isSelected = pinGroup.pins.some(
                                                         (p) =>
                                                             p.pinNumber === selectedPin?.pinNumber
@@ -450,7 +460,7 @@
                                                                 style="background-color: {getCategoryColor(
                                                                     pinGroup.category
                                                                 )}"
-                                                                on:click={() =>
+                                                                onclick={() =>
                                                                     (selectedPin =
                                                                         pinGroup.pins[0])}
                                                                 title="{pinGroup.name}: {pinGroup.description}"
@@ -471,7 +481,7 @@
                                                                 <div
                                                                     class="space-y-0.5 text-xs text-gray-400"
                                                                 >
-                                                                    {#each pinGroup.pins as pin, index}
+                                                                    {#each pinGroup.pins as pin, index (pin.name)}
                                                                         <span class="block"
                                                                             >{pin.name}</span
                                                                         >
@@ -507,7 +517,7 @@
 
                                         <!-- All pins in one column on the right -->
                                         <div class="-ml-[1.125rem] flex flex-1 flex-col gap-2">
-                                            {#each [...diagramPins.left, ...diagramPins.right] as pinGroup}
+                                            {#each [...diagramPins.left, ...diagramPins.right] as pinGroup (pinGroup.name)}
                                                 {@const isSelected = pinGroup.pins.some(
                                                     (p) => p.pinNumber === selectedPin?.pinNumber
                                                 )}
@@ -520,7 +530,7 @@
                                                         style="background-color: {getCategoryColor(
                                                             pinGroup.category
                                                         )}"
-                                                        on:click={() =>
+                                                        onclick={() =>
                                                             (selectedPin = pinGroup.pins[0])}
                                                         title="{pinGroup.name}: {pinGroup.description}"
                                                         aria-label="{pinGroup.name}: {pinGroup.description}"
@@ -543,7 +553,7 @@
                                                             <div
                                                                 class="space-y-0.5 text-sm text-gray-300"
                                                             >
-                                                                {#each pinGroup.pins as pin}
+                                                                {#each pinGroup.pins as pin (pin.name)}
                                                                     <span
                                                                         class="block truncate"
                                                                         title={pin.name}
@@ -573,7 +583,7 @@
                                         class="mb-3 flex items-center gap-2 border-b border-gray-700"
                                     >
                                         <button
-                                            on:click={() => (currentTab = 'pins')}
+                                            onclick={() => (currentTab = 'pins')}
                                             class="-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors"
                                             class:text-orange-300={currentTab === 'pins'}
                                             class:border-orange-500={currentTab === 'pins'}
@@ -584,7 +594,7 @@
                                             {$locales('pinout.peripherals')}
                                         </button>
                                         <button
-                                            on:click={() => (currentTab = 'configs')}
+                                            onclick={() => (currentTab = 'configs')}
                                             class="-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors"
                                             class:text-orange-300={currentTab === 'configs'}
                                             class:border-orange-500={currentTab === 'configs'}
@@ -598,7 +608,7 @@
 
                                     <!-- Peripherals by category -->
                                     {#if currentTab === 'pins'}
-                                        {#each Object.entries(pinsByCategory) as [category, pins]}
+                                        {#each Object.entries(pinsByCategory) as [category, pins] (category)}
                                             <div
                                                 class="rounded-lg border border-gray-700 bg-gray-800 p-3"
                                             >
@@ -619,12 +629,12 @@
                                                 </div>
 
                                                 <div class="flex flex-wrap gap-1">
-                                                    {#each pins as pin}
+                                                    {#each pins as pin (pin.name)}
                                                         <button
                                                             class="flex cursor-pointer items-center gap-1.5 rounded border-0 bg-gray-900 px-2 py-1 text-left text-xs transition-colors hover:bg-gray-700"
                                                             class:bg-orange-900={selectedPin?.pinNumber ===
                                                                 pin.pinNumber}
-                                                            on:click={() => (selectedPin = pin)}
+                                                            onclick={() => (selectedPin = pin)}
                                                             aria-label="{pin.name} ({pin.pinNumber})"
                                                         >
                                                             <div
@@ -646,7 +656,7 @@
                                         {/each}
                                     {:else}
                                         <!-- Configs by category -->
-                                        {#each Object.entries(configsByCategory) as [category, configs]}
+                                        {#each Object.entries(configsByCategory) as [category, configs] (category)}
                                             <div
                                                 class="rounded-lg border border-gray-700 bg-gray-800 p-3"
                                             >
@@ -667,7 +677,7 @@
                                                 </div>
 
                                                 <div class="space-y-1">
-                                                    {#each configs as config}
+                                                    {#each configs as config (config.name)}
                                                         <div
                                                             class="flex items-center gap-2 rounded bg-gray-900 px-2 py-1.5 text-xs"
                                                         >
@@ -714,7 +724,7 @@
                             </p>
                         </div>
                         <button
-                            on:click={onClose}
+                            onclick={onClose}
                             class="flex-shrink-0 rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-600"
                         >
                             {$locales('common.close')}

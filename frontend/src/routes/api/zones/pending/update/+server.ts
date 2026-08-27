@@ -1,6 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { guardModeration, checkUploadRateLimit, pendingNotFound } from '$lib/server/zonesModeration';
+import {
+    guardModeration,
+    checkUploadRateLimit,
+    pendingNotFound
+} from '$lib/server/zonesModeration';
 import {
     readPendingFile,
     sanitizePendingFilename,
@@ -72,7 +76,10 @@ export const POST: RequestHandler = async (event) => {
     // Moderator mutations share the per-IP mutation rate limit.
     const rl = checkUploadRateLimit(event.getClientAddress());
     if (!rl.ok) {
-        return json({ error: { code: 'rate_limited', retry_after_s: rl.retryAfterS } }, { status: 429 });
+        return json(
+            { error: { code: 'rate_limited', retry_after_s: rl.retryAfterS } },
+            { status: 429 }
+        );
     }
 
     let body: unknown;
@@ -115,8 +122,7 @@ export const POST: RequestHandler = async (event) => {
         '';
     const savedAuthor =
         typeof meta.author === 'string' && meta.author.trim() ? meta.author.trim() : undefined;
-    const author =
-        typeof req.author === 'string' ? req.author.trim() || undefined : savedAuthor;
+    const author = typeof req.author === 'string' ? req.author.trim() || undefined : savedAuthor;
     const zones = parseZoneFeatures(fc.features, detectGroupMeshcore(fc)?.regions ?? '');
     const updated = serializeGroup(name, coercePreset(req.preset), zones, author);
 

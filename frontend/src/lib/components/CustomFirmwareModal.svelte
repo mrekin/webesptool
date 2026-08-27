@@ -39,20 +39,30 @@
     const MESHCORE_CONFIGURATOR_URL = 'https://config.meshcore.io';
     const MESHTASTIC_FLASHER_URL = EXTERNAL_LINKS.MESHTASTIC.FLASHER;
 
-    // Dynamic import for MeshtasticDeviceModal to avoid conflicts with +page.svelte
-    let MeshtasticDeviceModal: any = null;
-    // Dynamic import for MeshcoreConfigModal to avoid conflicts with +page.svelte
-    let MeshcoreConfigModal: any = null;
+    // Dynamic imports to avoid conflicts with +page.svelte. Held in $state so the
+    // direct component tags below re-render once the lazy import resolves.
+    let MeshtasticDeviceModal = $state<any>(null);
+    let MeshcoreConfigModal = $state<any>(null);
 
-    export let isOpen = false;
-    export let onClose = () => {};
-    export let preloadedFilesWithOffsets: {
-        file: FirmwareFile;
-        address: string;
-        filename: string;
-    }[] = [];
-    export let isAutoSelectMode = false;
-    export let manifestData: any = null;
+    interface Props {
+        isOpen?: boolean;
+        onClose?: () => void;
+        preloadedFilesWithOffsets?: {
+            file: FirmwareFile;
+            address: string;
+            filename: string;
+        }[];
+        isAutoSelectMode?: boolean;
+        manifestData?: any;
+    }
+
+    let {
+        isOpen = false,
+        onClose = () => {},
+        preloadedFilesWithOffsets = [],
+        isAutoSelectMode = false,
+        manifestData = null
+    }: Props = $props();
 
     // Create utility instances
     const espManager = createESPManager();
@@ -61,18 +71,19 @@
     const logger = createFlashLogger();
 
     // Component state
-    let selectedFirmwareFiles: SelectedFirmwareFile[] = []; // Multiple files with addresses
-    let isFlashing = false;
-    let flashProgress = 0;
+    // Multiple files with addresses
+    let selectedFirmwareFiles = $state<SelectedFirmwareFile[]>([]);
+    let isFlashing = $state(false);
+    let flashProgress = $state(0);
     // Per-segment fill fraction (0..1) during flashing; key = segment filename.
     // Updated in flashFirmware onProgress; reset on start / resetForAnotherFlash / resetPort.
-    let segmentFill: Map<string, number> = new Map();
+    let segmentFill = $state(new Map<string, number>());
     // Throttle step for segment fill updates (percentage points of the current file)
     const FILL_PROGRESS_STEP = 3;
-    let flashStatus = '';
-    let flashError = '';
-    let eraseBeforeFlash = false; // New parameter for checkbox
-    let selectedBaudrate = 512000; // Default selected speed
+    let flashStatus = $state('');
+    let flashError = $state('');
+    let eraseBeforeFlash = $state(false); // New parameter for checkbox
+    let selectedBaudrate = $state(512000); // Default selected speed
 
     // NOTE: the selected baudrate is NOT applied to a live connection anymore.
     // Each operation (flash/backup) opens its own loader session at
@@ -80,58 +91,53 @@
     // in esp.ts) - mid-session baudrate changes are unreliable in esptool-js.
 
     // Memory backup state
-    let isBackingUp = false;
-    let showBackupConfirm = false; // Confirm dialog state
-    let backupAbortController: AbortController | null = null; // For cancelling backup
+    let isBackingUp = $state(false);
+    let showBackupConfirm = $state(false); // Confirm dialog state
+    let backupAbortController = $state<AbortController | null>(null); // For cancelling backup
 
     // ZIP extraction state
-    let isExtractingZip = false;
-    let zipExtractionProgress = 0;
-    let zipExtractionError = '';
+    let isExtractingZip = $state(false);
+    let zipExtractionProgress = $state(0);
+    let zipExtractionError = $state('');
 
     // File download state
-    let isDownloadingFiles = false;
-    let downloadError = '';
-    let downloadAbortController: AbortController | null = null;
-    let downloadCompleted = false;
+    let isDownloadingFiles = $state(false);
+    let downloadError = $state('');
+    let downloadAbortController = $state<AbortController | null>(null);
+    let downloadCompleted = $state(false);
 
     // Validation state
-    let validationResult: {
+    let validationResult = $state<{
         isValid: boolean;
         errorCode?: any;
         conflictingFiles?: string[];
         errorMessage?: string;
-    } = { isValid: true };
+    }>({ isValid: true });
 
     // Metadata state
-    let metadataFile: FirmwareFile | null = null;
-    let metadata: FirmwareMetadataExtended | null = null; // Support both .mt.json and manifest.json
+    let metadataFile = $state<FirmwareFile | null>(null);
+    // Support both .mt.json and manifest.json
+    let metadata = $state<FirmwareMetadataExtended | null>(null);
 
     // Partitions table state
-    let partitionsTable: PartitionTable | null = null;
-
-    // Flash size calculated from partitions.bin
-    let flashSizeFromPartitions: number | null = null;
-
-    // Partitions compatibility warning (non-blocking)
-    let partitionsCompatibilityWarning: string | null = null;
+    let partitionsTable = $state<PartitionTable | null>(null);
 
     // New variables for new logic
-    let isPortSelected = false;
-    let deviceInfo: any = null; // Device information
-    let isConnecting = false;
-    let showInstructions = false; // Control instructions spoiler
-    let showFileDetails = false; // Control file details spoiler in AutoSelect mode
-    let autoPortSelectionTriggered = false; // Flag for tracking automatic port selection
-    let showTerminalModal = false; // Terminal modal state
-    let showMeshtasticModal = false; // Meshtastic device modal state
-    let showMeshcoreConfigModal = false; // Meshcore config modal state
+    let isPortSelected = $state(false);
+    let deviceInfo = $state<any>(null); // Device information
+    let isConnecting = $state(false);
+    let showInstructions = $state(false); // Control instructions spoiler
+    let showFileDetails = $state(false); // Control file details spoiler in AutoSelect mode
+    let autoPortSelectionTriggered = $state(false); // Flag for tracking automatic port selection
+    let showTerminalModal = $state(false); // Terminal modal state
+    let showMeshtasticModal = $state(false); // Meshtastic device modal state
+    let showMeshcoreConfigModal = $state(false); // Meshcore config modal state
     // When true, the next MeshcoreConfigModal open auto-opens the coordinate map
     // picker. Set by the 📍 shortcut inside the merged Configure button.
-    let meshcoreAutoOpenPicker = false;
+    let meshcoreAutoOpenPicker = $state(false);
 
     // Reference to file input to replace document.getElementById
-    let fileInput: HTMLInputElement;
+    let fileInput = $state<HTMLInputElement | null>(null);
 
     // Function to dynamically load MeshtasticDeviceModal
     async function openMeshtasticModal() {
@@ -174,17 +180,19 @@
     }
 
     // Handle manifest data in AutoSelect mode
-    $: if (isAutoSelectMode && manifestData && !metadataFile) {
-        // Create a virtual metadata file from manifest data
-        const manifestContent = JSON.stringify(manifestData, null, 2);
-        const manifestBlob = new Blob([manifestContent], { type: 'application/json' });
-        const manifestFile = new File([manifestBlob], 'manifest.json', {
-            type: 'application/json'
-        });
+    $effect(() => {
+        if (isAutoSelectMode && manifestData && !metadataFile) {
+            // Create a virtual metadata file from manifest data
+            const manifestContent = JSON.stringify(manifestData, null, 2);
+            const manifestBlob = new Blob([manifestContent], { type: 'application/json' });
+            const manifestFile = new File([manifestBlob], 'manifest.json', {
+                type: 'application/json'
+            });
 
-        metadataFile = fileHandler.createFirmwareFile(manifestFile);
-        metadata = parseFirmwareMetadata(manifestContent);
-    }
+            metadataFile = fileHandler.createFirmwareFile(manifestFile);
+            metadata = parseFirmwareMetadata(manifestContent);
+        }
+    });
 
     // Also handle initial mount
     onMount(() => {
@@ -205,31 +213,35 @@
     });
 
     // Reactive: Start file download when modal opens in AutoSelect mode
-    $: if (
-        isOpen &&
-        isAutoSelectMode &&
-        manifestData &&
-        !isDownloadingFiles &&
-        !downloadError &&
-        !downloadCompleted
-    ) {
-        startFileDownload();
-    }
+    $effect(() => {
+        if (
+            isOpen &&
+            isAutoSelectMode &&
+            manifestData &&
+            !isDownloadingFiles &&
+            !downloadError &&
+            !downloadCompleted
+        ) {
+            startFileDownload();
+        }
+    });
 
     // Reactive: Auto-start port selection when modal opens in AutoSelect mode (parallel to download)
-    $: if (
-        isOpen &&
-        isAutoSelectMode &&
-        !isPortSelected &&
-        !isConnecting &&
-        !autoPortSelectionTriggered
-    ) {
-        // Use setTimeout to ensure DOM is ready
-        setTimeout(() => {
-            autoPortSelectionTriggered = true;
-            selectPort();
-        }, 100);
-    }
+    $effect(() => {
+        if (
+            isOpen &&
+            isAutoSelectMode &&
+            !isPortSelected &&
+            !isConnecting &&
+            !autoPortSelectionTriggered
+        ) {
+            // Use setTimeout to ensure DOM is ready
+            setTimeout(() => {
+                autoPortSelectionTriggered = true;
+                selectPort();
+            }, 100);
+        }
+    });
 
     // Clean up on unmount
     onDestroy(async () => {
@@ -383,7 +395,8 @@
                         logger.info(
                             $locales('customfirmware.log_metadata_found', {
                                 values: {
-                                    summary: `manifest.json (${(parsedMetadata as any).name ?? ''} ${(parsedMetadata as any).version ?? ''})`.trim()
+                                    summary:
+                                        `manifest.json (${(parsedMetadata as any).name ?? ''} ${(parsedMetadata as any).version ?? ''})`.trim()
                                 }
                             })
                         );
@@ -395,7 +408,8 @@
                         logger.info(
                             $locales('customfirmware.log_metadata_found', {
                                 values: {
-                                    summary: `${file.name} (${(parsedMetadata as any).board ?? ''} ${(parsedMetadata as any).mcu ?? ''})`.trim()
+                                    summary:
+                                        `${file.name} (${(parsedMetadata as any).board ?? ''} ${(parsedMetadata as any).mcu ?? ''})`.trim()
                                 }
                             })
                         );
@@ -503,7 +517,10 @@
             for (const f of selectedFirmwareFiles) {
                 logger.info(
                     $locales('customfirmware.log_file_info', {
-                        values: { filename: f.filename, size: fileHandler.formatFileSize(f.file.size) }
+                        values: {
+                            filename: f.filename,
+                            size: fileHandler.formatFileSize(f.file.size)
+                        }
                     })
                 );
             }
@@ -540,9 +557,7 @@
         flashError = '';
     }
 
-    // Toggle file enabled/disabled state for flashing.
-    // Reassigns the array to trigger reactive validation: a binding inside a snippet
-    // does not invalidate selectedFirmwareFiles on its own in legacy reactivity mode.
+    // Toggle file enabled/disabled state for flashing
     function toggleFileEnabled(index: number) {
         selectedFirmwareFiles = selectedFirmwareFiles.map((f, i) =>
             i === index ? { ...f, isEnabled: f.isEnabled === false } : f
@@ -629,9 +644,7 @@
                     // Device detection failed
                     isPortSelected = false;
                     deviceInfo = null;
-                    logger.error(
-                        flashError || $locales('customfirmware.log_device_not_detected')
-                    );
+                    logger.error(flashError || $locales('customfirmware.log_device_not_detected'));
                     // flashError is already set in getDeviceInfo
                 }
             }
@@ -772,9 +785,7 @@
             $locales('customfirmware.log_flash_start', {
                 values: {
                     count: isEraseOnly ? 0 : enabledFiles.length,
-                    erase: eraseBeforeFlash
-                        ? $locales('customfirmware.log_flash_start_erase')
-                        : ''
+                    erase: eraseBeforeFlash ? $locales('customfirmware.log_flash_start_erase') : ''
                 }
             })
         );
@@ -895,7 +906,7 @@
                             })
                         );
                         // Show the segment as soon as its file starts
-                        segmentFill = new Map(segmentFill).set(event.filename, 0);
+                        segmentFill.set(event.filename, 0);
                         return;
                     }
 
@@ -912,7 +923,7 @@
                             })
                         );
                         // Ensure the completed file is fully filled (fraction = 1)
-                        segmentFill = new Map(segmentFill).set(event.filename, 1);
+                        segmentFill.set(event.filename, 1);
                         return;
                     }
 
@@ -934,7 +945,6 @@
                     );
 
                     // Throttled fill update: only on STEP boundary or at file start/end.
-                    // Assigning a new Map is required for legacy `$:` reactivity.
                     const fraction = event.progress / 100;
                     if (
                         lastSegmentPercent === undefined ||
@@ -943,7 +953,7 @@
                         event.progress === 0
                     ) {
                         lastSegmentPercent = event.progress;
-                        segmentFill = new Map(segmentFill).set(event.filename, fraction);
+                        segmentFill.set(event.filename, fraction);
                     }
                 }
             });
@@ -1102,9 +1112,7 @@
 
             flashStatus = `Backup saved: ${filename}`;
             flashProgress = 100;
-            logger.success(
-                $locales('customfirmware.log_backup_saved', { values: { filename } })
-            );
+            logger.success($locales('customfirmware.log_backup_saved', { values: { filename } }));
         } catch (error) {
             console.error('Backup error:', error);
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -1196,11 +1204,7 @@
             // Download each file individually, skipping already-successful entries (on retry)
             const downloadPromises = parts.map(async (part: any, index: number) => {
                 const current = selectedFirmwareFiles[index];
-                if (
-                    !current.isDownloading &&
-                    current.file?.size > 0 &&
-                    !current.hasDownloadError
-                ) {
+                if (!current.isDownloading && current.file?.size > 0 && !current.hasDownloadError) {
                     return; // Skip already-downloaded files on retry
                 }
 
@@ -1352,8 +1356,6 @@
             downloadProgress: 0,
             fileSize: 0
         };
-        // Reassign array to guarantee reactive re-render in Svelte 5 legacy mode
-        selectedFirmwareFiles = [...selectedFirmwareFiles];
 
         try {
             const { content, filename } = await apiService.downloadFromFileWithFilename(
@@ -1383,7 +1385,6 @@
                 downloadProgress: 100,
                 fileSize: content.byteLength
             };
-            selectedFirmwareFiles = [...selectedFirmwareFiles];
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             console.error(`Retry download error for part ${index}:`, errorMessage);
@@ -1396,14 +1397,15 @@
                 isRetryable: true,
                 isDownloading: false
             };
-            selectedFirmwareFiles = [...selectedFirmwareFiles];
         } finally {
             isDownloadingFiles = false;
             downloadAbortController = null;
         }
     }
 
-    // Update flash addresses using metadata and/or partition table
+    // Update flash addresses using metadata and/or partition table.
+    // Assigns the rebuilt list only when something actually changed so callers
+    // running inside $effect (validation) settle instead of re-triggering forever.
     function updateFlashAddresses() {
         if (selectedFirmwareFiles.length === 0) return;
         if (isAutoSelectMode) return; // Don't override manifest addresses in AutoSelect mode
@@ -1413,7 +1415,8 @@
             (f) => classifyFile(f.filename) === FirmwareFileType.PARTITIONS && f.isEnabled !== false
         );
 
-        selectedFirmwareFiles = selectedFirmwareFiles.map((fileItem) => {
+        let changed = false;
+        const nextFiles = selectedFirmwareFiles.map((fileItem) => {
             // Skip address update if user manually edited this address
             if (fileItem.userEdited) {
                 return fileItem;
@@ -1430,6 +1433,7 @@
                 // are re-added — so preset addresses are logged too, without spam on re-runs.
                 const addressKey = `${addressResult.address}|${addressResult.source ?? 'unknown'}`;
                 if (fileItem.loggedAddressKey !== addressKey) {
+                    changed = true;
                     const source =
                         addressResult.source === 'metadata'
                             ? $locales('customfirmware.address_source_metadata')
@@ -1456,10 +1460,14 @@
             }
             return fileItem;
         });
+        if (changed) {
+            selectedFirmwareFiles = nextFiles;
+        }
     }
 
     // Previous reactive-validation signature — used to log ONLY on result change
     // (avoids spamming the log on every re-run when files/devices change).
+    // Plain (non-reactive) on purpose: they are never rendered, only compared.
     let lastValidationErrorCode: number | undefined = undefined;
     let lastValidationIsValid: boolean | undefined = undefined;
 
@@ -1587,79 +1595,82 @@
         }
     }
 
-    // Reactive data for MemoryMap
-    $: totalMemorySize = deviceInfo
-        ? parseFlashSize(deviceInfo.flashSize)
-        : (metadata as any)?.builds
-          ? parseFlashSize((metadata as any)?.builds[0]?.flashsize)
-          : flashSizeFromPartitions || 4 * 1024 * 1024;
-    $: memorySegments = prepareMemorySegments(
-        selectedFirmwareFiles.filter((f) => f.isEnabled !== false)
-    );
-
     // Calculate flash size from partitions.bin (reactive)
     // Only use partitionsTable if there's an enabled partitions.bin file in the list
-    $: {
+    const flashSizeFromPartitions = $derived.by(() => {
         const enabledPartitionsBin = selectedFirmwareFiles.find(
             (f) => classifyFile(f.filename) === FirmwareFileType.PARTITIONS && f.isEnabled !== false
         );
         if (enabledPartitionsBin && partitionsTable) {
             try {
                 const analysis = formatAnalysis(partitionsTable, false) as PartitionAnalysis;
-                flashSizeFromPartitions = analysis.flash_size_bytes;
+                return analysis.flash_size_bytes;
             } catch (error) {
                 console.error('[Flash size] Failed to calculate from partitions:', error);
-                flashSizeFromPartitions = null;
+                return null;
             }
-        } else {
-            flashSizeFromPartitions = null;
         }
-    }
+        return null;
+    });
+
+    // Reactive data for MemoryMap
+    const totalMemorySize = $derived(
+        deviceInfo
+            ? parseFlashSize(deviceInfo.flashSize)
+            : (metadata as any)?.builds
+              ? parseFlashSize((metadata as any)?.builds[0]?.flashsize)
+              : flashSizeFromPartitions || 4 * 1024 * 1024
+    );
+    const memorySegments = $derived(
+        prepareMemorySegments(selectedFirmwareFiles.filter((f) => f.isEnabled !== false))
+    );
 
     // Check partitions compatibility with device (reactive)
-    $: if (flashSizeFromPartitions && deviceInfo?.flashSize) {
-        const deviceFlashSize = parseFlashSize(deviceInfo.flashSize);
-        if (flashSizeFromPartitions > deviceFlashSize) {
-            const partitionsMB = Math.round(flashSizeFromPartitions / (1024 * 1024));
-            const deviceMB = Math.round(deviceFlashSize / (1024 * 1024));
-            partitionsCompatibilityWarning = $locales(
-                'customfirmware.partitions_incompatible_warning',
-                {
+    const partitionsCompatibilityWarning = $derived.by(() => {
+        if (flashSizeFromPartitions && deviceInfo?.flashSize) {
+            const deviceFlashSize = parseFlashSize(deviceInfo.flashSize);
+            if (flashSizeFromPartitions > deviceFlashSize) {
+                const partitionsMB = Math.round(flashSizeFromPartitions / (1024 * 1024));
+                const deviceMB = Math.round(deviceFlashSize / (1024 * 1024));
+                return $locales('customfirmware.partitions_incompatible_warning', {
                     values: { partitionsMB, deviceMB }
-                }
-            );
-        } else {
-            partitionsCompatibilityWarning = null;
+                });
+            }
         }
-    } else {
-        partitionsCompatibilityWarning = null;
-    }
+        return null;
+    });
 
     // Calculate file count for File Details display
-    $: fileCount = selectedFirmwareFiles.length;
+    const fileCount = $derived(selectedFirmwareFiles.length);
 
     // Number of files with download errors (for spoiler header badge)
-    $: failedFileCount = selectedFirmwareFiles.filter((f) => f.hasDownloadError).length;
+    const failedFileCount = $derived(
+        selectedFirmwareFiles.filter((f) => f.hasDownloadError).length
+    );
 
     // Any enabled file with download or validation error blocks flashing
-    $: hasBlockingError = selectedFirmwareFiles.some(
-        (f) => f.isEnabled !== false && (f.hasDownloadError || f.hasValidationError)
+    const hasBlockingError = $derived(
+        selectedFirmwareFiles.some(
+            (f) => f.isEnabled !== false && (f.hasDownloadError || f.hasValidationError)
+        )
     );
 
     // Number of enabled, ready-to-flash files (no download/validation error)
-    $: enabledNonEmptyCount = selectedFirmwareFiles.filter(
-        (f) =>
-            f.isEnabled !== false && !f.hasDownloadError && !f.hasValidationError
-    ).length;
+    const enabledNonEmptyCount = $derived(
+        selectedFirmwareFiles.filter(
+            (f) => f.isEnabled !== false && !f.hasDownloadError && !f.hasValidationError
+        ).length
+    );
 
     // meshcore room_server / repeater builds need device config after a successful
     // flash — suggest (and highlight) the MeshcoreConfigModal entry point then.
-    $: suggestDeviceConfig =
+    const suggestDeviceConfig = $derived(
         flashProgress === 100 &&
-        flashStatus.includes('successfully') &&
-        getRepositoryType($availableSources, $selectionState.repository) ===
-            RepositoryType.MESHCORE &&
-        selectedFirmwareFiles.some((f) => /room_server|repeater/i.test(f.filename));
+            flashStatus.includes('successfully') &&
+            getRepositoryType($availableSources, $selectionState.repository) ===
+                RepositoryType.MESHCORE &&
+            selectedFirmwareFiles.some((f) => /room_server|repeater/i.test(f.filename))
+    );
 
     // Visual morph flag. The flash_another_file button is rendered only once
     // flashing succeeds, so tying the shrunk style directly to suggestDeviceConfig
@@ -1667,8 +1678,8 @@
     // state and no animation would play. configSuggested lags suggestDeviceConfig
     // by one frame: the button mounts full-size, then this flips true and BOTH
     // buttons morph in parallel (one shrinks, the other grows).
-    let configSuggested = false;
-    $: {
+    let configSuggested = $state(false);
+    $effect(() => {
         if (suggestDeviceConfig && !configSuggested) {
             requestAnimationFrame(() => {
                 if (suggestDeviceConfig) configSuggested = true;
@@ -1676,7 +1687,7 @@
         } else if (!suggestDeviceConfig && configSuggested) {
             configSuggested = false;
         }
-    }
+    });
 
     // Reactive: Validate files for conflicts and chip compatibility.
     // IMPORTANT: this block writes ONLY to hasValidationError / validationErrorMessage.
@@ -1684,7 +1695,9 @@
     // those are owned by the download source (handleFileSelect / startFileDownload / retrySingleFile).
     // Previously, this block reused a single `hasError`/`errorMessage` pair and erased
     // the download-error state on every successful validation pass.
-    $: if (selectedFirmwareFiles.length > 0) {
+    $effect(() => {
+        if (selectedFirmwareFiles.length === 0) return;
+
         // Only validate enabled files
         const enabledFiles = selectedFirmwareFiles.filter((f) => f.isEnabled !== false);
         const validation = validateFirmwareSelection(
@@ -1719,15 +1732,18 @@
                     $locales('customfirmware.log_validation_chip_mismatch', {
                         values: {
                             message:
-                                validation.errorMessage ||
-                                getErrorMessage(validation.errorCode)
+                                validation.errorMessage || getErrorMessage(validation.errorCode)
                         }
                     })
                 );
             }
         }
 
-        selectedFirmwareFiles = selectedFirmwareFiles.map((file) => {
+        // Write the per-file flags back. Assign only when a flag actually changed so
+        // this effect settles instead of re-triggering itself with an equal array
+        // (cyclic effects are not allowed in runes mode).
+        let flagsChanged = false;
+        const nextFiles = selectedFirmwareFiles.map((file) => {
             let hasValidationError = false;
             let validationErrorMessage = '';
 
@@ -1754,22 +1770,28 @@
                 }
             }
 
-            return {
-                ...file,
-                hasValidationError,
-                validationErrorMessage
-            };
+            if (
+                file.hasValidationError !== hasValidationError ||
+                file.validationErrorMessage !== validationErrorMessage
+            ) {
+                flagsChanged = true;
+                return { ...file, hasValidationError, validationErrorMessage };
+            }
+            return file;
         });
+        if (flagsChanged) {
+            selectedFirmwareFiles = nextFiles;
+        }
 
         // Update flash addresses when file enable/disable changes
         updateFlashAddresses();
-    }
+    });
 </script>
 
 {#if isOpen}
     <div
         class="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
-        on:keydown={(e) => e.key === 'Escape' && !isFlashing && handleClose()}
+        onkeydown={(e) => e.key === 'Escape' && !isFlashing && handleClose()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
@@ -1793,7 +1815,7 @@
                         <input
                             type="checkbox"
                             checked={fileItem.isEnabled !== false}
-                            on:change={() => toggleFileEnabled(index)}
+                            onchange={() => toggleFileEnabled(index)}
                             disabled={isFlashing || isAutoSelectMode}
                             class="h-4 w-4 rounded border-gray-300 text-orange-600 accent-blue-600 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
                             title="Enable/disable this file for flashing"
@@ -1826,14 +1848,15 @@
                                 <div
                                     class="cursor-help text-red-400"
                                     title={fileItem.hasDownloadError
-                                        ? fileItem.downloadErrorCode || fileItem.downloadErrorMessage
+                                        ? fileItem.downloadErrorCode ||
+                                          fileItem.downloadErrorMessage
                                         : fileItem.validationErrorMessage}
                                 >
                                     ⚠️
                                 </div>
                                 {#if fileItem.hasDownloadError && fileItem.isRetryable}
                                     <button
-                                        on:click={() => retrySingleFile(index)}
+                                        onclick={() => retrySingleFile(index)}
                                         disabled={isDownloadingFiles || isFlashing}
                                         class="text-red-400 transition-colors hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
                                         title={$locales('customfirmware.retry_download')}
@@ -1844,7 +1867,9 @@
                             {/if}
                         </div>
                         <div
-                            class="text-xs {fileItem.hasDownloadError ? 'text-red-400' : 'text-gray-500'}"
+                            class="text-xs {fileItem.hasDownloadError
+                                ? 'text-red-400'
+                                : 'text-gray-500'}"
                         >
                             {#if fileItem.isDownloading}
                                 {$locales('customfirmware.downloading')}
@@ -1876,13 +1901,13 @@
                                     : ''}{espManager.isValidFlashAddress(fileItem.address)
                                     ? 'border-gray-600'
                                     : 'border-red-500'} bg-gray-700 px-2 py-1 text-xs text-gray-200 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                                on:input={(e) => {
+                                oninput={(e) => {
                                     if (!isAutoSelectMode && fileItem.isEnabled !== false) {
                                         const input = e.target as HTMLInputElement;
                                         fileItem.address = input.value;
                                     }
                                 }}
-                                on:change={(e) => {
+                                onchange={(e) => {
                                     if (!isAutoSelectMode && fileItem.isEnabled !== false) {
                                         const input = e.target as HTMLInputElement;
                                         const sanitized = espManager.sanitizeAddress(input.value);
@@ -1899,7 +1924,7 @@
                             />
                             {#if fileItem.userEdited && !isAutoSelectMode && fileItem.isEnabled !== false}
                                 <button
-                                    on:click={() => {
+                                    onclick={() => {
                                         fileItem.userEdited = false;
                                         updateFlashAddresses();
                                     }}
@@ -1922,8 +1947,8 @@
                         : $locales('customfirmware.flash_custom_firmware')}
                 </h2>
                 <button
-                    on:click={async () => await handleClose()}
-                    on:keydown={(e) => e.key === 'Escape' && handleClose()}
+                    onclick={async () => await handleClose()}
+                    onkeydown={(e) => e.key === 'Escape' && handleClose()}
                     disabled={isFlashing}
                     class="text-gray-400 transition-colors hover:text-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
                     aria-label="Close modal"
@@ -1962,7 +1987,7 @@
                         <div class="h-[100px]">
                             {#if !isPortSelected}
                                 <button
-                                    on:click={selectPort}
+                                    onclick={selectPort}
                                     disabled={isConnecting || isFlashing}
                                     class="h-full w-full rounded-lg border-2 border-dashed border-gray-600 p-4 text-center transition-colors hover:border-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
@@ -2019,7 +2044,7 @@
                                                             {/if}
                                                         </div>
                                                         <button
-                                                            on:click={openBackupConfirm}
+                                                            onclick={openBackupConfirm}
                                                             disabled={isFlashing || isBackingUp}
                                                             class="text-lg transition-transform hover:scale-110 disabled:cursor-not-allowed disabled:opacity-50"
                                                             title="Сохранить дамп памяти устройства"
@@ -2036,7 +2061,7 @@
                                         {/if}
                                     </div>
                                     <button
-                                        on:click={async () => await resetPort()}
+                                        onclick={async () => await resetPort()}
                                         disabled={isFlashing}
                                         class="absolute top-2 right-2 text-xs text-gray-400 transition-colors hover:text-red-400 disabled:cursor-not-allowed"
                                     >
@@ -2058,11 +2083,11 @@
                                 <select
                                     id="baudrate-select"
                                     bind:value={selectedBaudrate}
-                                    on:change={saveBaudrate}
+                                    onchange={saveBaudrate}
                                     disabled={isFlashing}
                                     class="w-full rounded-md border border-gray-600 bg-gray-800 px-3 py-2 text-sm text-gray-200 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                                 >
-                                    {#each baudrateOptions as option}
+                                    {#each baudrateOptions as option (option.value)}
                                         <option value={option.value}>{option.label}</option>
                                     {/each}
                                 </select>
@@ -2090,13 +2115,21 @@
                                     : 'hover:border-orange-500'} {selectedFirmwareFiles.length > 0
                                     ? 'border border-gray-600 bg-gray-800'
                                     : 'border-2 border-dashed border-gray-600'}"
-                                on:dragover={isAutoSelectMode ? undefined : handleDragOver}
-                                on:drop={isAutoSelectMode ? undefined : handleDrop}
-                                on:click={isAutoSelectMode ? undefined : () => fileInput?.click()}
-                                on:keydown={(e) =>
-                                    isAutoSelectMode || (e.key !== 'Enter' && e.key !== ' ')
-                                        ? null
-                                        : fileInput?.click()}
+                                ondragover={(e) => {
+                                    if (!isAutoSelectMode) handleDragOver(e);
+                                }}
+                                ondrop={(e) => {
+                                    if (!isAutoSelectMode) handleDrop(e);
+                                }}
+                                onclick={() => {
+                                    if (!isAutoSelectMode) fileInput?.click();
+                                }}
+                                onkeydown={(e) => {
+                                    if (isAutoSelectMode || (e.key !== 'Enter' && e.key !== ' ')) {
+                                        return;
+                                    }
+                                    fileInput?.click();
+                                }}
                             >
                                 <!-- No files selected -->
                                 <div class="space-y-2">
@@ -2117,7 +2150,7 @@
                                 multiple
                                 disabled={isAutoSelectMode}
                                 accept=".bin,.mt.json,.json,application/json,.zip,application/zip"
-                                on:change={handleFileInputChange}
+                                onchange={handleFileInputChange}
                                 class={isAutoSelectMode ? 'hidden' : 'hidden'}
                             />
                         </div>
@@ -2126,7 +2159,7 @@
                         {#if isAutoSelectMode && (metadataFile || selectedFirmwareFiles.length > 0)}
                             <div class="pt-3">
                                 <button
-                                    on:click={() => (showFileDetails = !showFileDetails)}
+                                    onclick={() => (showFileDetails = !showFileDetails)}
                                     class="flex items-center space-x-2 text-sm font-medium text-orange-300 transition-colors hover:text-orange-200"
                                 >
                                     <span class="flex items-center space-x-2">
@@ -2204,7 +2237,7 @@
                                                         {/if}
                                                     </div>
                                                     <button
-                                                        on:click={removeMetadataFile}
+                                                        onclick={removeMetadataFile}
                                                         disabled={isFlashing || isAutoSelectMode}
                                                         class="text-red-400 transition-colors hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
                                                         title="Remove metadata file"
@@ -2227,7 +2260,7 @@
                                                     >
                                                 </div>
                                                 <div class="max-h-60 space-y-2 overflow-y-auto">
-                                                    {#each selectedFirmwareFiles as fileItem, index}
+                                                    {#each selectedFirmwareFiles as fileItem, index (index)}
                                                         {@render fileCard(fileItem, index)}
                                                     {/each}
                                                 </div>
@@ -2287,7 +2320,7 @@
                                             {/if}
                                         </div>
                                         <button
-                                            on:click={removeMetadataFile}
+                                            onclick={removeMetadataFile}
                                             disabled={isFlashing || isAutoSelectMode}
                                             class="text-red-400 transition-colors hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
                                             title="Remove metadata file"
@@ -2310,7 +2343,7 @@
                                         >
                                     </div>
                                     <div class="space-y-2">
-                                        {#each selectedFirmwareFiles as fileItem, index}
+                                        {#each selectedFirmwareFiles as fileItem, index (index)}
                                             {@render fileCard(fileItem, index)}
                                         {/each}
                                     </div>
@@ -2396,184 +2429,187 @@
                     <MemoryMap
                         totalSize={totalMemorySize}
                         segments={memorySegments}
-                        segmentFill={segmentFill}
+                        {segmentFill}
                     />
                 {/if}
 
-            <!-- Action buttons (moved under memory map) -->
-            <div class="flex justify-end space-x-3 border-t border-gray-700 pt-4">
-                <button
-                    on:click={async () => {
-                        if (isBackingUp) {
-                            cancelBackup();
-                        } else {
-                            await handleClose();
-                        }
-                    }}
-                    class="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={isFlashing && !isBackingUp}
-                    class:bg-red-500={isBackingUp}
-                    class:hover:bg-red-600={isBackingUp}
-                    class:text-white={isBackingUp}
-                >
-                    {#if isBackingUp}
-                        {$locales('backupconfirm.cancel')}
-                    {:else}
-                        {$locales('common.cancel')}
-                    {/if}
-                </button>
+                <!-- Action buttons (moved under memory map) -->
+                <div class="flex justify-end space-x-3 border-t border-gray-700 pt-4">
+                    <button
+                        onclick={async () => {
+                            if (isBackingUp) {
+                                cancelBackup();
+                            } else {
+                                await handleClose();
+                            }
+                        }}
+                        class="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={isFlashing && !isBackingUp}
+                        class:bg-red-500={isBackingUp}
+                        class:hover:bg-red-600={isBackingUp}
+                        class:text-white={isBackingUp}
+                    >
+                        {#if isBackingUp}
+                            {$locales('backupconfirm.cancel')}
+                        {:else}
+                            {$locales('common.cancel')}
+                        {/if}
+                    </button>
 
-                {#if flashProgress === 100 && flashStatus.includes('successfully')}
-                    <!-- Show appropriate button after successful flash.
+                    {#if flashProgress === 100 && flashStatus.includes('successfully')}
+                        <!-- Show appropriate button after successful flash.
                          When a meshcore room_server/repeater build was flashed,
                          this button shrinks (transition-all) to a short label so
                          the highlighted "Configure" CTA takes focus instead. -->
-                    <button
-                        on:click={resetForAnotherFlash}
-                        class="rounded-md bg-blue-600 text-sm font-medium text-white transition-all duration-[3000ms] ease-in-out hover:bg-blue-700 {configSuggested
-                            ? 'px-2.5 py-1.5 text-xs opacity-80'
-                            : 'px-4 py-2'}"
-                    >
-                        {#if configSuggested}
-                            {$locales('customfirmware.flash_another_short')}
-                        {:else if isAutoSelectMode}
-                            {$locales('customfirmware.select_different_device')}
-                        {:else}
-                            {$locales('customfirmware.flash_another_file')}
-                        {/if}
-                    </button>
-                {:else}
-                    <button
-                        on:click={flashFirmware}
-                        disabled={!isPortSelected ||
-                            isFlashing ||
-                            !validationResult.isValid ||
-                            hasBlockingError ||
-                            (!eraseBeforeFlash && enabledNonEmptyCount === 0)}
-                        class="min-w-[7.5rem] tabular-nums rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
-                        role={isFlashing ? 'progressbar' : undefined}
-                        aria-valuenow={isFlashing ? flashProgress : undefined}
-                        aria-valuemin={isFlashing ? 0 : undefined}
-                        aria-valuemax={isFlashing ? 100 : undefined}
-                        aria-label={isFlashing
-                            ? $locales('customfirmware.flash_progress_aria', {
-                                  values: { percent: flashProgress }
-                              })
-                            : undefined}
-                    >
-                        {#if isFlashing}
-                            {$locales('customfirmware.flashing_with_percent', {
-                                values: { percent: flashProgress }
-                            })}
-                        {:else if eraseBeforeFlash && selectedFirmwareFiles.filter((f) => f.isEnabled !== false).length === 0}
-                            {$locales('customfirmware.erase_flash')}
-                        {:else}
-                            {$locales('customfirmware.flash_firmware')} ({$locales(
-                                'customfirmware.flash_firmware_with_count',
-                                {
-                                    values: {
-                                        count: selectedFirmwareFiles.filter(
-                                            (f) => f.isEnabled !== false
-                                        ).length
+                        <button
+                            onclick={resetForAnotherFlash}
+                            class="rounded-md bg-blue-600 text-sm font-medium text-white transition-all duration-[3000ms] ease-in-out hover:bg-blue-700 {configSuggested
+                                ? 'px-2.5 py-1.5 text-xs opacity-80'
+                                : 'px-4 py-2'}"
+                        >
+                            {#if configSuggested}
+                                {$locales('customfirmware.flash_another_short')}
+                            {:else if isAutoSelectMode}
+                                {$locales('customfirmware.select_different_device')}
+                            {:else}
+                                {$locales('customfirmware.flash_another_file')}
+                            {/if}
+                        </button>
+                    {:else}
+                        <button
+                            onclick={flashFirmware}
+                            disabled={!isPortSelected ||
+                                isFlashing ||
+                                !validationResult.isValid ||
+                                hasBlockingError ||
+                                (!eraseBeforeFlash && enabledNonEmptyCount === 0)}
+                            class="min-w-[7.5rem] rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white tabular-nums transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            role={isFlashing ? 'progressbar' : undefined}
+                            aria-valuenow={isFlashing ? flashProgress : undefined}
+                            aria-valuemin={isFlashing ? 0 : undefined}
+                            aria-valuemax={isFlashing ? 100 : undefined}
+                            aria-label={isFlashing
+                                ? $locales('customfirmware.flash_progress_aria', {
+                                      values: { percent: flashProgress }
+                                  })
+                                : undefined}
+                        >
+                            {#if isFlashing}
+                                {$locales('customfirmware.flashing_with_percent', {
+                                    values: { percent: flashProgress }
+                                })}
+                            {:else if eraseBeforeFlash && selectedFirmwareFiles.filter((f) => f.isEnabled !== false).length === 0}
+                                {$locales('customfirmware.erase_flash')}
+                            {:else}
+                                {$locales('customfirmware.flash_firmware')} ({$locales(
+                                    'customfirmware.flash_firmware_with_count',
+                                    {
+                                        values: {
+                                            count: selectedFirmwareFiles.filter(
+                                                (f) => f.isEnabled !== false
+                                            ).length
+                                        }
                                     }
-                                }
-                            )})
-                        {/if}
-                    </button>
-                {/if}
+                                )})
+                            {/if}
+                        </button>
+                    {/if}
 
-                <!-- Terminal button -->
-                <button
-                    on:click={async () => {
-                        // Close the current connection properly
-                        await espManager.resetPort();
-
-                        // Reset flags to reflect that we're no longer connected in this component
-                        isPortSelected = false;
-                        deviceInfo = null;
-
-                        // Open terminal modal (it will request its own port)
-                        showTerminalModal = true;
-                    }}
-                    class="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
-                    title={$locales('customfirmware.terminal')}
-                >
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
-                    </svg>
-                </button>
-
-                <!-- Meshtastic device config button -->
-                {#if !isAutoSelectMode || getRepositoryType($availableSources, $selectionState.repository) === RepositoryType.MESHTASTIC}
+                    <!-- Terminal button -->
                     <button
-                        on:click={openMeshtasticModal}
-                        class="flex items-center justify-center rounded-md bg-gray-700 px-3 py-2 text-orange-300 transition-colors hover:bg-gray-600"
-                        title={$locales('customfirmware.meshtastic_config')}
-                    >
-                        🗺️
-                    </button>
-                {/if}
+                        onclick={async () => {
+                            // Close the current connection properly
+                            await espManager.resetPort();
 
-                {#if !isAutoSelectMode || getRepositoryType($availableSources, $selectionState.repository) === RepositoryType.MESHCORE}
-                    <!-- Merged "Configure" button: one visual button, two actual
+                            // Reset flags to reflect that we're no longer connected in this component
+                            isPortSelected = false;
+                            deviceInfo = null;
+
+                            // Open terminal modal (it will request its own port)
+                            showTerminalModal = true;
+                        }}
+                        class="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
+                        title={$locales('customfirmware.terminal')}
+                    >
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                            />
+                        </svg>
+                    </button>
+
+                    <!-- Meshtastic device config button -->
+                    {#if !isAutoSelectMode || getRepositoryType($availableSources, $selectionState.repository) === RepositoryType.MESHTASTIC}
+                        <button
+                            onclick={openMeshtasticModal}
+                            class="flex items-center justify-center rounded-md bg-gray-700 px-3 py-2 text-orange-300 transition-colors hover:bg-gray-600"
+                            title={$locales('customfirmware.meshtastic_config')}
+                        >
+                            🗺️
+                        </button>
+                    {/if}
+
+                    {#if !isAutoSelectMode || getRepositoryType($availableSources, $selectionState.repository) === RepositoryType.MESHCORE}
+                        <!-- Merged "Configure" button: one visual button, two actual
                          buttons. No entrance animation — on a successful flash the
                          CTA snaps to its final orange state; only the 📍 shortcut
                          blinks (animate-blink-attention, twice) for attention.
                          Left (🗼) opens the configurator; right (📍, post-flash only)
                          opens it with the coordinate map picker auto-opened. -->
-                    <div
-                        class="flex items-stretch overflow-hidden rounded-md font-medium {configSuggested
-                            ? 'bg-orange-600 text-sm text-white shadow-orange ring-2 ring-orange-300'
-                            : 'bg-gray-700 text-orange-300'}"
-                    >
-                        <button
-                            on:click={openMeshcoreConfigModal}
-                            class="flex items-center justify-center gap-1.5 py-2 transition-colors {configSuggested
-                                ? 'px-4 hover:bg-orange-700/60'
-                                : 'px-3 hover:bg-gray-600'}"
-                            title={$locales('downloadbuttons.meshcore_config_description')}
-                            aria-label={$locales('downloadbuttons.meshcore_config_description')}
+                        <div
+                            class="flex items-stretch overflow-hidden rounded-md font-medium {configSuggested
+                                ? 'shadow-orange bg-orange-600 text-sm text-white ring-2 ring-orange-300'
+                                : 'bg-gray-700 text-orange-300'}"
                         >
-                            {#if configSuggested}
-                                <span>{$locales('customfirmware.configure')}</span>
-                            {/if}
-                            🗼
-                        </button>
-                        {#if configSuggested}
                             <button
-                                on:click={() => {
-                                    meshcoreAutoOpenPicker = true;
-                                    openMeshcoreConfigModal();
-                                }}
-                                class="flex animate-blink-attention items-center justify-center border-l border-orange-300/50 px-3 py-2 transition-colors hover:bg-orange-700/60"
-                                title={$locales('meshcoreconfig.pick_on_map')}
-                                aria-label={$locales('meshcoreconfig.pick_on_map')}
+                                onclick={openMeshcoreConfigModal}
+                                class="flex items-center justify-center gap-1.5 py-2 transition-colors {configSuggested
+                                    ? 'px-4 hover:bg-orange-700/60'
+                                    : 'px-3 hover:bg-gray-600'}"
+                                title={$locales('downloadbuttons.meshcore_config_description')}
+                                aria-label={$locales('downloadbuttons.meshcore_config_description')}
                             >
-                                📍
+                                {#if configSuggested}
+                                    <span>{$locales('customfirmware.configure')}</span>
+                                {/if}
+                                🗼
                             </button>
-                        {/if}
-                    </div>
-                {/if}
+                            {#if configSuggested}
+                                <button
+                                    onclick={() => {
+                                        meshcoreAutoOpenPicker = true;
+                                        openMeshcoreConfigModal();
+                                    }}
+                                    class="animate-blink-attention flex items-center justify-center border-l border-orange-300/50 px-3 py-2 transition-colors hover:bg-orange-700/60"
+                                    title={$locales('meshcoreconfig.pick_on_map')}
+                                    aria-label={$locales('meshcoreconfig.pick_on_map')}
+                                >
+                                    📍
+                                </button>
+                            {/if}
+                        </div>
+                    {/if}
 
-                <!-- Meshcore configurator button -->
-                {#if !isAutoSelectMode || getRepositoryType($availableSources, $selectionState.repository) === RepositoryType.MESHCORE}
-                    <button
-                        on:click={() =>
-                            window.open(MESHCORE_CONFIGURATOR_URL, '_blank', 'noopener,noreferrer')}
-                        class="flex items-center justify-center rounded-md bg-gray-700 px-3 py-2 text-lg transition-colors hover:bg-gray-600"
-                        title={$locales('customfirmware.meshcore_configurator')}
-                        aria-label={$locales('customfirmware.meshcore_configurator')}
-                    >
-                        📤
-                    </button>
-                {/if}
-            </div>
-
+                    <!-- Meshcore configurator button -->
+                    {#if !isAutoSelectMode || getRepositoryType($availableSources, $selectionState.repository) === RepositoryType.MESHCORE}
+                        <button
+                            onclick={() =>
+                                window.open(
+                                    MESHCORE_CONFIGURATOR_URL,
+                                    '_blank',
+                                    'noopener,noreferrer'
+                                )}
+                            class="flex items-center justify-center rounded-md bg-gray-700 px-3 py-2 text-lg transition-colors hover:bg-gray-600"
+                            title={$locales('customfirmware.meshcore_configurator')}
+                            aria-label={$locales('customfirmware.meshcore_configurator')}
+                        >
+                            📤
+                        </button>
+                    {/if}
+                </div>
 
                 <!-- Flash Operation Log (always visible; placed below memory map) -->
                 <FlashLog entries={$logger} onCopy={() => copyLogToClipboard()} />
@@ -2581,7 +2617,7 @@
                 <!-- Instructions Spoiler -->
                 <div class="space-y-2">
                     <button
-                        on:click={() => (showInstructions = !showInstructions)}
+                        onclick={() => (showInstructions = !showInstructions)}
                         class="flex items-center space-x-2 text-sm font-medium text-orange-300 transition-colors hover:text-orange-200"
                     >
                         <span>{$locales('customfirmware.instructions_title')}</span>
@@ -2659,15 +2695,15 @@
     <TerminalModal
         isOpen={showTerminalModal}
         onClose={() => (showTerminalModal = false)}
-        initialMode={getRepositoryType($availableSources, $selectionState.repository) === RepositoryType.MESHCORE
+        initialMode={getRepositoryType($availableSources, $selectionState.repository) ===
+        RepositoryType.MESHCORE
             ? 'meshcore'
             : 'normal'}
     />
 
     <!-- Meshtastic Device Modal -->
     {#if showMeshtasticModal && MeshtasticDeviceModal}
-        <svelte:component
-            this={MeshtasticDeviceModal}
+        <MeshtasticDeviceModal
             isOpen={showMeshtasticModal}
             onClose={() => (showMeshtasticModal = false)}
         />
@@ -2675,8 +2711,7 @@
 
     <!-- Meshcore Config Modal -->
     {#if showMeshcoreConfigModal && MeshcoreConfigModal}
-        <svelte:component
-            this={MeshcoreConfigModal}
+        <MeshcoreConfigModal
             isOpen={showMeshcoreConfigModal}
             autoOpenPicker={meshcoreAutoOpenPicker}
             onClose={() => {

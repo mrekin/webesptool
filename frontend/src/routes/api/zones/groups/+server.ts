@@ -22,7 +22,10 @@ export const GET: RequestHandler = async () => {
                 .sort();
             for (const f of files) {
                 try {
-                    groups.push({ filename: f, json: JSON.parse(readFileSync(path.join(dir, f), 'utf8')) });
+                    groups.push({
+                        filename: f,
+                        json: JSON.parse(readFileSync(path.join(dir, f), 'utf8'))
+                    });
                 } catch (err) {
                     console.warn('[meshcore-zone]', 'group file read failed', f, err);
                 }

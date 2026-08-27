@@ -86,7 +86,7 @@ export function readMeshcore(
     };
     return {
         regions,
-        radio: mc ? parseRadio(mc.radio) ?? undefined : undefined,
+        radio: mc ? (parseRadio(mc.radio) ?? undefined) : undefined,
         pathHashMode: mc ? optStr(mc.pathHashMode) : undefined,
         nameTemplate: mc ? optStr(mc.nameTemplate) : undefined,
         docUrl: mc ? optStr(mc.docUrl) : undefined,
@@ -120,7 +120,10 @@ export function parseZoneFeatures(rawFeatures: unknown, fallbackRegions = ''): Z
     rawFeatures.forEach((rawFeature, index) => {
         try {
             if (!rawFeature || typeof rawFeature !== 'object') return;
-            const f = rawFeature as { geometry?: unknown; properties?: Record<string, unknown> | null };
+            const f = rawFeature as {
+                geometry?: unknown;
+                properties?: Record<string, unknown> | null;
+            };
             const geometry = asGeometry(f.geometry);
             if (!geometry || !validateGeometry(geometry).valid) return;
             const props = f.properties ?? {};

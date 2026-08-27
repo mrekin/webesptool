@@ -2,13 +2,25 @@
     import { _ as locales } from 'svelte-i18n';
     import type { StatsDataItem } from '$lib/types';
 
-    export let title: string = '';
-    export let items: StatsDataItem[] | null = null;
-    export let isLoading: boolean = false;
-    export let error: string | null = null;
-    export let nameMapper: ((key: string) => string) | undefined = undefined;
+    interface Props {
+        title?: string;
+        items?: StatsDataItem[] | null;
+        isLoading?: boolean;
+        error?: string | null;
+        nameMapper?: (key: string) => string;
+    }
 
-    $: maxCount = items && items.length > 0 ? Math.max(...items.map((i) => i.count)) : 0;
+    let {
+        title = '',
+        items = null,
+        isLoading = false,
+        error = null,
+        nameMapper = undefined
+    }: Props = $props();
+
+    const maxCount = $derived(
+        items && items.length > 0 ? Math.max(...items.map((i) => i.count)) : 0
+    );
 
     function getDisplayName(key: string): string {
         if (nameMapper) {
@@ -23,7 +35,7 @@
 
     {#if isLoading}
         <div class="space-y-2">
-            {#each { length: 5 } as _}
+            {#each { length: 5 } as _, i (i)}
                 <div class="flex items-center gap-3">
                     <div class="h-4 w-24 animate-pulse rounded bg-gray-700"></div>
                     <div class="h-4 flex-1 animate-pulse rounded bg-gray-700"></div>
@@ -37,7 +49,7 @@
         <p class="py-2 text-xs text-gray-500">{$locales('stats.no_data')}</p>
     {:else}
         <div class="space-y-1.5">
-            {#each items as item}
+            {#each items as item (item.key)}
                 {@const width = maxCount > 0 ? (item.count / maxCount) * 100 : 0}
                 {@const displayName = getDisplayName(item.key)}
                 <div class="flex items-center gap-3">
@@ -50,7 +62,7 @@
                             style="width: {width}%; min-height: 16px;"
                         ></div>
                     </div>
-                    <span class="min-w-[50px] text-right text-xs tabular-nums text-gray-400">
+                    <span class="min-w-[50px] text-right text-xs text-gray-400 tabular-nums">
                         {item.count}
                     </span>
                 </div>

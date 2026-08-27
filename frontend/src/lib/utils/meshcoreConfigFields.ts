@@ -32,9 +32,7 @@ function deriveControl(params: MeshcoreCommandParam[]): MeshcoreConfigControl {
     if (p.type === 'enum' && p.options) {
         // on/off enums render as a toggle; other enums as a select.
         const isOnOff =
-            p.options.length === 2 &&
-            p.options.includes('on') &&
-            p.options.includes('off');
+            p.options.length === 2 && p.options.includes('on') && p.options.includes('off');
         return isOnOff ? 'toggle' : 'select';
     }
     if (p.type === 'number') return 'number';
@@ -82,7 +80,7 @@ export function buildConfigFields(): {
             label: cmd.shortDescription,
             groupId,
             needsReboot,
-            minVersion,
+            minVersion
         });
     }
 

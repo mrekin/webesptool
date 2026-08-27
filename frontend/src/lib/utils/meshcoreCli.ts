@@ -144,11 +144,31 @@ export function createMeshcoreCliManager(options?: MeshcoreCliManagerOptions) {
             pending = null;
             rej(new Error('Disconnected'));
         }
-        try { if (reader) await reader.cancel(); } catch { /* ignore */ }
-        try { if (writer) await writer.close(); } catch { /* ignore */ }
-        try { reader?.releaseLock(); } catch { /* ignore */ }
-        try { writer?.releaseLock(); } catch { /* ignore */ }
-        try { if (serialPort) await serialPort.close(); } catch { /* ignore */ }
+        try {
+            if (reader) await reader.cancel();
+        } catch {
+            /* ignore */
+        }
+        try {
+            if (writer) await writer.close();
+        } catch {
+            /* ignore */
+        }
+        try {
+            reader?.releaseLock();
+        } catch {
+            /* ignore */
+        }
+        try {
+            writer?.releaseLock();
+        } catch {
+            /* ignore */
+        }
+        try {
+            if (serialPort) await serialPort.close();
+        } catch {
+            /* ignore */
+        }
         reader = null;
         writer = null;
         serialPort = null;

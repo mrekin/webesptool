@@ -113,7 +113,10 @@
     // line. The modal has no notice mechanism, so a clipboard failure is a
     // silent no-op (same as the shared terminalClipboard helpers).
     function copyAllCommands(): void {
-        const text = commandsVal.map((c) => c.trim()).filter((c) => c !== '').join('\n');
+        const text = commandsVal
+            .map((c) => c.trim())
+            .filter((c) => c !== '')
+            .join('\n');
         if (text === '') return;
         navigator.clipboard.writeText(text).catch(() => {
             /* clipboard unavailable — ignore */
@@ -166,7 +169,8 @@
         <div class="mb-3">
             <label
                 for="mc-zone-level"
-                class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                class="mb-1 block text-[11px] font-semibold tracking-wide text-gray-400 uppercase"
+            >
                 {$locales('meshcoreconfig.zones.zone_level')}
             </label>
             <select
@@ -176,7 +180,9 @@
                 class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
             >
                 {#each ZONE_LEVELS as lv (lv)}
-                    <option value={lv}>{lv} — {$locales(`meshcoreconfig.zones.zone_level_${lv}`)}</option>
+                    <option value={lv}
+                        >{lv} — {$locales(`meshcoreconfig.zones.zone_level_${lv}`)}</option
+                    >
                 {/each}
             </select>
         </div>
@@ -185,7 +191,8 @@
         <div class="mb-3">
             <label
                 for="mc-zone-regions"
-                class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                class="mb-1 block text-[11px] font-semibold tracking-wide text-gray-400 uppercase"
+            >
                 {$locales('meshcoreconfig.zones.regions_label')}
             </label>
             <input
@@ -206,7 +213,9 @@
 
         <!-- Radio preset: set radio {freq},{bw},{sf},{cr} -->
         <div class="mb-3 rounded-md border border-gray-700 bg-gray-900/50 p-2">
-            <span class="mb-2 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+            <span
+                class="mb-2 block text-[11px] font-semibold tracking-wide text-gray-400 uppercase"
+            >
                 {$locales('meshcoreconfig.zones.radio_label')}
             </span>
             <div class="grid grid-cols-2 gap-2">
@@ -269,7 +278,7 @@
         <!-- Path hash mode: set path.hash.mode {value} -->
         <div class="mb-1 rounded-md border border-gray-700 bg-gray-900/50 p-2">
             <div class="flex items-center justify-between gap-2 text-[11px] text-gray-300">
-                <span class="font-semibold uppercase tracking-wide text-gray-400">
+                <span class="font-semibold tracking-wide text-gray-400 uppercase">
                     {$locales('meshcoreconfig.zones.path_hash_mode')}
                 </span>
                 <select
@@ -290,7 +299,8 @@
         <div class="mb-3 rounded-md border border-gray-700 bg-gray-900/50 p-2">
             <label
                 for="mc-zone-name-template"
-                class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                class="mb-1 block text-[11px] font-semibold tracking-wide text-gray-400 uppercase"
+            >
                 {$locales('meshcoreconfig.zones.name_template')}
             </label>
             <input
@@ -310,12 +320,14 @@
                             <span
                                 class="rounded bg-orange-900/50 px-1 text-orange-200"
                                 title={$locales('meshcoreconfig.zones.name_template_preview_enum')}
-                            >{tok.options.join('|')}</span>
+                                >{tok.options.join('|')}</span
+                            >
                         {:else}
                             <span
                                 class="rounded bg-sky-900/50 px-1 text-sky-200"
                                 title={$locales('meshcoreconfig.zones.name_template_preview_free')}
-                            >{tok.name}</span>
+                                >{tok.name}</span
+                            >
                         {/if}
                     {/each}
                 </div>
@@ -329,7 +341,8 @@
         <div class="mb-1">
             <label
                 for="mc-zone-doc-url"
-                class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                class="mb-1 block text-[11px] font-semibold tracking-wide text-gray-400 uppercase"
+            >
                 {$locales('meshcoreconfig.zones.doc_url')}
             </label>
             <input
@@ -345,9 +358,9 @@
 
         <!-- Extra commands (task 79): numbered list of arbitrary one-line
              meshcore commands, no validation/autocomplete by design. -->
-        <div class="mb-1 mt-3 rounded-md border border-gray-700 bg-gray-900/50 p-2">
+        <div class="mt-3 mb-1 rounded-md border border-gray-700 bg-gray-900/50 p-2">
             <div class="mb-1 flex items-center justify-between gap-2">
-                <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                <span class="text-[11px] font-semibold tracking-wide text-gray-400 uppercase">
                     {$locales('meshcoreconfig.zones.commands_label')}
                 </span>
                 {#if hasCommandsToCopy}
@@ -365,11 +378,14 @@
             <div class="space-y-1">
                 {#each commandsVal as cmd, i (i)}
                     <div class="flex items-center gap-1">
-                        <span class="w-4 shrink-0 text-right text-[10px] text-gray-500">{i + 1}</span>
+                        <span class="w-4 shrink-0 text-right text-[10px] text-gray-500"
+                            >{i + 1}</span
+                        >
                         <input
                             type="text"
                             value={cmd}
-                            oninput={(e) => updateCommandRow(i, (e.currentTarget as HTMLInputElement).value)}
+                            oninput={(e) =>
+                                updateCommandRow(i, (e.currentTarget as HTMLInputElement).value)}
                             onpaste={(e) => onCommandPaste(i, e)}
                             use:fillHint
                             class="min-w-0 flex-1 rounded-md border border-gray-600 bg-gray-700 px-2 py-1 font-mono text-xs text-gray-100 outline-none focus:border-orange-500"
@@ -401,10 +417,11 @@
         <!-- Author: plain catalog metadata (who filled the group in), not a
              firmware setting — only the pending-file edit needs it here. -->
         {#if editAuthor}
-            <div class="mb-1 mt-3">
+            <div class="mt-3 mb-1">
                 <label
                     for="mc-zone-author"
-                    class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                    class="mb-1 block text-[11px] font-semibold tracking-wide text-gray-400 uppercase"
+                >
                     {$locales('meshcoreconfig.zones.group_author_prompt')}
                 </label>
                 <input

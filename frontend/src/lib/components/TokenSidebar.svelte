@@ -2,31 +2,33 @@
     import { _ as locales } from 'svelte-i18n';
     import type { ParsedToken, TokenCategory } from '$lib/types.js';
 
-    export let tokens = new Map<string, ParsedToken>();
-    export let onCopy = () => {};
-    export let updateKey: number = 0; // Trigger for reactivity
+    interface Props {
+        tokens?: Map<string, ParsedToken>;
+        onCopy?: () => void;
+    }
+
+    let { tokens = new Map<string, ParsedToken>(), onCopy = () => {} }: Props = $props();
 
     // Collapsed state for each category
-    let collapsedCategories: Record<TokenCategory, boolean> = {
+    let collapsedCategories = $state<Record<TokenCategory, boolean>>({
         firstEntrance: false,
         dynamic: false,
         avg: false,
         static: false
-    };
+    });
 
     // Toggle category collapsed state
     function toggleCategory(category: TokenCategory) {
         collapsedCategories[category] = !collapsedCategories[category];
     }
 
-    // Group tokens by category - initialize empty
-    let tokenGroups = new Map<TokenCategory, ParsedToken[]>();
-
-    // Update token groups when tokens or updateKey changes
-    $: ((tokenGroups = groupTokensByCategory()), updateKey);
+    // Group tokens by category - recomputed when the tokens map changes
+    const tokenGroups = $derived.by(() => groupTokensByCategory(tokens));
 
     // Group tokens by category
-    function groupTokensByCategory(): Map<TokenCategory, ParsedToken[]> {
+    function groupTokensByCategory(
+        tokens: Map<string, ParsedToken>
+    ): Map<TokenCategory, ParsedToken[]> {
         const groups = new Map<TokenCategory, ParsedToken[]>();
 
         for (const token of tokens.values()) {
@@ -80,7 +82,7 @@
     <div class="flex flex-shrink-0 items-center justify-between border-b border-gray-700 p-4">
         <h3 class="text-lg font-semibold text-white">{$locales('customfirmware.parsed_tokens')}</h3>
         <button
-            on:click={onCopy}
+            onclick={onCopy}
             class="rounded-md bg-gray-700 px-3 py-1 text-sm text-white transition-colors hover:bg-gray-600"
             title={$locales('customfirmware.tokens_copied')}
         >
@@ -100,11 +102,11 @@
         {#if tokenGroups.size === 0}
             <p class="text-center text-gray-400">{$locales('customfirmware.no_tokens')}</p>
         {:else}
-            {#each Array.from(tokenGroups.entries()) as [category, tokensInCategory]}
+            {#each Array.from(tokenGroups.entries()) as [category, tokensInCategory] (category)}
                 <div class="mb-4">
                     <!-- Category header (clickable) -->
                     <button
-                        on:click={() => toggleCategory(category)}
+                        onclick={() => toggleCategory(category)}
                         class="mb-2 flex w-full items-center justify-between text-sm font-semibold text-gray-300 transition-colors hover:text-white"
                     >
                         <span>{$locales(categoryNames[category])}</span>
@@ -128,7 +130,7 @@
                     <!-- Tokens in category (collapsed by default) -->
                     {#if !collapsedCategories[category]}
                         <div class="space-y-2">
-                            {#each tokensInCategory as token}
+                            {#each tokensInCategory as token (token.name)}
                                 <div class="flex justify-between rounded bg-gray-900 p-2">
                                     <span class="text-sm text-gray-400">{token.name}:</span>
                                     <span class="text-sm font-medium text-white"

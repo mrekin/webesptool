@@ -1,16 +1,21 @@
 <script lang="ts">
     import { _ as locales } from 'svelte-i18n';
+    import { onMount } from 'svelte';
     import { JSONEditor } from 'svelte-jsoneditor';
     import type { MeshtasticFullConfig } from '$lib/types.js';
     import { validateMeshtasticConfig } from '$lib/utils/meshtastic.js';
 
-    export let isOpen = false;
-    export let onClose = () => {};
-    export let config: MeshtasticFullConfig | null = null;
-    export let onSave: (config: MeshtasticFullConfig) => void = () => {};
+    interface Props {
+        isOpen?: boolean;
+        onClose?: () => void;
+        config?: MeshtasticFullConfig | null;
+        onSave?: (config: MeshtasticFullConfig) => void;
+    }
+
+    let { isOpen = false, onClose = () => {}, config = null, onSave = () => {} }: Props = $props();
 
     // Validation error
-    let validationError = '';
+    let validationError = $state('');
 
     // Validate current config
     function validateCurrentConfig(): boolean {
@@ -30,19 +35,37 @@
     }
 
     // Convert config to JSON content for editor
-    let originalConfigJson = '';
-    $: jsonContent = config
-        ? {
-              json: config
-          }
-        : null;
+    let jsonContent = $state<{ json: MeshtasticFullConfig } | null>(null);
 
     // Track if config was modified
-    $: if (config) {
-        originalConfigJson = JSON.stringify(config);
+    let originalConfigJson = $state('');
+
+    // Reference of the incoming config currently reflected in the editor.
+    // Plain (non-reactive) on purpose: comparing identities must not create dependencies.
+    let adoptedConfigRef: MeshtasticFullConfig | null = null;
+
+    // Adopt an externally provided config: replace editor content and modification baseline
+    function adoptExternalConfig(next: MeshtasticFullConfig | null): void {
+        adoptedConfigRef = next;
+        jsonContent = next ? { json: next } : null;
+        originalConfigJson = next ? JSON.stringify(next) : '';
     }
 
-    $: isModified = jsonContent && JSON.stringify(jsonContent.json) !== originalConfigJson;
+    // First adoption happens on mount (before first paint): reads inside a closure
+    // keep the compiler happy about initial-value captures;
+    // further parent-provided configs (parents reassign the object, never mutate deeply)
+    // are picked up by the effect below.
+    onMount(() => adoptExternalConfig(config));
+
+    $effect(() => {
+        if (config !== adoptedConfigRef) {
+            adoptExternalConfig(config);
+        }
+    });
+
+    const isModified = $derived(
+        jsonContent && JSON.stringify(jsonContent.json) !== originalConfigJson
+    );
 
     // Save changes
     function handleSave() {
@@ -63,8 +86,8 @@
 {#if isOpen && config}
     <div
         class="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
-        on:click={(e) => e.target === e.currentTarget && onClose()}
-        on:keydown={(e) => e.key === 'Escape' && onClose()}
+        onclick={(e) => e.target === e.currentTarget && onClose()}
+        onkeydown={(e) => e.key === 'Escape' && onClose()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="json-preview-title"
@@ -74,7 +97,7 @@
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
             class="max-h-[90vh] w-full max-w-6xl overflow-hidden rounded-xl border border-orange-600 bg-gray-800 shadow-2xl shadow-orange-900/50"
-            on:click|stopPropagation
+            onclick={(e) => e.stopPropagation()}
         >
             <!-- Header -->
             <div class="flex items-center justify-between border-b border-gray-700 p-6">
@@ -82,7 +105,7 @@
                     {$locales('jsonpreview.title')}
                 </h2>
                 <button
-                    on:click={onClose}
+                    onclick={onClose}
                     class="text-gray-400 transition-colors hover:text-gray-200"
                     aria-label="Close modal"
                 >
@@ -115,14 +138,14 @@
             <!-- Footer -->
             <div class="flex justify-end space-x-3 border-t border-gray-700 p-6">
                 <button
-                    on:click={handleSave}
+                    onclick={handleSave}
                     disabled={!isModified}
                     class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     {$locales('jsonpreview.apply_changes')}
                 </button>
                 <button
-                    on:click={onClose}
+                    onclick={onClose}
                     class="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-600"
                 >
                     {$locales('common.close')}

@@ -107,7 +107,7 @@
                     <span class="min-w-0 flex-1 truncate text-sm text-gray-200">
                         {capTitle(stripMarkdown(item.title_markdown))}
                     </span>
-                    <span class="shrink-0 whitespace-nowrap text-xs text-gray-400">
+                    <span class="shrink-0 text-xs whitespace-nowrap text-gray-400">
                         {formatDateToYMD(item.start_date)}
                     </span>
                 </button>

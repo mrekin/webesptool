@@ -1,6 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { guardModeration, checkUploadRateLimit, pendingNotFound } from '$lib/server/zonesModeration';
+import {
+    guardModeration,
+    checkUploadRateLimit,
+    pendingNotFound
+} from '$lib/server/zonesModeration';
 import { deletePendingFile, sanitizePendingFilename } from '$lib/server/zonesPendingStore';
 
 // POST /api/zones/pending/reject — delete a file from the pending catalog.
@@ -12,7 +16,10 @@ export const POST: RequestHandler = async (event) => {
     // Moderator mutations share the per-IP mutation rate limit.
     const rl = checkUploadRateLimit(event.getClientAddress());
     if (!rl.ok) {
-        return json({ error: { code: 'rate_limited', retry_after_s: rl.retryAfterS } }, { status: 429 });
+        return json(
+            { error: { code: 'rate_limited', retry_after_s: rl.retryAfterS } },
+            { status: 429 }
+        );
     }
 
     let body: unknown;

@@ -1,8 +1,12 @@
 <script lang="ts">
     import { _ as locales } from 'svelte-i18n';
 
-    export let isOpen = false;
-    export let onClose = () => {};
+    interface Props {
+        isOpen?: boolean;
+        onClose?: () => void;
+    }
+
+    let { isOpen = false, onClose = () => {} }: Props = $props();
 
     // Get current year
     const currentYear = new Date().getFullYear();
@@ -29,19 +33,19 @@
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
         class="animate-fade-in fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
-        on:click={handleClose}
-        on:keydown={(e) => e.key === 'Escape' && handleClose()}
+        onclick={handleClose}
+        onkeydown={(e) => e.key === 'Escape' && handleClose()}
         role="dialog"
         aria-modal="true"
         tabindex="-1"
     >
         <div
             class="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-green-600/50 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 p-8 shadow-2xl shadow-green-900/50"
-            on:click|stopPropagation
+            onclick={(e) => e.stopPropagation()}
         >
             <!-- Close button -->
             <button
-                on:click={handleClose}
+                onclick={handleClose}
                 class="absolute top-4 right-4 text-gray-400 transition-colors hover:text-gray-200"
                 aria-label="Close modal"
             >
@@ -63,7 +67,7 @@
 
             <!-- Fireworks overlay -->
             <div class="pointer-events-none absolute inset-0 overflow-hidden">
-                {#each fireworks as firework}
+                {#each fireworks as firework (firework.id)}
                     <div
                         class="firework animate-firework absolute"
                         style="left: {firework.left}%; top: {firework.top}%; animation-delay: {firework.delay}s; animation-duration: {firework.duration}s;"

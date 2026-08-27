@@ -1,20 +1,24 @@
 <script lang="ts">
     import { _ as locales } from 'svelte-i18n';
     import { locale } from 'svelte-i18n';
-    import { onMount, tick } from 'svelte';
+    import { onMount, tick, untrack } from 'svelte';
     import { apiService } from '$lib/api.js';
     import type { NewsItem } from '$lib/types.js';
     import { NEWS_PAGE_SIZE } from '$lib/types.js';
     import MarkdownRenderer from '$lib/components/MarkdownRenderer.svelte';
 
-    export let isOpen: boolean = false;
-    export let onClose: () => void = () => {};
-    export let focusItemId: number | null = null;
+    interface Props {
+        isOpen?: boolean;
+        onClose?: () => void;
+        focusItemId?: number | null;
+    }
 
-    let newsList: NewsItem[] = [];
-    let loading = false;
-    let offset = 0;
-    let hasMore = true;
+    let { isOpen = false, onClose = () => {}, focusItemId = null }: Props = $props();
+
+    let newsList = $state<NewsItem[]>([]);
+    let loading = $state(false);
+    let offset = $state(0);
+    let hasMore = $state(true);
 
     async function loadNews(loadMore = false) {
         if (loading) return;
@@ -27,7 +31,11 @@
                 return;
             }
 
-            const response = await apiService.getPaginatedNews(currentLocale, offset, NEWS_PAGE_SIZE);
+            const response = await apiService.getPaginatedNews(
+                currentLocale,
+                offset,
+                NEWS_PAGE_SIZE
+            );
             const newItems = response.news || [];
 
             if (newItems.length > 0) {
@@ -59,14 +67,18 @@
     }
 
     onMount(() => {
-        // Initial setup - news will load when modal opens via reactive statement below
+        // Initial setup - news will load when modal opens via the effect below
     });
 
-    $: if (isOpen && newsList.length === 0) {
-        // Reset offset when modal opens
-        offset = 0;
-        loadNews();
-    }
+    // Load news when the modal opens; untrack keeps the effect dependent only on
+    // isOpen/newsList, matching the dependencies of the old reactive statement
+    $effect(() => {
+        if (isOpen && newsList.length === 0) {
+            // Reset offset when modal opens
+            offset = 0;
+            untrack(() => loadNews());
+        }
+    });
 
     function isExpired(item: NewsItem): boolean {
         if (!item.end_date) return false;

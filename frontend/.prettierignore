@@ -7,3 +7,6 @@ bun.lockb
 
 # Miscellaneous
 /static/
+
+# Vendored/generated packages - do not format
+local-packages/

@@ -19,7 +19,13 @@
     import CommandInput from './CommandInput.svelte';
     import MultilineControls from './MultilineControls.svelte';
     import McCommandSetPicker from './McCommandSetPicker.svelte';
-    import { resetTerminalMode, setTerminalMode, terminalMode, toggleTerminalMode, uiState } from '$lib/stores.js';
+    import {
+        resetTerminalMode,
+        setTerminalMode,
+        terminalMode,
+        toggleTerminalMode,
+        uiState
+    } from '$lib/stores.js';
     import type { TerminalMode } from '$lib/types.js';
     import { TERMINAL_CONFIG } from '$lib/config/terminalConfig.js';
     import { ResponseDetector } from '$lib/utils/responseDetector.js';
@@ -65,9 +71,6 @@
     let tokenParser = $state<TokenParser | null>(null);
     let parsedTokens = $state(new Map<string, ParsedToken>());
     let showTokensSidebar = $state(false); // Hidden by default
-
-    // Unique key to force reactivity when tokens change
-    let tokensKey = $state(0);
 
     // Command input state
     let commandInput = $state('');
@@ -318,8 +321,6 @@
                         // Update reactive tokens variable - create new Map for reactivity
                         const newState = tokenParser.getState();
                         parsedTokens = new Map(newState.tokens);
-                        // Trigger reactivity by updating key
-                        tokensKey++;
                     }
 
                     terminal.write(decodedValue);
@@ -761,11 +762,7 @@
                 <!-- Token Sidebar (conditionally rendered) -->
                 {#if showTokensSidebar && experimentalFeatures}
                     <div class="flex w-80 flex-shrink-0 flex-col border-l border-gray-700">
-                        <TokenSidebar
-                            tokens={parsedTokens}
-                            onCopy={copyTokens}
-                            updateKey={tokensKey}
-                        />
+                        <TokenSidebar tokens={parsedTokens} onCopy={copyTokens} />
                     </div>
                 {/if}
             </div>
@@ -773,58 +770,58 @@
             <!-- Command Input Area -->
             <div class="flex flex-shrink-0 flex-col gap-2 border-t border-gray-700 p-4">
                 <div class="flex items-start space-x-2">
-                <!-- Line Ending Selector -->
-                <select
-                    bind:value={selectedLineEnding}
-                    disabled={!isConnected}
-                    class="rounded-md border border-gray-600 bg-gray-700 px-2 py-2 text-sm text-white focus:ring-orange-600 disabled:opacity-50"
-                    title={$locales('customfirmware.terminal_line_ending_title')}
-                >
-                    <option value="lf">LF</option>
-                    <option value="crlf">CRLF</option>
-                    <option value="cr">CR</option>
-                </select>
+                    <!-- Line Ending Selector -->
+                    <select
+                        bind:value={selectedLineEnding}
+                        disabled={!isConnected}
+                        class="rounded-md border border-gray-600 bg-gray-700 px-2 py-2 text-sm text-white focus:ring-orange-600 disabled:opacity-50"
+                        title={$locales('customfirmware.terminal_line_ending_title')}
+                    >
+                        <option value="lf">LF</option>
+                        <option value="crlf">CRLF</option>
+                        <option value="cr">CR</option>
+                    </select>
 
-                <!-- Meshcore mode badge (kept out of the textarea so its right edge is free for the ▶ Send button) -->
-                {#if $terminalMode === 'meshcore'}
-                    <span
-                        class="mt-2 flex h-5 items-center justify-center rounded bg-green-600/80 px-1.5 text-[0.625rem] font-bold tracking-tight text-white select-none"
-                        title="MeshCore mode"
-                    >MC</span>
-                    <McCommandSetPicker onselect={handleSelectMcCommandSet} />
-                {/if}
+                    <!-- Meshcore mode badge (kept out of the textarea so its right edge is free for the ▶ Send button) -->
+                    {#if $terminalMode === 'meshcore'}
+                        <span
+                            class="mt-2 flex h-5 items-center justify-center rounded bg-green-600/80 px-1.5 text-[0.625rem] font-bold tracking-tight text-white select-none"
+                            title="MeshCore mode">MC</span
+                        >
+                        <McCommandSetPicker onselect={handleSelectMcCommandSet} />
+                    {/if}
 
-                <!-- Always-rendered textarea (single + multiline). The ▶ Send button is rendered inside, at the caret line. -->
-                <CommandInput
-                    bind:value={commandInput}
-                    {isConnected}
-                    isMassRunning={isMassRunning}
-                    isSendBlocked={isMassRunning || isDelayWaiting}
-                    onSubmit={handleSubmitCommand}
-                    onsendall={runMassSend}
-                    onsendline={(line: string) => sendCommand(line)}
-                    placeholder={$locales('customfirmware.terminal_input_placeholder')}
-                    {commandHistory}
-                    {showCommandShortDescriptions}
-                    bind:historyIndex
-                    bind:currentLine
-                />
-
-                {#if isMultilineState() || isDelayWaiting}
-                    <!-- Multiline: mass-send controls inline (no separate row). Enter in textarea also triggers runMassSend.
-                         Also rendered for a single-line delay wait, where Stop cancels the countdown. -->
-                    <MultilineControls
-                        isMultiline={true}
+                    <!-- Always-rendered textarea (single + multiline). The ▶ Send button is rendered inside, at the caret line. -->
+                    <CommandInput
+                        bind:value={commandInput}
                         {isConnected}
                         {isMassRunning}
-                        isWaiting={isDelayWaiting}
-                        {lastSentIndex}
-                        totalLines={sendableLineCount()}
-                        limitExceeded={multilineLimitExceeded}
+                        isSendBlocked={isMassRunning || isDelayWaiting}
+                        onSubmit={handleSubmitCommand}
                         onsendall={runMassSend}
-                        onstop={stopMassSend}
+                        onsendline={(line: string) => sendCommand(line)}
+                        placeholder={$locales('customfirmware.terminal_input_placeholder')}
+                        {commandHistory}
+                        {showCommandShortDescriptions}
+                        bind:historyIndex
+                        bind:currentLine
                     />
-                {/if}
+
+                    {#if isMultilineState() || isDelayWaiting}
+                        <!-- Multiline: mass-send controls inline (no separate row). Enter in textarea also triggers runMassSend.
+                         Also rendered for a single-line delay wait, where Stop cancels the countdown. -->
+                        <MultilineControls
+                            isMultiline={true}
+                            {isConnected}
+                            {isMassRunning}
+                            isWaiting={isDelayWaiting}
+                            {lastSentIndex}
+                            totalLines={sendableLineCount()}
+                            limitExceeded={multilineLimitExceeded}
+                            onsendall={runMassSend}
+                            onstop={stopMassSend}
+                        />
+                    {/if}
                 </div>
             </div>
 

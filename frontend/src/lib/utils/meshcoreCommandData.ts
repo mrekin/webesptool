@@ -52,7 +52,12 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         separator: null,
         shortDescription: 'View advert interval'
     },
-    { command: 'get af', params: [], separator: null, shortDescription: 'View airtime factor (deprecated v1.15.0, use dutycycle)' },
+    {
+        command: 'get af',
+        params: [],
+        separator: null,
+        shortDescription: 'View airtime factor (deprecated v1.15.0, use dutycycle)'
+    },
     {
         command: 'get agc.reset.interval',
         params: [],
@@ -303,7 +308,12 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         separator: null,
         shortDescription: 'Enable power saving'
     },
-    { command: 'region', params: [], separator: null, shortDescription: 'Dump all regions and flood permissions' },
+    {
+        command: 'region',
+        params: [],
+        separator: null,
+        shortDescription: 'Dump all regions and flood permissions'
+    },
     {
         command: 'region allowf {name}',
         params: [{ name: 'name', type: 'string' }],
@@ -543,7 +553,9 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
     },
     {
         command: 'set loop.detect {state}',
-        params: [{ name: 'state', type: 'enum', options: ['off', 'minimal', 'moderate', 'strict'] }],
+        params: [
+            { name: 'state', type: 'enum', options: ['off', 'minimal', 'moderate', 'strict'] }
+        ],
         separator: 'space',
         shortDescription: 'Set loop detection'
     },

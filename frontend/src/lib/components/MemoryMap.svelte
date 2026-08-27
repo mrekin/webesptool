@@ -2,9 +2,13 @@
     import { _ as locales } from 'svelte-i18n';
     import type { MemorySegment } from '$lib/types';
 
-    export let totalSize: number;
-    export let segments: MemorySegment[];
-    export let segmentFill: Map<string, number> | undefined; // filename -> fillFraction 0..1
+    interface Props {
+        totalSize: number;
+        segments: MemorySegment[];
+        segmentFill?: Map<string, number>; // filename -> fillFraction 0..1
+    }
+
+    let { totalSize, segments, segmentFill }: Props = $props();
 
     // Check for overlapping segments
     function hasOverlaps(seg1: MemorySegment, seg2: MemorySegment): boolean {
@@ -53,10 +57,10 @@
     }
 
     // Computed properties
-    $: processedSegments = handleOverlappingSegments(segments || []);
-    $: hasConflicts = processedSegments.some((seg) => seg.color === '#ef4444');
-    $: usedMemory = processedSegments.reduce((sum, seg) => sum + seg.size, 0);
-    $: usedPercentage = totalSize > 0 ? (usedMemory / totalSize) * 100 : 0;
+    const processedSegments = $derived(handleOverlappingSegments(segments || []));
+    const hasConflicts = $derived(processedSegments.some((seg) => seg.color === '#ef4444'));
+    const usedMemory = $derived(processedSegments.reduce((sum, seg) => sum + seg.size, 0));
+    const usedPercentage = $derived(totalSize > 0 ? (usedMemory / totalSize) * 100 : 0);
 </script>
 
 <div class="memory-map-container space-y-3 rounded-lg border border-gray-700 bg-gray-800/50 p-4">
@@ -81,7 +85,7 @@
             <div class="memory-free absolute inset-0 bg-gray-600"></div>
 
             <!-- File segments -->
-            {#each processedSegments as segment}
+            {#each processedSegments as segment (segment.address)}
                 {@const fillFraction = segmentFill?.get(segment.filename) ?? 0}
                 <div
                     class="memory-segment absolute flex h-full cursor-pointer items-center justify-center text-xs font-medium text-white transition-all duration-300 hover:z-10 hover:shadow-lg"
@@ -105,7 +109,10 @@
                     {#if segmentFill && fillFraction > 0}
                         <div
                             class="pointer-events-none absolute inset-y-0 left-0 transition-all duration-300"
-                            style="width: {Math.min(fillFraction * 100, 100)}%; background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.6) 0 6px, rgba(255, 255, 255, 0) 6px 12px);"
+                            style="width: {Math.min(
+                                fillFraction * 100,
+                                100
+                            )}%; background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.6) 0 6px, rgba(255, 255, 255, 0) 6px 12px);"
                         ></div>
                     {/if}
                 </div>
@@ -157,7 +164,7 @@
     {/if}
 
     <!-- Check for files beyond memory limits -->
-    {#each processedSegments as segment}
+    {#each processedSegments as segment (segment.address)}
         {#if segment.address + segment.size > totalSize}
             <div
                 class="memory-warning rounded-md border border-yellow-700/50 bg-yellow-900/20 p-2 text-xs text-yellow-400"

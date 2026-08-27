@@ -4,12 +4,7 @@
 // calls reuse the already-injected <link>/<script> and resolve once the global
 // is available.
 
-import {
-    GEOMAN_CSS,
-    GEOMAN_JS,
-    LEAFLET_CSS,
-    LEAFLET_JS
-} from '$lib/config/meshcoreZoneConfig';
+import { GEOMAN_CSS, GEOMAN_JS, LEAFLET_CSS, LEAFLET_JS } from '$lib/config/meshcoreZoneConfig';
 
 // Inject a stylesheet <link> once.
 export function loadCss(href: string): void {

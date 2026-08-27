@@ -678,7 +678,7 @@ export const apiActions = {
             availableSources.set(response.sources);
             uiState.update((state) => ({
                 ...state,
-                statsEnabled: response.stats_enabled,
+                statsEnabled: response.stats_enabled
             }));
 
             if (response.sources.length > 0) {
@@ -1007,7 +1007,7 @@ async function initializeFromDeviceParam(devicePioTarget: string) {
             availableSources.set(srcsResponse.sources);
             uiState.update((state) => ({
                 ...state,
-                statsEnabled: srcsResponse.stats_enabled,
+                statsEnabled: srcsResponse.stats_enabled
             }));
 
             // Find the correct source from loaded list

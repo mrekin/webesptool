@@ -4,11 +4,15 @@
     import { _ as locales } from 'svelte-i18n';
     import { browser } from '$app/environment';
 
-    export let cookieName = 'meshtastic-important-notice-hidden';
+    interface Props {
+        cookieName?: string;
+    }
 
-    let isExpanded = true;
-    let isClient = false;
-    let showOldFlasherMessage = false;
+    let { cookieName = 'meshtastic-important-notice-hidden' }: Props = $props();
+
+    let isExpanded = $state(true);
+    let isClient = $state(false);
+    let showOldFlasherMessage = $state(false);
 
     // Check cookie state on mount
     onMount(() => {
@@ -48,7 +52,7 @@
                     <button
                         type="button"
                         class="close-button"
-                        on:click={closeNotice}
+                        onclick={closeNotice}
                         title={$locales('importantnotice.close_notice')}
                         aria-label={$locales('importantnotice.close_notice')}
                     >
@@ -78,7 +82,7 @@
                 <button
                     type="button"
                     class="expand-button"
-                    on:click={expandNotice}
+                    onclick={expandNotice}
                     title={$locales('importantnotice.expand_notice')}
                     aria-label={$locales('importantnotice.expand_notice')}
                 >

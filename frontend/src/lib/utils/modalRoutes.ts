@@ -1,11 +1,7 @@
 import { browser } from '$app/environment';
 import { pushState, replaceState } from '$app/navigation';
 import { writable } from 'svelte/store';
-import type {
-    AddressableModalId,
-    AddressableModalLayerId,
-    ModalHistoryState
-} from '$lib/types.js';
+import type { AddressableModalId, AddressableModalLayerId, ModalHistoryState } from '$lib/types.js';
 
 export const MODAL_URL_PARAM = 'm';
 // Registry of addressable modals. Stage 1: the coordinate picker only.

@@ -11,10 +11,7 @@ import type { ZoneCatalog, ZoneRegionResult } from '$lib/types';
 
 // Cheap bbox containment prefilter: avoids the exact test for features whose
 // bbox the point is clearly outside.
-function withinBbox(
-    point: [number, number],
-    bbox: [number, number, number, number]
-): boolean {
+function withinBbox(point: [number, number], bbox: [number, number, number, number]): boolean {
     const [lon, lat] = point;
     return lon >= bbox[0] && lon <= bbox[2] && lat >= bbox[1] && lat <= bbox[3];
 }
@@ -28,10 +25,7 @@ function withinBbox(
 // (1=country … 5=city district). Zones at the same level never overlap, so the
 // max level is unique; a same-level double-hit is logged defensively. Never
 // throws: a failing feature is skipped with a warning.
-export function lookupZoneRegion(
-    point: [number, number],
-    catalog: ZoneCatalog
-): ZoneRegionResult {
+export function lookupZoneRegion(point: [number, number], catalog: ZoneCatalog): ZoneRegionResult {
     if (catalog.status !== 'ok' || catalog.features.length === 0) {
         return { tokens: [], status: 'unavailable', reason: catalog.reason ?? 'empty_catalog' };
     }

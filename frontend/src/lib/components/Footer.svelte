@@ -8,7 +8,7 @@
     let currentYear = new Date().getFullYear();
 
     // Reactive footer links data using localization
-    $: mainLinks = [
+    const mainLinks = $derived([
         {
             name: $locales('footer.meshtastic_name'),
             href: EXTERNAL_LINKS.MESHTASTIC.MAIN,
@@ -46,21 +46,23 @@
             description: $locales('footer.takemeacoffee_desc'),
             langFilter: 'ru' // Show only for Russian locale
         }
-    ];
+    ]);
 
     // Reactive filtering based on current locale
-    $: filteredMainLinks = mainLinks.filter((link) => {
-        // If langFilter is not specified or empty - show for all languages
-        if (!link.langFilter) return true;
-        const trimmedFilter = link.langFilter.trim();
-        if (trimmedFilter === '') return true;
+    const filteredMainLinks = $derived(
+        mainLinks.filter((link) => {
+            // If langFilter is not specified or empty - show for all languages
+            if (!link.langFilter) return true;
+            const trimmedFilter = link.langFilter.trim();
+            if (trimmedFilter === '') return true;
 
-        // Check if current locale is in the allowed list
-        const allowedLocales = trimmedFilter.split(',');
-        return $locale !== null && allowedLocales.includes($locale as string);
-    }) as FooterLink[];
+            // Check if current locale is in the allowed list
+            const allowedLocales = trimmedFilter.split(',');
+            return $locale !== null && allowedLocales.includes($locale as string);
+        }) as FooterLink[]
+    );
 
-    $: toolLinks = [
+    const toolLinks = $derived([
         {
             name: $locales('footer.meshtastic_flasher_name'),
             href: EXTERNAL_LINKS.MESHTASTIC.FLASHER,
@@ -71,9 +73,9 @@
             href: EXTERNAL_LINKS.GITHUB.ESPRESSIF_ESPTOOL,
             description: $locales('footer.esp_web_tools_desc')
         }
-    ];
+    ]);
 
-    $: mirrorLinks = [
+    const mirrorLinks = $derived([
         {
             name: $locales('footer.main_mirror_name'),
             href: EXTERNAL_LINKS.MIRRORS.MAIN,
@@ -84,7 +86,7 @@
             href: EXTERNAL_LINKS.MIRRORS.MIRROR,
             description: $locales('footer.mirror_desc')
         }
-    ];
+    ]);
 
     function formatLink(link: any) {
         return {
@@ -102,7 +104,7 @@
         <!-- Top section with main links -->
         <div class="mb-8">
             <div class="flex flex-wrap justify-center gap-4 sm:gap-6 lg:gap-8">
-                {#each filteredMainLinks as link}
+                {#each filteredMainLinks as link (link.href)}
                     <a
                         href={link.href}
                         target="_blank"
@@ -152,7 +154,7 @@
 
             <!-- Combined cards row -->
             <div class="flex flex-wrap justify-center gap-2 sm:gap-3">
-                {#each [...toolLinks, ...mirrorLinks] as link}
+                {#each [...toolLinks, ...mirrorLinks] as link (link.href)}
                     <div
                         class="min-w-[180px] flex-1 rounded border border-orange-500 bg-gray-800 p-2 transition-all duration-200 hover:bg-gray-700 sm:min-w-[200px]"
                     >

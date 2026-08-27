@@ -5,6 +5,7 @@
 ## Зачем локальные пакеты?
 
 Локальные пакеты позволяют:
+
 - Использовать последние изменения из репозитория meshtastic/web
 - Избегать ошибок в опубликованных версиях
 - Вносить изменения в библиотеки для тестирования
@@ -36,6 +37,7 @@ pnpm install
 ```
 
 Скрипт выполнит следующие действия:
+
 1. Клонироврует или обновит репозиторий https://github.com/meshtastic/web
 2. Установит зависимости
 3. Соберёт пакеты @meshtastic/core и @meshtastic/transport-web-serial
@@ -47,20 +49,20 @@ pnpm install
 
 1. Отредактируйте файлы в `/tmp/meshtastic-web/packages/`
 2. Пересоберите нужный пакет:
-   ```bash
-   cd /tmp/meshtastic-web/packages/core  # или transport-web-serial
-   pnpm run build:npm
-   ```
+    ```bash
+    cd /tmp/meshtastic-web/packages/core  # или transport-web-serial
+    pnpm run build:npm
+    ```
 3. Скопируйте собранные файлы:
-   ```bash
-   # Вернитесь в frontend директорию
-   rm -rf local-packages/@meshtastic/core/dist
-   cp -r /tmp/meshtastic-web/packages/core/dist local-packages/@meshtastic/core/
-   ```
+    ```bash
+    # Вернитесь в frontend директорию
+    rm -rf local-packages/@meshtastic/core/dist
+    cp -r /tmp/meshtastic-web/packages/core/dist local-packages/@meshtastic/core/
+    ```
 4. Переустановите зависимости:
-   ```bash
-   pnpm install
-   ```
+    ```bash
+    pnpm install
+    ```
 
 ## Примечания
 

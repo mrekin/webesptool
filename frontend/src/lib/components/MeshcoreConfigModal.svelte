@@ -151,12 +151,14 @@
     // connected / 'ver' unanswered) is treated as supported: the region is still
     // shown/resolved, the user applies it themselves.
     const regionDefSupported = $derived(
-        deviceVersion === '' || versionGte(parseDeviceVersion(deviceVersion), REGION_DEF_MIN_VERSION)
+        deviceVersion === '' ||
+            versionGte(parseDeviceVersion(deviceVersion), REGION_DEF_MIN_VERSION)
     );
     // `set path.hash.mode` is supported on firmware >= 1.14. Same empty-version
     // convention as regionDefSupported.
     const pathHashSupported = $derived(
-        deviceVersion === '' || versionGte(parseDeviceVersion(deviceVersion), PATH_HASH_MODE_MIN_VERSION)
+        deviceVersion === '' ||
+            versionGte(parseDeviceVersion(deviceVersion), PATH_HASH_MODE_MIN_VERSION)
     );
 
     // Parsed tokens of the active name template (empty when none active).
@@ -300,9 +302,7 @@
     // stay side by side regardless of the auto-fill grid's column count.
     let latRow = $derived(rows.find((r) => r.id === 'lat'));
     let lonRow = $derived(rows.find((r) => r.id === 'lon'));
-    let coordsDirty = $derived(
-        !!(latRow && inQueue(latRow)) || !!(lonRow && inQueue(lonRow))
-    );
+    let coordsDirty = $derived(!!(latRow && inQueue(latRow)) || !!(lonRow && inQueue(lonRow)));
 
     function errorText(err: unknown): string {
         return err instanceof Error ? err.message : String(err);
@@ -460,9 +460,7 @@
         if (!cliManager || !isConnected || busy) return;
         const entered = rowValues['time'];
         const epoch =
-            typeof entered === 'number' && entered > 0
-                ? entered
-                : Math.floor(Date.now() / 1000);
+            typeof entered === 'number' && entered > 0 ? entered : Math.floor(Date.now() / 1000);
         void doRunAction(`time ${epoch}`);
     }
 
@@ -1039,7 +1037,9 @@
                     ></span>
                     <span class="text-sm text-orange-200">{statusText}</span>
                     {#if deviceVersion}
-                        <span class="text-xs text-gray-400">v{deviceVersion.replace(/^v/i, '')}</span>
+                        <span class="text-xs text-gray-400"
+                            >v{deviceVersion.replace(/^v/i, '')}</span
+                        >
                     {/if}
                     {#if !isSupported}
                         <span class="text-xs text-red-300">
@@ -1071,482 +1071,572 @@
                      and switching tabs never resizes the modal (both panels are h-full of
                      this same box). Settings scrolls, terminal stretches. -->
                 <div class="min-h-0 flex-1">
-                <!-- Settings panel: all existing settings functionality. -->
-                <div
-                    class={`h-full space-y-5 overflow-y-auto pr-1 ${activeTab === 'settings' ? '' : 'hidden'}`}
-                >
-                <!-- Toolbar: Request settings, load command set, single Apply, EOL -->
-                <div class="flex flex-wrap items-center gap-3">
-                    <button
-                        type="button"
-                        onclick={requestSettings}
-                        disabled={!isConnected || busy}
-                        class="rounded-md bg-gray-700 px-3 py-2 text-sm text-orange-200 transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    <!-- Settings panel: all existing settings functionality. -->
+                    <div
+                        class={`h-full space-y-5 overflow-y-auto pr-1 ${activeTab === 'settings' ? '' : 'hidden'}`}
                     >
-                        {$locales('meshcoreconfig.request_settings')}
-                    </button>
+                        <!-- Toolbar: Request settings, load command set, single Apply, EOL -->
+                        <div class="flex flex-wrap items-center gap-3">
+                            <button
+                                type="button"
+                                onclick={requestSettings}
+                                disabled={!isConnected || busy}
+                                class="rounded-md bg-gray-700 px-3 py-2 text-sm text-orange-200 transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {$locales('meshcoreconfig.request_settings')}
+                            </button>
 
-                    {#if experimentalFeatures}
-                        <McCommandSetPicker
-                            onselect={handleSetSelected}
-                            label={$locales('meshcoreconfig.load_command_set')}
-                            dropup={false}
-                        />
-                    {/if}
+                            {#if experimentalFeatures}
+                                <McCommandSetPicker
+                                    onselect={handleSetSelected}
+                                    label={$locales('meshcoreconfig.load_command_set')}
+                                    dropup={false}
+                                />
+                            {/if}
 
-                    <!-- Single Apply for the whole assembled queue (config + actions). -->
-                    <button
-                        type="button"
-                        onclick={applyAll}
-                        disabled={!isConnected || busy || assembledCount === 0 || nameIncomplete}
-                        title={nameIncomplete ? $locales('meshcoreconfig.zones.name_incomplete') : ''}
-                        class="rounded-md bg-green-700 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                        {$locales('meshcoreconfig.apply')}
-                        {#if assembledCount > 0}
-                            <span class="ml-1 rounded-full bg-orange-600 px-1.5 py-0.5 text-xs">
-                                {assembledCount}
-                            </span>
-                        {/if}
-                    </button>
+                            <!-- Single Apply for the whole assembled queue (config + actions). -->
+                            <button
+                                type="button"
+                                onclick={applyAll}
+                                disabled={!isConnected ||
+                                    busy ||
+                                    assembledCount === 0 ||
+                                    nameIncomplete}
+                                title={nameIncomplete
+                                    ? $locales('meshcoreconfig.zones.name_incomplete')
+                                    : ''}
+                                class="rounded-md bg-green-700 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {$locales('meshcoreconfig.apply')}
+                                {#if assembledCount > 0}
+                                    <span
+                                        class="ml-1 rounded-full bg-orange-600 px-1.5 py-0.5 text-xs"
+                                    >
+                                        {assembledCount}
+                                    </span>
+                                {/if}
+                            </button>
 
-                    <!-- Discard all uncommitted (queued) changes back to baseline. -->
-                    <button
-                        type="button"
-                        onclick={discardChanges}
-                        disabled={busy || assembledCount === 0}
-                        class="rounded-md bg-gray-700 px-3 py-2 text-sm text-orange-200 transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                        {$locales('meshcoreconfig.discard_changes')}
-                    </button>
+                            <!-- Discard all uncommitted (queued) changes back to baseline. -->
+                            <button
+                                type="button"
+                                onclick={discardChanges}
+                                disabled={busy || assembledCount === 0}
+                                class="rounded-md bg-gray-700 px-3 py-2 text-sm text-orange-200 transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {$locales('meshcoreconfig.discard_changes')}
+                            </button>
 
-                    <select
-                        bind:value={selectedLineEnding}
-                        title="EOL"
-                        class="rounded-md border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-200 focus:border-orange-500 focus:ring-orange-500"
-                    >
-                        <option value="lf">LF</option>
-                        <option value="crlf">CRLF</option>
-                        <option value="cr">CR</option>
-                    </select>
+                            <select
+                                bind:value={selectedLineEnding}
+                                title="EOL"
+                                class="rounded-md border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-200 focus:border-orange-500 focus:ring-orange-500"
+                            >
+                                <option value="lf">LF</option>
+                                <option value="crlf">CRLF</option>
+                                <option value="cr">CR</option>
+                            </select>
 
-                    <!-- Docs link (external) -->
-                    <a
-                        href="https://docs.meshcore.io/cli_commands"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="text-xs text-orange-300 underline hover:text-orange-200"
-                    >
-                        {$locales('meshcoreconfig.docs')}
-                    </a>
+                            <!-- Docs link (external) -->
+                            <a
+                                href="https://docs.meshcore.io/cli_commands"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="text-xs text-orange-300 underline hover:text-orange-200"
+                            >
+                                {$locales('meshcoreconfig.docs')}
+                            </a>
 
-                    <!-- Regional settings-docs link for the applied zone preset
+                            <!-- Regional settings-docs link for the applied zone preset
                          (meshcore.docUrl from the resolved region). -->
-                    {#if regionDocUrl}
-                        <a
-                            href={regionDocUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="text-xs text-sky-400 underline hover:text-sky-300"
-                        >
-                            {$locales('meshcoreconfig.regional_docs')}
-                        </a>
-                    {/if}
-                </div>
+                            {#if regionDocUrl}
+                                <a
+                                    href={regionDocUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="text-xs text-sky-400 underline hover:text-sky-300"
+                                >
+                                    {$locales('meshcoreconfig.regional_docs')}
+                                </a>
+                            {/if}
+                        </div>
 
-                <!-- Status / error messages -->
-                {#if errorMessage}
-                    <div
-                        role="alert"
-                        aria-live="assertive"
-                        class="rounded-md border border-red-700 bg-red-900/60 p-3 text-sm text-red-200"
-                    >
-                        {errorMessage}
-                    </div>
-                {/if}
-                {#if statusMessage && !errorMessage}
-                    <div
-                        role="status"
-                        aria-live="polite"
-                        class="rounded-md bg-gray-700 p-3 text-sm text-orange-200"
-                    >
-                        {statusMessage}
-                    </div>
-                {/if}
-                {#if showRebootConfirm}
-                    <!-- Compact reboot hint: the changes are already applied, a reboot
+                        <!-- Status / error messages -->
+                        {#if errorMessage}
+                            <div
+                                role="alert"
+                                aria-live="assertive"
+                                class="rounded-md border border-red-700 bg-red-900/60 p-3 text-sm text-red-200"
+                            >
+                                {errorMessage}
+                            </div>
+                        {/if}
+                        {#if statusMessage && !errorMessage}
+                            <div
+                                role="status"
+                                aria-live="polite"
+                                class="rounded-md bg-gray-700 p-3 text-sm text-orange-200"
+                            >
+                                {statusMessage}
+                            </div>
+                        {/if}
+                        {#if showRebootConfirm}
+                            <!-- Compact reboot hint: the changes are already applied, a reboot
                          only activates them — so this is a non-blocking inline banner
                          (replaces the old full-screen confirm modal: less text, less space). -->
-                    <div
-                        role="status"
-                        aria-live="polite"
-                        class="flex items-center gap-2 rounded-md border border-yellow-600 bg-yellow-900/30 px-3 py-2 text-sm text-yellow-100"
-                    >
-                        <span aria-hidden="true">⚠</span>
-                        <span class="flex-1">{$locales('meshcoreconfig.reboot_banner')}</span>
-                        <button
-                            type="button"
-                            onclick={confirmReboot}
-                            class="shrink-0 rounded bg-yellow-700 px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-yellow-600"
-                        >
-                            ⟳ {$locales('meshcoreconfig.reboot_now')}
-                        </button>
-                        <button
-                            type="button"
-                            onclick={() => (showRebootConfirm = false)}
-                            class="shrink-0 text-yellow-300/70 transition-colors hover:text-yellow-100"
-                            aria-label={$locales('common.close')}
-                        >
-                            &#x2715;
-                        </button>
-                    </div>
-                {/if}
+                            <div
+                                role="status"
+                                aria-live="polite"
+                                class="flex items-center gap-2 rounded-md border border-yellow-600 bg-yellow-900/30 px-3 py-2 text-sm text-yellow-100"
+                            >
+                                <span aria-hidden="true">⚠</span>
+                                <span class="flex-1"
+                                    >{$locales('meshcoreconfig.reboot_banner')}</span
+                                >
+                                <button
+                                    type="button"
+                                    onclick={confirmReboot}
+                                    class="shrink-0 rounded bg-yellow-700 px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-yellow-600"
+                                >
+                                    ⟳ {$locales('meshcoreconfig.reboot_now')}
+                                </button>
+                                <button
+                                    type="button"
+                                    onclick={() => (showRebootConfirm = false)}
+                                    class="shrink-0 text-yellow-300/70 transition-colors hover:text-yellow-100"
+                                    aria-label={$locales('common.close')}
+                                >
+                                    &#x2715;
+                                </button>
+                            </div>
+                        {/if}
 
-                <!-- Body: unified groups (left, wider) + assembled command list (right) -->
-                <div class="grid gap-6 lg:grid-cols-[2fr_1fr]">
-                    <!-- Left: grouped rows in an auto-fill grid -->
-                    <div class="space-y-4">
-                        {#each groups as group (group.id)}
-                            {@const groupRows = rowsByGroup.get(group.id) ?? []}
-                            {#if groupRows.length > 0}
-                                <div class="rounded-md border border-gray-700 bg-gray-900/50">
-                                    <div
-                                        class="flex items-center border-b border-gray-700/60"
-                                    >
-                                        <button
-                                            type="button"
-                                            onclick={() => toggleGroup(group.id)}
-                                            class="flex flex-1 items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-gray-800/50"
-                                            aria-expanded={!collapsedGroups.has(group.id)}
+                        <!-- Body: unified groups (left, wider) + assembled command list (right) -->
+                        <div class="grid gap-6 lg:grid-cols-[2fr_1fr]">
+                            <!-- Left: grouped rows in an auto-fill grid -->
+                            <div class="space-y-4">
+                                {#each groups as group (group.id)}
+                                    {@const groupRows = rowsByGroup.get(group.id) ?? []}
+                                    {#if groupRows.length > 0}
+                                        <div
+                                            class="rounded-md border border-gray-700 bg-gray-900/50"
                                         >
-                                            <span class="flex items-center gap-2">
-                                                <span class="text-sm font-semibold uppercase tracking-wide text-orange-300">
-                                                    {$locales(`meshcoreconfig.group_${group.labelKey}`)}
-                                                </span>
-                                                {#if groupQueueCount(group.id) > 0}
-                                                    <span class="rounded-full bg-orange-600 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                                                        {groupQueueCount(group.id)}
-                                                    </span>
-                                                {/if}
-                                            </span>
-                                            <span class="text-xs text-gray-400">
-                                                {collapsedGroups.has(group.id) ? '▶' : '▼'}
-                                            </span>
-                                        </button>
-                                        {#if group.id === 'region'}
-                                            <div class="flex items-center gap-1 pr-2">
+                                            <div
+                                                class="flex items-center border-b border-gray-700/60"
+                                            >
                                                 <button
                                                     type="button"
-                                                    onclick={() => {
-                                                        pickerInitial = {
-                                                            detectCoords: false,
-                                                            detectRegions: true
-                                                        };
-                                                        showMapPicker = true;
-                                                    }}
-                                                    class="rounded bg-gray-700 px-1.5 py-0.5 text-xs text-orange-200 transition-colors hover:bg-gray-600 animate-blink-attention"
-                                                    title={$locales('meshcoreconfig.zones.detect_regions')}
+                                                    onclick={() => toggleGroup(group.id)}
+                                                    class="flex flex-1 items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-gray-800/50"
+                                                    aria-expanded={!collapsedGroups.has(group.id)}
                                                 >
-                                                    📍
+                                                    <span class="flex items-center gap-2">
+                                                        <span
+                                                            class="text-sm font-semibold tracking-wide text-orange-300 uppercase"
+                                                        >
+                                                            {$locales(
+                                                                `meshcoreconfig.group_${group.labelKey}`
+                                                            )}
+                                                        </span>
+                                                        {#if groupQueueCount(group.id) > 0}
+                                                            <span
+                                                                class="rounded-full bg-orange-600 px-1.5 py-0.5 text-[10px] font-medium text-white"
+                                                            >
+                                                                {groupQueueCount(group.id)}
+                                                            </span>
+                                                        {/if}
+                                                    </span>
+                                                    <span class="text-xs text-gray-400">
+                                                        {collapsedGroups.has(group.id) ? '▶' : '▼'}
+                                                    </span>
                                                 </button>
+                                                {#if group.id === 'region'}
+                                                    <div class="flex items-center gap-1 pr-2">
+                                                        <button
+                                                            type="button"
+                                                            onclick={() => {
+                                                                pickerInitial = {
+                                                                    detectCoords: false,
+                                                                    detectRegions: true
+                                                                };
+                                                                showMapPicker = true;
+                                                            }}
+                                                            class="animate-blink-attention rounded bg-gray-700 px-1.5 py-0.5 text-xs text-orange-200 transition-colors hover:bg-gray-600"
+                                                            title={$locales(
+                                                                'meshcoreconfig.zones.detect_regions'
+                                                            )}
+                                                        >
+                                                            📍
+                                                        </button>
+                                                    </div>
+                                                {/if}
                                             </div>
-                                        {/if}
-                                    </div>
-                                    {#if !collapsedGroups.has(group.id)}
-                                        <div
-                                            class="grid gap-2 grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] p-3"
-                                        >
-                                            {#each groupRows as r (r.id)}
-                                                {#if r.id === 'lat'}
-                                                    <!-- Combined coordinates card: lat + lon stay side by side. -->
-                                                    <div
-                                                        class={`rounded-lg border px-3 py-2 transition-colors ${coordsDirty ? 'border-orange-600/70 bg-orange-900/10' : 'border-gray-700/60 bg-gray-900/40 hover:border-gray-600'}`}
-                                                    >
-                                                        <div
-                                                            class="mb-1.5 flex items-center justify-between gap-2"
-                                                        >
-                                                            <span class="flex items-center gap-2">
-                                                                <span
-                                                                    class="text-xs font-semibold uppercase tracking-wide text-gray-400"
-                                                                >
-                                                                    {$locales('meshcoreconfig.coordinates')}
-                                                                </span>
-                                                                <button
-                                                                    type="button"
-                                                                    onclick={() => {
-                                                                        pickerInitial = {
-                                                                            detectCoords: true,
-                                                                            detectRegions: false
-                                                                        };
-                                                                        showMapPicker = true;
-                                                                    }}
-                                                                    class="rounded bg-gray-700 px-1.5 py-0.5 text-xs text-orange-200 transition-colors hover:bg-gray-600 animate-blink-attention"
-                                                                    title={$locales('meshcoreconfig.pick_on_map')}
-                                                                >
-                                                                    📍
-                                                                </button>
-                                                            </span>
-                                                            {#if coordsDirty}
-                                                                <span
-                                                                    class="shrink-0 rounded-full bg-orange-600/30 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-orange-200"
-                                                                >
-                                                                    {$locales('meshcoreconfig.dirty_badge')}
-                                                                </span>
-                                                            {/if}
-                                                        </div>
-                                                        <div class="grid grid-cols-2 gap-2">
-                                                            <div>
-                                                                <label
-                                                                    class="mb-1 block text-[11px] text-gray-500"
-                                                                >
-                                                                    lat
-                                                                </label>
-                                                                <input
-                                                                    type="text"
-                                                                    inputmode="decimal"
-                                                                    class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1.5 text-sm text-gray-100 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-                                                                    value={rowValues['lat'] ?? ''}
-                                                                    onchange={(e) =>
-                                                                        setRowValue(
-                                                                            'lat',
-                                                                            Number(
-                                                                                (
-                                                                                    e.currentTarget as HTMLInputElement
-                                                                                ).value.replace(',', '.')
-                                                                            )
-                                                                        )}
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <label
-                                                                    class="mb-1 block text-[11px] text-gray-500"
-                                                                >
-                                                                    lon
-                                                                </label>
-                                                                <input
-                                                                    type="text"
-                                                                    inputmode="decimal"
-                                                                    class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1.5 text-sm text-gray-100 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-                                                                    value={rowValues['lon'] ?? ''}
-                                                                    onchange={(e) =>
-                                                                        setRowValue(
-                                                                            'lon',
-                                                                            Number(
-                                                                                (
-                                                                                    e.currentTarget as HTMLInputElement
-                                                                                ).value.replace(',', '.')
-                                                                            )
-                                                                        )}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                {:else if r.id === 'lon'}
-                                                    <!-- rendered inside the coordinates card -->
-                                                {:else if r.id === 'time'}
-                                                    <!-- time action: epoch seconds input + "now" button -->
-                                                    <div
-                                                        class={`rounded-lg border px-3 py-2 transition-colors ${inQueue(r) ? 'border-orange-600/70 bg-orange-900/10' : 'border-gray-700/60 bg-gray-900/40 hover:border-gray-600'}`}
-                                                    >
-                                                        <div
-                                                            class="mb-1.5 flex items-center justify-between gap-2"
-                                                        >
-                                                            <span
-                                                                class="text-xs font-semibold uppercase tracking-wide text-gray-400"
-                                                                title={r.label}
+                                            {#if !collapsedGroups.has(group.id)}
+                                                <div
+                                                    class="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-2 p-3"
+                                                >
+                                                    {#each groupRows as r (r.id)}
+                                                        {#if r.id === 'lat'}
+                                                            <!-- Combined coordinates card: lat + lon stay side by side. -->
+                                                            <div
+                                                                class={`rounded-lg border px-3 py-2 transition-colors ${coordsDirty ? 'border-orange-600/70 bg-orange-900/10' : 'border-gray-700/60 bg-gray-900/40 hover:border-gray-600'}`}
                                                             >
-                                                                {r.id}
-                                                            </span>
-                                                            {#if inQueue(r)}
-                                                                <span
-                                                                    class="shrink-0 rounded-full bg-orange-600/30 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-orange-200"
+                                                                <div
+                                                                    class="mb-1.5 flex items-center justify-between gap-2"
                                                                 >
-                                                                    {$locales('meshcoreconfig.dirty_badge')}
-                                                                </span>
-                                                            {/if}
-                                                        </div>
-                                                        <div class="flex items-center gap-2">
-                                                            <input
-                                                                type="number"
-                                                                class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1.5 text-sm text-gray-100 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-                                                                value={rowValues['time'] ?? ''}
-                                                                onchange={(e) =>
-                                                                    setRowValue(
-                                                                        'time',
-                                                                        Number(
-                                                                            (
-                                                                                e.currentTarget as HTMLInputElement
-                                                                            ).value.replace(',', '.')
-                                                                        )
-                                                                    )}
-                                                            />
-                                                            <button
-                                                                type="button"
-                                                                onclick={sendCurrentTime}
-                                                                class="shrink-0 rounded-md bg-gray-700 px-2 py-1.5 text-xs text-orange-200 transition-colors hover:bg-gray-600"
-                                                                title={$locales('meshcoreconfig.time_now')}
-                                                            >
-                                                                🕐
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                {:else if r.id === 'name' && activeNameTemplate}
-                                                    <!-- Name composer: the zone's template drives inline enum
-                                                         selects + free inputs; the composed name is written to
-                                                         the `set name` row via setRowValue. -->
-                                                    <div
-                                                        class={`rounded-lg border px-3 py-2 transition-colors ${inQueue(r) ? 'border-orange-600/70 bg-orange-900/10' : 'border-gray-700/60 bg-gray-900/40 hover:border-gray-600'}`}
-                                                    >
-                                                        <div
-                                                            class="mb-1.5 flex items-center justify-between gap-2"
-                                                        >
-                                                            <span
-                                                                class="text-xs font-semibold uppercase tracking-wide text-gray-400"
-                                                                title={r.label}
-                                                            >
-                                                                {r.id}
-                                                            </span>
-                                                            <div class="flex items-center gap-1">
-                                                                {#if inQueue(r)}
                                                                     <span
-                                                                        class="shrink-0 rounded-full bg-orange-600/30 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-orange-200"
+                                                                        class="flex items-center gap-2"
                                                                     >
-                                                                        {$locales('meshcoreconfig.dirty_badge')}
-                                                                    </span>
-                                                                {/if}
-                                                                <button
-                                                                    type="button"
-                                                                    onclick={clearNameTemplate}
-                                                                    title={$locales('meshcoreconfig.zones.name_template_clear')}
-                                                                    class="shrink-0 rounded px-1.5 py-0.5 text-xs text-gray-400 transition-colors hover:bg-gray-700 hover:text-red-300"
-                                                                >
-                                                                    ✕
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                        <div class="flex flex-wrap items-center gap-1">
-                                                            {#each nameTokens as tok, i (i)}
-                                                                {#if tok.type === 'literal'}
-                                                                    <span class="text-xs text-gray-500">{tok.value}</span>
-                                                                {:else if tok.type === 'enum'}
-                                                                    {@const pi = nameTokenComposerIndex[i]}
-                                                                    <select
-                                                                        class="rounded border border-gray-600 bg-gray-700 px-1.5 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
-                                                                        value={composerParts[pi] ?? ''}
-                                                                        onchange={(e) =>
-                                                                            updateComposerPart(
-                                                                                pi,
-                                                                                (e.currentTarget as HTMLSelectElement).value
+                                                                        <span
+                                                                            class="text-xs font-semibold tracking-wide text-gray-400 uppercase"
+                                                                        >
+                                                                            {$locales(
+                                                                                'meshcoreconfig.coordinates'
                                                                             )}
+                                                                        </span>
+                                                                        <button
+                                                                            type="button"
+                                                                            onclick={() => {
+                                                                                pickerInitial = {
+                                                                                    detectCoords: true,
+                                                                                    detectRegions: false
+                                                                                };
+                                                                                showMapPicker = true;
+                                                                            }}
+                                                                            class="animate-blink-attention rounded bg-gray-700 px-1.5 py-0.5 text-xs text-orange-200 transition-colors hover:bg-gray-600"
+                                                                            title={$locales(
+                                                                                'meshcoreconfig.pick_on_map'
+                                                                            )}
+                                                                        >
+                                                                            📍
+                                                                        </button>
+                                                                    </span>
+                                                                    {#if coordsDirty}
+                                                                        <span
+                                                                            class="shrink-0 rounded-full bg-orange-600/30 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-orange-200 uppercase"
+                                                                        >
+                                                                            {$locales(
+                                                                                'meshcoreconfig.dirty_badge'
+                                                                            )}
+                                                                        </span>
+                                                                    {/if}
+                                                                </div>
+                                                                <div class="grid grid-cols-2 gap-2">
+                                                                    <div>
+                                                                        <label
+                                                                            class="mb-1 block text-[11px] text-gray-500"
+                                                                        >
+                                                                            lat
+                                                                        </label>
+                                                                        <input
+                                                                            type="text"
+                                                                            inputmode="decimal"
+                                                                            class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1.5 text-sm text-gray-100 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                                                                            value={rowValues[
+                                                                                'lat'
+                                                                            ] ?? ''}
+                                                                            onchange={(e) =>
+                                                                                setRowValue(
+                                                                                    'lat',
+                                                                                    Number(
+                                                                                        (
+                                                                                            e.currentTarget as HTMLInputElement
+                                                                                        ).value.replace(
+                                                                                            ',',
+                                                                                            '.'
+                                                                                        )
+                                                                                    )
+                                                                                )}
+                                                                        />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label
+                                                                            class="mb-1 block text-[11px] text-gray-500"
+                                                                        >
+                                                                            lon
+                                                                        </label>
+                                                                        <input
+                                                                            type="text"
+                                                                            inputmode="decimal"
+                                                                            class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1.5 text-sm text-gray-100 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                                                                            value={rowValues[
+                                                                                'lon'
+                                                                            ] ?? ''}
+                                                                            onchange={(e) =>
+                                                                                setRowValue(
+                                                                                    'lon',
+                                                                                    Number(
+                                                                                        (
+                                                                                            e.currentTarget as HTMLInputElement
+                                                                                        ).value.replace(
+                                                                                            ',',
+                                                                                            '.'
+                                                                                        )
+                                                                                    )
+                                                                                )}
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        {:else if r.id === 'lon'}
+                                                            <!-- rendered inside the coordinates card -->
+                                                        {:else if r.id === 'time'}
+                                                            <!-- time action: epoch seconds input + "now" button -->
+                                                            <div
+                                                                class={`rounded-lg border px-3 py-2 transition-colors ${inQueue(r) ? 'border-orange-600/70 bg-orange-900/10' : 'border-gray-700/60 bg-gray-900/40 hover:border-gray-600'}`}
+                                                            >
+                                                                <div
+                                                                    class="mb-1.5 flex items-center justify-between gap-2"
+                                                                >
+                                                                    <span
+                                                                        class="text-xs font-semibold tracking-wide text-gray-400 uppercase"
+                                                                        title={r.label}
                                                                     >
-                                                                        {#each tok.options as opt (opt)}
-                                                                            <option value={opt}>{opt}</option>
-                                                                        {/each}
-                                                                    </select>
-                                                                {:else}
-                                                                    {@const pi = nameTokenComposerIndex[i]}
+                                                                        {r.id}
+                                                                    </span>
+                                                                    {#if inQueue(r)}
+                                                                        <span
+                                                                            class="shrink-0 rounded-full bg-orange-600/30 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-orange-200 uppercase"
+                                                                        >
+                                                                            {$locales(
+                                                                                'meshcoreconfig.dirty_badge'
+                                                                            )}
+                                                                        </span>
+                                                                    {/if}
+                                                                </div>
+                                                                <div
+                                                                    class="flex items-center gap-2"
+                                                                >
                                                                     <input
-                                                                        type="text"
-                                                                        maxlength="32"
-                                                                        placeholder={tok.optional ? `${tok.name}?` : tok.name}
-                                                                        use:fillHint
-                                                                        class="w-16 rounded border border-gray-600 bg-gray-700 px-1.5 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
-                                                                        value={composerParts[pi] ?? ''}
-                                                                        oninput={(e) =>
-                                                                            updateComposerPart(
-                                                                                pi,
-                                                                                (e.currentTarget as HTMLInputElement).value
+                                                                        type="number"
+                                                                        class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1.5 text-sm text-gray-100 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                                                                        value={rowValues['time'] ??
+                                                                            ''}
+                                                                        onchange={(e) =>
+                                                                            setRowValue(
+                                                                                'time',
+                                                                                Number(
+                                                                                    (
+                                                                                        e.currentTarget as HTMLInputElement
+                                                                                    ).value.replace(
+                                                                                        ',',
+                                                                                        '.'
+                                                                                    )
+                                                                                )
                                                                             )}
                                                                     />
+                                                                    <button
+                                                                        type="button"
+                                                                        onclick={sendCurrentTime}
+                                                                        class="shrink-0 rounded-md bg-gray-700 px-2 py-1.5 text-xs text-orange-200 transition-colors hover:bg-gray-600"
+                                                                        title={$locales(
+                                                                            'meshcoreconfig.time_now'
+                                                                        )}
+                                                                    >
+                                                                        🕐
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        {:else if r.id === 'name' && activeNameTemplate}
+                                                            <!-- Name composer: the zone's template drives inline enum
+                                                         selects + free inputs; the composed name is written to
+                                                         the `set name` row via setRowValue. -->
+                                                            <div
+                                                                class={`rounded-lg border px-3 py-2 transition-colors ${inQueue(r) ? 'border-orange-600/70 bg-orange-900/10' : 'border-gray-700/60 bg-gray-900/40 hover:border-gray-600'}`}
+                                                            >
+                                                                <div
+                                                                    class="mb-1.5 flex items-center justify-between gap-2"
+                                                                >
+                                                                    <span
+                                                                        class="text-xs font-semibold tracking-wide text-gray-400 uppercase"
+                                                                        title={r.label}
+                                                                    >
+                                                                        {r.id}
+                                                                    </span>
+                                                                    <div
+                                                                        class="flex items-center gap-1"
+                                                                    >
+                                                                        {#if inQueue(r)}
+                                                                            <span
+                                                                                class="shrink-0 rounded-full bg-orange-600/30 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-orange-200 uppercase"
+                                                                            >
+                                                                                {$locales(
+                                                                                    'meshcoreconfig.dirty_badge'
+                                                                                )}
+                                                                            </span>
+                                                                        {/if}
+                                                                        <button
+                                                                            type="button"
+                                                                            onclick={clearNameTemplate}
+                                                                            title={$locales(
+                                                                                'meshcoreconfig.zones.name_template_clear'
+                                                                            )}
+                                                                            class="shrink-0 rounded px-1.5 py-0.5 text-xs text-gray-400 transition-colors hover:bg-gray-700 hover:text-red-300"
+                                                                        >
+                                                                            ✕
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                                <div
+                                                                    class="flex flex-wrap items-center gap-1"
+                                                                >
+                                                                    {#each nameTokens as tok, i (i)}
+                                                                        {#if tok.type === 'literal'}
+                                                                            <span
+                                                                                class="text-xs text-gray-500"
+                                                                                >{tok.value}</span
+                                                                            >
+                                                                        {:else if tok.type === 'enum'}
+                                                                            {@const pi =
+                                                                                nameTokenComposerIndex[
+                                                                                    i
+                                                                                ]}
+                                                                            <select
+                                                                                class="rounded border border-gray-600 bg-gray-700 px-1.5 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
+                                                                                value={composerParts[
+                                                                                    pi
+                                                                                ] ?? ''}
+                                                                                onchange={(e) =>
+                                                                                    updateComposerPart(
+                                                                                        pi,
+                                                                                        (
+                                                                                            e.currentTarget as HTMLSelectElement
+                                                                                        ).value
+                                                                                    )}
+                                                                            >
+                                                                                {#each tok.options as opt (opt)}
+                                                                                    <option
+                                                                                        value={opt}
+                                                                                        >{opt}</option
+                                                                                    >
+                                                                                {/each}
+                                                                            </select>
+                                                                        {:else}
+                                                                            {@const pi =
+                                                                                nameTokenComposerIndex[
+                                                                                    i
+                                                                                ]}
+                                                                            <input
+                                                                                type="text"
+                                                                                maxlength="32"
+                                                                                placeholder={tok.optional
+                                                                                    ? `${tok.name}?`
+                                                                                    : tok.name}
+                                                                                use:fillHint
+                                                                                class="w-16 rounded border border-gray-600 bg-gray-700 px-1.5 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
+                                                                                value={composerParts[
+                                                                                    pi
+                                                                                ] ?? ''}
+                                                                                oninput={(e) =>
+                                                                                    updateComposerPart(
+                                                                                        pi,
+                                                                                        (
+                                                                                            e.currentTarget as HTMLInputElement
+                                                                                        ).value
+                                                                                    )}
+                                                                            />
+                                                                        {/if}
+                                                                    {/each}
+                                                                </div>
+                                                                {#if nameTooLong}
+                                                                    <span
+                                                                        class="mt-1 block text-[10px] text-red-400"
+                                                                    >
+                                                                        {$locales(
+                                                                            'meshcoreconfig.zones.name_too_long'
+                                                                        )}
+                                                                    </span>
                                                                 {/if}
-                                                            {/each}
-                                                        </div>
-                                                        {#if nameTooLong}
-                                                            <span class="mt-1 block text-[10px] text-red-400">
-                                                                {$locales('meshcoreconfig.zones.name_too_long')}
-                                                            </span>
+                                                                {#if nameIncomplete}
+                                                                    <span
+                                                                        class="mt-1 block text-[10px] text-red-400"
+                                                                    >
+                                                                        {$locales(
+                                                                            'meshcoreconfig.zones.name_incomplete'
+                                                                        )}
+                                                                    </span>
+                                                                {/if}
+                                                            </div>
+                                                        {:else}
+                                                            <MeshcoreConfigRow
+                                                                row={r}
+                                                                value={rowValues[r.id]}
+                                                                dirty={inQueue(r)}
+                                                                canRun={isConnected && !busy}
+                                                                armed={inQueue(r)}
+                                                                onchange={(next) =>
+                                                                    setRowValue(r.id, next)}
+                                                                onsend={() => runAction(r)}
+                                                                onarm={() => toggleArm(r)}
+                                                            />
                                                         {/if}
-                                                        {#if nameIncomplete}
-                                                            <span class="mt-1 block text-[10px] text-red-400">
-                                                                {$locales('meshcoreconfig.zones.name_incomplete')}
-                                                            </span>
-                                                        {/if}
-                                                    </div>
-                                                {:else}
-                                                    <MeshcoreConfigRow
-                                                        row={r}
-                                                        value={rowValues[r.id]}
-                                                        dirty={inQueue(r)}
-                                                        canRun={isConnected && !busy}
-                                                        armed={inQueue(r)}
-                                                        onchange={(next) => setRowValue(r.id, next)}
-                                                        onsend={() => runAction(r)}
-                                                        onarm={() => toggleArm(r)}
-                                                    />
-                                                {/if}
-                                            {/each}
+                                                    {/each}
+                                                </div>
+                                            {/if}
                                         </div>
                                     {/if}
-                                </div>
-                            {/if}
-                        {/each}
-                    </div>
+                                {/each}
+                            </div>
 
-                    <!-- Right: the assembled send queue (exact truth for Apply) -->
-                    <div>
-                        <MeshcoreConfigCommandList
-                            setLines={assembled}
-                            lineEnding={selectedLineEnding}
-                        />
+                            <!-- Right: the assembled send queue (exact truth for Apply) -->
+                            <div>
+                                <MeshcoreConfigCommandList
+                                    setLines={assembled}
+                                    lineEnding={selectedLineEnding}
+                                />
+                            </div>
+                        </div>
                     </div>
-                </div>
-                </div><!-- /Settings panel -->
+                    <!-- /Settings panel -->
 
-                <!-- Terminal panel (lazily mounted on first open so xterm sizes correctly). -->
-                {#if terminalEverOpened}
-                <div
-                    class={`h-full flex flex-col space-y-3 ${activeTab === 'terminal' ? '' : 'hidden'}`}
-                >
-                    <div
-                        class="relative min-h-0 flex-1 overflow-hidden rounded-lg border border-gray-700 bg-gray-800"
-                    >
-                        <!-- h-full w-full forwards onto the component's host <div> (via its
+                    <!-- Terminal panel (lazily mounted on first open so xterm sizes correctly). -->
+                    {#if terminalEverOpened}
+                        <div
+                            class={`flex h-full flex-col space-y-3 ${activeTab === 'terminal' ? '' : 'hidden'}`}
+                        >
+                            <div
+                                class="relative min-h-0 flex-1 overflow-hidden rounded-lg border border-gray-700 bg-gray-800"
+                            >
+                                <!-- h-full w-full forwards onto the component's host <div> (via its
                              {...rest} spread) so it stretches to the flex-1 box; otherwise
                              fitAddon.fit() sizes the canvas to the collapsed host height. -->
-                        <Xterm options={terminalOptions} {onLoad} class="h-full w-full" />
-                    </div>
-                    <div class="shrink-0">
-                        <CommandInput
-                            bind:value={termInput}
-                            isConnected={isConnected}
-                            isMassRunning={isMassRunning}
-                            isSendBlocked={isMassRunning || isTermWaiting}
-                            onSubmit={handleTermSubmit}
-                            onsendall={runTermMassSend}
-                            onsendline={sendTermLine}
-                            placeholder={$locales('meshcoreconfig.terminal_input_placeholder')}
-                            {commandHistory}
-                            bind:historyIndex
-                            {showCommandShortDescriptions}
-                            bind:currentLine
-                        />
-                    </div>
-                    <MultilineControls
-                        isMultiline={true}
-                        isConnected={isConnected}
-                        isMassRunning={isMassRunning}
-                        isWaiting={isTermWaiting}
-                        lastSentIndex={massSentIndex}
-                        totalLines={splitIntoCommandLines(termInput).filter(
-                            (l) => l.trim() && !isModeSwitchLine(l)
-                        ).length}
-                        limitExceeded={false}
-                        onsendall={runTermMassSend}
-                        onstop={stopTermMassSend}
-                    />
+                                <Xterm options={terminalOptions} {onLoad} class="h-full w-full" />
+                            </div>
+                            <div class="shrink-0">
+                                <CommandInput
+                                    bind:value={termInput}
+                                    {isConnected}
+                                    {isMassRunning}
+                                    isSendBlocked={isMassRunning || isTermWaiting}
+                                    onSubmit={handleTermSubmit}
+                                    onsendall={runTermMassSend}
+                                    onsendline={sendTermLine}
+                                    placeholder={$locales(
+                                        'meshcoreconfig.terminal_input_placeholder'
+                                    )}
+                                    {commandHistory}
+                                    bind:historyIndex
+                                    {showCommandShortDescriptions}
+                                    bind:currentLine
+                                />
+                            </div>
+                            <MultilineControls
+                                isMultiline={true}
+                                {isConnected}
+                                {isMassRunning}
+                                isWaiting={isTermWaiting}
+                                lastSentIndex={massSentIndex}
+                                totalLines={splitIntoCommandLines(termInput).filter(
+                                    (l) => l.trim() && !isModeSwitchLine(l)
+                                ).length}
+                                limitExceeded={false}
+                                onsendall={runTermMassSend}
+                                onstop={stopTermMassSend}
+                            />
+                        </div>
+                    {/if}
                 </div>
-                {/if}
-                </div><!-- /panels wrapper -->
+                <!-- /panels wrapper -->
             </div>
         </div>
     </div>

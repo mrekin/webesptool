@@ -7,12 +7,12 @@
     import { browser } from '$app/environment';
     import { InterfaceMode } from '$lib/types.js';
 
-    // Local state
-    let showDropdown = false;
-    let settingsButton: HTMLButtonElement;
-    let settingsDropdown: HTMLDivElement;
-    let isMinimalMode = false;
-    let isExperimentalFeatures = false;
+    // Local state (bind:this targets are state too: they are reassigned on every dropdown mount)
+    let showDropdown = $state(false);
+    let settingsButton = $state<HTMLButtonElement | null>(null);
+    let settingsDropdown = $state<HTMLDivElement | null>(null);
+    let isMinimalMode = $state(false);
+    let isExperimentalFeatures = $state(false);
 
     // Language options
     const languages = [
@@ -21,23 +21,24 @@
         { code: 'pl', name: 'Polski', flag: '🇵🇱' }
     ].filter((lang) => supportedLocales.includes(lang.code as any));
 
-    // Subscribe to stores
-    $: currentLanguage = $locale;
-    $: currentInterfaceMode = $uiState.interfaceMode;
-    $: currentExperimentalFeatures = $uiState.experimentalFeatures;
+    // Sync local toggle state with the persisted UI store (the store is the
+    // source of truth; user toggles write through to it immediately). Writing
+    // a read value re-triggers the effect once, which then settles as a no-op.
+    $effect(() => {
+        if ($uiState.interfaceMode === InterfaceMode.MINIMAL && !isMinimalMode) {
+            isMinimalMode = true;
+        } else if ($uiState.interfaceMode === InterfaceMode.FULL && isMinimalMode) {
+            isMinimalMode = false;
+        }
+    });
 
-    // Sync local state with store
-    $: if (currentInterfaceMode === InterfaceMode.MINIMAL && !isMinimalMode) {
-        isMinimalMode = true;
-    } else if (currentInterfaceMode === InterfaceMode.FULL && isMinimalMode) {
-        isMinimalMode = false;
-    }
-
-    $: if (currentExperimentalFeatures && !isExperimentalFeatures) {
-        isExperimentalFeatures = true;
-    } else if (!currentExperimentalFeatures && isExperimentalFeatures) {
-        isExperimentalFeatures = false;
-    }
+    $effect(() => {
+        if ($uiState.experimentalFeatures && !isExperimentalFeatures) {
+            isExperimentalFeatures = true;
+        } else if (!$uiState.experimentalFeatures && isExperimentalFeatures) {
+            isExperimentalFeatures = false;
+        }
+    });
 
     // Handle language change
     function handleLanguageChange(event: Event) {
@@ -106,7 +107,7 @@
     <button
         bind:this={settingsButton}
         type="button"
-        on:click={toggleDropdown}
+        onclick={toggleDropdown}
         class="flex h-10 w-10 items-center justify-center rounded-full text-orange-300 shadow-lg transition-all duration-200 hover:scale-105 hover:text-orange-200 hover:shadow-xl focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-gray-900 focus:outline-none"
         title={$locales('settings.title')}
         aria-label={$locales('settings.title')}
@@ -144,7 +145,7 @@
                     </h3>
                     <button
                         type="button"
-                        on:click={() => (showDropdown = false)}
+                        onclick={() => (showDropdown = false)}
                         class="text-orange-400 transition-colors hover:text-orange-300"
                         title={$locales('common.close')}
                         aria-label={$locales('common.close')}
@@ -160,11 +161,11 @@
                     </label>
                     <select
                         id="language-select"
-                        bind:value={currentLanguage}
-                        on:change={handleLanguageChange}
+                        bind:value={$locale}
+                        onchange={handleLanguageChange}
                         class="w-full rounded-md border border-gray-600 bg-gray-700 px-3 py-2 text-orange-200 focus:border-transparent focus:ring-2 focus:ring-orange-500 focus:outline-none"
                     >
-                        {#each languages as lang}
+                        {#each languages as lang (lang.code)}
                             <option value={lang.code}>
                                 {lang.flag}
                                 {lang.name}
@@ -182,7 +183,7 @@
                         <!-- Custom Toggle Switch -->
                         <button
                             type="button"
-                            on:click={toggleMinimalMode}
+                            onclick={toggleMinimalMode}
                             class="relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-gray-900 focus:outline-none"
                             class:bg-gray-600={!isMinimalMode}
                             class:bg-orange-600={isMinimalMode}
@@ -212,7 +213,7 @@
                         <!-- Custom Toggle Switch -->
                         <button
                             type="button"
-                            on:click={toggleExperimentalFeatures}
+                            onclick={toggleExperimentalFeatures}
                             class="relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-gray-900 focus:outline-none"
                             class:bg-gray-600={!isExperimentalFeatures}
                             class:bg-orange-600={isExperimentalFeatures}

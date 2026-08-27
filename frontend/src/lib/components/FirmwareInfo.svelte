@@ -11,14 +11,14 @@
     import MarkdownRenderer from '$lib/components/MarkdownRenderer.svelte';
 
     // Local state
-    let showDeviceInfo = false;
+    let showDeviceInfo = $state(false);
 
-    // Subscribe to stores
-    $: deviceInfo = $deviceDisplayInfo;
-    $: displayInfo = $firmwareDisplayInfo;
-    $: error = $loadingState.error;
-    $: isLoadingVersions = $loadingState.isLoadingVersions;
-    $: isLoadingInfo = $loadingState.isLoadingInfo;
+    // Store values used across the template
+    const deviceInfo = $derived($deviceDisplayInfo);
+    const displayInfo = $derived($firmwareDisplayInfo);
+    const error = $derived($loadingState.error);
+    const isLoadingVersions = $derived($loadingState.isLoadingVersions);
+    const isLoadingInfo = $derived($loadingState.isLoadingInfo);
 
     // Toggle device info section
     function toggleDeviceInfo() {
@@ -100,7 +100,7 @@
                             <span class="font-medium text-orange-300"
                                 >{$locales('common.available_versions')}</span
                             >
-                            {#if isLoadingVersions && !(deviceInfo?.availableVersions?.length)}
+                            {#if isLoadingVersions && !deviceInfo?.availableVersions?.length}
                                 <!-- Skeleton while versions are loading -->
                                 <span
                                     class="inline-block h-4 w-12 animate-pulse rounded bg-gray-700"
@@ -117,7 +117,7 @@
                 <!-- Device Specific Information -->
                 <div class="mt-6 mb-6">
                     <button
-                        on:click={toggleDeviceInfo}
+                        onclick={toggleDeviceInfo}
                         class="flex w-full items-center justify-between rounded border border-orange-600 bg-orange-900/30 p-3 text-left transition-all duration-300 hover:border-orange-500 hover:bg-orange-900/50"
                         aria-expanded={showDeviceInfo}
                         aria-controls="howto-content"

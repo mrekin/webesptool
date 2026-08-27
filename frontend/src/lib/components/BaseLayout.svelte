@@ -1,8 +1,19 @@
 <script lang="ts">
-    // Removed background image loading logic
+    import type { Snippet } from 'svelte';
+
+    interface Props {
+        /** Rendered inside the sticky header area */
+        head?: Snippet;
+        /** Rendered inside the main content area */
+        content?: Snippet;
+        /** Rendered inside the footer area */
+        footer?: Snippet;
+    }
+
+    let { head, content, footer }: Props = $props();
 
     // State for keyboard navigation
-    let isKeyboardNavigation = false;
+    let isKeyboardNavigation = $state(false);
 
     // Handle keyboard navigation for accessibility
     function handleKeydown(event: KeyboardEvent) {
@@ -26,14 +37,15 @@
         isKeyboardNavigation = false;
     }
 
-    // Reactive statement to update body class
-    $: if (typeof document !== 'undefined') {
+    // Keep the body class in sync with keyboard usage
+    // (effects run client-side only, so no explicit SSR guard is needed)
+    $effect(() => {
         if (isKeyboardNavigation) {
             document.body.classList.add('keyboard-navigation');
         } else {
             document.body.classList.remove('keyboard-navigation');
         }
-    }
+    });
 </script>
 
 <svelte:head>
@@ -46,8 +58,8 @@
 <div
     class="min-h-screen bg-gray-900"
     role="application"
-    on:keydown={handleKeydown}
-    on:mousedown={handleMouseDown}
+    onkeydown={handleKeydown}
+    onmousedown={handleMouseDown}
 >
     <!-- Main container with proper spacing and structure -->
     <div class="relative z-10 flex min-h-screen flex-col">
@@ -64,14 +76,14 @@
             class="bg-opacity-90 w-full border-b border-orange-800 bg-gray-900 backdrop-blur-sm"
         >
             <div class="container mx-auto px-4 py-6">
-                <slot name="head"></slot>
+                {@render head?.()}
             </div>
         </header>
 
         <!-- Main content area -->
         <main id="main-content" class="container mx-auto flex-grow px-4 py-8">
             <div class="mx-auto max-w-7xl">
-                <slot name="content"></slot>
+                {@render content?.()}
             </div>
         </main>
 
@@ -80,7 +92,7 @@
             class="bg-opacity-90 mt-auto w-full border-t border-orange-800 bg-gray-900 backdrop-blur-sm"
         >
             <div class="container mx-auto px-4 py-6">
-                <slot name="footer"></slot>
+                {@render footer?.()}
             </div>
         </footer>
     </div>

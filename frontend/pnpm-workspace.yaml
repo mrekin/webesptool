@@ -1,8 +1,8 @@
 packages:
-  - 'local-packages/**'
+    - 'local-packages/**'
 allowBuilds:
-  esbuild: true
-  "@parcel/watcher": true
-  es5-ext: true
-  "@meshtastic/core": true
-  '@meshtastic/core@file:local-packages/@meshtastic/core': set this to true or false
+    esbuild: true
+    '@parcel/watcher': true
+    es5-ext: true
+    '@meshtastic/core': true
+    '@meshtastic/core@file:local-packages/@meshtastic/core': set this to true or false

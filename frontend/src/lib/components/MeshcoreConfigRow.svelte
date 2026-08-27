@@ -80,7 +80,7 @@
     <div class="mb-1.5 flex items-center justify-between gap-2">
         <label
             for={fieldId}
-            class="truncate text-xs font-semibold uppercase tracking-wide text-gray-400"
+            class="truncate text-xs font-semibold tracking-wide text-gray-400 uppercase"
             title={row.label}
         >
             {row.id}
@@ -107,7 +107,7 @@
             </div>
         {:else if dirty}
             <span
-                class="shrink-0 rounded-full bg-orange-600/30 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-orange-200"
+                class="shrink-0 rounded-full bg-orange-600/30 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-orange-200 uppercase"
             >
                 {$locales('meshcoreconfig.dirty_badge')}
             </span>

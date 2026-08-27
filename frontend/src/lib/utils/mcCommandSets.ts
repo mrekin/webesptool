@@ -61,11 +61,7 @@ export function buildMcCommandTree(): McCommandGroupNode {
 }
 
 /** Insert a file leaf (and any missing intermediate groups) under the root. */
-function insertNode(
-    root: McCommandGroupNode,
-    segments: string[],
-    fullPath: string
-): void {
+function insertNode(root: McCommandGroupNode, segments: string[], fullPath: string): void {
     let current = root;
     for (let i = 0; i < segments.length; i++) {
         const segment = segments[i];
@@ -83,8 +79,7 @@ function insertNode(
         }
 
         const existing = current.children.find(
-            (child): child is McCommandGroupNode =>
-                child.type === 'group' && child.name === segment
+            (child): child is McCommandGroupNode => child.type === 'group' && child.name === segment
         );
         if (existing) {
             current = existing;

@@ -42,7 +42,10 @@ export const POST: RequestHandler = async (event) => {
 
     // 2. Early size rejection by the declared body size (body not read).
     const declared = Number(event.request.headers.get('content-length') ?? '');
-    if (Number.isFinite(declared) && declared > ZONES_UPLOAD_MAX_FILE_BYTES + ENVELOPE_OVERHEAD_BYTES) {
+    if (
+        Number.isFinite(declared) &&
+        declared > ZONES_UPLOAD_MAX_FILE_BYTES + ENVELOPE_OVERHEAD_BYTES
+    ) {
         return reject('file_too_large', 413);
     }
 

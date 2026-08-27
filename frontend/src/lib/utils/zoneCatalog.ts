@@ -10,11 +10,7 @@
 
 import { base } from '$app/paths';
 import { ZONE_CATALOG_SCHEMA, ZONE_LEVEL_DEFAULT } from '$lib/config/meshcoreZoneConfig';
-import {
-    detectGroupMeshcore,
-    parseZoneFeatures,
-    readMeshcore
-} from '$lib/utils/zoneFeatures';
+import { detectGroupMeshcore, parseZoneFeatures, readMeshcore } from '$lib/utils/zoneFeatures';
 import type { BoundaryFile, GroupFile, ZoneCatalog } from '$lib/types';
 
 // The pure feature parser + preset detector now live in zoneFeatures.ts (shared
@@ -31,12 +27,14 @@ function assetUrl(path: string): string {
 
 // Parse a single FeatureCollection into a ZoneCatalog (kept for compatibility).
 export function parseZoneCatalog(raw: unknown): ZoneCatalog {
-    if (!raw || typeof raw !== 'object') return { status: 'unavailable', features: [], reason: 'invalid' };
+    if (!raw || typeof raw !== 'object')
+        return { status: 'unavailable', features: [], reason: 'invalid' };
     const fc = raw as { type?: string; features?: unknown[]; metadata?: { schema?: unknown } };
     if (fc.type !== 'FeatureCollection' || !Array.isArray(fc.features)) {
         return { status: 'unavailable', features: [], reason: 'invalid' };
     }
-    const schema = typeof fc.metadata?.schema === 'number' ? fc.metadata.schema : ZONE_CATALOG_SCHEMA;
+    const schema =
+        typeof fc.metadata?.schema === 'number' ? fc.metadata.schema : ZONE_CATALOG_SCHEMA;
     const features = parseZoneFeatures(fc.features);
     if (features.length === 0) {
         return { status: 'unavailable', features: [], reason: 'empty_catalog', schema };
@@ -124,10 +122,7 @@ export function fetchBoundaryFile(url: string): Promise<BoundaryFile | null> {
 // mounted directory at runtime (live add). Exported for zonesUpload.ts, which
 // parses a pending file fetched from the moderation endpoint the same way
 // (url key `pending:<filename>`).
-export function parseGroupFile(
-    url: string,
-    json: unknown
-): GroupFile | null {
+export function parseGroupFile(url: string, json: unknown): GroupFile | null {
     try {
         const j = json as {
             metadata?: {
@@ -148,15 +143,13 @@ export function parseGroupFile(
         // a flat legacy metadata.regions), then let per-feature values fill in
         // regions when metadata has none.
         const metaMc = readMeshcore(meta as Record<string, unknown>);
-        const metaRegions = metaMc.regions || (typeof meta.regions === 'string' ? meta.regions.trim() : '');
+        const metaRegions =
+            metaMc.regions || (typeof meta.regions === 'string' ? meta.regions.trim() : '');
         const features = parseZoneFeatures(j.features, metaRegions);
         // Fall back to a feature-level regions value when metadata has none (an
         // older export or a hand-made file): the editor's regions field must
         // still populate when the group is loaded for editing.
-        const regions =
-            metaRegions ||
-            features.map((f) => f.regions).find((r) => !!r) ||
-            '';
+        const regions = metaRegions || features.map((f) => f.regions).find((r) => !!r) || '';
         // Group level: metadata.meshcore.level first, then a feature's level,
         // then the default (1).
         const level =
@@ -174,7 +167,10 @@ export function parseGroupFile(
             docUrl: metaMc.docUrl,
             level,
             commands: metaMc.commands,
-            author: typeof meta.author === 'string' && meta.author.trim() ? meta.author.trim() : undefined,
+            author:
+                typeof meta.author === 'string' && meta.author.trim()
+                    ? meta.author.trim()
+                    : undefined,
             features
         } satisfies GroupFile;
     } catch (err) {
@@ -203,7 +199,9 @@ export function fetchGroupFiles(): Promise<GroupFile[]> {
         } catch (err) {
             console.warn('[meshcore-zone]', 'group list failed', err);
         }
-        const files = entries.map((e) => parseGroupFile(assetUrl(`data/groups/${e.filename}`), e.json));
+        const files = entries.map((e) =>
+            parseGroupFile(assetUrl(`data/groups/${e.filename}`), e.json)
+        );
         const ok = files.filter((f): f is GroupFile => f !== null);
         console.info('[meshcore-zone]', 'groups_loaded', ok.length);
         return ok;

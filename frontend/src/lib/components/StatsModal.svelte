@@ -1,26 +1,30 @@
 <script lang="ts">
     import { _ as locales } from 'svelte-i18n';
-    import { onMount, onDestroy } from 'svelte';
+    import { onMount, onDestroy, untrack } from 'svelte';
     import { apiService } from '$lib/api.js';
     import { deviceNames } from '$lib/stores.js';
     import StatsBarChart from './StatsBarChart.svelte';
     import type { StatsDataItem } from '$lib/types';
 
-    export let isOpen: boolean = false;
-    export let onClose: () => void = () => {};
+    interface Props {
+        isOpen?: boolean;
+        onClose?: () => void;
+    }
+
+    let { isOpen = false, onClose = () => {} }: Props = $props();
 
     const periods = [7, 30, 90] as const;
-    let selectedPeriod: number = 30;
-    let isLoading: boolean = false;
-    let error: string | null = null;
+    let selectedPeriod = $state(30);
+    let isLoading = $state(false);
+    let error = $state<string | null>(null);
 
-    let reposData: StatsDataItem[] | null = null;
-    let devicesData: StatsDataItem[] | null = null;
-    let versionsData: StatsDataItem[] | null = null;
+    let reposData = $state<StatsDataItem[] | null>(null);
+    let devicesData = $state<StatsDataItem[] | null>(null);
+    let versionsData = $state<StatsDataItem[] | null>(null);
 
-    let reposError: string | null = null;
-    let devicesError: string | null = null;
-    let versionsError: string | null = null;
+    let reposError = $state<string | null>(null);
+    let devicesError = $state<string | null>(null);
+    let versionsError = $state<string | null>(null);
 
     function mapDeviceName(key: string): string {
         return $deviceNames[key] || key;
@@ -73,9 +77,14 @@
         }
     }
 
-    $: if (isOpen) {
-        loadStats();
-    }
+    // Reload stats each time the modal opens. Period changes reload explicitly
+    // via handlePeriodChange, so reads inside loadStats stay untracked to keep
+    // the effect depending on isOpen only (legacy "$:" semantics).
+    $effect(() => {
+        if (isOpen) {
+            untrack(() => loadStats());
+        }
+    });
 
     onMount(() => {
         window.addEventListener('keydown', handleKeydown);
@@ -91,25 +100,28 @@
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-        on:click={() => onClose()}
+        onclick={() => onClose()}
     >
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
             class="mx-4 max-h-[85vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-orange-600 bg-gray-800 shadow-2xl"
-            on:click|stopPropagation={() => {}}
+            onclick={(e) => e.stopPropagation()}
         >
             <!-- Header -->
-            <div class="sticky top-0 z-10 flex items-center justify-between border-b border-gray-700 bg-gray-800 px-6 py-4">
+            <div
+                class="sticky top-0 z-10 flex items-center justify-between border-b border-gray-700 bg-gray-800 px-6 py-4"
+            >
                 <h2 class="text-lg font-semibold text-orange-200">{$locales('stats.title')}</h2>
 
                 <!-- Period Selector -->
                 <div class="flex items-center gap-2">
-                    {#each periods as period}
+                    {#each periods as period (period)}
                         <button
                             type="button"
-                            on:click={() => handlePeriodChange(period)}
-                            class="rounded-md px-3 py-1 text-xs font-medium transition-colors {selectedPeriod === period
+                            onclick={() => handlePeriodChange(period)}
+                            class="rounded-md px-3 py-1 text-xs font-medium transition-colors {selectedPeriod ===
+                            period
                                 ? 'bg-orange-600 text-white'
                                 : 'bg-gray-700 text-orange-300 hover:bg-gray-600'}"
                         >
@@ -121,12 +133,17 @@
                 <!-- Close button -->
                 <button
                     type="button"
-                    on:click={onClose}
+                    onclick={onClose}
                     class="ml-3 rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
                     aria-label="Close"
                 >
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"
+                        />
                     </svg>
                 </button>
             </div>

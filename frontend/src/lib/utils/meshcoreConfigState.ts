@@ -176,10 +176,7 @@ export function coerceToWireValue(
 /**
  * Serialize a single field value to a `set X ...` command line.
  */
-export function fieldToSetLine(
-    field: MeshcoreConfigField,
-    value: MeshcoreConfigValue
-): string {
+export function fieldToSetLine(field: MeshcoreConfigField, value: MeshcoreConfigValue): string {
     const parts = coerceToWireValue(field, value);
     const sep = field.separator === 'comma' ? ',' : ' ';
     return `${field.setCommand} ${parts.join(sep)}`;
@@ -272,7 +269,10 @@ export function parseSetLine(
     const remainder = trimmed.slice(bestBase.length).trim();
     const parts =
         field.separator === 'comma'
-            ? remainder.split(',').map((p) => p.trim()).filter((p) => p !== '')
+            ? remainder
+                  .split(',')
+                  .map((p) => p.trim())
+                  .filter((p) => p !== '')
             : remainder.split(/\s+/).filter((p) => p !== '');
     return { key: field.key, values: parts };
 }

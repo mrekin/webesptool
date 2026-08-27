@@ -119,10 +119,7 @@ export function serializeGroup(
 }
 
 // Trigger a browser download of the catalog as a .geojson file.
-export function downloadCatalog(
-    fc: ZoneCatalogJson,
-    filename = 'mczones.geojson'
-): void {
+export function downloadCatalog(fc: ZoneCatalogJson, filename = 'mczones.geojson'): void {
     const blob = new Blob([JSON.stringify(fc)], { type: 'application/geo+json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

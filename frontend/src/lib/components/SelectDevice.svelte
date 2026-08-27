@@ -4,90 +4,74 @@
         availableFirmwares,
         versionsData,
         allDevicesFlat,
-        allDevicesWithCategories,
         selectionState,
-        availableDevicesForSelection,
-        availableVersionsForSelection,
         hasPinoutData,
         currentSource,
         firmwaresLoadedState
     } from '$lib/stores.js';
     import { deviceActions, selectionActions } from '$lib/stores.js';
-    import { onMount, onDestroy } from 'svelte';
+    import { onMount, onDestroy, untrack } from 'svelte';
     import { browser } from '$app/environment';
     import { DeviceType, RepositoryType } from '$lib/types.js';
     import { DEVICE_GROUP_LABELS } from '$lib/utils/deviceTypeUtils.js';
     import type { DeviceCategoryType } from '$lib/types.ts';
     import { _ as locales } from 'svelte-i18n';
 
+    interface Props {
+        onOpenPinoutModal?: () => void;
+    }
+
     // Callback props
-    export let onOpenPinoutModal: () => void = () => {};
+    let { onOpenPinoutModal = () => {} }: Props = $props();
 
     // Local state
-    let deviceFilter = ''; // For filtering the dropdown list only
-    let deviceInputValue = ''; // For displaying in the input field
-    let showDropdown = false;
-    let selectedIndex = -1;
-    let isFiltering = false; // Track if user is actively filtering vs just opening dropdown
+    let deviceFilter = $state(''); // For filtering the dropdown list only
+    let deviceInputValue = $state(''); // For displaying in the input field
+    let showDropdown = $state(false);
+    let selectedIndex = $state(-1);
+    let isFiltering = $state(false); // Track if user is actively filtering vs just opening dropdown
 
     // Version selector state
-    let showVersionDropdown = false;
-    let selectedVersionIndex = -1;
-
-    // Subscribe to stores
-    $: deviceSelectionStore = $deviceSelection;
-    $: availableFirmwaresStore = $availableFirmwares;
-    $: versionsDataStore = $versionsData;
-    $: currentSourceStore = $currentSource;
-
-    // Unified selection state - use direct subscribe to fix reactivity issue
-    let selectionStateStore = $selectionState;
-    let availableDevicesForSelectionStore = $availableDevicesForSelection;
-    let availableVersionsForSelectionStore = $availableVersionsForSelection;
-
-    // Direct subscriptions to fix reactivity issues with Svelte stores
-    selectionState.subscribe((value) => {
-        selectionStateStore = value;
-    });
-
-    availableDevicesForSelection.subscribe((value) => {
-        availableDevicesForSelectionStore = value;
-    });
-
-    availableVersionsForSelection.subscribe((value) => {
-        availableVersionsForSelectionStore = value;
-    });
+    let showVersionDropdown = $state(false);
+    let selectedVersionIndex = $state(-1);
 
     // Legacy compatibility (can be removed later)
-    $: allDevices = $allDevicesFlat;
+    const allDevices = $derived($allDevicesFlat);
     // New derived states based on unified selectionState
-    $: deviceSelected = $selectionState.device !== null;
-    $: versionSelected = $selectionState.version !== null;
+    const deviceSelected = $derived($selectionState.device !== null);
+    const versionSelected = $derived($selectionState.version !== null);
 
     // Clear input when device type is reset to null
-    $: if (deviceSelectionStore.devicePioTarget === null) {
-        deviceFilter = '';
-        deviceInputValue = '';
-        showDropdown = false;
-        selectedIndex = -1;
-    }
+    $effect(() => {
+        if ($deviceSelection.devicePioTarget === null) {
+            deviceFilter = '';
+            deviceInputValue = '';
+            showDropdown = false;
+            selectedIndex = -1;
+        }
+    });
 
     // Update input value when device changes from store
-    $: if (deviceSelectionStore.devicePioTarget && !isFiltering) {
-        deviceInputValue = getDeviceDisplayName(deviceSelectionStore.devicePioTarget);
-    }
+    $effect(() => {
+        const devicePioTarget = $deviceSelection.devicePioTarget;
+        if (devicePioTarget && !isFiltering) {
+            // Untracked: late device-names loading must not re-trigger this effect
+            deviceInputValue = untrack(() => getDeviceDisplayName(devicePioTarget));
+        }
+    });
 
     // Filter devices based on search input
-    $: filteredDevices = deviceFilter
-        ? allDevices.filter(
-              (device: { device: string; category: DeviceCategoryType; displayName: string }) =>
-                  device.displayName.toLowerCase().includes(deviceFilter.toLowerCase()) ||
-                  device.device.toLowerCase().includes(deviceFilter.toLowerCase())
-          )
-        : allDevices;
+    const filteredDevices = $derived.by(() => {
+        if (!deviceFilter) return allDevices;
+        return allDevices.filter(
+            (device: { device: string; category: DeviceCategoryType; displayName: string }) =>
+                device.displayName.toLowerCase().includes(deviceFilter.toLowerCase()) ||
+                device.device.toLowerCase().includes(deviceFilter.toLowerCase())
+        );
+    });
 
     // Group filtered devices by category
-    $: filteredDevicesByCategory = {
+    const filteredDevicesByCategory = $derived.by(() => ({
         esp: filteredDevices.filter(
             (d: { device: string; category: string }) => d.category === 'esp'
         ),
@@ -97,23 +81,25 @@
         rp2040: filteredDevices.filter(
             (d: { device: string; category: string }) => d.category === 'rp2040'
         )
-    };
+    }));
 
     // Auto-select latest version when versions are loaded for selected device
-    $: if (selectionStateStore.device && versionsDataStore.versions.length > 0) {
-        if (
-            !selectionStateStore.version ||
-            !versionsDataStore.versions.includes(selectionStateStore.version)
-        ) {
-            // Auto-select latest version (first in array as server returns sorted descending)
-            selectionActions.setVersion(versionsDataStore.versions[0]);
+    $effect(() => {
+        if ($selectionState.device && $versionsData.versions.length > 0) {
+            if (
+                !$selectionState.version ||
+                !$versionsData.versions.includes($selectionState.version)
+            ) {
+                // Auto-select latest version (first in array as server returns sorted descending)
+                selectionActions.setVersion($versionsData.versions[0]);
+            }
         }
-    }
+    });
 
     // Computed display value for input
-    $: versionDisplayValue = selectionStateStore.version
-        ? getVersionDisplayText(selectionStateStore.version)
-        : '';
+    const versionDisplayValue = $derived(
+        $selectionState.version ? getVersionDisplayText($selectionState.version) : ''
+    );
 
     // Handle device selection from dropdown
     function selectDevice(device: { device: string; displayName: string }) {
@@ -200,7 +186,7 @@
                 switch (event.key) {
                     case 'ArrowDown':
                         event.preventDefault();
-                        if (selectedVersionIndex < versionsDataStore.versions.length - 1) {
+                        if (selectedVersionIndex < $versionsData.versions.length - 1) {
                             selectedVersionIndex++;
                         } else {
                             selectedVersionIndex = 0;
@@ -211,16 +197,16 @@
                         if (selectedVersionIndex > 0) {
                             selectedVersionIndex--;
                         } else {
-                            selectedVersionIndex = versionsDataStore.versions.length - 1;
+                            selectedVersionIndex = $versionsData.versions.length - 1;
                         }
                         break;
                     case 'Enter':
                         event.preventDefault();
                         if (
                             selectedVersionIndex >= 0 &&
-                            versionsDataStore.versions[selectedVersionIndex]
+                            $versionsData.versions[selectedVersionIndex]
                         ) {
-                            selectVersion(versionsDataStore.versions[selectedVersionIndex]);
+                            selectVersion($versionsData.versions[selectedVersionIndex]);
                         }
                         break;
                     case 'Escape':
@@ -377,13 +363,13 @@
 
     // Get display name for device type
     function getDeviceDisplayName(devicePioTarget: string): string {
-        return availableFirmwaresStore.device_names[devicePioTarget] || devicePioTarget;
+        return $availableFirmwares.device_names[devicePioTarget] || devicePioTarget;
     }
 
     // Get version display text
     function getVersionDisplayText(version: string): string {
         // Check if version exists and is in the actual versions list for current device
-        if (!version || !versionsDataStore.versions.includes(version)) {
+        if (!version || !$versionsData.versions.includes(version)) {
             return '';
         }
         return version;
@@ -404,9 +390,9 @@
                 type="text"
                 placeholder={$locales('selectdevice.filter_placeholder')}
                 value={deviceInputValue}
-                on:input={handleInputChange}
-                on:focus={handleInputFocus}
-                on:keydown={handleKeydown}
+                oninput={handleInputChange}
+                onfocus={handleInputFocus}
+                onkeydown={handleKeydown}
                 class="w-full rounded-md border border-orange-600 bg-gray-800 px-4 py-2 pr-20 text-orange-100 placeholder-orange-400 transition-colors focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
             />
 
@@ -417,7 +403,7 @@
                 {#if deviceInputValue}
                     <button
                         type="button"
-                        on:click={clearFilter}
+                        onclick={clearFilter}
                         class="p-1 text-orange-400 transition-colors hover:text-orange-300"
                         title={$locales('selectdevice.clear_filter')}
                     >
@@ -425,10 +411,10 @@
                     </button>
                 {/if}
 
-                {#if $hasPinoutData && deviceSelectionStore.devicePioTarget && (currentSourceStore?.type === RepositoryType.MESHTASTIC || currentSourceStore?.type === RepositoryType.MESHCORE)}
+                {#if $hasPinoutData && $deviceSelection.devicePioTarget && ($currentSource?.type === RepositoryType.MESHTASTIC || $currentSource?.type === RepositoryType.MESHCORE)}
                     <button
                         type="button"
-                        on:click={onOpenPinoutModal}
+                        onclick={onOpenPinoutModal}
                         class="p-1 text-orange-400 transition-colors hover:text-orange-300"
                         title={$locales('pinout.show_pinout')}
                     >
@@ -438,7 +424,7 @@
 
                 <button
                     type="button"
-                    on:click={toggleDropdown}
+                    onclick={toggleDropdown}
                     class="p-1 text-orange-400 transition-colors hover:text-orange-300"
                     title={$locales('selectdevice.toggle_dropdown')}
                 >
@@ -464,7 +450,7 @@
                                 >
                                     {category.title}
                                 </div>
-                                {#each category.devices as device, i}
+                                {#each category.devices as device, i (device.device)}
                                     <button
                                         type="button"
                                         class="w-full px-6 py-3 text-left text-sm hover:bg-gray-700 {selectedIndex ===
@@ -477,8 +463,8 @@
                                                 i)
                                             ? 'bg-gray-700'
                                             : ''} text-orange-100 transition-colors focus:bg-gray-700 focus:outline-none"
-                                        on:click={() => selectDevice(device)}
-                                        on:mouseenter={() =>
+                                        onclick={() => selectDevice(device)}
+                                        onmouseenter={() =>
                                             (selectedIndex =
                                                 categoryIndex === 0
                                                     ? i
@@ -487,7 +473,7 @@
                                                       : filteredDevicesByCategory.esp.length +
                                                         filteredDevicesByCategory.uf2.length +
                                                         i)}
-                                        on:focus={() =>
+                                        onfocus={() =>
                                             (selectedIndex =
                                                 categoryIndex === 0
                                                     ? i
@@ -525,7 +511,7 @@
 
     <!-- {$locales('selectdevice.firmware_version')} Selection -->
     {#if deviceSelected}
-        {#if versionsDataStore.versions.length > 0}
+        {#if $versionsData.versions.length > 0}
             <div class="space-y-2">
                 <label for="firmware-version" class="block text-sm font-medium text-orange-300">
                     {$locales('selectdevice.firmware_version')}
@@ -537,12 +523,12 @@
                         id="firmware-version"
                         type="text"
                         placeholder={$locales('selectdevice.version_placeholder')}
-                        value={selectionStateStore.version
-                            ? getVersionDisplayText(selectionStateStore.version)
+                        value={$selectionState.version
+                            ? getVersionDisplayText($selectionState.version)
                             : ''}
-                        on:input={handleVersionInputChange}
-                        on:click={handleVersionInputClick}
-                        on:keydown={(e) => handleDropdownKeydown(e, 'version')}
+                        oninput={handleVersionInputChange}
+                        onclick={handleVersionInputClick}
+                        onkeydown={(e) => handleDropdownKeydown(e, 'version')}
                         class="w-full cursor-pointer rounded-md border border-orange-600 bg-gray-800 px-4 py-2 pr-10 text-orange-100 placeholder-orange-400 transition-colors focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
                         readonly
                     />
@@ -551,7 +537,10 @@
                     <div class="absolute top-1/2 right-2 z-20 -translate-y-1/2 transform">
                         <button
                             type="button"
-                            on:click|stopPropagation={() => manageVersionDropdown('toggle')}
+                            onclick={(e) => {
+                                e.stopPropagation();
+                                manageVersionDropdown('toggle');
+                            }}
                             class="pointer-events-auto p-1 text-orange-400 transition-colors hover:text-orange-300"
                             title={$locales('selectdevice.toggle_dropdown')}
                         >
@@ -564,16 +553,16 @@
                         <div
                             class="dropdown-list absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-orange-600 bg-gray-800 shadow-lg"
                         >
-                            {#each versionsDataStore.versions as version, i}
+                            {#each $versionsData.versions as version, i (version)}
                                 <button
                                     type="button"
                                     class="w-full px-4 py-2 text-left text-sm hover:bg-gray-700 {selectedVersionIndex ===
                                     i
                                         ? 'bg-gray-700'
                                         : ''} text-orange-100 transition-colors focus:bg-gray-700 focus:outline-none"
-                                    on:click={() => selectVersion(version)}
-                                    on:mouseenter={() => (selectedVersionIndex = i)}
-                                    on:focus={() => (selectedVersionIndex = i)}
+                                    onclick={() => selectVersion(version)}
+                                    onmouseenter={() => (selectedVersionIndex = i)}
+                                    onfocus={() => (selectedVersionIndex = i)}
                                 >
                                     {getVersionDisplayText(version)}
                                 </button>
@@ -583,14 +572,14 @@
                 </div>
 
                 <!-- Version Notes -->
-                {#if versionSelected && versionsDataStore.notes[deviceSelectionStore.version as any]}
+                {#if versionSelected && $versionsData.notes[$deviceSelection.version as any]}
                     <div class="mt-3 rounded-r-md border-l-4 border-orange-500 bg-gray-700/50 p-4">
                         <div class="flex items-start space-x-3">
                             <span class="flex-shrink-0 text-lg text-orange-400">ℹ️</span>
                             <div
                                 class="prose prose-invert prose-sm prose-p:my-1 prose-headings:mt-2 prose-headings:mb-1 max-w-none text-sm text-orange-100"
                             >
-                                {@html versionsDataStore.notes[deviceSelectionStore.version as any]}
+                                {@html $versionsData.notes[$deviceSelection.version as any]}
                             </div>
                         </div>
                     </div>

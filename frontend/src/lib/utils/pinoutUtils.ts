@@ -42,9 +42,7 @@ export async function loadPinoutData(): Promise<PinoutCatalogFile[]> {
     }
     // Deterministic code-point sort by bare filename (NOT localeCompare, which
     // depends on the host locale and can diverge across CI machines).
-    files.sort((a, b) =>
-        a.fileName < b.fileName ? -1 : a.fileName > b.fileName ? 1 : 0
-    );
+    files.sort((a, b) => (a.fileName < b.fileName ? -1 : a.fileName > b.fileName ? 1 : 0));
 
     catalogCache = files;
     return files;

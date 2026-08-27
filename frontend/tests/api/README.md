@@ -16,6 +16,7 @@ python3 frontend/tests/api/test_manifest_endpoint.py
 ```
 
 При первом запуске скрипт:
+
 1. Получит список устройств из `https://mrekin.duckdns.org/flasher/api/availableFirmwares?src=Official%20repo`
 2. Выберет 30 устройств (минимум 20 esp32)
 3. Для каждого устройства выберет 2 последние стабильные версии (без daily)

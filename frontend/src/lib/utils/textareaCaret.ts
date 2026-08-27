@@ -10,13 +10,30 @@ export interface CaretCoordinates {
 
 // Computed styles that affect text layout (copied onto the mirror div).
 const LAYOUT_PROPERTIES = [
-    'boxSizing', 'width', 'height',
-    'overflowX', 'overflowY',
-    'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
-    'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
-    'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing',
-    'lineHeight', 'textIndent', 'textTransform', 'wordSpacing',
-    'wordBreak', 'tabSize'
+    'boxSizing',
+    'width',
+    'height',
+    'overflowX',
+    'overflowY',
+    'borderTopWidth',
+    'borderRightWidth',
+    'borderBottomWidth',
+    'borderLeftWidth',
+    'paddingTop',
+    'paddingRight',
+    'paddingBottom',
+    'paddingLeft',
+    'fontFamily',
+    'fontSize',
+    'fontWeight',
+    'fontStyle',
+    'letterSpacing',
+    'lineHeight',
+    'textIndent',
+    'textTransform',
+    'wordSpacing',
+    'wordBreak',
+    'tabSize'
     // Note: 'whiteSpace'/'wordWrap' are intentionally NOT copied — the mirror
     // always wraps like a textarea (pre-wrap + overflow-wrap), set once below.
 ] as const;

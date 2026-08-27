@@ -23,12 +23,7 @@ import {
 import { union as turfUnion } from '@turf/union';
 import type { Feature, MultiPolygon, Polygon, Position } from 'geojson';
 import { ZONE_CIRCLE_STEPS, ZONE_MIN_AREA_M2 } from '$lib/config/meshcoreZoneConfig';
-import type {
-    MultiPolygonCoords,
-    PolygonCoords,
-    PolygonRing,
-    ZoneGeometry
-} from '$lib/types';
+import type { MultiPolygonCoords, PolygonCoords, PolygonRing, ZoneGeometry } from '$lib/types';
 
 // --- coordinate conversion (Leaflet [lat,lon] <-> GeoJSON [lon,lat]) ---
 
@@ -46,14 +41,10 @@ export function toTurfFeature(geom: ZoneGeometry): Feature<Polygon | MultiPolygo
     if (geom.type === 'Polygon') {
         return turfPolygon(geom.coordinates as Position[][]) as Feature<Polygon | MultiPolygon>;
     }
-    return turfMultiPolygon(
-        geom.coordinates as Position[][][]
-    ) as Feature<Polygon | MultiPolygon>;
+    return turfMultiPolygon(geom.coordinates as Position[][][]) as Feature<Polygon | MultiPolygon>;
 }
 
-export function fromTurfFeature(
-    feature: Feature<Polygon | MultiPolygon>
-): ZoneGeometry {
+export function fromTurfFeature(feature: Feature<Polygon | MultiPolygon>): ZoneGeometry {
     const g = feature.geometry;
     if (g.type === 'MultiPolygon') {
         return { type: 'MultiPolygon', coordinates: g.coordinates as MultiPolygonCoords };
@@ -197,10 +188,7 @@ function diff(
 // Subtract all `existing` geometries from `newGeom` (no-overlap on commit).
 // Returns ok:false with 'covered' when the new polygon is fully inside an
 // existing zone, or 'invalid' when the result fails validation.
-export function subtractExisting(
-    newGeom: ZoneGeometry,
-    existing: ZoneGeometry[]
-): GeometryResult {
+export function subtractExisting(newGeom: ZoneGeometry, existing: ZoneGeometry[]): GeometryResult {
     let current: Feature<Polygon | MultiPolygon> | null = toTurfFeature(newGeom);
     for (const ex of existing) {
         if (!current) break;
@@ -226,15 +214,9 @@ export function erase(target: ZoneGeometry, eraser: ZoneGeometry): GeometryResul
 // the line by `radiusMeters` on all sides (a round-capped stroke). A single
 // point buffers into a circle. Used by the brush tool's commit step.
 const BRUSH_BUFFER_STEPS = 24;
-export function bufferTrail(
-    points: [number, number][],
-    radiusMeters: number
-): ZoneGeometry | null {
+export function bufferTrail(points: [number, number][], radiusMeters: number): ZoneGeometry | null {
     if (points.length === 0) return null;
-    const feature =
-        points.length === 1
-            ? turfPoint(points[0])
-            : turfLineString(points);
+    const feature = points.length === 1 ? turfPoint(points[0]) : turfLineString(points);
     const buffered = turfBuffer(feature, radiusMeters, {
         units: 'meters',
         steps: BRUSH_BUFFER_STEPS
@@ -245,13 +227,8 @@ export function bufferTrail(
 
 // Merge `addition` into `target` (brush stroke extending an existing zone).
 // Returns ok:false with 'invalid' when the union yields nothing usable.
-export function unionInto(
-    target: ZoneGeometry,
-    addition: ZoneGeometry
-): GeometryResult {
-    const merged = turfUnion(
-        featureCollection([toTurfFeature(target), toTurfFeature(addition)])
-    );
+export function unionInto(target: ZoneGeometry, addition: ZoneGeometry): GeometryResult {
+    const merged = turfUnion(featureCollection([toTurfFeature(target), toTurfFeature(addition)]));
     if (!merged) return { ok: false, reason: 'invalid' };
     const result = fromTurfFeature(merged);
     if (!validateGeometry(result).valid) return { ok: false, reason: 'invalid' };

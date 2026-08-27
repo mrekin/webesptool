@@ -127,7 +127,7 @@
 <div class="rounded-md border border-amber-600/60 bg-gray-900/50 p-2">
     {#if !active}
         <!-- Token entry: the only UI of the sleeping feature until entered -->
-        <span class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-amber-300">
+        <span class="mb-1 block text-[11px] font-semibold tracking-wide text-amber-300 uppercase">
             {$locales('meshcoreconfig.zones.moderation_entry')}
         </span>
         <div class="flex gap-1">
@@ -152,7 +152,7 @@
         </div>
     {:else}
         <div class="mb-1 flex items-center justify-between gap-1">
-            <span class="text-[11px] font-semibold uppercase tracking-wide text-amber-300">
+            <span class="text-[11px] font-semibold tracking-wide text-amber-300 uppercase">
                 {$locales('meshcoreconfig.zones.pending_section')} ({files.length})
             </span>
             <button
@@ -165,7 +165,9 @@
         </div>
 
         {#if files.length === 0}
-            <span class="text-[11px] text-gray-500">{$locales('meshcoreconfig.zones.pending_empty')}</span>
+            <span class="text-[11px] text-gray-500"
+                >{$locales('meshcoreconfig.zones.pending_empty')}</span
+            >
         {:else}
             <div class="space-y-2">
                 {#each files as f (f.filename)}
@@ -187,32 +189,49 @@
                             <span>{receivedAt(f.receivedAt)}</span>
                             <span> · {f.featureCount}</span>
                             {#if f.author}
-                                <span> · {$locales('meshcoreconfig.zones.pending_author').replace('{author}', f.author)}</span>
+                                <span>
+                                    · {$locales('meshcoreconfig.zones.pending_author').replace(
+                                        '{author}',
+                                        f.author
+                                    )}</span
+                                >
                             {/if}
                         </div>
                         <!-- Preset summary: level / regions / doc link -->
-                        <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 pl-5 text-[10px] leading-snug">
-                            <span class="rounded bg-gray-700 px-1 font-mono text-amber-300">L{f.level ?? 1}</span>
+                        <div
+                            class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 pl-5 text-[10px] leading-snug"
+                        >
+                            <span class="rounded bg-gray-700 px-1 font-mono text-amber-300"
+                                >L{f.level ?? 1}</span
+                            >
                             <span class="font-mono text-gray-300">{f.regions || '—'}</span>
                             {#if f.docUrl}
                                 <a
                                     href={f.docUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    class="text-sky-400 hover:text-sky-300"
-                                >doc</a>
+                                    class="text-sky-400 hover:text-sky-300">doc</a
+                                >
                             {/if}
                         </div>
                         <!-- Full preset: radio / path hash mode / name template -->
-                        <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 pl-5 font-mono text-[10px] leading-snug text-gray-400">
+                        <div
+                            class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 pl-5 font-mono text-[10px] leading-snug text-gray-400"
+                        >
                             {#if f.radio}
                                 <span title={$locales('meshcoreconfig.zones.radio_label')}>
-                                    {$locales('meshcoreconfig.zones.result_radio_full').replace('{value}', radioValue(f.radio))}
+                                    {$locales('meshcoreconfig.zones.result_radio_full').replace(
+                                        '{value}',
+                                        radioValue(f.radio)
+                                    )}
                                 </span>
                             {/if}
                             {#if f.pathHashMode}
                                 <span>
-                                    {$locales('meshcoreconfig.zones.result_path_hash').replace('{mode}', f.pathHashMode)}
+                                    {$locales('meshcoreconfig.zones.result_path_hash').replace(
+                                        '{mode}',
+                                        f.pathHashMode
+                                    )}
                                 </span>
                             {/if}
                             {#if f.nameTemplate}
@@ -230,16 +249,25 @@
                         {#if fileConflicts(f.filename).length > 0}
                             <div class="mt-1 rounded border border-red-500/50 bg-red-900/20 p-1">
                                 <span class="text-[10px] font-medium text-red-300">
-                                    {$locales('meshcoreconfig.zones.pending_conflicts').replace('{n}', String(fileConflicts(f.filename).length))}
+                                    {$locales('meshcoreconfig.zones.pending_conflicts').replace(
+                                        '{n}',
+                                        String(fileConflicts(f.filename).length)
+                                    )}
                                 </span>
                                 <div class="mt-0.5 space-y-0.5">
                                     {#each fileConflicts(f.filename) as pair, i (i)}
                                         <div class="text-[10px] leading-snug text-red-300">
-                                            L{pair.a.level} {pair.a.name ?? pair.a.id}
-                                            × L{pair.b.level} {pair.b.name ?? pair.b.id}
+                                            L{pair.a.level}
+                                            {pair.a.name ?? pair.a.id}
+                                            × L{pair.b.level}
+                                            {pair.b.name ?? pair.b.id}
                                             · {pair.kind === 'within'
-                                                ? $locales('meshcoreconfig.zones.pending_conflict_within')
-                                                : $locales('meshcoreconfig.zones.pending_conflict_published')}
+                                                ? $locales(
+                                                      'meshcoreconfig.zones.pending_conflict_within'
+                                                  )
+                                                : $locales(
+                                                      'meshcoreconfig.zones.pending_conflict_published'
+                                                  )}
                                             {#if pair.kind === 'published'}· {pair.b.file}{/if}
                                         </div>
                                     {/each}

@@ -4,7 +4,7 @@
     import { browser } from '$app/environment';
     import { EXTERNAL_LINKS } from '$lib/utils/externalLinks';
 
-    let showNewYearModal = false;
+    let showNewYearModal = $state(false);
 
     function openNewYearModal() {
         showNewYearModal = true;
@@ -71,7 +71,7 @@
     let showTree = showNewYearTree();
 
     // Show coffee icon only for Russian locale
-    $: showCoffee = $locale === 'ru';
+    const showCoffee = $derived($locale === 'ru');
 </script>
 
 <div class="mt-8 border-t border-gray-700 pt-6">
@@ -80,7 +80,7 @@
         <!-- New Year Surprise -->
         {#if showTree}
             <button
-                on:click={openNewYearModal}
+                onclick={openNewYearModal}
                 class="hover:animate-sparkle ml-1 cursor-pointer border-none bg-transparent p-0 align-middle text-xs transition-transform duration-300 hover:scale-125"
                 aria-label="New Year surprise"
                 title="Click for a New Year surprise!"

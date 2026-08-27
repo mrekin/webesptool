@@ -1,10 +1,5 @@
 <script lang="ts">
-    import {
-        deviceSelection,
-        loadingState,
-        deviceDisplayInfo,
-        currentSource
-    } from '$lib/stores.js';
+    import { deviceSelection, deviceDisplayInfo, currentSource } from '$lib/stores.js';
     import { apiActions } from '$lib/stores.js';
     import { DeviceType, RepositoryType } from '$lib/types.js';
     import {
@@ -15,53 +10,72 @@
     } from '$lib/utils/deviceTypeUtils.js';
     import type { DownloadOption } from '$lib/types.js';
     import { _ as locales, locale } from 'svelte-i18n';
-    import { onMount, createEventDispatcher } from 'svelte';
+    import { untrack } from 'svelte';
     import { apiService } from '$lib/api.js';
     import { createFirmwareFileHandler } from '$lib/utils/fileHandler.js';
 
-    // Event dispatcher for CustomFirmwareModal
-    const dispatch = createEventDispatcher();
+    // Event callbacks as component props (Svelte 5 pattern, task 81)
+    interface Props {
+        /** Opens CustomFirmwareModal, optionally primed with a flash manifest */
+        onOpenCustomFirmware?: (options: {
+            preloadedFilesWithOffsets?: any[];
+            isAutoSelectMode?: boolean;
+            manifestData?: any;
+        }) => void;
+        /** Opens the Meshtastic device modal */
+        onOpenMeshtasticDevice?: () => void;
+        /** Opens the MeshCore config modal */
+        onOpenMeshcoreConfig?: () => void;
+    }
+
+    // Defaults are no-ops so callers may omit any callback
+    let {
+        onOpenCustomFirmware = () => {},
+        onOpenMeshtasticDevice = () => {},
+        onOpenMeshcoreConfig = () => {}
+    }: Props = $props();
 
     // Initialize file handler
     const fileHandler = createFirmwareFileHandler();
 
-    // Local state
-    let espWebToolsDialog: HTMLDialogElement;
-    let showMoreOptions = false;
-    let firmwareMode: 'update' | 'full' = 'update'; // update = mode 1, full = mode 2
+    // Local state (bind:this targets are state too: they are reassigned on mount)
+    let espWebToolsDialog = $state<HTMLDialogElement | null>(null);
+    let showMoreOptions = $state(false);
+    let firmwareMode = $state<'update' | 'full'>('update'); // update = mode 1, full = mode 2
 
     // Archive state
-    let showArchiveDropdown = false;
-    let availableArchives: { name: string; size: number }[] = [];
-    let loadingArchives = false;
+    let showArchiveDropdown = $state(false);
+    let availableArchives = $state<{ name: string; size: number }[]>([]);
+    let loadingArchives = $state(false);
 
     // CustomFirmwareModal data moved to parent component
 
-    // Subscribe to stores
-    $: deviceSelectionStore = $deviceSelection;
-    $: isDownloading = $loadingState.isDownloading;
-    $: deviceDisplayInfoStore = $deviceDisplayInfo;
-    $: currentSourceStore = $currentSource;
-
     // Available download options based on device type and version
-    $: downloadOptions = getDownloadOptions(
-        deviceSelectionStore.devicePioTarget,
-        deviceDisplayInfoStore?.deviceType,
-        deviceSelectionStore.version,
-        firmwareMode,
-        $locale,
-        currentSourceStore?.type
+    const downloadOptions = $derived(
+        getDownloadOptions(
+            $deviceSelection.devicePioTarget,
+            $deviceDisplayInfo?.deviceType,
+            $deviceSelection.version,
+            firmwareMode,
+            $locale,
+            $currentSource?.type
+        )
     );
 
     // Load archives when source changes (repository-level, not device!)
-    $: if (deviceSelectionStore.source) {
-        loadArchives();
-    }
+    $effect(() => {
+        if ($deviceSelection.source) {
+            // Track only the source itself; store reads inside loadArchives must not re-trigger it
+            untrack(() => loadArchives());
+        }
+    });
 
     // Close archive dropdown when device is selected
-    $: if (deviceSelectionStore.devicePioTarget) {
-        showArchiveDropdown = false;
-    }
+    $effect(() => {
+        if ($deviceSelection.devicePioTarget) {
+            showArchiveDropdown = false;
+        }
+    });
 
     function getDownloadOptions(
         devicePioTarget: string | null,
@@ -167,7 +181,7 @@
     // Add function to load archives
     async function loadArchives() {
         // Archives are repository-level, only need source
-        if (!deviceSelectionStore.source) {
+        if (!$deviceSelection.source) {
             availableArchives = [];
             return;
         }
@@ -175,14 +189,14 @@
         loadingArchives = true;
         try {
             availableArchives = await apiService.getArchiveList(
-                deviceSelectionStore.source
+                $deviceSelection.source
                 // NO devicePioTarget parameter - archives are repository-level
             );
             console.log(
                 'Loaded archives:',
-                availableArchives,
+                $state.snapshot(availableArchives),
                 'from source:',
-                deviceSelectionStore.source
+                $deviceSelection.source
             );
         } catch (error) {
             console.error('Failed to load archives:', error);
@@ -203,10 +217,10 @@
     function generateManifestUrl(): string {
         // Use relative path to work with current base path
         return `./api/manifest?${new URLSearchParams({
-            t: deviceSelectionStore.devicePioTarget || '',
-            v: deviceSelectionStore.version || '',
+            t: $deviceSelection.devicePioTarget || '',
+            v: $deviceSelection.version || '',
             u: firmwareMode === 'full' ? '2' : '1',
-            src: deviceSelectionStore.source || ''
+            src: $deviceSelection.source || ''
         })}`;
     }
 
@@ -228,12 +242,12 @@
 
     // Handle download action
     async function handleDownload(option: DownloadOption) {
-        if (!deviceSelectionStore.devicePioTarget || !deviceSelectionStore.version) return;
+        if (!$deviceSelection.devicePioTarget || !$deviceSelection.version) return;
 
         try {
             await apiActions.downloadFirmware(
-                deviceSelectionStore.devicePioTarget,
-                deviceSelectionStore.version,
+                $deviceSelection.devicePioTarget,
+                $deviceSelection.version,
                 option.mode,
                 option.id === 'uf2' ? 'uf2' : 'fw'
             );
@@ -260,8 +274,8 @@
         // For fwzip - use zip download with u=5 parameter for all devices
         if (option.id === 'fwzip') {
             await apiActions.downloadFirmware(
-                deviceSelectionStore.devicePioTarget!,
-                deviceSelectionStore.version!,
+                $deviceSelection.devicePioTarget!,
+                $deviceSelection.version!,
                 '5', // u=5 for zip download (from backend: 5 - zip, 4 - ota, 1 - update, 2 - install)
                 'fw' // Download firmware zip archive
             );
@@ -271,8 +285,8 @@
         // For ota - use ota download with u=5 parameter for all devices
         if (option.id === 'ota') {
             await apiActions.downloadFirmware(
-                deviceSelectionStore.devicePioTarget!,
-                deviceSelectionStore.version!,
+                $deviceSelection.devicePioTarget!,
+                $deviceSelection.version!,
                 '4', // u=4 for ota download (from backend: 5 - zip, 4 - ota, 1 - update, 2 - install)
                 'ota' // Download firmware ota file
             );
@@ -282,8 +296,8 @@
         // For uf2 - use uf2 download with u=1 parameter for all devices
         if (option.id === 'uf2') {
             await apiActions.downloadFirmware(
-                deviceSelectionStore.devicePioTarget!,
-                deviceSelectionStore.version!,
+                $deviceSelection.devicePioTarget!,
+                $deviceSelection.version!,
                 '1', // u=1 for uf2 download (from backend: 5 - zip, 4 - ota, 1 - update, 2 - install)
                 'uf2' // Download firmware uf2 file
             );
@@ -296,7 +310,7 @@
     // Add function to download selected archive
     async function downloadArchive(filename: string) {
         // Archives are repository-level, only need source
-        if (!deviceSelectionStore.source) {
+        if (!$deviceSelection.source) {
             return;
         }
 
@@ -304,7 +318,7 @@
             // Build direct download URL so browser shows download progress
             const params = new URLSearchParams({
                 type: 'archives',
-                repo: deviceSelectionStore.source,
+                repo: $deviceSelection.source,
                 file: filename
             });
             const url = `./api/files?${params.toString()}`;
@@ -329,22 +343,22 @@
             // 1. Download manifest
             const modeDescription = option.mode === '2' ? 'Full Flash (factory)' : 'Update';
             console.log(`Downloading manifest for ${modeDescription} mode:`, {
-                devicePioTarget: deviceSelectionStore.devicePioTarget,
-                version: deviceSelectionStore.version,
+                devicePioTarget: $deviceSelection.devicePioTarget,
+                version: $deviceSelection.version,
                 mode: option.mode,
                 modeDescription: modeDescription,
-                source: deviceSelectionStore.source
+                source: $deviceSelection.source
             });
             const manifest = await apiService.getManifest(
-                deviceSelectionStore.devicePioTarget!,
-                deviceSelectionStore.version!,
+                $deviceSelection.devicePioTarget!,
+                $deviceSelection.version!,
                 option.mode,
-                deviceSelectionStore.source || ''
+                $deviceSelection.source || ''
             );
             console.log('Manifest response:', manifest);
 
-            // 2. Dispatch event to open CustomFirmwareModal with manifest (files will be downloaded inside)
-            dispatch('openCustomFirmwareModal', {
+            // 2. Open CustomFirmwareModal via callback prop (files will be downloaded inside)
+            onOpenCustomFirmware({
                 preloadedFilesWithOffsets: [], // Files will be downloaded asynchronously in the modal
                 isAutoSelectMode: true,
                 manifestData: manifest
@@ -427,9 +441,9 @@
         {$locales('page.download_options')}
     </div>
     <div class="flex items-center space-x-1">
-        {#if !deviceSelectionStore.devicePioTarget}
+        {#if !$deviceSelection.devicePioTarget}
             <button
-                on:click={() => dispatch('openCustomFirmwareModal', {})}
+                onclick={() => onOpenCustomFirmware({})}
                 class="rounded p-1 text-orange-200 transition-colors hover:text-orange-100"
                 title={$locales('downloadbuttons.custom_firmware_description')}
                 aria-label={$locales('downloadbuttons.custom_firmware_description')}
@@ -437,9 +451,9 @@
                 <span class="text-xl">🔧</span>
             </button>
         {/if}
-        {#if currentSourceStore?.type === RepositoryType.MESHTASTIC}
+        {#if $currentSource?.type === RepositoryType.MESHTASTIC}
             <button
-                on:click={() => dispatch('openMeshtasticDeviceModal')}
+                onclick={() => onOpenMeshtasticDevice()}
                 class="rounded p-1 text-orange-200 transition-colors hover:text-orange-100"
                 title={$locales('downloadbuttons.meshtastic_device_description')}
                 aria-label={$locales('downloadbuttons.meshtastic_device_description')}
@@ -447,9 +461,9 @@
                 <span class="text-xl">🗼</span>
             </button>
         {/if}
-        {#if currentSourceStore?.type === RepositoryType.MESHCORE}
+        {#if $currentSource?.type === RepositoryType.MESHCORE}
             <button
-                on:click={() => dispatch('openMeshcoreConfigModal')}
+                onclick={() => onOpenMeshcoreConfig()}
                 class="rounded p-1 text-orange-200 transition-colors hover:text-orange-100"
                 title={$locales('downloadbuttons.meshcore_config_description')}
                 aria-label={$locales('downloadbuttons.meshcore_config_description')}
@@ -457,9 +471,9 @@
                 <span class="text-xl">🗼</span>
             </button>
         {/if}
-        {#if !deviceSelectionStore.devicePioTarget && availableArchives.length > 0}
+        {#if !$deviceSelection.devicePioTarget && availableArchives.length > 0}
             <button
-                on:click={() => (showArchiveDropdown = !showArchiveDropdown)}
+                onclick={() => (showArchiveDropdown = !showArchiveDropdown)}
                 class="rounded p-1 text-orange-200 transition-colors hover:text-orange-100"
                 title={$locales('downloadbuttons.download_archive')}
                 aria-label={$locales('downloadbuttons.download_archive')}
@@ -470,10 +484,10 @@
     </div>
 </h2>
 
-{#if deviceSelectionStore.devicePioTarget && deviceSelectionStore.version}
+{#if $deviceSelection.devicePioTarget && $deviceSelection.version}
     <div class="space-y-4">
         <!-- Firmware Mode Selector for ESP32 Devices -->
-        {#if deviceDisplayInfoStore?.deviceType && isESP32Device(deviceDisplayInfoStore.deviceType)}
+        {#if $deviceDisplayInfo?.deviceType && isESP32Device($deviceDisplayInfo.deviceType)}
             <div class="space-y-2 sm:space-y-3">
                 <div class="mb-2 block text-sm font-medium text-orange-200">
                     {$locales('downloadbuttons.flash_mode')}
@@ -520,9 +534,9 @@
 
         <!-- Primary Download Actions -->
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-            {#each downloadOptions.slice(0, 2) as option}
+            {#each downloadOptions.slice(0, 2) as option (option.id)}
                 <button
-                    on:click={() => handleDownloadClick(option)}
+                    onclick={() => handleDownloadClick(option)}
                     disabled={!option.available}
                     class="w-full rounded-lg bg-orange-600 px-3 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-orange-700 focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:px-4 sm:text-base"
                     title={option.description}
@@ -540,7 +554,7 @@
         {#if downloadOptions.length > 2}
             <div class="flex justify-center">
                 <button
-                    on:click={() => (showMoreOptions = !showMoreOptions)}
+                    onclick={() => (showMoreOptions = !showMoreOptions)}
                     class="px-4 py-2 text-sm text-orange-300 transition-colors hover:text-orange-200"
                 >
                     {showMoreOptions
@@ -556,9 +570,9 @@
                     </h3>
 
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        {#each downloadOptions.slice(2) as option}
+                        {#each downloadOptions.slice(2) as option (option.id)}
                             <button
-                                on:click={() => handleDownloadClick(option)}
+                                onclick={() => handleDownloadClick(option)}
                                 disabled={!option.available}
                                 class="w-full rounded-lg bg-orange-600 px-3 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-orange-700 focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:px-4 sm:text-base"
                                 title={option.description}
@@ -604,7 +618,7 @@
         <div class="flex justify-end space-x-4 pt-4">
             <button
                 class="rounded bg-gray-600 px-4 py-2 font-medium text-white transition-colors duration-200 hover:bg-gray-700"
-                on:click={() => espWebToolsDialog.close()}
+                onclick={() => espWebToolsDialog?.close()}
             >
                 {$locales('common.close')}
             </button>
@@ -613,7 +627,7 @@
 </dialog>
 
 <!-- Archive Dropdown -->
-{#if showArchiveDropdown && !deviceSelectionStore.devicePioTarget && availableArchives.length > 0}
+{#if showArchiveDropdown && !$deviceSelection.devicePioTarget && availableArchives.length > 0}
     <div class="mt-4 rounded-lg border border-orange-600 bg-gray-800 p-4">
         <h3 class="mb-3 text-lg font-semibold text-orange-200">
             {$locales('downloadbuttons.archives_list_title')}
@@ -622,9 +636,9 @@
             <div class="text-orange-300">{$locales('downloadbuttons.loading_archives')}</div>
         {:else}
             <div class="max-h-60 space-y-2 overflow-y-auto">
-                {#each [...availableArchives].sort( (a, b) => b.name.localeCompare(a.name) ) as archive}
+                {#each [...availableArchives].sort( (a, b) => b.name.localeCompare(a.name) ) as archive (archive.name)}
                     <button
-                        on:click={() => downloadArchive(archive.name)}
+                        onclick={() => downloadArchive(archive.name)}
                         class="flex w-full items-center justify-between rounded bg-gray-700 px-3 py-2 text-left text-sm text-orange-100 transition-colors duration-200 hover:bg-gray-600"
                     >
                         <span class="truncate">{archive.name}</span>

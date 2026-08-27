@@ -8,7 +8,10 @@ import { moderationEnabled } from '$lib/server/zonesModeration';
 // change is picked up on the next editor open; the client additionally caches
 // the promise for the page lifetime (zonesUpload.fetchModerationConfig).
 export const GET: RequestHandler = async () => {
-    return json({ moderationEnabled: moderationEnabled() }, {
-        headers: { 'cache-control': 'no-store' }
-    });
+    return json(
+        { moderationEnabled: moderationEnabled() },
+        {
+            headers: { 'cache-control': 'no-store' }
+        }
+    );
 };
