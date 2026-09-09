@@ -1,5 +1,7 @@
 <script lang="ts">
     import { _ as locales } from 'svelte-i18n';
+    import ModalWindowControls from './ModalWindowControls.svelte';
+    import ModalShareFallback from './ModalShareFallback.svelte';
 
     let {
         isOpen = false,
@@ -10,6 +12,9 @@
         raw?: Record<string, unknown> | null;
         onclose?: () => void;
     } = $props();
+
+    // Share fallback URL surfaced by the header controls cluster (task 83).
+    let shareFallbackUrl = $state<string | null>(null);
 </script>
 
 {#if isOpen}
@@ -25,14 +30,19 @@
                 <h3 class="text-lg font-semibold text-orange-200">
                     {$locales('meshcoreconfig.geocode.response_title')}
                 </h3>
-                <button
-                    type="button"
-                    onclick={onclose}
-                    class="rounded-md bg-gray-700 px-4 py-2 text-sm text-white transition-colors hover:bg-gray-600"
-                >
-                    {$locales('common.cancel')}
-                </button>
+                <!-- Window controls cluster (task 83): the cross replaces the
+                     former text Cancel button; share copies the
+                     ?m=geocode-response link (start state: empty response). -->
+                <ModalWindowControls
+                    shareId="geocode-response"
+                    bind:shareFallbackUrl={shareFallbackUrl}
+                    onclose={onclose}
+                />
             </div>
+
+            {#if shareFallbackUrl}
+                <ModalShareFallback url={shareFallbackUrl} />
+            {/if}
             <pre
                 class="overflow-auto rounded-md border border-gray-700 bg-gray-900 p-3 text-xs text-gray-200">{JSON.stringify(
                     raw,

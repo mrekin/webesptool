@@ -29,6 +29,8 @@
     import BackupConfirmModal from '$lib/components/BackupConfirmModal.svelte';
     import TerminalModal from '$lib/components/TerminalModal.svelte';
     import FlashLog from '$lib/components/FlashLog.svelte';
+    import ModalWindowControls from '$lib/components/ModalWindowControls.svelte';
+    import ModalShareFallback from '$lib/components/ModalShareFallback.svelte';
     import { createFlashLogger } from '$lib/utils/flashLog.js';
     import { selectionState, availableSources } from '$lib/stores.js';
     import { RepositoryType } from '$lib/types.js';
@@ -63,6 +65,9 @@
         isAutoSelectMode = false,
         manifestData = null
     }: Props = $props();
+
+    // Share fallback URL surfaced by the header controls cluster (task 83).
+    let shareFallbackUrl = $state<string | null>(null);
 
     // Create utility instances
     const espManager = createESPManager();
@@ -1946,16 +1951,20 @@
                         ? $locales('customfirmware.flash_device')
                         : $locales('customfirmware.flash_custom_firmware')}
                 </h2>
-                <button
-                    onclick={async () => await handleClose()}
-                    onkeydown={(e) => e.key === 'Escape' && handleClose()}
-                    disabled={isFlashing}
-                    class="text-gray-400 transition-colors hover:text-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
-                    aria-label="Close modal"
-                >
-                    ✕
-                </button>
+                <!-- Window controls cluster (task 83): share copies the
+                     ?m=custom-firmware link (recipient gets the start state);
+                     the cross keeps the flashing guard of handleClose. -->
+                <ModalWindowControls
+                    shareId="custom-firmware"
+                    bind:shareFallbackUrl={shareFallbackUrl}
+                    onclose={handleClose}
+                    closeDisabled={isFlashing}
+                />
             </div>
+
+            {#if shareFallbackUrl}
+                <ModalShareFallback url={shareFallbackUrl} />
+            {/if}
 
             <!-- Content -->
             <div class="space-y-6 p-6">

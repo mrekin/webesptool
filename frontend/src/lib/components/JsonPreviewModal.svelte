@@ -4,6 +4,8 @@
     import { JSONEditor } from 'svelte-jsoneditor';
     import type { MeshtasticFullConfig } from '$lib/types.js';
     import { validateMeshtasticConfig } from '$lib/utils/meshtastic.js';
+    import ModalWindowControls from './ModalWindowControls.svelte';
+    import ModalShareFallback from './ModalShareFallback.svelte';
 
     interface Props {
         isOpen?: boolean;
@@ -13,6 +15,9 @@
     }
 
     let { isOpen = false, onClose = () => {}, config = null, onSave = () => {} }: Props = $props();
+
+    // Share fallback URL surfaced by the header controls cluster (task 83).
+    let shareFallbackUrl = $state<string | null>(null);
 
     // Validation error
     let validationError = $state('');
@@ -83,7 +88,9 @@
     }
 </script>
 
-{#if isOpen && config}
+<!-- isOpen-only gate: a direct link (?m=json-preview) opens the modal in its
+     start state — shell without config (empty editor, Apply disabled). -->
+{#if isOpen}
     <div
         class="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
         onclick={(e) => e.target === e.currentTarget && onClose()}
@@ -104,14 +111,18 @@
                 <h2 id="json-preview-title" class="text-xl font-semibold text-orange-200">
                     {$locales('jsonpreview.title')}
                 </h2>
-                <button
-                    onclick={onClose}
-                    class="text-gray-400 transition-colors hover:text-gray-200"
-                    aria-label="Close modal"
-                >
-                    ✕
-                </button>
+                <!-- Window controls cluster (task 83): share copies the
+                     ?m=json-preview link (recipient gets the start state). -->
+                <ModalWindowControls
+                    shareId="json-preview"
+                    bind:shareFallbackUrl={shareFallbackUrl}
+                    onclose={onClose}
+                />
             </div>
+
+            {#if shareFallbackUrl}
+                <ModalShareFallback url={shareFallbackUrl} />
+            {/if}
 
             <!-- Validation error -->
             {#if validationError}

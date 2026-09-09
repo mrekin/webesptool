@@ -6,6 +6,8 @@
     import type { NewsItem } from '$lib/types.js';
     import { NEWS_PAGE_SIZE } from '$lib/types.js';
     import MarkdownRenderer from '$lib/components/MarkdownRenderer.svelte';
+    import ModalWindowControls from '$lib/components/ModalWindowControls.svelte';
+    import ModalShareFallback from '$lib/components/ModalShareFallback.svelte';
 
     interface Props {
         isOpen?: boolean;
@@ -14,6 +16,9 @@
     }
 
     let { isOpen = false, onClose = () => {}, focusItemId = null }: Props = $props();
+
+    // Share fallback URL surfaced by the header controls cluster (task 83).
+    let shareFallbackUrl = $state<string | null>(null);
 
     let newsList = $state<NewsItem[]>([]);
     let loading = $state(false);
@@ -129,10 +134,17 @@
                     <h2 class="text-xl font-semibold text-orange-200">
                         {$locales('news.latest_title')}
                     </h2>
-                    <button onclick={handleClose} class="text-2xl text-gray-400 hover:text-gray-200"
-                        >✕</button
-                    >
+                    <!-- Window controls cluster (task 83) -->
+                    <ModalWindowControls
+                        shareId="news"
+                        bind:shareFallbackUrl={shareFallbackUrl}
+                        onclose={handleClose}
+                    />
                 </div>
+
+                {#if shareFallbackUrl}
+                    <ModalShareFallback url={shareFallbackUrl} />
+                {/if}
 
                 <!-- Content: the only scrollable area -->
                 <div class="min-h-0 flex-1 overflow-y-auto p-6">

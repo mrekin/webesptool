@@ -1072,8 +1072,29 @@ export interface PickerResult {
 }
 
 // --- Addressable modals (task 78): direct-URL dialogs ----------------------
-export type AddressableModalId = 'coords'; // registry member
-export type AddressableModalLayerId = 'zones' | 'geocode'; // picker nested dialogs
+// Task 83 adds every inventory modal: stats, news, pinout, zones-editor,
+// zone-settings, json-preview, meshcore-config, meshtastic-device,
+// custom-firmware, terminal, backup-confirm, geocode-response. A link
+// recipient always gets the modal's start state (PRD: start state, not an
+// error); context-carrying modals read their context (?t=/?g=) themselves.
+export type AddressableModalId =
+    | 'coords'
+    | 'stats'
+    | 'news'
+    | 'pinout'
+    | 'zones-editor'
+    | 'zone-settings'
+    | 'json-preview'
+    | 'meshcore-config'
+    | 'meshtastic-device'
+    | 'custom-firmware'
+    | 'terminal'
+    | 'backup-confirm'
+    | 'geocode-response';
+// Picker nested dialogs only (task 78). NOTE: the 'zones' layer is the zone
+// editor as a picker overlay; 'zones-editor' is the SAME component addressed
+// as a standalone modal - different mechanisms, do not mix them.
+export type AddressableModalLayerId = 'zones' | 'geocode';
 // Shallow-routing state stored in history entries (pushState 2nd argument).
 export interface ModalHistoryState {
     modal?: AddressableModalId;

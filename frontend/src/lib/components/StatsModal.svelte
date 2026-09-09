@@ -4,6 +4,8 @@
     import { apiService } from '$lib/api.js';
     import { deviceNames } from '$lib/stores.js';
     import StatsBarChart from './StatsBarChart.svelte';
+    import ModalWindowControls from './ModalWindowControls.svelte';
+    import ModalShareFallback from './ModalShareFallback.svelte';
     import type { StatsDataItem } from '$lib/types';
 
     interface Props {
@@ -12,6 +14,9 @@
     }
 
     let { isOpen = false, onClose = () => {} }: Props = $props();
+
+    // Share fallback URL surfaced by the header controls cluster (task 83).
+    let shareFallbackUrl = $state<string | null>(null);
 
     const periods = [7, 30, 90] as const;
     let selectedPeriod = $state(30);
@@ -100,6 +105,10 @@
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="stats-modal-title"
+        tabindex="-1"
         onclick={() => onClose()}
     >
         <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -112,7 +121,9 @@
             <div
                 class="sticky top-0 z-10 flex items-center justify-between border-b border-gray-700 bg-gray-800 px-6 py-4"
             >
-                <h2 class="text-lg font-semibold text-orange-200">{$locales('stats.title')}</h2>
+                <h2 id="stats-modal-title" class="text-lg font-semibold text-orange-200">
+                    {$locales('stats.title')}
+                </h2>
 
                 <!-- Period Selector -->
                 <div class="flex items-center gap-2">
@@ -130,23 +141,17 @@
                     {/each}
                 </div>
 
-                <!-- Close button -->
-                <button
-                    type="button"
-                    onclick={onClose}
-                    class="ml-3 rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
-                    aria-label="Close"
-                >
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12"
-                        />
-                    </svg>
-                </button>
+                <!-- Window controls cluster (task 83) -->
+                <ModalWindowControls
+                    shareId="stats"
+                    bind:shareFallbackUrl={shareFallbackUrl}
+                    onclose={onClose}
+                />
             </div>
+
+            {#if shareFallbackUrl}
+                <ModalShareFallback url={shareFallbackUrl} />
+            {/if}
 
             <!-- Content -->
             <div class="space-y-6 px-6 py-5">

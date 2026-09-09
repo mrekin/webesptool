@@ -9,6 +9,8 @@
     } from '$lib/utils/pinoutUtils';
     import type { PinInfo, PinCategory, ConfigInfo } from '$lib/types';
     import { onMount, onDestroy } from 'svelte';
+    import ModalWindowControls from './ModalWindowControls.svelte';
+    import ModalShareFallback from './ModalShareFallback.svelte';
 
     interface Props {
         isOpen?: boolean;
@@ -17,6 +19,9 @@
     }
 
     let { isOpen = false, onClose = () => {}, devicePioTarget = '' }: Props = $props();
+
+    // Share fallback URL surfaced by the header controls cluster (task 83).
+    let shareFallbackUrl = $state<string | null>(null);
 
     let currentTab = $state<'pins' | 'configs'>('pins');
     let selectedPin = $state<PinInfo | null>(null);
@@ -216,14 +221,19 @@
                             </p>
                         {/if}
                     </div>
-                    <button
-                        onclick={onClose}
-                        class="text-2xl text-gray-400 transition-colors hover:text-gray-200"
-                        aria-label="Close modal"
-                    >
-                        ✕
-                    </button>
+                    <!-- Window controls cluster (task 83): share link carries the
+                         board context (t) only when a device is selected. -->
+                    <ModalWindowControls
+                        shareId="pinout"
+                        shareParams={devicePioTarget ? { t: devicePioTarget } : null}
+                        bind:shareFallbackUrl={shareFallbackUrl}
+                        onclose={onClose}
+                    />
                 </div>
+
+                {#if shareFallbackUrl}
+                    <ModalShareFallback url={shareFallbackUrl} />
+                {/if}
 
                 <!-- Content -->
                 <div class="space-y-6 p-6">

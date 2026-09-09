@@ -70,6 +70,8 @@
     } from '$lib/config/meshcoreZoneConfig';
     import { fillHint } from '$lib/actions/fillHint.js';
     import JSZip from 'jszip';
+    import ModalWindowControls from './ModalWindowControls.svelte';
+    import ModalShareFallback from './ModalShareFallback.svelte';
     import ZoneMeshcoreSettingsModal from './ZoneMeshcoreSettingsModal.svelte';
     import ZoneModerationPanel from './ZoneModerationPanel.svelte';
     import type {
@@ -87,6 +89,9 @@
     } from '$lib/types';
 
     let { onclose = () => {} }: { onclose?: () => void } = $props();
+
+    // Share fallback URL surfaced by the header controls cluster (task 83).
+    let shareFallbackUrl = $state<string | null>(null);
 
     let container = $state<HTMLDivElement>();
     let fileInput = $state<HTMLInputElement>();
@@ -140,6 +145,14 @@
     // Group whose meshcore settings modal (radio + path.hash.mode) is open.
     let meshcoreEditId = $state<string | null>(null);
     const meshcoreEditGroup = $derived(groups.find((g) => g.id === meshcoreEditId) ?? null);
+    // Base filename of the published file the edited group was loaded from
+    // (task 83): the share target of the settings modal. Session drafts (no
+    // originUrl) have no addressable id -> null.
+    const publishedGroupFilename = $derived.by(() => {
+        const url = meshcoreEditGroup?.originUrl;
+        if (!url) return null;
+        return url.split('/').pop()?.replace(/\.geojson$/i, '') || null;
+    });
 
     // Undo: snapshot stack of geometric/structural state (text edits excluded).
     interface Snapshot {
@@ -2083,7 +2096,18 @@
             <h3 class="text-lg font-semibold text-orange-200">
                 {$locales('meshcoreconfig.zones.editor_title')}
             </h3>
+            <!-- Window controls cluster (task 83): the cross is the same
+                 action as the bottom Cancel. -->
+            <ModalWindowControls
+                shareId="zones-editor"
+                bind:shareFallbackUrl={shareFallbackUrl}
+                {onclose}
+            />
         </div>
+
+        {#if shareFallbackUrl}
+            <ModalShareFallback url={shareFallbackUrl} />
+        {/if}
 
         {#if loadError}
             <div
@@ -2775,6 +2799,7 @@
             commands: meshcoreEditGroup.commands
         }}
         settingsPresets={meshcoreEditGroup.settingsPresets}
+        publishedGroupFilename={publishedGroupFilename}
         onsave={(settings) => updateGroupMeshcore(meshcoreEditGroup.id, settings)}
         onclose={() => (meshcoreEditId = null)}
     />

@@ -23,13 +23,15 @@
     import { onMount, onDestroy } from 'svelte';
     import { _ as locales } from 'svelte-i18n';
     import { InterfaceMode } from '$lib/types.js';
-    import type { PickerResult } from '$lib/types.js';
+    import type { GroupFile, MeshcoreZoneSettings, PickerResult } from '$lib/types.js';
     import {
         addressableModal,
+        addressableModalParams,
         initAddressableModals,
         disposeAddressableModals,
         closeAddressableModal
     } from '$lib/utils/modalRoutes.js';
+    import { fetchGroupFiles } from '$lib/utils/zoneCatalog.js';
 
     // Merged layout server data — carries the deploy-time header disclaimer
     // (see routes/+layout.server.ts). Empty string on the primary instance.
@@ -107,6 +109,148 @@
         if (directPickerOpen && !CoordinateMapPickerComp) {
             import('$lib/components/CoordinateMapPicker.svelte').then(
                 (m) => (CoordinateMapPickerComp = m.default)
+            );
+        }
+    });
+
+    // Direct-URL modals (task 83): stats, news, pinout, zones-editor,
+    // zone-settings. Same pattern as the direct picker above: derived "open"
+    // flag, lazy dynamic import on first open, close via closeAddressableModal.
+    // PinoutModal is statically imported (see the imports at the top).
+    const directStatsOpen = $derived($addressableModal === 'stats');
+    const directNewsOpen = $derived($addressableModal === 'news');
+    const directPinoutOpen = $derived($addressableModal === 'pinout');
+    const directZonesEditorOpen = $derived($addressableModal === 'zones-editor');
+    const directZoneSettingsOpen = $derived($addressableModal === 'zone-settings');
+
+    // Lazy holders of the heavy direct modals (StatsModal reuses the holder of
+    // the regular stats button above).
+    let NewsModal = $state<any>(null);
+    let ZoneEditor = $state<any>(null);
+    let ZoneMeshcoreSettingsModal = $state<any>(null);
+
+    $effect(() => {
+        if (directStatsOpen && !StatsModal) {
+            import('$lib/components/StatsModal.svelte').then((m) => (StatsModal = m.default));
+        }
+    });
+
+    $effect(() => {
+        if (directNewsOpen && !NewsModal) {
+            import('$lib/components/NewsModal.svelte').then((m) => (NewsModal = m.default));
+        }
+    });
+
+    $effect(() => {
+        if (directZonesEditorOpen && !ZoneEditor) {
+            import('$lib/components/ZoneEditor.svelte').then((m) => (ZoneEditor = m.default));
+        }
+    });
+
+    // zone-settings context: ?g=<filename> resolves against the published
+    // group catalog. undefined = still loading (the render branch holds back so
+    // the modal never blinks in a start state), 'missing' = unknown/absent g
+    // (the modal opens in its start state — a sensible state, not an error).
+    let directZoneGroup = $state<GroupFile | 'missing' | undefined>(undefined);
+    let directZoneGroupSeq = 0;
+
+    $effect(() => {
+        if (!directZoneSettingsOpen) return;
+        const g = $addressableModalParams['g'];
+        // Drop a stale resolution if the context changes while loading.
+        const seq = ++directZoneGroupSeq;
+        directZoneGroup = undefined;
+        fetchGroupFiles().then((files) => {
+            if (seq !== directZoneGroupSeq) return;
+            directZoneGroup = g ? (files.find((f) => f.filename === g) ?? 'missing') : 'missing';
+        });
+    });
+
+    $effect(() => {
+        if (directZoneSettingsOpen && !ZoneMeshcoreSettingsModal) {
+            import('$lib/components/ZoneMeshcoreSettingsModal.svelte').then(
+                (m) => (ZoneMeshcoreSettingsModal = m.default)
+            );
+        }
+    });
+
+    // GroupFile -> flat preset props of the settings modal (the same data path
+    // the ZoneEditor gear button uses: flat fields + optional named presets).
+    function toPreset(group: GroupFile): MeshcoreZoneSettings {
+        return {
+            regions: group.regions,
+            radio: group.radio,
+            pathHashMode: group.pathHashMode,
+            nameTemplate: group.nameTemplate,
+            docUrl: group.docUrl,
+            level: group.level,
+            commands: group.commands
+        };
+    }
+
+    // Remaining direct-URL modals (task 83): JSON preview, both configurators,
+    // custom firmware, terminal, backup confirm, geocode response. Every link
+    // opens the modal in its start state (no context props). Same pattern as
+    // above; the heavy modals get lazy holders — CustomFirmwareModal is
+    // statically imported at the top, Meshcore/Meshtastic reuse the holders
+    // of the regular open buttons.
+    const directJsonPreviewOpen = $derived($addressableModal === 'json-preview');
+    const directMeshcoreConfigOpen = $derived($addressableModal === 'meshcore-config');
+    const directMeshtasticDeviceOpen = $derived($addressableModal === 'meshtastic-device');
+    const directCustomFirmwareOpen = $derived($addressableModal === 'custom-firmware');
+    const directTerminalOpen = $derived($addressableModal === 'terminal');
+    const directBackupConfirmOpen = $derived($addressableModal === 'backup-confirm');
+    const directGeocodeResponseOpen = $derived($addressableModal === 'geocode-response');
+
+    let JsonPreviewModal = $state<any>(null);
+    let TerminalModal = $state<any>(null);
+    let BackupConfirmModal = $state<any>(null);
+    let GeocodeResponseModal = $state<any>(null);
+
+    $effect(() => {
+        if (directJsonPreviewOpen && !JsonPreviewModal) {
+            import('$lib/components/JsonPreviewModal.svelte').then(
+                (m) => (JsonPreviewModal = m.default)
+            );
+        }
+    });
+
+    $effect(() => {
+        if (directMeshcoreConfigOpen && !MeshcoreConfigModal) {
+            import('$lib/components/MeshcoreConfigModal.svelte').then(
+                (m) => (MeshcoreConfigModal = m.default)
+            );
+        }
+    });
+
+    $effect(() => {
+        if (directMeshtasticDeviceOpen && !MeshtasticDeviceModal) {
+            import('$lib/components/MeshtasticDeviceModal.svelte').then(
+                (m) => (MeshtasticDeviceModal = m.default)
+            );
+        }
+    });
+
+    $effect(() => {
+        if (directTerminalOpen && !TerminalModal) {
+            import('$lib/components/TerminalModal.svelte').then(
+                (m) => (TerminalModal = m.default)
+            );
+        }
+    });
+
+    $effect(() => {
+        if (directBackupConfirmOpen && !BackupConfirmModal) {
+            import('$lib/components/BackupConfirmModal.svelte').then(
+                (m) => (BackupConfirmModal = m.default)
+            );
+        }
+    });
+
+    $effect(() => {
+        if (directGeocodeResponseOpen && !GeocodeResponseModal) {
+            import('$lib/components/GeocodeResponseModal.svelte').then(
+                (m) => (GeocodeResponseModal = m.default)
             );
         }
     });
@@ -492,6 +636,73 @@
 
 {#if showStatsModal && StatsModal}
     <StatsModal isOpen={showStatsModal} onClose={closeStatsModal} />
+{/if}
+
+<!-- Direct-URL modals (task 83): opened by ?m=<id> over any state, closed via
+     closeAddressableModal (Back/forward history per task 78). Rendered after
+     the regular blocks and before the direct picker, so the picker stays the
+     topmost direct modal in the DOM. -->
+{#if directStatsOpen && StatsModal}
+    <StatsModal isOpen={true} onClose={closeAddressableModal} />
+{/if}
+
+{#if directNewsOpen && NewsModal}
+    <NewsModal isOpen={true} focusItemId={null} onClose={closeAddressableModal} />
+{/if}
+
+{#if directPinoutOpen}
+    <PinoutModal
+        isOpen={true}
+        onClose={closeAddressableModal}
+        devicePioTarget={$deviceSelection.devicePioTarget || ''}
+    />
+{/if}
+
+{#if directZonesEditorOpen && ZoneEditor}
+    <ZoneEditor onclose={closeAddressableModal} />
+{/if}
+
+{#if directZoneSettingsOpen && ZoneMeshcoreSettingsModal && directZoneGroup !== undefined}
+    <!-- View mode: the link recipient has no session draft to save into, so
+         the settings modal hides its bottom action row (viewOnly prop). -->
+    <ZoneMeshcoreSettingsModal
+        viewOnly={true}
+        publishedGroupFilename={directZoneGroup === 'missing' ? null : directZoneGroup.filename}
+        preset={directZoneGroup === 'missing' ? {} : toPreset(directZoneGroup)}
+        settingsPresets={directZoneGroup === 'missing' ? undefined : directZoneGroup.settingsPresets}
+        onclose={closeAddressableModal}
+    />
+{/if}
+
+<!-- Direct-URL state-carrying modals (task 83): every link opens the modal in
+     its start state — no context props, so defaults apply (e.g. the JSON
+     preview without config, the backup confirm without device info). -->
+{#if directJsonPreviewOpen && JsonPreviewModal}
+    <JsonPreviewModal isOpen={true} onClose={closeAddressableModal} />
+{/if}
+
+{#if directMeshcoreConfigOpen && MeshcoreConfigModal}
+    <MeshcoreConfigModal isOpen={true} onClose={closeAddressableModal} />
+{/if}
+
+{#if directMeshtasticDeviceOpen && MeshtasticDeviceModal}
+    <MeshtasticDeviceModal isOpen={true} onClose={closeAddressableModal} />
+{/if}
+
+{#if directCustomFirmwareOpen}
+    <CustomFirmwareModal isOpen={true} onClose={closeAddressableModal} />
+{/if}
+
+{#if directTerminalOpen && TerminalModal}
+    <TerminalModal isOpen={true} onClose={closeAddressableModal} />
+{/if}
+
+{#if directBackupConfirmOpen && BackupConfirmModal}
+    <BackupConfirmModal isOpen={true} onCancel={closeAddressableModal} />
+{/if}
+
+{#if directGeocodeResponseOpen && GeocodeResponseModal}
+    <GeocodeResponseModal isOpen={true} onclose={closeAddressableModal} />
 {/if}
 
 <!-- Direct-URL coordinate picker (task 78): opened by ?m=coords over any

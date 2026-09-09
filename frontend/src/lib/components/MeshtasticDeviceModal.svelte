@@ -22,9 +22,14 @@
     import { onMount, onDestroy } from 'svelte';
     import { _ as locales } from 'svelte-i18n';
     import JsonPreviewModal from './JsonPreviewModal.svelte';
+    import ModalWindowControls from './ModalWindowControls.svelte';
+    import ModalShareFallback from './ModalShareFallback.svelte';
 
     // Props
     let { isOpen = false, onClose = () => {} } = $props();
+
+    // Share fallback URL surfaced by the header controls cluster (task 83).
+    let shareFallbackUrl = $state<string | null>(null);
 
     // Meshtastic manager
     let meshtasticManager: ReturnType<typeof createMeshtasticManager> | null = null;
@@ -919,16 +924,20 @@
                 <h2 id="modal-title" class="text-xl font-semibold text-orange-200">
                     {$locales('meshtasticdevice.title')}
                 </h2>
-                <button
-                    onclick={handleClose}
-                    onkeydown={(e) => e.key === 'Escape' && handleClose()}
-                    disabled={isSaving || isLoading}
-                    class="text-gray-400 transition-colors hover:text-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
-                    aria-label="Close modal"
-                >
-                    &#x2715;
-                </button>
+                <!-- Window controls cluster (task 83): share copies the
+                     ?m=meshtastic-device link (recipient gets the start state);
+                     the cross keeps the save/load guards. -->
+                <ModalWindowControls
+                    shareId="meshtastic-device"
+                    bind:shareFallbackUrl={shareFallbackUrl}
+                    onclose={handleClose}
+                    closeDisabled={isSaving || isLoading}
+                />
             </div>
+
+            {#if shareFallbackUrl}
+                <ModalShareFallback url={shareFallbackUrl} />
+            {/if}
 
             <!-- Content -->
             <div class="space-y-6 p-6">
@@ -1466,9 +1475,14 @@
             class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
         >
             <div class="max-w-md rounded-lg border border-orange-600 bg-gray-800 p-6 shadow-2xl">
-                <h3 class="mb-4 text-lg font-semibold text-orange-200">
-                    {$locales('meshtasticdevice.dfu_confirm_title')}
-                </h3>
+                <div class="flex items-center justify-between gap-2">
+                    <h3 class="mb-4 text-lg font-semibold text-orange-200">
+                        {$locales('meshtasticdevice.dfu_confirm_title')}
+                    </h3>
+                    <!-- Window controls cluster (task 83): the cross is the
+                         "cancel" of the DFU confirmation. -->
+                    <ModalWindowControls onclose={() => (showDfuConfirm = false)} />
+                </div>
                 <p class="mb-6 text-sm text-gray-300">
                     {$locales('meshtasticdevice.dfu_confirm_message')}
                 </p>

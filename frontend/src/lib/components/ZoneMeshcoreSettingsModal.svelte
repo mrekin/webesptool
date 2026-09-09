@@ -23,6 +23,8 @@
     import { parseNameTemplate } from '$lib/utils/nameTemplate';
     import type { NameTemplateToken } from '$lib/utils/nameTemplate';
     import { fillHint } from '$lib/actions/fillHint.js';
+    import ModalWindowControls from './ModalWindowControls.svelte';
+    import ModalShareFallback from './ModalShareFallback.svelte';
     import type {
         MeshcoreZoneSettings,
         NamedMeshcoreSettings,
@@ -35,6 +37,8 @@
         settingsPresets = undefined,
         author = undefined,
         editAuthor = false,
+        publishedGroupFilename = null,
+        viewOnly = false,
         onsave = (_result: ZoneGroupSettings, _author?: string) => {},
         onclose = () => {}
     }: {
@@ -47,6 +51,14 @@
         /** Render the author field (used by the pending-file edit; in-session
          groups edit the author in their card instead). */
         editAuthor?: boolean;
+        /** Base filename of the PUBLISHED group file these settings come from
+         (task 83): enables the share button (?m=zone-settings&g=<filename>).
+         Session drafts and pending files have no addressable id -> null. */
+        publishedGroupFilename?: string | null;
+        /** View mode of the direct-URL context (task 83): hides the bottom
+         Cancel/Apply row entirely (fields stay visible) — the link recipient
+         has no session draft to save into; closing is the header cross only. */
+        viewOnly?: boolean;
         /** Object save (task 79/82): flat preset (incl. `level`) OR `level` +
          `settingsPresets` — the two states are mutually exclusive. */
         onsave?: (result: ZoneGroupSettings, author?: string) => void;
@@ -55,6 +67,9 @@
 
     // Fixed protocol enum for `set path.hash.mode` (matches meshcoreCommandData).
     const PATH_HASH_OPTIONS = ['0', '1', '2'];
+
+    // Share fallback URL surfaced by the header controls cluster (task 83).
+    let shareFallbackUrl = $state<string | null>(null);
 
     // Grouped draft: the presets being edited (a copy — edits never mutate the
     // caller's array). null = flat mode (no settings groups). Creation order of
@@ -386,7 +401,19 @@
             <h3 class="text-base font-semibold text-orange-200">
                 {$locales('meshcoreconfig.zones.meshcore_settings')}
             </h3>
+            <!-- Window controls cluster (task 83): share only for published
+                 groups (addressable filename), cross = Cancel. -->
+            <ModalWindowControls
+                shareId={publishedGroupFilename ? 'zone-settings' : null}
+                shareParams={publishedGroupFilename ? { g: publishedGroupFilename } : null}
+                bind:shareFallbackUrl={shareFallbackUrl}
+                onclose={onclose}
+            />
         </div>
+
+        {#if shareFallbackUrl}
+            <ModalShareFallback url={shareFallbackUrl} />
+        {/if}
 
         <!-- Zone hierarchy level: zones at the same level may not overlap;
              different levels may nest; lookup resolves to the most specific.
@@ -783,22 +810,26 @@
             </div>
         {/if}
 
-        <div class="mt-4 flex items-center justify-end gap-3">
-            <button
-                type="button"
-                onclick={onclose}
-                class="rounded-md bg-gray-700 px-4 py-2 text-sm text-white transition-colors hover:bg-gray-600"
-            >
-                {$locales('common.cancel')}
-            </button>
-            <button
-                type="button"
-                onclick={save}
-                disabled={!canSave}
-                class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-                {$locales('meshcoreconfig.apply')}
-            </button>
-        </div>
+        <!-- Bottom actions are hidden entirely in view mode (direct-URL
+             context, task 83): there is nothing to save into. -->
+        {#if !viewOnly}
+            <div class="mt-4 flex items-center justify-end gap-3">
+                <button
+                    type="button"
+                    onclick={onclose}
+                    class="rounded-md bg-gray-700 px-4 py-2 text-sm text-white transition-colors hover:bg-gray-600"
+                >
+                    {$locales('common.cancel')}
+                </button>
+                <button
+                    type="button"
+                    onclick={save}
+                    disabled={!canSave}
+                    class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    {$locales('meshcoreconfig.apply')}
+                </button>
+            </div>
+        {/if}
     </div>
 </div>

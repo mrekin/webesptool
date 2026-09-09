@@ -4,14 +4,31 @@ import { writable } from 'svelte/store';
 import type { AddressableModalId, AddressableModalLayerId, ModalHistoryState } from '$lib/types.js';
 
 export const MODAL_URL_PARAM = 'm';
-// Registry of addressable modals. Stage 1: the coordinate picker only.
+// Registry of addressable modals. Task 78 started with the coordinate picker;
+// task 83 adds every inventory modal (nested confirmations stay unaddressable).
 // A new modal = new id literal in types.ts + entry here + render branch in +page.svelte.
-export const ADDRESSABLE_MODAL_IDS: readonly AddressableModalId[] = ['coords'];
+export const ADDRESSABLE_MODAL_IDS: readonly AddressableModalId[] = [
+    'coords',
+    'stats',
+    'news',
+    'pinout',
+    'zones-editor',
+    'zone-settings',
+    'json-preview',
+    'meshcore-config',
+    'meshtastic-device',
+    'custom-firmware',
+    'terminal',
+    'backup-confirm',
+    'geocode-response'
+];
 
 // App-wide state of the direct-URL modal (null = closed).
 export const addressableModal = writable<AddressableModalId | null>(null);
 // Active nested layer of the addressable modal (zones/geocode; null = none).
 export const addressableModalLayer = writable<AddressableModalLayerId | null>(null);
+// Query params of the direct-URL modal (context like t/g; never contains 'm').
+export const addressableModalParams = writable<Record<string, string>>({});
 
 // Pure URL helpers (no side effects; anything outside the registry degrades
 // quietly to null — old/garbage links never break the app).
@@ -23,6 +40,15 @@ export function readAddressableModal(url: URL): AddressableModalId | null {
     return (ADDRESSABLE_MODAL_IDS as readonly string[]).includes(value)
         ? (value as AddressableModalId)
         : null;
+}
+
+// Pure: all query params of the URL except the modal id itself.
+export function readAddressableModalParams(url: URL): Record<string, string> {
+    const out: Record<string, string> = {};
+    url.searchParams.forEach((v, k) => {
+        if (k !== MODAL_URL_PARAM) out[k] = v;
+    });
+    return out;
 }
 
 // Copy of the URL with the modal parameter set (other params preserved).
@@ -39,12 +65,17 @@ export function withoutModalParam(url: URL): URL {
     return next;
 }
 
-// Shareable link to a modal: origin + pathname carrying ONLY ?m=<id> (no ?t=
-// or other sender context — the recipient starts from the default state).
-export function buildShareableModalUrl(id: AddressableModalId): string {
+// Shareable link to a modal: origin + pathname carrying ?m=<id> plus the
+// explicitly passed context params (e.g. t/g). The picker passes none - the
+// recipient starts from the default state (task 78 decision kept).
+export function buildShareableModalUrl(
+    id: AddressableModalId,
+    params?: Record<string, string>
+): string {
     if (!browser) return '';
     const url = new URL(window.location.origin + window.location.pathname);
     url.searchParams.set(MODAL_URL_PARAM, id);
+    for (const [k, v] of Object.entries(params ?? {})) url.searchParams.set(k, v);
     return url.href;
 }
 
@@ -57,6 +88,7 @@ let initialized = false;
 function onPopstate(e: PopStateEvent): void {
     addressableModal.set(readAddressableModal(new URL(window.location.href)));
     addressableModalLayer.set((e.state as ModalHistoryState | null)?.modalLayer ?? null);
+    addressableModalParams.set(readAddressableModalParams(new URL(window.location.href)));
 }
 
 export function initAddressableModals(): void {
@@ -71,6 +103,7 @@ export function initAddressableModals(): void {
     if (!id) return;
 
     addressableModal.set(id);
+    addressableModalParams.set(readAddressableModalParams(url));
 
     const st = history.state as ModalHistoryState | null;
     if (st?.modal !== id) {
@@ -96,6 +129,7 @@ export function closeAddressableModal(): void {
     } else {
         addressableModal.set(null);
         addressableModalLayer.set(null);
+        addressableModalParams.set({});
     }
 }
 
@@ -122,4 +156,5 @@ export function disposeAddressableModals(): void {
     initialized = false;
     addressableModal.set(null);
     addressableModalLayer.set(null);
+    addressableModalParams.set({});
 }

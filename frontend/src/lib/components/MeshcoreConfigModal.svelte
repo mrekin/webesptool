@@ -33,6 +33,8 @@
     import CommandInput from './CommandInput.svelte';
     import MultilineControls from './MultilineControls.svelte';
     import CoordinateMapPicker from './CoordinateMapPicker.svelte';
+    import ModalWindowControls from './ModalWindowControls.svelte';
+    import ModalShareFallback from './ModalShareFallback.svelte';
     import { parseDeviceVersion, versionGte } from '$lib/utils/meshcoreVersion.js';
     import { fillHint } from '$lib/actions/fillHint.js';
     import {
@@ -64,6 +66,9 @@
         directPickerResult?: PickerResult | null;
         onDirectPickerApplied?: () => void;
     } = $props();
+
+    // Share fallback URL surfaced by the header controls cluster (task 83).
+    let shareFallbackUrl = $state<string | null>(null);
 
     // Unified command model is static, built once at init: config get<->set rows
     // and one-shot action rows share the same shape and group taxonomy.
@@ -1052,16 +1057,20 @@
                 <h2 id="meshcore-config-title" class="text-xl font-semibold text-orange-200">
                     {$locales('meshcoreconfig.title')}
                 </h2>
-                <button
-                    type="button"
-                    onclick={handleClose}
-                    disabled={busy}
-                    class="text-gray-400 transition-colors hover:text-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
-                    aria-label="Close modal"
-                >
-                    &#x2715;
-                </button>
+                <!-- Window controls cluster (task 83): share copies the
+                     ?m=meshcore-config link (recipient gets the start state);
+                     the cross keeps the busy guard of handleClose. -->
+                <ModalWindowControls
+                    shareId="meshcore-config"
+                    bind:shareFallbackUrl={shareFallbackUrl}
+                    onclose={handleClose}
+                    closeDisabled={busy}
+                />
             </div>
+
+            {#if shareFallbackUrl}
+                <ModalShareFallback url={shareFallbackUrl} />
+            {/if}
 
             <!-- Content: flexes to fill below the header; the panels area below takes the rest. -->
             <div class="flex min-h-0 flex-1 flex-col space-y-4 p-6">
@@ -1727,12 +1736,20 @@
             aria-labelledby="meshcore-danger-title"
         >
             <div class="max-w-md rounded-lg border border-orange-600 bg-gray-800 p-6 shadow-2xl">
-                <h3 id="meshcore-danger-title" class="mb-4 text-lg font-semibold text-orange-200">
-                    {$locales('meshcoreconfig.apply_confirm', { values: { count: 1 } })}
-                    <span class="mt-1 block font-mono text-sm text-orange-300">
-                        {pendingDangerAction.line}
-                    </span>
-                </h3>
+                <div class="flex items-start justify-between gap-2">
+                    <h3
+                        id="meshcore-danger-title"
+                        class="mb-4 text-lg font-semibold text-orange-200"
+                    >
+                        {$locales('meshcoreconfig.apply_confirm', { values: { count: 1 } })}
+                        <span class="mt-1 block font-mono text-sm text-orange-300">
+                            {pendingDangerAction.line}
+                        </span>
+                    </h3>
+                    <!-- Window controls cluster (task 83): the cross is the
+                         "cancel/no" of the confirmation. -->
+                    <ModalWindowControls onclose={() => (pendingDangerAction = null)} />
+                </div>
                 <div class="flex justify-end gap-3">
                     <button
                         type="button"

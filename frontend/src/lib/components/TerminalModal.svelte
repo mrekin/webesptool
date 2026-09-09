@@ -19,6 +19,8 @@
     import CommandInput from './CommandInput.svelte';
     import MultilineControls from './MultilineControls.svelte';
     import McCommandSetPicker from './McCommandSetPicker.svelte';
+    import ModalWindowControls from './ModalWindowControls.svelte';
+    import ModalShareFallback from './ModalShareFallback.svelte';
     import {
         resetTerminalMode,
         setTerminalMode,
@@ -49,6 +51,9 @@
         onClose = () => {},
         initialMode = 'normal'
     }: { isOpen?: boolean; onClose?: () => void; initialMode?: TerminalMode } = $props();
+
+    // Share fallback URL surfaced by the header controls cluster (task 83).
+    let shareFallbackUrl = $state<string | null>(null);
 
     // State
     let terminal: Terminal | null = null;
@@ -719,7 +724,12 @@
 </script>
 
 {#if isOpen}
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="terminal-modal-title"
+    >
         <div
             class="relative flex max-h-[95vh] w-full max-w-7xl flex-col overflow-hidden rounded-lg border border-orange-600 bg-gray-900 shadow-xl"
         >
@@ -727,24 +737,22 @@
             <div
                 class="flex flex-shrink-0 items-center justify-between border-b border-gray-700 p-4"
             >
-                <h2 class="text-xl font-semibold text-white">
+                <h2 id="terminal-modal-title" class="text-xl font-semibold text-white">
                     {$locales('customfirmware.terminal')}
                 </h2>
-                <button
-                    onclick={handleClose}
-                    class="rounded text-gray-400 transition-colors hover:text-white"
-                    aria-label="Close terminal"
-                >
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12"
-                        />
-                    </svg>
-                </button>
+                <!-- Window controls cluster (task 83): share copies the
+                     ?m=terminal link (recipient gets the start state); the
+                     cross runs the same cleanup as the bottom close button. -->
+                <ModalWindowControls
+                    shareId="terminal"
+                    bind:shareFallbackUrl={shareFallbackUrl}
+                    onclose={handleClose}
+                />
             </div>
+
+            {#if shareFallbackUrl}
+                <ModalShareFallback url={shareFallbackUrl} />
+            {/if}
 
             <!-- Main Content Area with Split View -->
             <div class="flex min-h-0 flex-1 overflow-hidden">
