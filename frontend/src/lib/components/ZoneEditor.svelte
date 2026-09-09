@@ -29,6 +29,8 @@
         fetchGroupFiles,
         parseZoneFeatures
     } from '$lib/utils/zoneCatalog';
+    import { readSettingsPresets } from '$lib/utils/zoneFeatures';
+    import { applySettingsPresets } from '$lib/utils/zoneSettingsPresets';
     import {
         bufferTrail,
         circleToPolygon,
@@ -75,17 +77,19 @@
         ExportZone,
         GroupFile,
         MeshcoreZoneSettings,
+        NamedMeshcoreSettings,
         PendingFileInfo,
         ZoneConflictPair,
         ZoneGeometry,
         ZonesUploadError,
-        ZoneGroup
+        ZoneGroup,
+        ZoneGroupSettings
     } from '$lib/types';
 
     let { onclose = () => {} }: { onclose?: () => void } = $props();
 
-    let container: HTMLDivElement;
-    let fileInput: HTMLInputElement;
+    let container = $state<HTMLDivElement>();
+    let fileInput = $state<HTMLInputElement>();
     let map: any = null;
     let L: any = null;
     let loadError = $state(false);
@@ -260,8 +264,17 @@
         return { color: c, weight: 2, fillColor: c, fillOpacity: 0.3 };
     }
 
+    // Groups eligible for export: at least one polygon + a valid regions value —
+    // per preset in grouped mode (task 82: every named preset needs a valid
+    // regions; a grouped group's own flat `regions` is empty by invariant).
     const exportableGroups = $derived(
-        groups.filter((g) => isValidRegions(g.regions) && polygons.some((p) => p.groupId === g.id))
+        groups.filter((g) => {
+            if (!polygons.some((p) => p.groupId === g.id)) return false;
+            if (g.settingsPresets && g.settingsPresets.length > 0) {
+                return g.settingsPresets.every((p) => isValidRegions(p.regions ?? ''));
+            }
+            return isValidRegions(g.regions);
+        })
     );
 
     // Live parse of the typed coordinate list (Polygon-by-coordinates tool).
@@ -1171,6 +1184,7 @@
                 docUrl: gf.docUrl,
                 level: gf.level,
                 commands: gf.commands,
+                settingsPresets: gf.settingsPresets,
                 author: gf.author,
                 originUrl: gf.url
             }
@@ -1202,6 +1216,7 @@
                 docUrl: gf.docUrl,
                 level: gf.level,
                 commands: gf.commands,
+                settingsPresets: gf.settingsPresets,
                 author: gf.author
             }
         ];
@@ -1230,6 +1245,7 @@
                 docUrl: src.docUrl,
                 level: src.level,
                 commands: src.commands,
+                settingsPresets: src.settingsPresets,
                 author: src.author
             }
         ];
@@ -1247,14 +1263,14 @@
             g.id === id ? { ...g, author: author.trim() || undefined } : g
         );
     }
-    // Update a group's full meshcore preset (regions + radio + path.hash.mode +
-    // name template + doc URL + extra commands) from the settings modal. The
-    // modal returns the whole preset object, so an emptied field (e.g. commands)
-    // clears the stored value via the spread. No pushHistory: a settings-modal
-    // edit is not a geometric/structural change worth an undo step, same as the
-    // group name.
-    function updateGroupMeshcore(id: string, preset: MeshcoreZoneSettings): void {
-        groups = groups.map((g) => (g.id === id ? { ...g, ...preset } : g));
+    // Update a group's full meshcore settings from the settings modal: either a
+    // flat preset or named settings presets (task 82) — applySettingsPresets
+    // enforces the mutual exclusivity on the ZoneGroup (a grouped group gets
+    // its flat fields stripped and vice versa; `level` carries over in both
+    // branches). No pushHistory: a settings-modal edit is not a geometric/
+    // structural change worth an undo step, same as the group name.
+    function updateGroupMeshcore(id: string, settings: ZoneGroupSettings): void {
+        groups = groups.map((g) => (g.id === id ? applySettingsPresets(g, settings) : g));
         meshcoreEditId = null;
     }
     function removeGroup(id: string): void {
@@ -1316,11 +1332,17 @@
     }
 
     // Validate + dispatch a parsed FeatureCollection through the existing
-    // auto-detect path (meshcore group vs plain reference boundary).
+    // auto-detect path (meshcore group vs plain reference boundary). Named
+    // settings presets (task 82) are read separately from the same metadata —
+    // detectGroupMeshcore returns only the flat level for a grouped file.
     function dispatchFeatureCollection(fc: GeoJSON.FeatureCollection, filename: string): void {
         const meshcore = detectGroupMeshcore(fc);
-        if (meshcore) loadFileAsGroup(fc, filename, meshcore);
-        else loadFileAsBoundary(fc, filename);
+        if (meshcore) {
+            const meta = (fc as { metadata?: { meshcore?: unknown } }).metadata;
+            loadFileAsGroup(fc, filename, meshcore, readSettingsPresets(meta?.meshcore));
+        } else {
+            loadFileAsBoundary(fc, filename);
+        }
     }
 
     // Decompress a gzip stream to text. DecompressionStream is a native browser
@@ -1386,10 +1408,11 @@
         }
     }
 
-    // A file is a "group" when it carries a meshcore preset with a regions value
-    // (in metadata.meshcore/regions or on a feature); otherwise it is a plain
-    // reference boundary. detectGroupMeshcore returns the full preset (regions +
-    // optional radio/pathHashMode) or null.
+    // A file is a "group" when it carries a meshcore preset (flat fields in
+    // metadata.meshcore/on a feature, or named settings presets — task 82);
+    // otherwise it is a plain reference boundary. detectGroupMeshcore returns
+    // the flat preset (for a grouped file: only `level`, the presets are read
+    // separately via readSettingsPresets) or null.
 
     function loadFileAsBoundary(fc: GeoJSON.FeatureCollection, filename: string): void {
         const key = `user://${filename}/${genId('u')}`;
@@ -1403,7 +1426,8 @@
     function loadFileAsGroup(
         fc: GeoJSON.FeatureCollection,
         filename: string,
-        meshcore: MeshcoreZoneSettings
+        meshcore: MeshcoreZoneSettings,
+        settingsPresets: NamedMeshcoreSettings[] | null = null
     ): void {
         const meta =
             (fc as { metadata?: { group?: unknown; name?: unknown; author?: unknown } }).metadata ??
@@ -1438,6 +1462,9 @@
                 docUrl: meshcore.docUrl,
                 level: meshcore.level ?? ZONE_LEVEL_DEFAULT,
                 commands: meshcore.commands,
+                // Grouped file (task 82): the presets ride along; the flat
+                // fields above stay empty by the mutual-exclusivity invariant.
+                ...(settingsPresets ? { settingsPresets } : {}),
                 author:
                     typeof meta.author === 'string' && meta.author.trim()
                         ? meta.author.trim()
@@ -1465,22 +1492,38 @@
 
     // Resolve one group's zones into export form (circles are already polygons
     // by commit time). Shared by the export download and the server upload so
-    // both write byte-identical files.
+    // both write byte-identical files. Settings and level do NOT ride on the
+    // polygons (task 82): they live once in `metadata.meshcore` via
+    // serializeGroup; features carry only geometry + id/group + label.
     function groupExportZones(g: ZoneGroup): ExportZone[] {
         return polygons
             .filter((p) => p.groupId === g.id)
             .map((p) => ({
                 id: p.id,
                 geometry: p.geom as ZoneGeometry,
-                regions: g.regions,
                 group: g.name,
-                radio: g.radio,
-                pathHashMode: g.pathHashMode,
-                nameTemplate: g.nameTemplate,
-                docUrl: g.docUrl,
-                level: g.level,
                 properties: p.label ? { name: p.label } : undefined
             }));
+    }
+
+    // Build the serialization payload of one group (task 82): grouped groups
+    // carry ONLY `level` + the named presets, flat groups the flat fields —
+    // both include `level` (a zone-group attribute, not a preset field). Logs
+    // the presets_multi counter (RSR §3.10) when a grouped group serializes.
+    function groupSettings(g: ZoneGroup): ZoneGroupSettings {
+        if (g.settingsPresets && g.settingsPresets.length > 0) {
+            console.info('[meshcore-zone]', 'presets_multi', g.name, g.settingsPresets.length);
+            return { level: g.level, settingsPresets: g.settingsPresets };
+        }
+        return {
+            regions: g.regions,
+            radio: g.radio,
+            pathHashMode: g.pathHashMode,
+            nameTemplate: g.nameTemplate,
+            docUrl: g.docUrl,
+            level: g.level,
+            commands: g.commands
+        };
     }
 
     function exportOne(g: ZoneGroup): void {
@@ -1491,20 +1534,7 @@
             return;
         }
         downloadCatalog(
-            serializeGroup(
-                g.name,
-                {
-                    regions: g.regions,
-                    radio: g.radio,
-                    pathHashMode: g.pathHashMode,
-                    nameTemplate: g.nameTemplate,
-                    docUrl: g.docUrl,
-                    level: g.level,
-                    commands: g.commands
-                },
-                zones,
-                g.author
-            ),
+            serializeGroup(g.name, groupSettings(g), zones, g.author),
             groupFileName(g.name, g.regions, g.id)
         );
     }
@@ -1544,6 +1574,27 @@
         return $locales('meshcoreconfig.zones.commands_chip').replace('{n}', String(n));
     }
 
+    // Localized tooltip of the settings-preset chip cluster of a grouped group
+    // (task 82): "Settings groups: {n}".
+    function groupsChipTitle(n: number): string {
+        return $locales('meshcoreconfig.zones.groups_chip').replace('{n}', String(n));
+    }
+
+    // Chip tooltip of one named settings preset: its regions and/or radio
+    // frequency — configuration values, shown as-is (not localized).
+    function presetChipTitle(p: NamedMeshcoreSettings): string {
+        const parts: string[] = [];
+        if (p.regions) parts.push(p.regions);
+        if (p.radio) parts.push(String(p.radio.freq));
+        return parts.join(' · ');
+    }
+
+    // The ⚙ button highlight: the group carries meshcore settings when it has
+    // flat radio/path-hash values or named settings presets (task 82).
+    function groupHasSettings(g: ZoneGroup): boolean {
+        return !!(g.radio || g.pathHashMode || (g.settingsPresets && g.settingsPresets.length > 0));
+    }
+
     // Send one group to the pending catalog (same serialization + file name as
     // the export download, so a re-upload replaces the awaiting version).
     async function uploadOne(g: ZoneGroup): Promise<boolean> {
@@ -1555,20 +1606,7 @@
         }
         const res = await uploadZoneFile(
             groupFileName(g.name, g.regions, g.id),
-            serializeGroup(
-                g.name,
-                {
-                    regions: g.regions,
-                    radio: g.radio,
-                    pathHashMode: g.pathHashMode,
-                    nameTemplate: g.nameTemplate,
-                    docUrl: g.docUrl,
-                    level: g.level,
-                    commands: g.commands
-                },
-                zones,
-                g.author
-            )
+            serializeGroup(g.name, groupSettings(g), zones, g.author)
         );
         if (!res.ok) {
             uploadProblems = [
@@ -1587,12 +1625,15 @@
         uploadProblems = [];
         // Client-side precheck reasons: export-eligible groups without a docUrl
         // are not admitted (the server rejects them with doc_url_missing).
-        const noDoc = groups.filter(
-            (g) =>
-                isValidRegions(g.regions) &&
-                polygons.some((p) => p.groupId === g.id) &&
-                (g.docUrl ?? '').trim() === ''
-        );
+        // Grouped-aware (task 82): a group with settings presets is not
+        // admissible when ANY preset lacks a docUrl (flat groups as before).
+        const noDoc = groups.filter((g) => {
+            if (!polygons.some((p) => p.groupId === g.id)) return false;
+            if (g.settingsPresets && g.settingsPresets.length > 0) {
+                return g.settingsPresets.some((p) => (p.docUrl ?? '').trim() === '');
+            }
+            return isValidRegions(g.regions) && (g.docUrl ?? '').trim() === '';
+        });
         const docProblems = noDoc.map((g) =>
             $locales('meshcoreconfig.zones.upload_no_docurl').replace('{name}', g.name || g.id)
         );
@@ -1690,7 +1731,7 @@
     // place, then refresh everything derived from its content — cache, drawn
     // layer and conflict record (the pending $effect redraws and re-runs the
     // client conflict check), and the queue row (preset summary).
-    async function savePendingEdit(preset: MeshcoreZoneSettings, author?: string): Promise<void> {
+    async function savePendingEdit(preset: ZoneGroupSettings, author?: string): Promise<void> {
         const file = pendingEditFile;
         if (!file || !moderatorToken) return;
         moderationBusy = true;
@@ -1981,9 +2022,9 @@
         map.on('pm:create', onPmCreate);
 
         // Brush mouse handling (LMB paint, RMB pan) + context-menu suppression.
-        container.addEventListener('mousedown', onDomMouseDown);
-        container.addEventListener('mousemove', onDomMouseMove);
-        container.addEventListener('contextmenu', onContextMenu);
+        container?.addEventListener('mousedown', onDomMouseDown);
+        container?.addEventListener('mousemove', onDomMouseMove);
+        container?.addEventListener('contextmenu', onContextMenu);
         document.addEventListener('mouseup', onDocMouseUp);
 
         // Published groups are needed for the overlap check (all of them, server-
@@ -2395,7 +2436,8 @@
                         </div>
 
                         {#each groups as g (g.id)}
-                            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+                            <!-- svelte-ignore a11y_click_events_have_key_events -->
+                            <!-- svelte-ignore a11y_no_static_element_interactions -->
                             <div
                                 class={`mb-2 cursor-pointer rounded border-l-4 bg-gray-800 p-2 ${activeGroupId === g.id ? 'ring-1 ring-orange-500' : ''}`}
                                 style={`border-left-color: ${groupColor(g.id)}`}
@@ -2427,7 +2469,7 @@
                                             meshcoreEditId = g.id;
                                         }}
                                         title={$locales('meshcoreconfig.zones.meshcore_settings')}
-                                        class={`shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-xs hover:bg-gray-600 ${g.radio || g.pathHashMode ? 'text-orange-200' : 'text-gray-300'}`}
+                                        class={`shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-xs hover:bg-gray-600 ${groupHasSettings(g) ? 'text-orange-200' : 'text-gray-300'}`}
                                     >
                                         ⚙
                                     </button>
@@ -2473,8 +2515,10 @@
                                         )}</span
                                     >
                                 {/if}
-                                <!-- Meshcore preset summary (edited via the ⚙ modal):
-                                regions + optional radio/path hash. -->
+                                <!-- Meshcore settings summary (edited via the ⚙ modal):
+                                grouped groups show one name chip per settings preset
+                                (★ = default; tooltip = regions/freq, task 82); flat
+                                groups show regions + optional radio/path hash. -->
                                 <div
                                     class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] leading-snug"
                                 >
@@ -2483,34 +2527,53 @@
                                         title={$locales('meshcoreconfig.zones.zone_level')}
                                         >L{g.level ?? 1}</span
                                     >
-                                    <span
-                                        class={`font-mono ${isValidRegions(g.regions) ? 'text-gray-300' : 'text-red-400'}`}
-                                        title={$locales('meshcoreconfig.zones.regions_label')}
-                                        >{g.regions ||
-                                            $locales(
-                                                'meshcoreconfig.zones.regions_placeholder'
-                                            )}</span
-                                    >
-                                    {#if g.radio}
-                                        <span class="text-gray-500">· {g.radio.freq}</span>
-                                    {/if}
-                                    {#if g.pathHashMode}
-                                        <span class="text-gray-500">· path {g.pathHashMode}</span>
-                                    {/if}
-                                    {#if g.nameTemplate}
-                                        <span class="text-gray-500" title={g.nameTemplate}
-                                            >· name tpl</span
-                                        >
-                                    {/if}
-                                    {#if g.docUrl}
-                                        <span class="text-sky-400">· doc</span>
-                                    {/if}
-                                    {#if g.commands?.length}
+                                    {#if g.settingsPresets && g.settingsPresets.length > 0}
                                         <span
-                                            class="text-gray-500"
-                                            title={commandsChipTitle(g.commands.length)}
-                                            >· cmd {g.commands.length}</span
+                                            class="inline-flex flex-wrap items-center gap-1"
+                                            title={groupsChipTitle(g.settingsPresets.length)}
                                         >
+                                            {#each g.settingsPresets as p, pi (pi)}
+                                                <span
+                                                    class="rounded bg-gray-700 px-1 font-mono text-gray-200"
+                                                    title={presetChipTitle(p)}
+                                                    >{p.isDefault === true
+                                                        ? `★${p.name}`
+                                                        : p.name}</span
+                                                >
+                                            {/each}
+                                        </span>
+                                    {:else}
+                                        <span
+                                            class={`font-mono ${isValidRegions(g.regions) ? 'text-gray-300' : 'text-red-400'}`}
+                                            title={$locales('meshcoreconfig.zones.regions_label')}
+                                            >{g.regions ||
+                                                $locales(
+                                                    'meshcoreconfig.zones.regions_placeholder'
+                                                )}</span
+                                        >
+                                        {#if g.radio}
+                                            <span class="text-gray-500">· {g.radio.freq}</span>
+                                        {/if}
+                                        {#if g.pathHashMode}
+                                            <span class="text-gray-500"
+                                                >· path {g.pathHashMode}</span
+                                            >
+                                        {/if}
+                                        {#if g.nameTemplate}
+                                            <span class="text-gray-500" title={g.nameTemplate}
+                                                >· name tpl</span
+                                            >
+                                        {/if}
+                                        {#if g.docUrl}
+                                            <span class="text-sky-400">· doc</span>
+                                        {/if}
+                                        {#if g.commands?.length}
+                                            <span
+                                                class="text-gray-500"
+                                                title={commandsChipTitle(g.commands.length)}
+                                                >· cmd {g.commands.length}</span
+                                            >
+                                        {/if}
                                     {/if}
                                 </div>
 
@@ -2702,27 +2765,33 @@
 
 {#if meshcoreEditGroup}
     <ZoneMeshcoreSettingsModal
-        regions={meshcoreEditGroup.regions}
-        radio={meshcoreEditGroup.radio}
-        pathHashMode={meshcoreEditGroup.pathHashMode}
-        nameTemplate={meshcoreEditGroup.nameTemplate}
-        docUrl={meshcoreEditGroup.docUrl}
-        level={meshcoreEditGroup.level}
-        commands={meshcoreEditGroup.commands}
-        onsave={(preset) => updateGroupMeshcore(meshcoreEditGroup.id, preset)}
+        preset={{
+            regions: meshcoreEditGroup.regions,
+            radio: meshcoreEditGroup.radio,
+            pathHashMode: meshcoreEditGroup.pathHashMode,
+            nameTemplate: meshcoreEditGroup.nameTemplate,
+            docUrl: meshcoreEditGroup.docUrl,
+            level: meshcoreEditGroup.level,
+            commands: meshcoreEditGroup.commands
+        }}
+        settingsPresets={meshcoreEditGroup.settingsPresets}
+        onsave={(settings) => updateGroupMeshcore(meshcoreEditGroup.id, settings)}
         onclose={() => (meshcoreEditId = null)}
     />
 {/if}
 
 {#if pendingEditFile}
     <ZoneMeshcoreSettingsModal
-        regions={pendingEditFile.regions ?? ''}
-        radio={pendingEditFile.radio}
-        pathHashMode={pendingEditFile.pathHashMode}
-        nameTemplate={pendingEditFile.nameTemplate}
-        docUrl={pendingEditFile.docUrl}
-        level={pendingEditFile.level}
-        commands={pendingEditFile.commands}
+        preset={{
+            regions: pendingEditFile.regions ?? '',
+            radio: pendingEditFile.radio,
+            pathHashMode: pendingEditFile.pathHashMode,
+            nameTemplate: pendingEditFile.nameTemplate,
+            docUrl: pendingEditFile.docUrl,
+            level: pendingEditFile.level,
+            commands: pendingEditFile.commands
+        }}
+        settingsPresets={pendingEditFile.settingsPresets}
         author={pendingEditFile.author ?? ''}
         editAuthor={true}
         onsave={savePendingEdit}

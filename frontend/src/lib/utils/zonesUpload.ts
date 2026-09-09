@@ -9,10 +9,10 @@ import { isValidRegions } from '$lib/utils/zoneExport';
 import type {
     EditorPolygon,
     GroupFile,
-    MeshcoreZoneSettings,
     PendingFileInfo,
     ZoneConflictPair,
     ZoneGroup,
+    ZoneGroupSettings,
     ZonesUploadError,
     ZonesUploadErrorCode,
     ZonesUploadResult
@@ -141,14 +141,20 @@ export function fetchModerationConfig(): Promise<boolean> {
 
 // Groups admitted for upload: the export criteria (valid regions + at least
 // one polygon) PLUS a non-empty docUrl (client-side precheck of the server's
-// doc_url_missing rejection; the server stays authoritative).
+// doc_url_missing rejection; the server stays authoritative). Task 82: the
+// regions/docUrl rule applies PER SETTINGS GROUP — a grouped group (non-empty
+// settingsPresets) passes only when EVERY named preset has a valid regions
+// value and a non-empty docUrl; flat groups are checked as before.
 export function submittableGroups(groups: ZoneGroup[], polygons: EditorPolygon[]): ZoneGroup[] {
-    return groups.filter(
-        (g) =>
-            isValidRegions(g.regions) &&
-            (g.docUrl ?? '').trim() !== '' &&
-            polygons.some((p) => p.groupId === g.id)
-    );
+    return groups.filter((g) => {
+        const settingsOk =
+            g.settingsPresets && g.settingsPresets.length > 0
+                ? g.settingsPresets.every(
+                      (p) => isValidRegions(p.regions ?? '') && (p.docUrl ?? '').trim() !== ''
+                  )
+                : isValidRegions(g.regions) && (g.docUrl ?? '').trim() !== '';
+        return settingsOk && polygons.some((p) => p.groupId === g.id);
+    });
 }
 
 export async function uploadZoneFile(
@@ -212,14 +218,15 @@ export async function fetchPendingFileContent(
     }
 }
 
-// Moderator edits a pending file's full preset in place (no re-upload): the
-// server re-serializes the same file with the new preset — the filename (and
-// the queue position) never change. `author` participates only when it is a
-// string: a name sets/replaces it, '' clears it, omitted keeps it as saved.
+// Moderator edits a pending file's full settings payload in place (no
+// re-upload): a flat preset OR named presets (task 82, ZoneGroupSettings) —
+// the server re-serializes the same file with the new payload, so the filename
+// (and the queue position) never change. `author` participates only when it is
+// a string: a name sets/replaces it, '' clears it, omitted keeps it as saved.
 export async function updatePendingFile(
     token: string,
     filename: string,
-    preset: MeshcoreZoneSettings,
+    preset: ZoneGroupSettings,
     author?: string
 ): Promise<PendingResult<{ filename: string }>> {
     const body: Record<string, unknown> = { filename, preset };

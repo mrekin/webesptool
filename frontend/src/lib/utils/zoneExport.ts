@@ -5,12 +5,17 @@
 
 import { ZONE_CATALOG_SCHEMA } from '$lib/config/meshcoreZoneConfig';
 import { validateGeometry } from '$lib/utils/zoneGeometry';
-import type { ExportZone, MeshcoreZoneSettings } from '$lib/types';
+import type {
+    ExportZone,
+    MeshcoreZoneSettings,
+    NamedMeshcoreSettings,
+    ZoneGroupSettings
+} from '$lib/types';
 
 // The on-disk catalog: a GeoJSON FeatureCollection with a small `metadata`
 // extension (schema version) used for forward-compatible migration. The meshcore
-// preset (regions + radio + pathHashMode) lives nested under `metadata.meshcore`
-// and each feature's `properties.meshcore`; a flat legacy `regions` is kept in
+// settings live ONLY under `metadata.meshcore` (task 82, review 2026-09-08) —
+// features carry no `properties.meshcore`; a flat legacy `regions` is kept in
 // the type for backward-compatible reading of older catalogs.
 export type ZoneCatalogJson = GeoJSON.FeatureCollection & {
     metadata?: {
@@ -18,7 +23,10 @@ export type ZoneCatalogJson = GeoJSON.FeatureCollection & {
         group?: string;
         author?: string; // who filled the group in (optional catalog metadata)
         regions?: string; // legacy flat field (older exports)
-        meshcore?: MeshcoreZoneSettings;
+        // Mutually exclusive forms (RSR §3.0): either the flat preset fields
+        // (incl. `level`) or `level` + `settingsPresets` — never both; written
+        // that way by serializeGroup, read metadata-first by zoneFeatures.
+        meshcore?: ZoneGroupSettings;
     };
 };
 
@@ -43,7 +51,7 @@ export function validateExport(zones: ExportZone[]): ExportValidation {
         return { valid: false, problems: ['empty'] };
     }
     zones.forEach((z) => {
-        if (!isValidRegions(z.regions)) problems.push(`${z.id}: invalid regions`);
+        if (!isValidRegions(z.regions ?? '')) problems.push(`${z.id}: invalid regions`);
         const check = validateGeometry(z.geometry);
         if (!check.valid) problems.push(`${z.id}: ${check.reason}`);
     });
@@ -68,53 +76,62 @@ function buildMeshcoreBlock(p: MeshcoreZoneSettings): MeshcoreZoneSettings | und
     return Object.keys(block).length > 0 ? block : undefined;
 }
 
+// Build one element of `metadata.meshcore.settingsPresets` (task 82): `name`
+// always, `isDefault` only when true, then the preset fields through the shared
+// "empty fields are omitted" rule. `level` never appears — a preset does not
+// carry it by type (level is a zone-group attribute, RSR §3.6).
+function buildPresetBlock(p: NamedMeshcoreSettings): NamedMeshcoreSettings {
+    return {
+        name: p.name,
+        ...(p.isDefault === true ? { isDefault: true } : {}),
+        ...(buildMeshcoreBlock(p) ?? {})
+    };
+}
+
 // Serialize one group's resolved zones into a GeoJSON FeatureCollection. The
 // group name and the optional author (catalog metadata — who filled the group
-// in) are plain `metadata` fields next to `schema`. The meshcore preset (any
-// subset of regions/radio/pathHashMode/nameTemplate/docUrl) is stored nested
-// under `metadata.meshcore` (so the editor can list groups without parsing
-// features) and on each feature's `properties.meshcore` (so the lookup resolves
-// a point and its full preset). Empty fields are omitted; a zone with no preset
-// at all carries no meshcore key. `author` is metadata-only — not firmware
-// config, not duplicated into features.
+// in) are plain `metadata` fields next to `schema`. The meshcore settings live
+// ONCE, under `metadata.meshcore` (task 82, review 2026-09-08): flat state
+// (no settingsPresets) writes the flat preset incl. `level` — the same block
+// composition as before; grouped state writes ONLY `level` +
+// `settingsPresets` (flat settings fields are deliberately omitted — the two
+// forms are mutually exclusive, RSR §3.0). Features carry no `properties.meshcore`
+// at all: settings and level are enriched back in memory at parse time
+// (zoneFeatures.enrichFeaturesFromMetadata), which also makes new files
+// noticeably smaller than the old per-polygon duplication. `author` is
+// metadata-only — not firmware config, not duplicated into features.
 export function serializeGroup(
     name: string,
-    meshcore: MeshcoreZoneSettings,
+    settings: ZoneGroupSettings,
     zones: ExportZone[],
     author?: string
 ): ZoneCatalogJson {
-    const metaBlock = buildMeshcoreBlock(meshcore);
     const metadata: ZoneCatalogJson['metadata'] = {
         schema: ZONE_CATALOG_SCHEMA,
         group: name
     };
     if (author && author.trim()) metadata.author = author.trim();
-    if (metaBlock) metadata.meshcore = metaBlock;
+    if (settings.settingsPresets && settings.settingsPresets.length > 0) {
+        metadata.meshcore = {
+            ...(settings.level != null ? { level: settings.level } : {}),
+            settingsPresets: settings.settingsPresets.map(buildPresetBlock)
+        };
+    } else {
+        const metaBlock = buildMeshcoreBlock(settings);
+        if (metaBlock) metadata.meshcore = metaBlock;
+    }
     return {
         type: 'FeatureCollection',
         metadata,
-        features: zones.map((z) => {
-            const featureBlock = buildMeshcoreBlock({
-                regions: z.regions,
-                radio: meshcore.radio,
-                pathHashMode: meshcore.pathHashMode,
-                nameTemplate: meshcore.nameTemplate,
-                docUrl: meshcore.docUrl,
-                level: z.level ?? meshcore.level,
-                commands: meshcore.commands
-            });
-            const properties: Record<string, unknown> = {
+        features: zones.map((z) => ({
+            type: 'Feature' as const,
+            geometry: z.geometry,
+            properties: {
                 ...z.properties,
                 id: z.id,
                 group: name
-            };
-            if (featureBlock) properties.meshcore = featureBlock;
-            return {
-                type: 'Feature' as const,
-                geometry: z.geometry,
-                properties
-            };
-        })
+            }
+        }))
     };
 }
 

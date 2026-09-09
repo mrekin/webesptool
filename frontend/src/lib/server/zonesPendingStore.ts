@@ -22,7 +22,12 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { ZONE_CATALOG_SCHEMA } from '$lib/config/meshcoreZoneConfig';
-import { detectGroupMeshcore, parseZoneFeatures } from '$lib/utils/zoneFeatures';
+import {
+    detectGroupMeshcore,
+    enrichFeaturesFromMetadata,
+    parseZoneFeatures,
+    readSettingsPresets
+} from '$lib/utils/zoneFeatures';
 import type { PendingFileInfo, ZoneFeature } from '$lib/types';
 
 // Hard limits (final PRD values; intentionally NOT env-overridable — minimal
@@ -76,14 +81,23 @@ function pendingPath(filename: string): string | null {
 }
 
 // Upload validation (format + schema + docUrl), run on every upload and again
-// on approve (protection against manual edits of the pending directory).
-// Mirrors the reading rules of zoneFeatures.ts: docUrl counts from
-// metadata.meshcore OR any feature's preset.
+// on approve/update (protection against manual edits of the pending directory).
+// Mirrors the reading rules of zoneFeatures.ts. Task 82: when metadata.meshcore
+// carries a NON-EMPTY `settingsPresets` array (grouped state) the flat checks
+// do NOT apply — the array is validated STRICTLY (no leniency of
+// readSettingsPresets on this trust boundary): every element must be an object
+// with a non-empty string `name`, the (trimmed) names must be unique
+// (invalid_format), and every preset must carry a valid docUrl
+// (doc_url_missing). An empty array counts as absence -> the flat path.
 export function validateUploadContent(fc: unknown): {
     code?: 'invalid_format' | 'doc_url_missing';
 } {
     if (!fc || typeof fc !== 'object') return { code: 'invalid_format' };
-    const c = fc as { type?: unknown; features?: unknown; metadata?: { schema?: unknown } };
+    const c = fc as {
+        type?: unknown;
+        features?: unknown;
+        metadata?: { schema?: unknown; meshcore?: { settingsPresets?: unknown } };
+    };
     if (c.type !== 'FeatureCollection' || !Array.isArray(c.features)) {
         return { code: 'invalid_format' };
     }
@@ -93,6 +107,25 @@ export function validateUploadContent(fc: unknown): {
     }
     const features = parseZoneFeatures(c.features);
     if (features.length === 0) return { code: 'invalid_format' };
+    const rawPresets = c.metadata?.meshcore?.settingsPresets;
+    if (Array.isArray(rawPresets) && rawPresets.length > 0) {
+        // Grouped state: strict per-preset structure + docUrl of every preset.
+        const names = new Set<string>();
+        for (const el of rawPresets) {
+            if (!el || typeof el !== 'object') return { code: 'invalid_format' };
+            const name = (el as { name?: unknown }).name;
+            if (typeof name !== 'string' || !name.trim()) return { code: 'invalid_format' };
+            if (names.has(name.trim())) return { code: 'invalid_format' }; // duplicate name
+            names.add(name.trim());
+            const docUrl = (el as { docUrl?: unknown }).docUrl;
+            if (typeof docUrl !== 'string' || !/^https?:\/\//i.test(docUrl.trim())) {
+                return { code: 'doc_url_missing' };
+            }
+        }
+        return {};
+    }
+    // Flat state (incl. an empty/absent settingsPresets array): today's check
+    // over the merged preset (metadata.meshcore OR any feature's copy).
     const docUrl = detectGroupMeshcore(c as GeoJSON.FeatureCollection)?.docUrl;
     if (!docUrl || !/^https?:\/\//i.test(docUrl)) return { code: 'doc_url_missing' };
     return {};
@@ -143,7 +176,12 @@ export function listPendingFiles(): PendingFileInfo[] {
             if (!st.isFile()) continue;
             const raw: unknown = JSON.parse(readFileSync(full, 'utf8'));
             const fc = raw as GeoJSON.FeatureCollection & {
-                metadata?: { group?: unknown; name?: unknown; author?: unknown };
+                metadata?: {
+                    group?: unknown;
+                    name?: unknown;
+                    author?: unknown;
+                    meshcore?: unknown;
+                };
             };
             const mc = detectGroupMeshcore(raw as GeoJSON.FeatureCollection);
             const features = parseZoneFeatures(fc.features, mc?.regions ?? '');
@@ -152,6 +190,10 @@ export function listPendingFiles(): PendingFileInfo[] {
                 (typeof meta.group === 'string' && meta.group) ||
                 (typeof meta.name === 'string' && meta.name) ||
                 undefined;
+            // Named settings presets (task 82). For a grouped file
+            // detectGroupMeshcore returns only the level (flat settings fields
+            // stay empty in the row) — the presets carry the data.
+            const presets = readSettingsPresets(meta.meshcore);
             out.push({
                 filename: name,
                 sizeBytes: st.size,
@@ -164,6 +206,7 @@ export function listPendingFiles(): PendingFileInfo[] {
                 pathHashMode: mc?.pathHashMode,
                 nameTemplate: mc?.nameTemplate,
                 commands: mc?.commands,
+                settingsPresets: presets ?? undefined,
                 author:
                     typeof meta.author === 'string' && meta.author.trim()
                         ? meta.author.trim()
@@ -254,7 +297,10 @@ export function movePendingToGroups(
 // Read the published catalog entries for the approve-time conflict check — the
 // same reading the /api/zones/groups endpoint does, parsed with the shared pure
 // reader. Group level comes from the merged preset (metadata first, features
-// fill gaps), matching parseGroupFile's coalescing.
+// fill gaps), matching parseGroupFile's coalescing. Features are then ENRICHED
+// from the file metadata (task 82): new-format files carry no per-polygon
+// settings, so the level, the flat fields and the named presets (which the
+// conflict check consumes) must come from metadata.meshcore.
 export function loadPublishedGroupEntries(): {
     file: string;
     level?: number;
@@ -273,10 +319,11 @@ export function loadPublishedGroupEntries(): {
     for (const f of names) {
         try {
             const raw: unknown = JSON.parse(readFileSync(path.join(groupsDir(), f), 'utf8'));
-            const mc = detectGroupMeshcore(raw as GeoJSON.FeatureCollection);
-            const features = parseZoneFeatures(
-                (raw as { features?: unknown }).features,
-                mc?.regions ?? ''
+            const fc = raw as GeoJSON.FeatureCollection & { metadata?: Record<string, unknown> };
+            const mc = detectGroupMeshcore(fc);
+            const features = enrichFeaturesFromMetadata(
+                parseZoneFeatures(fc.features, mc?.regions ?? ''),
+                fc.metadata
             );
             out.push({ file: f, level: mc?.level, features });
         } catch (err) {

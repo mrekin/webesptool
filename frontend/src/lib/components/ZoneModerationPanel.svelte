@@ -6,7 +6,7 @@
 
     import { _ as locales } from 'svelte-i18n';
     import { onDestroy } from 'svelte';
-    import type { PendingFileInfo, ZoneConflictPair } from '$lib/types';
+    import type { NamedMeshcoreSettings, PendingFileInfo, ZoneConflictPair } from '$lib/types';
 
     let {
         files,
@@ -83,6 +83,42 @@
     // Localized tooltip of the extra-commands chip in the preset summary.
     function commandsTitle(n: number): string {
         return $locales('meshcoreconfig.zones.commands_chip').replace('{n}', String(n));
+    }
+
+    // Named settings presets of a row (task 82); empty when the file is in the
+    // flat state — the flat summary renders instead.
+    function presetGroups(f: PendingFileInfo): NamedMeshcoreSettings[] {
+        return f.settingsPresets ?? [];
+    }
+
+    // Tooltip of one settings-group chip: regions and radio values (config
+    // data, never localized); parts the preset lacks are skipped.
+    function presetChipTitle(p: NamedMeshcoreSettings): string {
+        const parts: string[] = [];
+        if (p.regions) parts.push(p.regions);
+        if (p.radio) parts.push(radioValue(p.radio));
+        return parts.join(' · ');
+    }
+
+    // Docs coverage of the presets: how many carry a docUrl (the same rule the
+    // upload admission enforces) out of the total.
+    function docsCovered(presets: NamedMeshcoreSettings[]): { a: number; b: number } {
+        return {
+            a: presets.filter((p) => (p.docUrl ?? '').trim() !== '').length,
+            b: presets.length
+        };
+    }
+
+    // Localized tooltip of the settings-group chips ("Settings groups: {n}").
+    function groupsChip(n: number): string {
+        return $locales('meshcoreconfig.zones.groups_chip').replace('{n}', String(n));
+    }
+
+    // Localized text of the docs-coverage chip ("Docs {a}/{b}").
+    function docsChip(a: number, b: number): string {
+        return $locales('meshcoreconfig.zones.presets_doc_chip')
+            .replace('{a}', String(a))
+            .replace('{b}', String(b));
     }
 
     function receivedAt(iso: string): string {
@@ -197,54 +233,84 @@
                                 >
                             {/if}
                         </div>
-                        <!-- Preset summary: level / regions / doc link -->
-                        <div
-                            class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 pl-5 text-[10px] leading-snug"
-                        >
-                            <span class="rounded bg-gray-700 px-1 font-mono text-amber-300"
-                                >L{f.level ?? 1}</span
+                        {#if presetGroups(f).length > 0}
+                            <!-- Grouped file (task 82): level + one chip per
+                                settings group (★ marks the default; tooltip =
+                                regions/freq) + docUrl coverage of the presets;
+                                the flat preset summary is hidden -->
+                            {@const presets = presetGroups(f)}
+                            {@const docs = docsCovered(presets)}
+                            <div
+                                class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 pl-5 text-[10px] leading-snug"
+                                title={groupsChip(presets.length)}
                             >
-                            <span class="font-mono text-gray-300">{f.regions || '—'}</span>
-                            {#if f.docUrl}
-                                <a
-                                    href={f.docUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    class="text-sky-400 hover:text-sky-300">doc</a
+                                <span class="rounded bg-gray-700 px-1 font-mono text-amber-300"
+                                    >L{f.level ?? 1}</span
                                 >
-                            {/if}
-                        </div>
-                        <!-- Full preset: radio / path hash mode / name template -->
-                        <div
-                            class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 pl-5 font-mono text-[10px] leading-snug text-gray-400"
-                        >
-                            {#if f.radio}
-                                <span title={$locales('meshcoreconfig.zones.radio_label')}>
-                                    {$locales('meshcoreconfig.zones.result_radio_full').replace(
-                                        '{value}',
-                                        radioValue(f.radio)
-                                    )}
-                                </span>
-                            {/if}
-                            {#if f.pathHashMode}
-                                <span>
-                                    {$locales('meshcoreconfig.zones.result_path_hash').replace(
-                                        '{mode}',
-                                        f.pathHashMode
-                                    )}
-                                </span>
-                            {/if}
-                            {#if f.nameTemplate}
-                                <span title={$locales('meshcoreconfig.zones.result_name_template')}>
-                                    {f.nameTemplate}
-                                </span>
-                            {/if}
-                            {#if f.commands && f.commands.length > 0}
-                                <span title={commandsTitle(f.commands.length)}>
-                                    cmd {f.commands.length}
-                                </span>
-                            {/if}
-                        </div>
+                                {#each presets as p (p.name)}
+                                    <span
+                                        class="font-mono text-gray-300"
+                                        title={presetChipTitle(p)}
+                                    >
+                                        {p.isDefault === true ? `★${p.name}` : p.name}
+                                    </span>
+                                {/each}
+                                <span class="text-gray-400">{docsChip(docs.a, docs.b)}</span>
+                            </div>
+                        {:else}
+                            <!-- Preset summary: level / regions / doc link -->
+                            <div
+                                class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 pl-5 text-[10px] leading-snug"
+                            >
+                                <span class="rounded bg-gray-700 px-1 font-mono text-amber-300"
+                                    >L{f.level ?? 1}</span
+                                >
+                                <span class="font-mono text-gray-300">{f.regions || '—'}</span>
+                                {#if f.docUrl}
+                                    <a
+                                        href={f.docUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="text-sky-400 hover:text-sky-300">doc</a
+                                    >
+                                {/if}
+                            </div>
+                            <!-- Full preset: radio / path hash mode / name template -->
+                            <div
+                                class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 pl-5 font-mono text-[10px] leading-snug text-gray-400"
+                            >
+                                {#if f.radio}
+                                    <span title={$locales('meshcoreconfig.zones.radio_label')}>
+                                        {$locales('meshcoreconfig.zones.result_radio_full').replace(
+                                            '{value}',
+                                            radioValue(f.radio)
+                                        )}
+                                    </span>
+                                {/if}
+                                {#if f.pathHashMode}
+                                    <span>
+                                        {$locales('meshcoreconfig.zones.result_path_hash').replace(
+                                            '{mode}',
+                                            f.pathHashMode
+                                        )}
+                                    </span>
+                                {/if}
+                                {#if f.nameTemplate}
+                                    <span
+                                        title={$locales(
+                                            'meshcoreconfig.zones.result_name_template'
+                                        )}
+                                    >
+                                        {f.nameTemplate}
+                                    </span>
+                                {/if}
+                                {#if f.commands && f.commands.length > 0}
+                                    <span title={commandsTitle(f.commands.length)}>
+                                        cmd {f.commands.length}
+                                    </span>
+                                {/if}
+                            </div>
+                        {/if}
 
                         {#if fileConflicts(f.filename).length > 0}
                             <div class="mt-1 rounded border border-red-500/50 bg-red-900/20 p-1">

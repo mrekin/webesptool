@@ -1,74 +1,107 @@
 <script lang="ts">
-    // Small modal that edits a zone group's full meshcore preset: `regions`
+    // Small modal that edits a zone group's full meshcore settings: `regions`
     // (region def), the radio preset `set radio {freq},{bw},{sf},{cr}`,
-    // `set path.hash.mode` and the extra-commands list (task 79). The modal is
-    // mounted fresh on each open, so $state initializers read the current
-    // props once.
+    // `set path.hash.mode`, the node-name template, the doc URL and the extra-
+    // commands list (task 79). The modal is mounted fresh on each open, so
+    // $state initializers read the current props once.
+    //
+    // Task 82 adds the settings-groups switcher: the caller passes either a
+    // flat `preset` or named `settingsPresets` — never both. One set of fields
+    // is edited at a time; switching groups flushes the fields into the draft
+    // and loads the next entry, so nothing is lost. `level` stays OUTSIDE the
+    // switcher — it is a property of the whole zone group (hierarchy
+    // attribute), saved in both modes.
+    //
+    // Naming convention (task 82): the runtime key of the preset list is
+    // `settingsPresets`; a zone-group settings payload is `ZoneGroupSettings`.
 
     import { _ as locales } from 'svelte-i18n';
     import { untrack } from 'svelte';
     import { ZONE_LEVELS, ZONE_LEVEL_DEFAULT } from '$lib/config/meshcoreZoneConfig';
     import { isValidRegions } from '$lib/utils/zoneExport';
+    import { uniquePresetName } from '$lib/utils/zoneSettingsPresets';
     import { parseNameTemplate } from '$lib/utils/nameTemplate';
+    import type { NameTemplateToken } from '$lib/utils/nameTemplate';
     import { fillHint } from '$lib/actions/fillHint.js';
-    import type { MeshcoreZoneSettings, RadioSpec } from '$lib/types';
+    import type {
+        MeshcoreZoneSettings,
+        NamedMeshcoreSettings,
+        RadioSpec,
+        ZoneGroupSettings
+    } from '$lib/types';
 
     let {
-        regions = '',
-        radio = undefined,
-        pathHashMode = undefined,
-        nameTemplate = undefined,
-        docUrl = undefined,
-        level = undefined,
-        commands = undefined,
+        preset = {},
+        settingsPresets = undefined,
         author = undefined,
         editAuthor = false,
-        onsave = (_preset: MeshcoreZoneSettings, _author?: string) => {},
+        onsave = (_result: ZoneGroupSettings, _author?: string) => {},
         onclose = () => {}
     }: {
-        regions?: string;
-        radio?: RadioSpec;
-        pathHashMode?: string;
-        nameTemplate?: string;
-        docUrl?: string;
-        level?: number;
-        /** Extra meshcore command lines (task 79), edited as a plain string list. */
-        commands?: string[];
+        /** Flat preset state of the caller (used when settingsPresets is absent). */
+        preset?: MeshcoreZoneSettings;
+        /** Named settings presets (grouped state); non-empty -> grouped mode. */
+        settingsPresets?: NamedMeshcoreSettings[] | null;
         /** Current author (metadata), shown when editAuthor is set. */
         author?: string;
         /** Render the author field (used by the pending-file edit; in-session
          groups edit the author in their card instead). */
         editAuthor?: boolean;
-        onsave?: (preset: MeshcoreZoneSettings, author?: string) => void;
+        /** Object save (task 79/82): flat preset (incl. `level`) OR `level` +
+         `settingsPresets` — the two states are mutually exclusive. */
+        onsave?: (result: ZoneGroupSettings, author?: string) => void;
         onclose?: () => void;
     } = $props();
 
     // Fixed protocol enum for `set path.hash.mode` (matches meshcoreCommandData).
     const PATH_HASH_OPTIONS = ['0', '1', '2'];
 
-    // Text inputs so the user can type freely; coerced to numbers on save. The
-    // modal is mounted fresh on each open, so the initial values are read from
-    // the props once (untrack signals "initial value only" intent and avoids the
-    // state_referenced_locally advisory).
-    let regionsVal = $state(untrack(() => regions));
-    let freq = $state(untrack(() => (radio?.freq != null ? String(radio.freq) : '')));
-    let bw = $state(untrack(() => (radio?.bw != null ? String(radio.bw) : '')));
-    let sf = $state(untrack(() => (radio?.sf != null ? String(radio.sf) : '')));
-    let cr = $state(untrack(() => (radio?.cr != null ? String(radio.cr) : '')));
+    // Grouped draft: the presets being edited (a copy — edits never mutate the
+    // caller's array). null = flat mode (no settings groups). Creation order of
+    // the array is preserved (selectors that need it sort by name elsewhere).
+    let presetsDraft = $state<NamedMeshcoreSettings[] | null>(
+        untrack(() => (settingsPresets && settingsPresets.length > 0 ? [...settingsPresets] : null))
+    );
+    let activeIndex = $state(0);
+    // Inline "new settings group" name prompt (RSR §3.8): null = hidden,
+    // 'create' = wrap the current flat fields into one group, 'add' = append a
+    // new (empty) group.
+    let namePromptMode = $state<'create' | 'add' | null>(null);
+    let newGroupName = $state('');
+
+    // One-shot field source: the first draft entry in grouped mode, the flat
+    // prop otherwise (the modal is mounted fresh on each open).
+    const initialFields: MeshcoreZoneSettings | NamedMeshcoreSettings | undefined = untrack(() =>
+        presetsDraft ? presetsDraft[activeIndex] : preset
+    );
+
+    // Text inputs so the user can type freely; coerced to numbers on save.
+    let regionsVal = $state(initialFields?.regions ?? '');
+    let freq = $state(initialFields?.radio?.freq != null ? String(initialFields.radio.freq) : '');
+    let bw = $state(initialFields?.radio?.bw != null ? String(initialFields.radio.bw) : '');
+    let sf = $state(initialFields?.radio?.sf != null ? String(initialFields.radio.sf) : '');
+    let cr = $state(initialFields?.radio?.cr != null ? String(initialFields.radio.cr) : '');
     // Default to '1' (recommended path hash mode) when the group has none set;
     // an existing '0'/'2' is preserved, and '—' stays selectable to clear it.
-    let pathHash = $state(untrack(() => pathHashMode ?? '1'));
-    let nameTemplateVal = $state(untrack(() => nameTemplate ?? ''));
-    let docUrlVal = $state(untrack(() => docUrl ?? ''));
-    let levelVal = $state(untrack(() => level ?? ZONE_LEVEL_DEFAULT));
+    let pathHash = $state(initialFields?.pathHashMode ?? '1');
+    let nameTemplateVal = $state(initialFields?.nameTemplate ?? '');
+    let docUrlVal = $state(initialFields?.docUrl ?? '');
+    // Zone hierarchy level: a property of the whole zone group — kept OUTSIDE
+    // the settings-groups switcher (saved in both flat and grouped modes).
+    let levelVal = $state(untrack(() => preset.level ?? ZONE_LEVEL_DEFAULT));
     let authorVal = $state(untrack(() => author ?? ''));
     // Extra command lines (task 79): a plain editable string list — no
     // validation, no autocomplete (the point is NOT to rebuild the
     // configurator here). Copied so edits never mutate the caller's array.
-    let commandsVal = $state<string[]>(untrack(() => [...(commands ?? [])]));
+    let commandsVal = $state<string[]>([...(initialFields?.commands ?? [])]);
 
     // Live preview of the parsed template tokens (enum/free/literal).
     const templateTokens = $derived(parseNameTemplate(nameTemplateVal));
+
+    // The active draft entry (clamped — the index never escapes the array).
+    const activePreset = $derived(
+        presetsDraft ? presetsDraft[Math.min(activeIndex, presetsDraft.length - 1)] : undefined
+    );
 
     // Radio is valid when either fully empty (-> cleared) or all four components
     // are finite numbers. A partial entry blocks save.
@@ -81,10 +114,202 @@
     });
 
     const regionsValid = $derived(isValidRegions(regionsVal));
+    // Grouped mode additionally requires every group name to be non-empty and
+    // unique within the zone group (PRD scenario 14).
+    const groupNamesValid = $derived.by(() => {
+        if (!presetsDraft) return true;
+        const names = presetsDraft.map((p) => p.name.trim());
+        return names.every((n) => n !== '') && new Set(names).size === names.length;
+    });
+    // Localized error key of the active group's name field (grouped only).
+    const activeNameError = $derived.by(() => {
+        if (!presetsDraft) return null;
+        const name = (activePreset?.name ?? '').trim();
+        if (name === '') return 'meshcoreconfig.zones.settings_group_name_required';
+        if (presetsDraft.filter((p) => p.name.trim() === name).length > 1) {
+            return 'meshcoreconfig.zones.settings_group_name_taken';
+        }
+        return null;
+    });
     // nameTemplate/docUrl/commands are optional metadata — they never block save.
-    const canSave = $derived(regionsValid && radioValid);
+    const canSave = $derived(regionsValid && radioValid && groupNamesValid);
     // A non-blank (after trim) command list enables the "copy all" button.
     const hasCommandsToCopy = $derived(commandsVal.some((c) => c.trim() !== ''));
+
+    // Snapshot of the currently edited fields as a preset payload — no
+    // `name`/`isDefault`/`level` (the entry identity and the zone-group level
+    // are preserved by the caller).
+    function collectFields(): Omit<NamedMeshcoreSettings, 'name'> {
+        const parts = [freq, bw, sf, cr].map((s) => s.trim());
+        const hasRadio = parts.some((p) => p !== '');
+        const resolvedRadio: RadioSpec | undefined = hasRadio
+            ? {
+                  freq: Number(parts[0]),
+                  bw: Number(parts[1]),
+                  sf: Number(parts[2]),
+                  cr: Number(parts[3])
+              }
+            : undefined;
+        // Blank/whitespace command rows are dropped (order kept, duplicates
+        // kept); the key is dropped when nothing remains so an emptied list
+        // CLEARS the stored field.
+        const cleanedCommands = commandsVal.map((c) => c.trim()).filter((c) => c !== '');
+        return {
+            regions: regionsVal.trim(),
+            radio: resolvedRadio,
+            pathHashMode: pathHash || undefined,
+            nameTemplate: nameTemplateVal.trim() || undefined,
+            docUrl: docUrlVal.trim() || undefined,
+            commands: cleanedCommands.length > 0 ? cleanedCommands : undefined
+        };
+    }
+
+    // Load the editor fields from a preset source (a draft entry or the flat
+    // prop). `level` is not loaded — it lives outside the switcher.
+    function loadFieldsFrom(
+        src: MeshcoreZoneSettings | NamedMeshcoreSettings | null | undefined
+    ): void {
+        regionsVal = src?.regions ?? '';
+        freq = src?.radio?.freq != null ? String(src.radio.freq) : '';
+        bw = src?.radio?.bw != null ? String(src.radio.bw) : '';
+        sf = src?.radio?.sf != null ? String(src.radio.sf) : '';
+        cr = src?.radio?.cr != null ? String(src.radio.cr) : '';
+        pathHash = src?.pathHashMode ?? '1';
+        nameTemplateVal = src?.nameTemplate ?? '';
+        docUrlVal = src?.docUrl ?? '';
+        commandsVal = [...(src?.commands ?? [])];
+    }
+
+    // Store the currently edited fields into the active draft entry (keeps the
+    // entry's name/isDefault) — no data loss when switching groups (RSR §3.8).
+    function flushFieldsToDraft(): void {
+        if (!presetsDraft) return;
+        const cur = presetsDraft[activeIndex];
+        if (!cur) return;
+        const next = [...presetsDraft];
+        next[activeIndex] = {
+            ...collectFields(),
+            name: cur.name,
+            ...(cur.isDefault === true ? { isDefault: true } : {})
+        };
+        presetsDraft = next;
+    }
+
+    // Switch the active group: flush the current fields into the draft, then
+    // load the target entry (PRD scenario 11 — nothing is lost).
+    function switchGroup(index: number): void {
+        if (!presetsDraft) return;
+        const target = Math.max(0, Math.min(index, presetsDraft.length - 1));
+        if (target === activeIndex) return;
+        flushFieldsToDraft();
+        activeIndex = target;
+        loadFieldsFrom(presetsDraft[target]);
+    }
+
+    // True when none of the editable preset fields has content. `pathHash` is
+    // excluded — its '1' is a UI default, not user input.
+    function fieldsEmpty(): boolean {
+        return (
+            regionsVal.trim() === '' &&
+            freq.trim() === '' &&
+            bw.trim() === '' &&
+            sf.trim() === '' &&
+            cr.trim() === '' &&
+            nameTemplateVal.trim() === '' &&
+            docUrlVal.trim() === '' &&
+            commandsVal.every((c) => c.trim() === '')
+        );
+    }
+
+    function openNamePrompt(mode: 'create' | 'add'): void {
+        newGroupName = '';
+        namePromptMode = mode;
+    }
+    function cancelNamePrompt(): void {
+        namePromptMode = null;
+        newGroupName = '';
+    }
+    function onPromptKeydown(e: KeyboardEvent): void {
+        if (e.key === 'Enter') confirmNamePrompt();
+        else if (e.key === 'Escape') cancelNamePrompt();
+    }
+
+    // Confirm the inline name prompt (RSR §3.8):
+    // - 'create': the current flat fields become the single named group (PRD
+    //   scenarios 9/10) — the flat state disappears;
+    // - 'add' from flat with non-empty fields: the flat values are FIRST
+    //   carried into an auto-named group (`default`/`default1`…, PRD scenario
+    //   13) so nothing is lost, then the new (empty) group becomes active;
+    // - 'add' from grouped: appends an empty group (PRD scenario 11).
+    // A blank/duplicate name is accepted here and blocks SAVE with a
+    // localized error (PRD scenario 14 / checklist E14).
+    function confirmNamePrompt(): void {
+        const name = newGroupName.trim();
+        if (namePromptMode === 'create') {
+            presetsDraft = [{ name, ...collectFields() }];
+            activeIndex = 0;
+        } else if (namePromptMode === 'add') {
+            if (!presetsDraft) {
+                const draft: NamedMeshcoreSettings[] = [];
+                if (!fieldsEmpty()) {
+                    const carried = uniquePresetName(draft.map((p) => p.name));
+                    draft.push({ ...collectFields(), name: carried });
+                }
+                draft.push({ name });
+                presetsDraft = draft;
+                activeIndex = draft.length - 1;
+            } else {
+                flushFieldsToDraft();
+                presetsDraft = [...presetsDraft, { name }];
+                activeIndex = presetsDraft.length - 1;
+            }
+        }
+        namePromptMode = null;
+        newGroupName = '';
+        if (presetsDraft) loadFieldsFrom(presetsDraft[activeIndex]);
+    }
+
+    // Rename the active group inline (uniqueness/emptiness is validated live
+    // and blocks save, PRD scenario 14).
+    function renameActiveGroup(name: string): void {
+        if (!presetsDraft) return;
+        const next = [...presetsDraft];
+        next[activeIndex] = { ...next[activeIndex], name };
+        presetsDraft = next;
+    }
+
+    // Checkbox with radio semantics: at most one default preset per zone
+    // group; unchecking the active one removes the default entirely (allowed,
+    // PRD scenario 5 — nothing is applied until the user picks a group).
+    function toggleDefault(): void {
+        if (!presetsDraft) return;
+        const make = presetsDraft[activeIndex]?.isDefault !== true;
+        presetsDraft = presetsDraft.map((p, i) => {
+            const next: NamedMeshcoreSettings = { ...p };
+            if (i === activeIndex && make) next.isDefault = true;
+            else delete next.isDefault;
+            return next;
+        });
+    }
+
+    // Delete the active group (RSR §3.8 / Q1): removing the LAST group returns
+    // to the flat mode keeping the removed group's values in the fields;
+    // otherwise the neighbour becomes active (flush first — nothing is lost).
+    function removeGroup(): void {
+        if (!presetsDraft) return;
+        flushFieldsToDraft();
+        const removed = presetsDraft[activeIndex];
+        if (presetsDraft.length === 1) {
+            presetsDraft = null;
+            activeIndex = 0;
+            loadFieldsFrom(removed);
+            return;
+        }
+        const next = presetsDraft.filter((_, i) => i !== activeIndex);
+        presetsDraft = next;
+        activeIndex = Math.min(activeIndex, next.length - 1);
+        loadFieldsFrom(next[activeIndex]);
+    }
 
     // Extra-commands list editing: append a blank row, drop one row, edit one.
     function addCommandRow(): void {
@@ -123,32 +348,31 @@
         });
     }
 
+    // Name of the subgroup header that opens exactly at option `oi` (task 82
+    // preview): null when the option belongs to the unnamed leading segment or
+    // to a previously opened subgroup.
+    function subgroupHeaderAt(tok: NameTemplateToken, oi: number): string | null {
+        if (tok.type !== 'enum' || !tok.subgroups) return null;
+        for (const sg of tok.subgroups) {
+            if (sg.start === oi) return sg.name;
+        }
+        return null;
+    }
+
     function save(): void {
         if (!canSave) return;
-        const parts = [freq, bw, sf, cr].map((s) => s.trim());
-        const hasRadio = parts.some((p) => p !== '');
-        const resolvedRadio: RadioSpec | undefined = hasRadio
-            ? {
-                  freq: Number(parts[0]),
-                  bw: Number(parts[1]),
-                  sf: Number(parts[2]),
-                  cr: Number(parts[3])
-              }
-            : undefined;
-        // Blank/whitespace command rows are dropped on save (order kept,
-        // duplicates kept); the key is set to undefined when nothing remains so
-        // an emptied list CLEARS the stored preset field on spread.
-        const cleanedCommands = commandsVal.map((c) => c.trim()).filter((c) => c !== '');
-        const preset: MeshcoreZoneSettings = {
-            regions: regionsVal.trim(),
-            radio: resolvedRadio,
-            pathHashMode: pathHash || undefined,
-            nameTemplate: nameTemplateVal.trim() || undefined,
-            docUrl: docUrlVal.trim() || undefined,
-            level: levelVal,
-            commands: cleanedCommands.length > 0 ? cleanedCommands : undefined
-        };
-        onsave(preset, authorVal.trim() || undefined);
+        const resultAuthor = authorVal.trim() || undefined;
+        if (presetsDraft) {
+            // Grouped: the active group's latest edits are flushed first; the
+            // fields of the saved presets stay as edited (level is common).
+            flushFieldsToDraft();
+            onsave(
+                { level: levelVal, settingsPresets: presetsDraft.map((p) => ({ ...p })) },
+                resultAuthor
+            );
+        } else {
+            onsave({ ...collectFields(), level: levelVal }, resultAuthor);
+        }
     }
 </script>
 
@@ -165,7 +389,8 @@
         </div>
 
         <!-- Zone hierarchy level: zones at the same level may not overlap;
-             different levels may nest; lookup resolves to the most specific. -->
+             different levels may nest; lookup resolves to the most specific.
+             Kept OUTSIDE the settings-groups switcher (a zone-group attribute). -->
         <div class="mb-3">
             <label
                 for="mc-zone-level"
@@ -186,6 +411,119 @@
                 {/each}
             </select>
         </div>
+
+        <!-- Settings groups (task 82): grouped switcher or flat-mode actions.
+             One set of preset fields below serves the active group. -->
+        {#if presetsDraft}
+            <div class="mb-3 rounded-md border border-gray-700 bg-gray-900/50 p-2">
+                <div class="mb-2 flex items-center gap-1">
+                    <select
+                        value={activeIndex}
+                        onchange={(e) =>
+                            switchGroup(Number((e.currentTarget as HTMLSelectElement).value))}
+                        class="min-w-0 flex-1 rounded-md border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
+                    >
+                        {#each presetsDraft as p, i (i)}
+                            <option value={i}>{p.name || '—'}</option>
+                        {/each}
+                    </select>
+                    <button
+                        type="button"
+                        onclick={() => openNamePrompt('add')}
+                        title={$locales('meshcoreconfig.zones.settings_group_add')}
+                        aria-label={$locales('meshcoreconfig.zones.settings_group_add')}
+                        class="shrink-0 rounded bg-gray-700 px-2 py-1 text-xs font-bold text-orange-200 transition-colors hover:bg-gray-600"
+                    >
+                        +
+                    </button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input
+                        type="text"
+                        value={activePreset?.name ?? ''}
+                        oninput={(e) =>
+                            renameActiveGroup((e.currentTarget as HTMLInputElement).value)}
+                        placeholder={$locales('meshcoreconfig.zones.settings_group_name_prompt')}
+                        use:fillHint
+                        class={`min-w-0 flex-1 rounded-md border bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500 ${activeNameError ? 'border-red-500' : 'border-gray-600'}`}
+                    />
+                    <label
+                        class="flex shrink-0 items-center gap-1 text-[11px] text-gray-300"
+                        title={$locales('meshcoreconfig.zones.settings_group_default')}
+                    >
+                        <input
+                            type="checkbox"
+                            class="h-3 w-3"
+                            checked={activePreset?.isDefault === true}
+                            onchange={toggleDefault}
+                        />
+                        <span>{$locales('meshcoreconfig.zones.settings_group_default')}</span>
+                    </label>
+                    <button
+                        type="button"
+                        onclick={removeGroup}
+                        title={$locales('meshcoreconfig.zones.settings_group_delete')}
+                        aria-label={$locales('meshcoreconfig.zones.settings_group_delete')}
+                        class="shrink-0 rounded px-1.5 py-1 text-xs text-gray-400 transition-colors hover:bg-gray-700 hover:text-red-300"
+                    >
+                        ✕
+                    </button>
+                </div>
+                {#if activeNameError}
+                    <span class="mt-1 block text-[10px] text-red-400">
+                        {$locales(activeNameError)}
+                    </span>
+                {/if}
+            </div>
+        {:else}
+            <div class="mb-3 flex flex-wrap items-center gap-2">
+                <button
+                    type="button"
+                    onclick={() => openNamePrompt('create')}
+                    class="rounded bg-gray-700 px-2 py-1 text-xs text-orange-200 transition-colors hover:bg-gray-600"
+                >
+                    {$locales('meshcoreconfig.zones.settings_group_create_from_current')}
+                </button>
+                <button
+                    type="button"
+                    onclick={() => openNamePrompt('add')}
+                    class="rounded bg-gray-700 px-2 py-1 text-xs text-orange-200 transition-colors hover:bg-gray-600"
+                >
+                    + {$locales('meshcoreconfig.zones.settings_group_add')}
+                </button>
+            </div>
+        {/if}
+
+        <!-- Inline name prompt of the settings-group creation (RSR §3.8). -->
+        {#if namePromptMode}
+            <div class="mb-3 flex items-center gap-1">
+                <input
+                    type="text"
+                    value={newGroupName}
+                    oninput={(e) => (newGroupName = (e.currentTarget as HTMLInputElement).value)}
+                    onkeydown={onPromptKeydown}
+                    placeholder={$locales('meshcoreconfig.zones.settings_group_name_prompt')}
+                    use:fillHint
+                    class="min-w-0 flex-1 rounded-md border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
+                />
+                <button
+                    type="button"
+                    onclick={confirmNamePrompt}
+                    class="shrink-0 rounded bg-orange-600 px-2 py-1 text-xs text-white transition-colors hover:bg-orange-700"
+                >
+                    ✓
+                </button>
+                <button
+                    type="button"
+                    onclick={cancelNamePrompt}
+                    title={$locales('common.cancel')}
+                    aria-label={$locales('common.cancel')}
+                    class="shrink-0 rounded px-1.5 py-1 text-xs text-gray-400 transition-colors hover:bg-gray-700 hover:text-red-300"
+                >
+                    ✕
+                </button>
+            </div>
+        {/if}
 
         <!-- regions: region def -->
         <div class="mb-3">
@@ -311,7 +649,8 @@
                 class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
             />
             {#if templateTokens.length > 0}
-                <!-- Live preview: literal (gray), enum options (orange), free token (sky). -->
+                <!-- Live preview: literal (gray), enum options (orange), free token (sky).
+                     Enum subgroup headers (task 82) render gray before their options. -->
                 <div class="mt-1 flex flex-wrap items-center gap-1 text-[10px] leading-tight">
                     {#each templateTokens as tok, i (i)}
                         {#if tok.type === 'literal'}
@@ -320,8 +659,17 @@
                             <span
                                 class="rounded bg-orange-900/50 px-1 text-orange-200"
                                 title={$locales('meshcoreconfig.zones.name_template_preview_enum')}
-                                >{tok.options.join('|')}</span
                             >
+                                {#if tok.subgroups}
+                                    {#each tok.options as opt, oi (oi)}{#if oi > 0}|{/if}{#if subgroupHeaderAt(tok, oi)}<span
+                                                class="text-gray-500"
+                                            >
+                                                --{subgroupHeaderAt(tok, oi)}--
+                                            </span>{/if}{opt}{/each}
+                                {:else}
+                                    {tok.options.join('|')}
+                                {/if}
+                            </span>
                         {:else}
                             <span
                                 class="rounded bg-sky-900/50 px-1 text-sky-200"

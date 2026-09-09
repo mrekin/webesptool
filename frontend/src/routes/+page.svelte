@@ -501,6 +501,7 @@
     <CoordinateMapPickerComp
         direct={true}
         onconfirm={applyDirectPickerResult}
+        onregionapply={applyDirectPickerResult}
         onclose={closeAddressableModal}
     />
 {/if}

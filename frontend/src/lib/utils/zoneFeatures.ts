@@ -7,6 +7,7 @@
 import { computeBbox, validateGeometry } from '$lib/utils/zoneGeometry';
 import type {
     MeshcoreZoneSettings,
+    NamedMeshcoreSettings,
     MultiPolygonCoords,
     PolygonCoords,
     RadioSpec,
@@ -95,6 +96,50 @@ export function readMeshcore(
     };
 }
 
+// Read the named settings presets from a raw `meshcore`-style object's
+// `settingsPresets` array (task 82) — the reading counterpart of
+// zoneExport.serializeGroup's grouped format. Lenient by design (bad elements
+// are dropped): only a real array is considered, and an element is valid when
+// it is an object with a non-empty (after trim) string `name`. Element fields
+// are coerced by the very same `readMeshcore` rules (the element is wrapped as
+// the nested `meshcore` block), with `level` deliberately DROPPED — a preset
+// does not carry it (level is a zone-group attribute, RSR §3.6). `isDefault`
+// counts only for the FIRST element with `isDefault === true`; the flag is
+// discarded on the rest (a hand-made file cannot smuggle in two defaults).
+// The argument is the raw `metadata.meshcore` value (the whole block — what
+// every caller passes); the presets live in its `settingsPresets` array
+// (RSR §3.2). Returns null when that array is absent/not an array or no valid
+// element survives — strict structural validation lives on the trust
+// boundaries (upload/moderation).
+export function readSettingsPresets(mcRaw: unknown): NamedMeshcoreSettings[] | null {
+    const rawList =
+        mcRaw && typeof mcRaw === 'object'
+            ? (mcRaw as { settingsPresets?: unknown }).settingsPresets
+            : undefined;
+    if (!Array.isArray(rawList)) return null;
+    const presets: NamedMeshcoreSettings[] = [];
+    let defaultSeen = false;
+    for (const el of rawList) {
+        if (!el || typeof el !== 'object') continue;
+        const raw = el as { name?: unknown; isDefault?: unknown };
+        if (typeof raw.name !== 'string' || !raw.name.trim()) continue;
+        const mc = readMeshcore({ meshcore: el });
+        const preset: NamedMeshcoreSettings = { name: raw.name.trim() };
+        if (mc.regions) preset.regions = mc.regions;
+        if (mc.radio) preset.radio = mc.radio;
+        if (mc.pathHashMode) preset.pathHashMode = mc.pathHashMode;
+        if (mc.nameTemplate) preset.nameTemplate = mc.nameTemplate;
+        if (mc.docUrl) preset.docUrl = mc.docUrl;
+        if (mc.commands) preset.commands = mc.commands;
+        if (raw.isDefault === true && !defaultSeen) {
+            preset.isDefault = true;
+            defaultSeen = true;
+        }
+        presets.push(preset);
+    }
+    return presets.length > 0 ? presets : null;
+}
+
 function asGeometry(raw: unknown): ZoneGeometry | null {
     if (!raw || typeof raw !== 'object') return null;
     const g = raw as { type: string; coordinates: unknown };
@@ -153,11 +198,17 @@ export function parseZoneFeatures(rawFeatures: unknown, fallbackRegions = ''): Z
 // Detect whether a raw FeatureCollection is a published group (vs a plain base
 // boundary). A file is a group when its metadata declares a group/name OR any
 // feature/metadata carries a meshcore preset field (regions/radio/pathHashMode/
-// nameTemplate/docUrl) — regions is NOT required. The preset is merged across
-// sources (metadata first, features fill gaps) and returned with only the present
-// fields; null when the file is a plain boundary. Used by the editor to auto-detect
-// group vs boundary on user upload, and by the server to read a saved file's
-// preset (incl. the docUrl presence rule of the upload validation).
+// nameTemplate/docUrl) — regions is NOT required. Task 82, metadata-first: named
+// settings presets (metadata.meshcore.settingsPresets) count as such a field and
+// take priority over flat metadata settings fields — for a grouped file the flat
+// return value is ONLY `level` read from the flat `metadata.meshcore.level`
+// (level always lives in the flat field, even next to presets, RSR §3.0); the
+// preset list itself is read separately via readSettingsPresets. Without
+// presets the preset is merged across sources (metadata first, features fill
+// gaps) and returned with only the present fields; null when the file is a
+// plain boundary. Used by the editor to auto-detect group vs boundary on user
+// upload, and by the server to read a saved file's preset (incl. the docUrl
+// presence rule of the upload validation).
 export function detectGroupMeshcore(fc: GeoJSON.FeatureCollection): MeshcoreZoneSettings | null {
     const meta = (fc as { metadata?: Record<string, unknown> }).metadata;
     const isGroupByName = !!(
@@ -165,6 +216,17 @@ export function detectGroupMeshcore(fc: GeoJSON.FeatureCollection): MeshcoreZone
         ((typeof meta.group === 'string' && meta.group) ||
             (typeof meta.name === 'string' && meta.name))
     );
+    const presets = readSettingsPresets(meta?.meshcore);
+    if (presets) {
+        // Grouped file: presets alone make it a group; flat settings fields of
+        // the metadata are ignored (priority of settingsPresets, RSR §3.1) and
+        // the feature loop below never runs (polygon copies are a legacy
+        // fallback that a grouped metadata supersedes).
+        const out: MeshcoreZoneSettings = {};
+        const level = readMeshcore(meta).level;
+        if (level != null) out.level = level;
+        return out;
+    }
     const merged = readMeshcore(meta);
     if (Array.isArray(fc.features)) {
         for (const f of fc.features) {
@@ -198,4 +260,44 @@ export function detectGroupMeshcore(fc: GeoJSON.FeatureCollection): MeshcoreZone
     if (merged.level != null) out.level = merged.level;
     if (merged.commands) out.commands = merged.commands;
     return out;
+}
+
+// Metadata-first enrichment of parsed features from the file's metadata
+// (task 82, RSR §3.7): `metadata.meshcore` is the source of the settings and
+// the level, while per-polygon copies (`properties.meshcore`) are only a
+// legacy fallback for old/hand-made files without metadata. For every
+// feature, each non-empty metadata field OVERWRITES the feature's field
+// (regions — only when a non-empty string; radio/pathHashMode/nameTemplate/
+// docUrl/commands — when defined; level = metaMc.level ?? feature.level), and
+// `settingPresets` is attached when metadata carries presets. When metadata
+// yields neither a single field nor presets the features are returned as-is
+// (the fallback stays in force). Input objects are never mutated (map+spread).
+export function enrichFeaturesFromMetadata(
+    features: ZoneFeature[],
+    meta: Record<string, unknown> | null | undefined
+): ZoneFeature[] {
+    const metaMc = readMeshcore(meta);
+    const presets = readSettingsPresets(meta?.meshcore);
+    const hasAnyField = !!(
+        metaMc.regions ||
+        metaMc.radio ||
+        metaMc.pathHashMode ||
+        metaMc.nameTemplate ||
+        metaMc.docUrl ||
+        metaMc.commands ||
+        metaMc.level != null ||
+        presets
+    );
+    if (!hasAnyField) return features;
+    return features.map((f) => ({
+        ...f,
+        regions: metaMc.regions || f.regions,
+        radio: metaMc.radio ?? f.radio,
+        pathHashMode: metaMc.pathHashMode ?? f.pathHashMode,
+        nameTemplate: metaMc.nameTemplate ?? f.nameTemplate,
+        docUrl: metaMc.docUrl ?? f.docUrl,
+        commands: metaMc.commands ?? f.commands,
+        level: metaMc.level ?? f.level,
+        settingPresets: presets ?? f.settingPresets
+    }));
 }

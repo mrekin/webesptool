@@ -967,6 +967,25 @@ export interface MeshcoreZoneSettings {
     commands?: string[]; // extra meshcore command lines, applied as-is (task 79)
 }
 
+// Named settings preset ("settings group" in UI terms) inside one zone group
+// (task 82). `name` is unique within the zone group; at most one member
+// carries `isDefault: true`. `level` is deliberately NOT part of a preset:
+// it is a property of the whole zone group (hierarchy attribute), kept as the
+// single flat field next to `settingsPresets` in the file (see RSR task 82
+// §3.0). Stored as an element of `metadata.meshcore.settingsPresets`.
+export type NamedMeshcoreSettings = Omit<MeshcoreZoneSettings, 'level'> & {
+    name: string;
+    isDefault?: boolean;
+};
+
+// A zone group's full settings payload: legacy flat preset (including the
+// zone group's own `level`) OR named presets (task 82) — never both;
+// serialization and update paths enforce the exclusivity
+// (zoneSettingsPresets.applySettingsPresets).
+export interface ZoneGroupSettings extends MeshcoreZoneSettings {
+    settingsPresets?: NamedMeshcoreSettings[];
+}
+
 // One normalized catalog feature. `bbox` is precomputed at parse time for the
 // lookup prefilter ([minLon, minLat, maxLon, maxLat]).
 export interface ZoneFeature {
@@ -981,6 +1000,10 @@ export interface ZoneFeature {
     docUrl?: string; // per-zone settings-document link (from properties.meshcore.docUrl)
     level?: number; // zone hierarchy level 1-5 (default 1; 1=country, 5=city district)
     commands?: string[]; // extra meshcore command lines (from properties.meshcore.commands)
+    // Named settings presets of the owning group (task 82), attached at parse
+    // time from `metadata.meshcore.settingsPresets` — memory-only, never
+    // serialized back onto the feature (`properties.meshcore` is not written).
+    settingPresets?: NamedMeshcoreSettings[];
     properties: Record<string, unknown>; // open object — extensible characteristics
 }
 
@@ -1006,6 +1029,9 @@ export interface GroupFile {
     docUrl?: string; // group settings-document link (from metadata.meshcore.docUrl)
     level?: number; // group zone hierarchy level 1-5 (default 1)
     commands?: string[]; // extra meshcore command lines (from metadata.meshcore.commands)
+    // Named settings presets (task 82); when present, the flat settings fields
+    // above are not filled from metadata (presets take priority, RSR §3.7).
+    settingsPresets?: NamedMeshcoreSettings[];
     author?: string; // who filled the group in (from metadata.author)
     features: ZoneFeature[];
 }
@@ -1031,6 +1057,11 @@ export interface ZoneRegionResult {
     docUrl?: string; // per-zone settings-document link on hit
     level?: number; // zone hierarchy level of the resolved (most specific) zone on hit
     commands?: string[]; // extra meshcore command lines of the resolved zone on hit
+    // All named settings presets attached to the resolved zone (task 82);
+    // flat fields above are the ones of the applied preset (default/only) or
+    // empty when several presets exist without a default one.
+    settingPresets?: NamedMeshcoreSettings[];
+    selectedPreset?: string; // name of the applied preset, when one was applied
     reason?: 'empty_catalog' | 'fetch_failed' | 'invalid'; // when unavailable
 }
 
@@ -1065,6 +1096,9 @@ export interface ZoneGroup {
     docUrl?: string; // group settings-document link
     level?: number; // group zone hierarchy level 1-5 (default 1)
     commands?: string[]; // extra meshcore command lines (task 79)
+    // Named settings presets (task 82) — mutually exclusive with the flat
+    // settings fields above (enforced by zoneSettingsPresets.applySettingsPresets).
+    settingsPresets?: NamedMeshcoreSettings[];
     author?: string; // who filled the group in (optional catalog metadata)
     originUrl?: string;
 }
@@ -1087,10 +1121,13 @@ export interface EditorPolygon {
 }
 
 // A resolved zone ready for export (circles already converted to polygons).
+// Per-polygon export settings are legacy: new files (task 82) write settings
+// only into `metadata.meshcore`, so these fields are no longer populated by
+// the export path — regions validation moved to the group/preset level.
 export interface ExportZone {
     id: string;
     geometry: ZoneGeometry;
-    regions: string;
+    regions?: string;
     group?: string;
     radio?: RadioSpec;
     pathHashMode?: string;
@@ -1156,6 +1193,9 @@ export interface PendingFileInfo {
     pathHashMode?: string;
     nameTemplate?: string;
     commands?: string[]; // extra meshcore command lines of the preset
+    // Named settings presets of the pending file (task 82); for grouped files
+    // the flat summary fields above stay empty and the presets carry the data.
+    settingsPresets?: NamedMeshcoreSettings[];
     author?: string;
     featureCount: number;
 }

@@ -10,7 +10,13 @@
 
 import { base } from '$app/paths';
 import { ZONE_CATALOG_SCHEMA, ZONE_LEVEL_DEFAULT } from '$lib/config/meshcoreZoneConfig';
-import { detectGroupMeshcore, parseZoneFeatures, readMeshcore } from '$lib/utils/zoneFeatures';
+import {
+    detectGroupMeshcore,
+    enrichFeaturesFromMetadata,
+    parseZoneFeatures,
+    readMeshcore,
+    readSettingsPresets
+} from '$lib/utils/zoneFeatures';
 import type { BoundaryFile, GroupFile, ZoneCatalog } from '$lib/types';
 
 // The pure feature parser + preset detector now live in zoneFeatures.ts (shared
@@ -143,13 +149,23 @@ export function parseGroupFile(url: string, json: unknown): GroupFile | null {
         // a flat legacy metadata.regions), then let per-feature values fill in
         // regions when metadata has none.
         const metaMc = readMeshcore(meta as Record<string, unknown>);
+        // Task 82: named settings presets take priority — when metadata carries
+        // them, the flat settings fields of GroupFile are NOT filled from it.
+        const presets = readSettingsPresets(meta.meshcore);
         const metaRegions =
             metaMc.regions || (typeof meta.regions === 'string' ? meta.regions.trim() : '');
-        const features = parseZoneFeatures(j.features, metaRegions);
+        const features = enrichFeaturesFromMetadata(
+            parseZoneFeatures(j.features, metaRegions),
+            meta as Record<string, unknown>
+        );
         // Fall back to a feature-level regions value when metadata has none (an
         // older export or a hand-made file): the editor's regions field must
-        // still populate when the group is loaded for editing.
-        const regions = metaRegions || features.map((f) => f.regions).find((r) => !!r) || '';
+        // still populate when the group is loaded for editing. A grouped file
+        // keeps regions '' — the type requires the string field, and the flat
+        // settings data lives in the presets.
+        const regions = presets
+            ? ''
+            : metaRegions || features.map((f) => f.regions).find((r) => !!r) || '';
         // Group level: metadata.meshcore.level first, then a feature's level,
         // then the default (1).
         const level =
@@ -161,12 +177,13 @@ export function parseGroupFile(url: string, json: unknown): GroupFile | null {
             filename: fileBase(url),
             name,
             regions,
-            radio: metaMc.radio,
-            pathHashMode: metaMc.pathHashMode,
-            nameTemplate: metaMc.nameTemplate,
-            docUrl: metaMc.docUrl,
+            radio: presets ? undefined : metaMc.radio,
+            pathHashMode: presets ? undefined : metaMc.pathHashMode,
+            nameTemplate: presets ? undefined : metaMc.nameTemplate,
+            docUrl: presets ? undefined : metaMc.docUrl,
             level,
-            commands: metaMc.commands,
+            commands: presets ? undefined : metaMc.commands,
+            settingsPresets: presets ?? undefined,
             author:
                 typeof meta.author === 'string' && meta.author.trim()
                     ? meta.author.trim()

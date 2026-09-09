@@ -77,7 +77,7 @@
 >
     <!-- Header: label (left) + dirty badge (config & param-actions) or action
          buttons (0-param actions): queue toggle (non-urgent) + Run. -->
-    <div class="mb-1.5 flex items-center justify-between gap-2">
+    <div class="mb-1.5 flex min-h-5 items-center justify-between gap-2">
         <label
             for={fieldId}
             class="truncate text-xs font-semibold tracking-wide text-gray-400 uppercase"

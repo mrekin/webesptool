@@ -1,13 +1,14 @@
 <script lang="ts">
     import { _ as locales } from 'svelte-i18n';
-    import { onMount, onDestroy } from 'svelte';
+    import { onMount, onDestroy, untrack } from 'svelte';
     import { apiService } from '$lib/api';
-    import type { GeocodeResponse, PickerResult, ZoneCatalog } from '$lib/types';
+    import type { GeocodeResponse, PickerResult, ZoneCatalog, ZoneRegionResult } from '$lib/types';
     import GeocodeResponseModal from './GeocodeResponseModal.svelte';
     import ZoneEditor from './ZoneEditor.svelte';
     import { loadLeaflet } from '$lib/utils/leafletLoader';
     import { fetchZoneCatalog } from '$lib/utils/zoneCatalog';
     import { lookupZoneRegion } from '$lib/utils/zoneResolver';
+    import { defaultPreset, sortedPresetsByName } from '$lib/utils/zoneSettingsPresets';
     import { unwrapAntimeridian } from '$lib/utils/zoneGeometry';
     import {
         addressableModalLayer,
@@ -21,6 +22,7 @@
         lon,
         direct = false,
         onconfirm = (_result: PickerResult) => {},
+        onregionapply = (_result: PickerResult) => {},
         onclose = () => {}
     }: {
         lat?: number;
@@ -29,6 +31,7 @@
         detectCoords?: boolean;
         detectRegions?: boolean;
         onconfirm?: (result: PickerResult) => void;
+        onregionapply?: (result: PickerResult) => void;
         onclose?: () => void;
     } = $props();
 
@@ -46,8 +49,10 @@
     const hasCoords = $derived(
         typeof lat === 'number' && typeof lon === 'number' && lat !== 0 && lon !== 0
     );
-    let pickLat = $state(hasCoords ? (lat as number) : 55.75);
-    let pickLon = $state(hasCoords ? (lon as number) : 37.62);
+    // Init-once snapshot of the props (the picker mounts fresh per open) —
+    // read untracked so only the initial values are captured.
+    let pickLat = $state(untrack(() => (hasCoords ? (lat as number) : 55.75)));
+    let pickLon = $state(untrack(() => (hasCoords ? (lon as number) : 37.62)));
 
     // The picker always opens with both coordinates and regions enabled,
     // regardless of which entry point opened it.
@@ -133,6 +138,82 @@
         useRegions && catalog ? lookupZoneRegion([pickLon, pickLat], catalog) : null
     );
 
+    // --- Settings-group selector (task 82, RSR §3.4) ---
+
+    // Groups of the resolved zone, display-sorted by name (the array order in
+    // the file has no technical role). Empty for flat zones / miss / unavailable.
+    const sortedPresets = $derived(
+        regionResult && regionResult.status === 'hit'
+            ? sortedPresetsByName(regionResult.settingPresets ?? [])
+            : []
+    );
+
+    // Identity of the currently resolved zone — the selector reseeds on ITS
+    // change only: dragging the marker inside the same zone keeps the choice.
+    const resolvedZoneId = $derived(
+        regionResult && regionResult.status === 'hit' ? regionResult.zoneId : undefined
+    );
+
+    // Selected settings-group name (null = nothing picked yet). Seeded from the
+    // zone's presets: the default one, or the only one; several groups without
+    // a default leave it null — nothing is applied until the user picks
+    // (PRD scenario 5).
+    let selectedPresetName = $state<string | null>(null);
+    // Reseed bookkeeping for the effect below (plain let, never rendered).
+    let seededZoneId: string | undefined;
+
+    // Reseed the selection when the resolved zone changes (RSR §3.4). Only the
+    // zone id is tracked; the presets are read untracked so unrelated lookup
+    // updates do not re-run the effect.
+    $effect(() => {
+        const zoneId = resolvedZoneId;
+        if (zoneId === seededZoneId) return;
+        seededZoneId = zoneId;
+        untrack(() => {
+            const presets =
+                regionResult?.status === 'hit' ? (regionResult.settingPresets ?? []) : [];
+            selectedPresetName =
+                defaultPreset(presets)?.name ?? (presets.length === 1 ? presets[0].name : null);
+        });
+    });
+
+    // Zone result with the named settings group applied (RSR §3.4): the lookup
+    // shell (status/zoneId/level/preset list) comes from the base result, the
+    // settings fields come from the chosen preset alone — a field the preset
+    // does not define stays empty (no fallback to another group's value: exactly
+    // the chosen group's fields get applied downstream). A null/unknown name
+    // returns the base result unchanged (flat zone, or no group picked).
+    function resultForPreset(name: string | null): ZoneRegionResult | null {
+        const base = regionResult;
+        if (!base || base.status !== 'hit') return base;
+        const preset = name ? (base.settingPresets ?? []).find((p) => p.name === name) : undefined;
+        if (!preset) return base;
+        return {
+            ...base,
+            tokens: (preset.regions ?? '').split(/\s+/).filter(Boolean),
+            regions: preset.regions ?? '',
+            radio: preset.radio,
+            pathHashMode: preset.pathHashMode,
+            nameTemplate: preset.nameTemplate,
+            docUrl: preset.docUrl,
+            commands: preset.commands,
+            selectedPreset: preset.name
+        };
+    }
+
+    // What the panel shows and confirm() sends: the base result overlaid with
+    // the selected settings group.
+    const activeRegionResult = $derived(resultForPreset(selectedPresetName));
+
+    // Settings-group selection changed: remember the choice and push the result
+    // through the same application path as confirm (coords null — only the zone
+    // preset fields are re-applied, RSR §3.4).
+    function onPresetChange(e: Event): void {
+        const name = (e.currentTarget as HTMLSelectElement).value || null;
+        selectedPresetName = name;
+        onregionapply({ coords: null, region: resultForPreset(name) });
+    }
+
     // Draw every published zone's outline as a thin orange line. Display-only:
     // interactive:false disables hover/click/tooltip so map clicks still place
     // the marker. Antimeridian-crossing zones (e.g. Чукотка) are unwrapped for
@@ -191,7 +272,7 @@
             coords: useCoords
                 ? { lat: Number(pickLat.toFixed(5)), lon: Number(pickLon.toFixed(5)) }
                 : null,
-            region: useRegions ? regionResult : null
+            region: useRegions ? activeRegionResult : null
         });
     }
 
@@ -384,54 +465,82 @@
                         >
                             {$locales('meshcoreconfig.zones.result_label')}
                         </span>
-                        {#if useRegions && regionResult}
-                            {#if regionResult.status === 'hit'}
-                                {#if regionResult.tokens.length > 0}
+                        {#if useRegions && activeRegionResult}
+                            {#if activeRegionResult.status === 'hit'}
+                                {#if sortedPresets.length > 1}
+                                    <!-- Settings-group selector (task 82, RSR §3.4): shown only
+                                         when the resolved zone carries several groups; the default
+                                         one wears a ★ prefix (config data — never localized). -->
+                                    <label class="flex flex-col gap-0.5">
+                                        <span class="text-[11px] text-gray-400">
+                                            {$locales('meshcoreconfig.zones.result_groups_label')}
+                                        </span>
+                                        <select
+                                            value={selectedPresetName ?? ''}
+                                            onchange={onPresetChange}
+                                            class="rounded border border-gray-600 bg-gray-700 px-1.5 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
+                                        >
+                                            {#each sortedPresets as p (p.name)}
+                                                <option
+                                                    value={p.name}
+                                                    title={p.isDefault
+                                                        ? $locales(
+                                                              'meshcoreconfig.zones.settings_group_default'
+                                                          )
+                                                        : undefined}
+                                                >
+                                                    {p.isDefault ? `★ ${p.name}` : p.name}
+                                                </option>
+                                            {/each}
+                                        </select>
+                                    </label>
+                                {/if}
+                                {#if activeRegionResult.tokens.length > 0}
                                     <span
                                         class="font-mono text-xs text-orange-200"
-                                        title={regionResult.regions}
+                                        title={activeRegionResult.regions}
                                     >
-                                        {regionResult.tokens.join(' ')}
+                                        {activeRegionResult.tokens.join(' ')}
                                     </span>
                                 {/if}
-                                {#if regionResult.level != null}
+                                {#if activeRegionResult.level != null}
                                     <span
                                         class="font-mono text-[11px] text-gray-500"
                                         title={$locales('meshcoreconfig.zones.zone_level')}
                                     >
-                                        L{regionResult.level} · {$locales(
-                                            `meshcoreconfig.zones.zone_level_${regionResult.level}`
+                                        L{activeRegionResult.level} · {$locales(
+                                            `meshcoreconfig.zones.zone_level_${activeRegionResult.level}`
                                         )}
                                     </span>
                                 {/if}
-                                {#if regionResult.radio}
+                                {#if activeRegionResult.radio}
                                     <span
                                         class="font-mono text-[11px] text-gray-400"
                                         title={$locales('meshcoreconfig.zones.radio_label')}
                                     >
                                         {$locales('meshcoreconfig.zones.result_radio', {
-                                            values: { freq: regionResult.radio.freq }
+                                            values: { freq: activeRegionResult.radio.freq }
                                         })}
                                     </span>
                                 {/if}
-                                {#if regionResult.pathHashMode}
+                                {#if activeRegionResult.pathHashMode}
                                     <span class="font-mono text-[11px] text-gray-400">
                                         {$locales('meshcoreconfig.zones.result_path_hash', {
-                                            values: { mode: regionResult.pathHashMode }
+                                            values: { mode: activeRegionResult.pathHashMode }
                                         })}
                                     </span>
                                 {/if}
-                                {#if regionResult.nameTemplate}
+                                {#if activeRegionResult.nameTemplate}
                                     <span
                                         class="font-mono text-[11px] text-gray-400"
-                                        title={regionResult.nameTemplate}
+                                        title={activeRegionResult.nameTemplate}
                                     >
-                                        {$locales('meshcoreconfig.zones.result_name_template')}: {regionResult.nameTemplate}
+                                        {$locales('meshcoreconfig.zones.result_name_template')}: {activeRegionResult.nameTemplate}
                                     </span>
                                 {/if}
-                                {#if regionResult.docUrl}
+                                {#if activeRegionResult.docUrl}
                                     <a
-                                        href={regionResult.docUrl}
+                                        href={activeRegionResult.docUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         class="text-[11px] text-sky-400 underline hover:text-sky-300"
@@ -439,7 +548,7 @@
                                         {$locales('meshcoreconfig.zones.result_doc')}
                                     </a>
                                 {/if}
-                            {:else if regionResult.status === 'miss'}
+                            {:else if activeRegionResult.status === 'miss'}
                                 <span class="text-[11px] text-gray-500"
                                     >{$locales('meshcoreconfig.zones.status_miss')}</span
                                 >

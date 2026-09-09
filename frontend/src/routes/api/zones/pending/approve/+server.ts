@@ -12,7 +12,11 @@ import {
     sanitizePendingFilename,
     validateUploadContent
 } from '$lib/server/zonesPendingStore';
-import { detectGroupMeshcore, parseZoneFeatures } from '$lib/utils/zoneFeatures';
+import {
+    detectGroupMeshcore,
+    enrichFeaturesFromMetadata,
+    parseZoneFeatures
+} from '$lib/utils/zoneFeatures';
 import { findZoneConflicts } from '$lib/utils/zoneConflicts';
 
 // POST /api/zones/pending/approve — publish a pending file: re-validate the
@@ -63,13 +67,19 @@ export const POST: RequestHandler = async (event) => {
     // The check models the catalog AFTER publication: the published file this
     // approval replaces (same name) is excluded — otherwise a corrected
     // version of a group could never pass, always overlapping its old self.
-    const fc = saved as GeoJSON.FeatureCollection;
+    const fc = saved as GeoJSON.FeatureCollection & { metadata?: Record<string, unknown> };
     const mc = detectGroupMeshcore(fc);
+    // The pending side is enriched from metadata in memory (RSR §3.12): new
+    // files carry no settings/level on the polygons, the conflict check needs
+    // the real level — same rule as loadPublishedGroupEntries.
     const conflicts = findZoneConflicts(
         {
             file: filename,
             level: mc?.level,
-            features: parseZoneFeatures(fc.features, mc?.regions ?? '')
+            features: enrichFeaturesFromMetadata(
+                parseZoneFeatures(fc.features, mc?.regions ?? ''),
+                fc.metadata
+            )
         },
         loadPublishedGroupEntries().filter((e) => e.file !== filename)
     );

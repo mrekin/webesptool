@@ -210,6 +210,11 @@
         console.info('[meshcore-zone]', kind);
     }
 
+    // Task 82 metric bookkeeping: last applied settings-preset name per zone
+    // id. Deliberately a plain Map OUTSIDE reactivity — it only feeds the
+    // preset-switch counter, no UI depends on it (RSR §3.10).
+    const lastPresetByZone = new Map<string, string>();
+
     // Terminal tab state. Shares the same cliManager/port as the settings tab;
     // the xterm only displays (and sends manual input), settings logic is untouched.
     let activeTab = $state<'settings' | 'terminal'>('settings');
@@ -885,6 +890,24 @@
         composerParts = [];
     }
 
+    // Revert a row to its device baseline and drop it from the Apply queue —
+    // the inverse of setRowValue, used when a re-applied zone preset no
+    // longer carries a field a previous preset had set.
+    function resetRowToBaseline(id: string): void {
+        rowValues[id] = originalValues[id];
+        commandQueue = commandQueue.filter((e) => e.rowId !== id);
+    }
+
+    // Drop the zone-template composer and revert the `set name` row to its
+    // baseline. Called when a newly applied region result carries no name
+    // template (another settings group, a miss, or no zone at all): the
+    // composer belongs to the preset that provided it and must not linger.
+    function resetNameTemplateRow(): void {
+        if (activeNameTemplate === null) return;
+        clearNameTemplate();
+        resetRowToBaseline('name');
+    }
+
     // Arm/disarm a 0-param action for the Apply queue (manual add-to-queue).
     function toggleArm(row: MeshcoreCommandRow): void {
         const idx = commandQueue.findIndex((e) => e.rowId === row.id);
@@ -970,10 +993,14 @@
                 setRowValue('path.hash.mode', r.pathHashMode);
                 logZoneMetric('zones_pathhash_applied');
             }
-            // Activate the node-name composer for the zone's template.
+            // Activate the node-name composer for the zone's template. A
+            // result without a template resets a composer left over from a
+            // previously applied preset (the name row returns to baseline).
             if (r.nameTemplate && hasRow('name')) {
                 applyNameTemplate(r.nameTemplate);
                 logZoneMetric('zones_nametemplate_applied');
+            } else {
+                resetNameTemplateRow();
             }
             // Apply the zone's extra commands AFTER the specialized fields
             // (later application wins on conflicts).
@@ -983,10 +1010,26 @@
             }
             // Surface the region's settings-docs link in the toolbar.
             regionDocUrl = r.docUrl || null;
+            // Settings-group metrics (task 82, RSR §3.10): the selector exists
+            // only for multi-preset zones; `applied` logs the chosen group's
+            // name (a configuration value — never localized).
+            if (r.settingPresets && r.settingPresets.length > 1) {
+                logZoneMetric('zones_presets_shown');
+                if (!r.selectedPreset) {
+                    logZoneMetric('zones_presets_default_missing');
+                } else {
+                    const prev = lastPresetByZone.get(r.zoneId ?? '');
+                    if (prev && prev !== r.selectedPreset) logZoneMetric('zones_preset_switched');
+                    logZoneMetric(`zones_preset_applied:${r.selectedPreset}`);
+                    lastPresetByZone.set(r.zoneId ?? '', r.selectedPreset);
+                }
+            }
         } else if (res.region && res.region.status === 'miss') {
+            resetNameTemplateRow();
             regionDocUrl = null;
             logZoneMetric('zones_miss');
         } else {
+            resetNameTemplateRow();
             regionDocUrl = null;
         }
     }
@@ -1282,7 +1325,7 @@
                                                                 class={`rounded-lg border px-3 py-2 transition-colors ${coordsDirty ? 'border-orange-600/70 bg-orange-900/10' : 'border-gray-700/60 bg-gray-900/40 hover:border-gray-600'}`}
                                                             >
                                                                 <div
-                                                                    class="mb-1.5 flex items-center justify-between gap-2"
+                                                                    class="mb-1.5 flex min-h-5 items-center justify-between gap-2"
                                                                 >
                                                                     <span
                                                                         class="flex items-center gap-2"
@@ -1322,16 +1365,12 @@
                                                                     {/if}
                                                                 </div>
                                                                 <div class="grid grid-cols-2 gap-2">
-                                                                    <div>
-                                                                        <label
-                                                                            class="mb-1 block text-[11px] text-gray-500"
-                                                                        >
-                                                                            lat
-                                                                        </label>
+                                                                    <div class="flex items-center gap-1">
                                                                         <input
                                                                             type="text"
                                                                             inputmode="decimal"
-                                                                            class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1.5 text-sm text-gray-100 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                                                                            id="meshcore-cfg-lat"
+                                                                            class="min-w-0 flex-1 rounded-md border border-gray-600 bg-gray-700 px-2 py-1.5 text-sm text-gray-100 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
                                                                             value={rowValues[
                                                                                 'lat'
                                                                             ] ?? ''}
@@ -1348,17 +1387,19 @@
                                                                                     )
                                                                                 )}
                                                                         />
-                                                                    </div>
-                                                                    <div>
                                                                         <label
-                                                                            class="mb-1 block text-[11px] text-gray-500"
+                                                                            for="meshcore-cfg-lat"
+                                                                            class="shrink-0 text-[11px] text-gray-500"
                                                                         >
-                                                                            lon
+                                                                            lat
                                                                         </label>
+                                                                    </div>
+                                                                    <div class="flex items-center gap-1">
                                                                         <input
                                                                             type="text"
                                                                             inputmode="decimal"
-                                                                            class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1.5 text-sm text-gray-100 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                                                                            id="meshcore-cfg-lon"
+                                                                            class="min-w-0 flex-1 rounded-md border border-gray-600 bg-gray-700 px-2 py-1.5 text-sm text-gray-100 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
                                                                             value={rowValues[
                                                                                 'lon'
                                                                             ] ?? ''}
@@ -1375,6 +1416,12 @@
                                                                                     )
                                                                                 )}
                                                                         />
+                                                                        <label
+                                                                            for="meshcore-cfg-lon"
+                                                                            class="shrink-0 text-[11px] text-gray-500"
+                                                                        >
+                                                                            lon
+                                                                        </label>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1386,7 +1433,7 @@
                                                                 class={`rounded-lg border px-3 py-2 transition-colors ${inQueue(r) ? 'border-orange-600/70 bg-orange-900/10' : 'border-gray-700/60 bg-gray-900/40 hover:border-gray-600'}`}
                                                             >
                                                                 <div
-                                                                    class="mb-1.5 flex items-center justify-between gap-2"
+                                                                    class="mb-1.5 flex min-h-5 items-center justify-between gap-2"
                                                                 >
                                                                     <span
                                                                         class="text-xs font-semibold tracking-wide text-gray-400 uppercase"
@@ -1445,7 +1492,7 @@
                                                                 class={`rounded-lg border px-3 py-2 transition-colors ${inQueue(r) ? 'border-orange-600/70 bg-orange-900/10' : 'border-gray-700/60 bg-gray-900/40 hover:border-gray-600'}`}
                                                             >
                                                                 <div
-                                                                    class="mb-1.5 flex items-center justify-between gap-2"
+                                                                    class="mb-1.5 flex min-h-5 items-center justify-between gap-2"
                                                                 >
                                                                     <span
                                                                         class="text-xs font-semibold tracking-wide text-gray-400 uppercase"
@@ -1491,8 +1538,17 @@
                                                                                 nameTokenComposerIndex[
                                                                                     i
                                                                                 ]}
+                                                                            {@const leadOpts =
+                                                                                tok.options.slice(
+                                                                                    0,
+                                                                                    tok
+                                                                                        .subgroups?.[0]
+                                                                                        ?.start ??
+                                                                                        tok.options
+                                                                                            .length
+                                                                                )}
                                                                             <select
-                                                                                class="rounded border border-gray-600 bg-gray-700 px-1.5 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
+                                                                                class="rounded border border-gray-600 bg-gray-700 px-1.5 py-1.5 text-sm text-gray-100 outline-none focus:border-orange-500 composer-select"
                                                                                 value={composerParts[
                                                                                     pi
                                                                                 ] ?? ''}
@@ -1504,11 +1560,32 @@
                                                                                         ).value
                                                                                     )}
                                                                             >
-                                                                                {#each tok.options as opt (opt)}
+                                                                                <!-- Task 82: options before the first `--Name--` header
+                                                                                     stay flat; named subgroups render as native <optgroup>s
+                                                                                     whose label shows the name wrapped in a solid em-dash line,
+                                                                                     so the header reads as a divider (configuration data —
+                                                                                     never localized, never composed into the node name). -->
+                                                                                {#each leadOpts as opt, i (i)}
                                                                                     <option
                                                                                         value={opt}
                                                                                         >{opt}</option
                                                                                     >
+                                                                                {/each}
+                                                                                {#each tok.subgroups ?? [] as sg, si (si)}
+                                                                                    {@const groupOpts =
+                                                                                        tok.options.slice(
+                                                                                            sg.start,
+                                                                                            sg.start +
+                                                                                                sg.count
+                                                                                        )}
+                                                                                    <optgroup label={`———${sg.name}———`}>
+                                                                                        {#each groupOpts as opt, gi (gi)}
+                                                                                            <option
+                                                                                                value={opt}
+                                                                                                >{opt}</option
+                                                                                            >
+                                                                                        {/each}
+                                                                                    </optgroup>
                                                                                 {/each}
                                                                             </select>
                                                                         {:else}
@@ -1523,7 +1600,7 @@
                                                                                     ? `${tok.name}?`
                                                                                     : tok.name}
                                                                                 use:fillHint
-                                                                                class="w-16 rounded border border-gray-600 bg-gray-700 px-1.5 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
+                                                                                class="w-16 rounded border border-gray-600 bg-gray-700 px-1.5 py-1.5 text-sm text-gray-100 outline-none focus:border-orange-500"
                                                                                 value={composerParts[
                                                                                     pi
                                                                                 ] ?? ''}
@@ -1687,7 +1764,35 @@
                 applyPickerResult(res);
                 showMapPicker = false;
             }}
+            onregionapply={applyPickerResult}
             onclose={() => (showMapPicker = false)}
         />
     {/if}
 {/if}
+
+<style>
+    /* Task 82 design refinement: the name-composer enum selects group their
+       options behind native <optgroup> headers (the `--Name--` template
+       separators). Native optgroup headers cannot be styled (UA render), so
+       these selects opt into the Chromium customizable select
+       (appearance: base-select, Chromium 135+): the popup renders as DOM and
+       the rules below apply — headers dimmer + centered. On older Chromium
+       the declaration is ignored and the current native look remains.
+       Enum values render orange-200 (the app's enum-value tone, as in the
+       template preview); only the alignment is reset so the centered headers
+       do not leak into the values. */
+    select.composer-select {
+        appearance: base-select;
+    }
+    select.composer-select::picker(select) {
+        position: appearance;
+    }
+    select.composer-select optgroup {
+        color: #6b7280; /* gray-500 — same tone as the template-preview headers */
+        text-align: center;
+    }
+    select.composer-select option {
+        color: #fed7aa; /* orange-200 — enum values, same tone as the template preview chips */
+        text-align: left;
+    }
+</style>
