@@ -1,9 +1,9 @@
 {
     "name": "frontend",
-    "version": "0.19.0",
+    "version": "0.19.2",
     "scripts": {
         "dev": "vite dev",
-        "build": "vite build",
+        "build": "svelte-kit sync && vite build",
         "build:package": "vite build && npm run prepack",
         "build:meshtastic": "bash scripts/build-meshtastic-packages.sh",
         "preview": "vite preview",
@@ -37,7 +37,7 @@
     "devDependencies": {
         "@eslint/js": "^9.39.5",
         "@sveltejs/adapter-node": "^5.4.0",
-        "@sveltejs/kit": "^2.22.0",
+        "@sveltejs/kit": "^2.70.3",
         "@sveltejs/package": "^2.0.0",
         "@sveltejs/vite-plugin-svelte": "^6.1.4",
         "@tailwindcss/postcss": "^4.1.18",

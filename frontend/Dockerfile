@@ -1,8 +1,12 @@
 # Stage 1: Build the Svelte application
-FROM node:22-alpine AS builder
+FROM node:24-alpine AS builder
 
 # Set working directory inside the container
 WORKDIR /app
+
+# Suppress stale browserslist data warnings during image builds
+# (the lockfile is intentionally pinned; data updates go through pnpm update)
+ENV BROWSERSLIST_IGNORE_OLD_DATA=1
 
 # Enable Corepack for pnpm management
 RUN corepack enable pnpm
@@ -31,7 +35,7 @@ ARG APP_VERSION
 RUN VITE_APP_VERSION=${APP_VERSION} pnpm run build
 
 # Stage 2: Create the final production image
-FROM node:22-alpine AS runner
+FROM node:24-alpine AS runner
 
 # Set environment to production
 ENV NODE_ENV=production
