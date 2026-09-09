@@ -42,6 +42,7 @@
         <div
             class="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-green-600/50 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 p-8 shadow-2xl shadow-green-900/50"
             onclick={(e) => e.stopPropagation()}
+            role="presentation"
         >
             <!-- Close button -->
             <button

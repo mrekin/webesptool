@@ -35,7 +35,7 @@
         onclose?: () => void;
     } = $props();
 
-    let container: HTMLDivElement;
+    let container = $state<HTMLDivElement>();
     let map: any = null;
     let marker: any = null;
     let L: any = null;

@@ -33,7 +33,7 @@
     let isSpoilerOpen = $state(false);
 
     // Container reference for DOM manipulation
-    let markdownContainer: HTMLElement;
+    let markdownContainer = $state<HTMLElement>();
 
     // Extract first heading (H1, H2, or H3) from content for spoiler title
     function extractFirstHeading(markdown: string): string {
