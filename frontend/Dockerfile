@@ -14,7 +14,9 @@ COPY package.json pnpm-lock.yaml .npmrc pnpm-workspace.yaml ./
 COPY local-packages ./local-packages
 
 # Install dependencies using pnpm with optimizations
-RUN pnpm install --frozen-lockfile --prod=false
+# Note: `--prod=false` is not used because pnpm >= 12 rejects `--flag=value`
+# for boolean flags; without NODE_ENV=production all deps are installed anyway.
+RUN pnpm install --frozen-lockfile
 
 # Copy the rest of the application files (excluding .dockerignore patterns)
 COPY . .
