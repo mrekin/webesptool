@@ -1141,6 +1141,20 @@ export interface EditorPolygon {
     label?: string;
 }
 
+// Missing required upload fields of one zone group (task 84 П3; regions is
+// deliberately NOT among them — optional since the regions-optionality task,
+// the server does not require it either). The UI localizes every key;
+// submittableGroups derives its boolean from the same structure — a single
+// source of truth for the criteria.
+export type UploadFieldIssue = 'name' | 'doc_url' | 'zones';
+export interface GroupUploadIssues {
+    groupId: string;
+    /** Flat-state fields + name/zones (grouped groups never carry flat docUrl). */
+    fields: UploadFieldIssue[];
+    /** Grouped state only: per named preset, its missing fields. */
+    presets: { name: string; fields: UploadFieldIssue[] }[];
+}
+
 // A resolved zone ready for export (circles already converted to polygons).
 // Per-polygon export settings are legacy: new files (task 82) write settings
 // only into `metadata.meshcore`, so these fields are no longer populated by

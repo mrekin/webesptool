@@ -390,6 +390,7 @@
             "settings_group_name_prompt": "Nazwa grupy ustawień",
             "settings_group_default": "Ustawienia domyślne",
             "settings_group_delete": "Usuń grupę",
+            "settings_group_delete_confirm": "Na pewno usunąć grupę ustawień „{name}”?",
             "settings_group_name_required": "Podaj nazwę grupy",
             "settings_group_name_taken": "Ta nazwa jest już zajęta",
             "result_groups_label": "Grupa ustawień",
@@ -404,8 +405,7 @@
             "upload": "Wyślij do sprawdzenia",
             "upload_hint": "Wyślij grupy do sprawdzenia przed publikacją",
             "upload_done": "Wysłano do sprawdzenia (nie opublikowano): {n}",
-            "upload_none": "Nie ma czego wysyłać: wymagany jest doc URL (regions, jeśli podany, musi być poprawny)",
-            "upload_no_docurl": "Grupa „{name}” nie ma doc URL — dodaj go w ustawieniach meshcore",
+            "upload_none": "Nie ma czego wysyłać: wypełnij obowiązkowe pola grup (lista problemów powyżej)",
             "upload_failed": "Plik {file} odrzucony: {reason}",
             "upload_err_file_too_large": "plik większy niż 1 MB",
             "upload_err_quota_exceeded": "kolejka sprawdzania jest pełna (50 MB)",
@@ -438,7 +438,15 @@
             "pending_name_conflict": "Plik o tej nazwie jest już opublikowany — zatwierdzenie go zastąpi",
             "pending_confirm_overwrite": "Zastąpić opublikowany plik?",
             "pending_publish_failed": "Publikacja nie powiodła się: {reason}",
-            "pending_load_failed": "Nie udało się wczytać kolejki sprawdzania"
+            "pending_load_failed": "Nie udało się wczytać kolejki sprawdzania",
+            "upload_field_name": "nazwa grupy",
+            "upload_field_doc_url": "adres URL dokumentu",
+            "upload_field_zones": "brak stref",
+            "upload_issues_hint": "Nie wszystko wypełnione:",
+            "upload_unnamed_group": "(bez nazwy)",
+            "settings_group_clone": "Klonuj grupę ustawień",
+            "catalog_refresh": "Odśwież katalog stref",
+            "catalog_refresh_failed": "Nie udało się odświeżyć katalogu stref — pokazane są ostatnio wczytane dane"
         }
     },
     "customfirmware": {

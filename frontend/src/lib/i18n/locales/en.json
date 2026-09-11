@@ -390,6 +390,7 @@
             "settings_group_name_prompt": "Settings group name",
             "settings_group_default": "Default settings",
             "settings_group_delete": "Delete group",
+            "settings_group_delete_confirm": "Really delete the settings group \"{name}\"?",
             "settings_group_name_required": "Group name is required",
             "settings_group_name_taken": "This name is already used",
             "result_groups_label": "Settings group",
@@ -404,8 +405,7 @@
             "upload": "Send for review",
             "upload_hint": "Send groups for review before publication",
             "upload_done": "Sent for review (not published): {n}",
-            "upload_none": "Nothing to send: a doc URL is required (a regions value, when set, must be valid)",
-            "upload_no_docurl": "Group “{name}” has no doc URL — add it in the meshcore settings",
+            "upload_none": "Nothing to send: fill in the groups' required fields (see the problem list above)",
             "upload_failed": "File {file} rejected: {reason}",
             "upload_err_file_too_large": "file is larger than 1 MB",
             "upload_err_quota_exceeded": "review queue is full (50 MB)",
@@ -438,7 +438,15 @@
             "pending_name_conflict": "A file with this name is already published — approving will replace it",
             "pending_confirm_overwrite": "Replace the published file?",
             "pending_publish_failed": "Publishing failed: {reason}",
-            "pending_load_failed": "Failed to load the review queue"
+            "pending_load_failed": "Failed to load the review queue",
+            "upload_field_name": "group name",
+            "upload_field_doc_url": "document URL",
+            "upload_field_zones": "no zones",
+            "upload_issues_hint": "Missing required fields:",
+            "upload_unnamed_group": "(unnamed)",
+            "settings_group_clone": "Clone settings group",
+            "catalog_refresh": "Refresh the zone catalog",
+            "catalog_refresh_failed": "Failed to refresh the zone catalog — showing the last loaded data"
         }
     },
     "customfirmware": {

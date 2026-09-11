@@ -196,45 +196,71 @@ export function parseGroupFile(url: string, json: unknown): GroupFile | null {
     }
 }
 
+export interface GroupFilesLoad {
+    files: GroupFile[];
+    /** true only when the LIST request itself failed (network / non-ok) —
+        per-file parse skips stay silent, as before. */
+    listFailed: boolean;
+}
+
 // Load every published group file via the /api/zones/groups endpoint, which
 // reads the mounted static/data/groups/ directory at request time. Re-fetched
 // on each call so files added since the last call (live add) appear without a
-// rebuild. Never rejects; failed files are skipped.
-export function fetchGroupFiles(): Promise<GroupFile[]> {
-    return (async () => {
-        let entries: { filename: string; json: unknown }[] = [];
-        try {
-            const res = await fetch(assetUrl('api/zones/groups'), {
-                signal: AbortSignal.timeout(15000)
-            });
-            if (res.ok) {
-                const data = (await res.json()) as { groups?: unknown };
-                if (Array.isArray(data?.groups)) {
-                    entries = data.groups as { filename: string; json: unknown }[];
-                }
+// rebuild. Never rejects; failed files are skipped. The report form also says
+// whether the LIST request itself failed (task 84 П5) — the catalog builder
+// turns that into a 'fetch_failed' reason instead of a silent empty list.
+export async function fetchGroupFilesReport(): Promise<GroupFilesLoad> {
+    let entries: { filename: string; json: unknown }[] = [];
+    let listFailed = false;
+    try {
+        const res = await fetch(assetUrl('api/zones/groups'), {
+            signal: AbortSignal.timeout(15000)
+        });
+        if (res.ok) {
+            const data = (await res.json()) as { groups?: unknown };
+            if (Array.isArray(data?.groups)) {
+                entries = data.groups as { filename: string; json: unknown }[];
             }
-        } catch (err) {
-            console.warn('[meshcore-zone]', 'group list failed', err);
+        } else {
+            listFailed = true;
         }
-        const files = entries.map((e) =>
-            parseGroupFile(assetUrl(`data/groups/${e.filename}`), e.json)
-        );
-        const ok = files.filter((f): f is GroupFile => f !== null);
-        console.info('[meshcore-zone]', 'groups_loaded', ok.length);
-        return ok;
-    })();
+    } catch (err) {
+        console.warn('[meshcore-zone]', 'group list failed', err);
+        listFailed = true;
+    }
+    const files = entries.map((e) => parseGroupFile(assetUrl(`data/groups/${e.filename}`), e.json));
+    const ok = files.filter((f): f is GroupFile => f !== null);
+    console.info('[meshcore-zone]', 'groups_loaded', ok.length);
+    return { files: ok, listFailed };
+}
+
+export function fetchGroupFiles(): Promise<GroupFile[]> {
+    return fetchGroupFilesReport().then((r) => r.files);
 }
 
 // Build the lookup catalog by merging every published group file's features.
 // A point resolves to the group whose polygon contains it. Recomputed on each
-// call so live-added groups are picked up; never rejects (empty -> unavailable).
+// call so live-added groups are picked up; never rejects. `failed` is true
+// only for a network/non-ok LIST failure (reason 'fetch_failed') — an empty
+// published directory is a normal 'empty_catalog', not a failure (task 84 П5).
+export async function reloadZoneCatalog(): Promise<{ catalog: ZoneCatalog; failed: boolean }> {
+    const { files, listFailed } = await fetchGroupFilesReport();
+    const features = files.flatMap((g) => g.features);
+    if (listFailed) {
+        return {
+            catalog: { status: 'unavailable', features: [], reason: 'fetch_failed' },
+            failed: true
+        };
+    }
+    return {
+        catalog:
+            features.length === 0
+                ? { status: 'unavailable', features: [], reason: 'empty_catalog' }
+                : { status: 'ok', features, schema: ZONE_CATALOG_SCHEMA },
+        failed: false
+    };
+}
+
 export function fetchZoneCatalog(): Promise<ZoneCatalog> {
-    return (async () => {
-        const groups = await fetchGroupFiles();
-        const features = groups.flatMap((g) => g.features);
-        if (features.length === 0) {
-            return { status: 'unavailable', features: [], reason: 'empty_catalog' };
-        }
-        return { status: 'ok', features, schema: ZONE_CATALOG_SCHEMA };
-    })();
+    return reloadZoneCatalog().then((r) => r.catalog);
 }

@@ -57,6 +57,7 @@
         fetchPendingFileContent,
         fetchPendingFiles,
         getModeratorToken,
+        groupUploadIssues,
         rejectPendingFile,
         setModeratorToken,
         submittableGroups,
@@ -66,7 +67,8 @@
     import {
         OSM_TILE_ATTRIBUTION,
         OSM_TILE_URL,
-        ZONE_LEVEL_DEFAULT
+        ZONE_LEVEL_DEFAULT,
+        ZONE_LEVEL_DEFAULT_NEW_GROUP
     } from '$lib/config/meshcoreZoneConfig';
     import { fillHint } from '$lib/actions/fillHint.js';
     import JSZip from 'jszip';
@@ -81,6 +83,7 @@
         MeshcoreZoneSettings,
         NamedMeshcoreSettings,
         PendingFileInfo,
+        UploadFieldIssue,
         ZoneConflictPair,
         ZoneGeometry,
         ZonesUploadError,
@@ -191,6 +194,61 @@
     let uploadBusy = $state(false);
     let uploadProblems = $state<string[]>([]);
     const uploadableGroups = $derived(submittableGroups(groups, polygons));
+
+    // --- submission dirty baseline (task 84 П1): serialized session content ---
+    // The upload button is active only when the session content differs from
+    // the last baseline snapshot AND at least one group is submittable. The
+    // baseline covers EVERYTHING that is serialized (groups incl. all texts/
+    // presets + polygons) — wider than the undo snapshots (text edits are
+    // deliberately excluded from undo). String comparison makes the undo-back-
+    // to-baseline case extinguish the button automatically.
+
+    // Serialized session content snapshot (groups + polygons).
+    function takeSessionSnapshot(): { groupsJson: string; polygonsJson: string } {
+        return {
+            groupsJson: JSON.stringify($state.snapshot(groups)),
+            polygonsJson: JSON.stringify($state.snapshot(polygons))
+        };
+    }
+    let uploadBaseline = takeSessionSnapshot();
+    const sessionDirty = $derived(
+        JSON.stringify($state.snapshot(groups)) !== uploadBaseline.groupsJson ||
+            JSON.stringify($state.snapshot(polygons)) !== uploadBaseline.polygonsJson
+    );
+    const canUpload = $derived(uploadableGroups.length > 0 && sessionDirty);
+
+    // Localized label of one group in the issue list: its name or «(unnamed)».
+    function groupIssueLabel(g: ZoneGroup): string {
+        return g.name.trim() || $locales('meshcoreconfig.zones.upload_unnamed_group');
+    }
+    // Localized texts of one field-issue set (task 84 П3).
+    function issueTexts(fields: UploadFieldIssue[]): string[] {
+        const keys: Record<UploadFieldIssue, string> = {
+            name: 'meshcoreconfig.zones.upload_field_name',
+            doc_url: 'meshcoreconfig.zones.upload_field_doc_url',
+            zones: 'meshcoreconfig.zones.upload_field_zones'
+        };
+        return fields.map((f) => $locales(keys[f]));
+    }
+    // Every group currently missing required upload fields — the live hover
+    // hint of the upload button (updates without re-hovering: derived state).
+    const uploadIssueRows = $derived(
+        groups
+            .map((g) => ({ g, issues: groupUploadIssues(g, polygons) }))
+            .filter((r) => r.issues.fields.length > 0 || r.issues.presets.length > 0)
+    );
+    // Compact localized line per problem group: «Имя» — поле, поле; «пресет»: поле.
+    const uploadIssueLines = $derived.by(() => {
+        return uploadIssueRows.map(({ g, issues }) => {
+            const parts: string[] = [];
+            if (issues.fields.length > 0) parts.push(issueTexts(issues.fields).join(', '));
+            for (const p of issues.presets) {
+                parts.push(`«${p.name}»: ${issueTexts(p.fields).join(', ')}`);
+            }
+            return `${groupIssueLabel(g)} — ${parts.join('; ')}`;
+        });
+    });
+    let uploadHintOpen = $state(false);
 
     // Moderator mode: exists in the UI only when the server has a token
     // configured (moderationEnabled). The token lives in sessionStorage for the
@@ -1157,7 +1215,7 @@
     function addGroup(): void {
         pushHistory();
         const id = genId('g');
-        groups = [...groups, { id, name: '', regions: '', level: ZONE_LEVEL_DEFAULT }];
+        groups = [...groups, { id, name: '', regions: '', level: ZONE_LEVEL_DEFAULT_NEW_GROUP }];
         activeGroupId = id;
     }
 
@@ -1207,6 +1265,10 @@
         // Hide the published copy so only the editable (session) version shows.
         if (shownGroups.has(gf.url)) shownGroups = toggleSet(shownGroups, gf.url);
         showNotice(`${$locales('meshcoreconfig.zones.editor_title')}: ${gf.name}`);
+        // Loading data into the session is not a user edit (PRD П1.2): the
+        // freshly loaded state becomes the new comparison baseline, so the
+        // upload button stays off until the user actually edits something.
+        uploadBaseline = takeSessionSnapshot();
     }
 
     // Create a copy of a published group for editing: same settings (name,
@@ -1488,6 +1550,10 @@
         activeGroupId = id;
         console.info('[meshcore-zone]', 'user_group_loaded', name);
         showNotice(`${$locales('meshcoreconfig.zones.load_file_done')}: ${name}`);
+        // Loading data into the session is not a user edit (PRD П1.2): the
+        // freshly loaded state becomes the new comparison baseline, so the
+        // upload button stays off until the user actually edits something.
+        uploadBaseline = takeSessionSnapshot();
     }
 
     function removeUserBoundary(key: string): void {
@@ -1635,23 +1701,11 @@
 
     async function doUpload(): Promise<void> {
         if (uploadBusy) return;
-        uploadProblems = [];
-        // Client-side precheck reasons: export-eligible groups without a docUrl
-        // are not admitted (the server rejects them with doc_url_missing).
-        // Grouped-aware (task 82): a group with settings presets is not
-        // admissible when ANY preset lacks a docUrl (flat groups as before).
-        const noDoc = groups.filter((g) => {
-            if (!polygons.some((p) => p.groupId === g.id)) return false;
-            if (g.settingsPresets && g.settingsPresets.length > 0) {
-                return g.settingsPresets.some((p) => (p.docUrl ?? '').trim() === '');
-            }
-            return isValidRegions(g.regions) && (g.docUrl ?? '').trim() === '';
-        });
-        const docProblems = noDoc.map((g) =>
-            $locales('meshcoreconfig.zones.upload_no_docurl').replace('{name}', g.name || g.id)
-        );
+        // Detailed per-group problem list (task 84 П3): every group with
+        // missing required fields, localized — instead of the old generic
+        // noDoc/docProblems precheck.
+        uploadProblems = uploadIssueLines;
         if (uploadableGroups.length === 0) {
-            uploadProblems = docProblems;
             showNotice($locales('meshcoreconfig.zones.upload_none'), 'warn');
             return;
         }
@@ -1665,9 +1719,13 @@
             }
         }
         uploadBusy = false;
-        uploadProblems = [...uploadProblems, ...docProblems];
         console.info('[meshcore-zone]', 'upload_done', okCount);
         showNotice($locales('meshcoreconfig.zones.upload_done').replace('{n}', String(okCount)));
+        // A fully clean upload re-baselines the snapshot (PRD П1.4): the
+        // button goes off until new edits. A partial failure (server rejects
+        // in uploadProblems) keeps the state different from the baseline —
+        // the button stays active for a retry.
+        if (uploadProblems.length === 0) uploadBaseline = takeSessionSnapshot();
         // In an active moderator session the moderator's own upload lands in
         // the queue (same filename replaces) — refresh it so the panel and the
         // map show the new versions instead of the cached ones.
@@ -2765,15 +2823,42 @@
                         🔐
                     </button>
                 {/if}
-                <button
-                    type="button"
-                    onclick={doUpload}
-                    disabled={loadError || uploadBusy || uploadableGroups.length === 0}
-                    title={$locales('meshcoreconfig.zones.upload_hint')}
-                    class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div
+                    class="relative flex"
+                    onmouseenter={() => (uploadHintOpen = true)}
+                    onmouseleave={() => (uploadHintOpen = false)}
                 >
-                    📤 {$locales('meshcoreconfig.zones.upload')} ({uploadableGroups.length})
-                </button>
+                    {#if uploadHintOpen}
+                        <!-- z-[1100]: above every Leaflet pane (z 200-1000). The
+                             map box creates no stacking context, so pane z-indexes
+                             paint over a plain z-50 overlay inside this modal. -->
+                        <div
+                            class="absolute right-0 bottom-full mb-2 z-[1100] max-h-64 w-96 overflow-y-auto rounded-md border border-gray-600 bg-gray-900 p-2 text-xs shadow-xl"
+                        >
+                            {#if uploadIssueLines.length > 0}
+                                <div class="font-medium text-red-300">
+                                    {$locales('meshcoreconfig.zones.upload_issues_hint')}
+                                </div>
+                                <ul class="mt-1 list-disc space-y-0.5 pl-4 text-gray-200">
+                                    {#each uploadIssueLines as line (line)}<li>{line}</li>{/each}
+                                </ul>
+                            {:else}
+                                <span class="text-gray-200">
+                                    {$locales('meshcoreconfig.zones.upload_hint')}
+                                </span>
+                            {/if}
+                        </div>
+                    {/if}
+                    <button
+                        type="button"
+                        onclick={doUpload}
+                        disabled={loadError || uploadBusy || !canUpload}
+                        class="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        📤 {$locales('meshcoreconfig.zones.upload')} ({uploadableGroups.length})
+                    </button>
+                </div>
                 <button
                     type="button"
                     onclick={doExport}

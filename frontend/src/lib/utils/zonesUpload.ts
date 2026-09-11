@@ -5,11 +5,12 @@
 
 import { base } from '$app/paths';
 import { parseGroupFile } from '$lib/utils/zoneCatalog';
-import { isValidRegions } from '$lib/utils/zoneExport';
 import type {
     EditorPolygon,
     GroupFile,
+    GroupUploadIssues,
     PendingFileInfo,
+    UploadFieldIssue,
     ZoneConflictPair,
     ZoneGroup,
     ZoneGroupSettings,
@@ -139,21 +140,39 @@ export function fetchModerationConfig(): Promise<boolean> {
 
 // --- upload (all users) ---
 
-// Groups admitted for upload: the export criteria (valid regions + at least
-// one polygon) PLUS a non-empty docUrl (client-side precheck of the server's
-// doc_url_missing rejection; the server stays authoritative). Task 82: the
-// regions/docUrl rule applies PER SETTINGS GROUP — a grouped group (non-empty
-// settingsPresets) passes only when EVERY named preset has a valid regions
-// value and a non-empty docUrl; flat groups are checked as before.
+// Everything a group is missing for the review upload (task 84 П3; feedback
+// round 2: regions is NOT a criterion — it is optional, and the server does
+// not require it either). Criteria: non-empty name (NEW — was optional),
+// non-empty docUrl, at least one zone; grouped groups need docUrl in EVERY
+// named preset. The server stays authoritative (its extra checks — http(s)
+// docUrl format, preset name uniqueness — are not duplicated here).
+export function groupUploadIssues(g: ZoneGroup, polygons: EditorPolygon[]): GroupUploadIssues {
+    const fields: UploadFieldIssue[] = [];
+    if (g.name.trim() === '') fields.push('name');
+    if (!polygons.some((p) => p.groupId === g.id)) fields.push('zones');
+    const presets: GroupUploadIssues['presets'] = [];
+    if (g.settingsPresets && g.settingsPresets.length > 0) {
+        for (const p of g.settingsPresets) {
+            const pf: UploadFieldIssue[] = [];
+            if ((p.docUrl ?? '').trim() === '') pf.push('doc_url');
+            if (pf.length > 0) presets.push({ name: p.name, fields: pf });
+        }
+    } else {
+        if ((g.docUrl ?? '').trim() === '') fields.push('doc_url');
+    }
+    return { groupId: g.id, fields, presets };
+}
+
+// Groups admitted for upload (task 84 П3): the criteria live in ONE place,
+// groupUploadIssues — a group is admitted when it misses nothing. Compared to
+// task 77 the group NAME is now required too; a grouped group (non-empty
+// settingsPresets) needs docUrl in EVERY named preset. The server stays
+// authoritative (its extra checks — http(s) docUrl format, preset name
+// uniqueness — are not duplicated here).
 export function submittableGroups(groups: ZoneGroup[], polygons: EditorPolygon[]): ZoneGroup[] {
     return groups.filter((g) => {
-        const settingsOk =
-            g.settingsPresets && g.settingsPresets.length > 0
-                ? g.settingsPresets.every(
-                      (p) => isValidRegions(p.regions ?? '') && (p.docUrl ?? '').trim() !== ''
-                  )
-                : isValidRegions(g.regions) && (g.docUrl ?? '').trim() !== '';
-        return settingsOk && polygons.some((p) => p.groupId === g.id);
+        const issues = groupUploadIssues(g, polygons);
+        return issues.fields.length === 0 && issues.presets.length === 0;
     });
 }
 

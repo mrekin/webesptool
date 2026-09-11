@@ -80,8 +80,9 @@
     let activeIndex = $state(0);
     // Inline "new settings group" name prompt (RSR §3.8): null = hidden,
     // 'create' = wrap the current flat fields into one group, 'add' = append a
-    // new (empty) group.
-    let namePromptMode = $state<'create' | 'add' | null>(null);
+    // new (default-valued) group, 'clone' = clone the selected settings group
+    // (task 84; the source is the CURRENTLY selected group — user feedback).
+    let namePromptMode = $state<'create' | 'add' | 'clone' | null>(null);
     let newGroupName = $state('');
 
     // One-shot field source: the first draft entry in grouped mode, the flat
@@ -236,13 +237,23 @@
         );
     }
 
-    function openNamePrompt(mode: 'create' | 'add'): void {
+    function openNamePrompt(mode: 'create' | 'add' | 'clone'): void {
         newGroupName = '';
+        // Grouped "+": flush the active group's latest edits into its draft
+        // entry, then show DEFAULTS in the fields right away (user feedback
+        // 3.2) — what the form shows under the prompt is what the new group
+        // will get. Cancel restores the active group's values.
+        if (mode === 'add' && presetsDraft) {
+            flushFieldsToDraft();
+            loadFieldsFrom(null);
+        }
         namePromptMode = mode;
     }
     function cancelNamePrompt(): void {
         namePromptMode = null;
         newGroupName = '';
+        // Undo the defaults the grouped "+" prompt put into the fields.
+        if (presetsDraft) loadFieldsFrom(presetsDraft[activeIndex]);
     }
     function onPromptKeydown(e: KeyboardEvent): void {
         if (e.key === 'Enter') confirmNamePrompt();
@@ -274,10 +285,35 @@
                 presetsDraft = draft;
                 activeIndex = draft.length - 1;
             } else {
-                flushFieldsToDraft();
-                presetsDraft = [...presetsDraft, { name }];
+                // Grouped "+" (user feedback 3.2): the fields were reset to
+                // defaults when the prompt opened, so what the form shows now
+                // (defaults or the user's tweaks under the prompt) IS the new
+                // group's content. NO flush here — it would overwrite the
+                // active group with the fresh defaults.
+                presetsDraft = [...presetsDraft, { ...collectFields(), name }];
                 activeIndex = presetsDraft.length - 1;
             }
+        } else if (namePromptMode === 'clone') {
+            if (!presetsDraft) return; // unreachable: the clone entry exists in grouped mode only
+            // No name — no clone (PRD П4.2): the ✓ gate alone does not cover
+            // the Enter key, so the branch itself refuses an empty name.
+            if (name === '') return;
+            // The source is the CURRENTLY selected group (user feedback 3.1):
+            // flush its latest edits first, THEN read the entry — flush
+            // replaces the array element, and snapshotting the pre-flush
+            // reference would copy stale values.
+            flushFieldsToDraft();
+            const src = presetsDraft[activeIndex];
+            if (!src) return;
+            // Whole-structure deep copy WITHOUT the identity fields: values,
+            // not references (a detached $state.snapshot copy — no proxy), so
+            // future new fields ride along automatically. The clone never
+            // inherits the "default" mark; the name comes from the prompt.
+            const copy: NamedMeshcoreSettings = $state.snapshot(src);
+            copy.name = name;
+            delete copy.isDefault;
+            presetsDraft = [...presetsDraft, copy];
+            activeIndex = presetsDraft.length - 1;
         }
         namePromptMode = null;
         newGroupName = '';
@@ -306,6 +342,17 @@
             return next;
         });
     }
+
+    // Delete-group confirmation window (user feedback 3.3): the ✕ button only
+    // OPENS it, the real removal happens on its confirm button — a real
+    // confirmation dialog, same interaction pattern as BackupConfirmModal.
+    let deleteConfirmOpen = $state(false);
+    // The dialog names its target (user feedback): the active group's name,
+    // or the localized "(unnamed)" placeholder for a nameless draft.
+    const deleteTargetName = $derived(
+        (activePreset?.name ?? '').trim() ||
+            $locales('meshcoreconfig.zones.upload_unnamed_group')
+    );
 
     // Delete the active group (RSR §3.8 / Q1): removing the LAST group returns
     // to the flat mode keeping the removed group's values in the fields;
@@ -463,6 +510,15 @@
                     >
                         +
                     </button>
+                    <button
+                        type="button"
+                        onclick={() => openNamePrompt('clone')}
+                        title={$locales('meshcoreconfig.zones.settings_group_clone')}
+                        aria-label={$locales('meshcoreconfig.zones.settings_group_clone')}
+                        class="shrink-0 rounded bg-gray-700 px-2 py-1 text-xs font-bold text-orange-200 transition-colors hover:bg-gray-600"
+                    >
+                        ⧉
+                    </button>
                 </div>
                 <div class="flex items-center gap-2">
                     <input
@@ -488,7 +544,7 @@
                     </label>
                     <button
                         type="button"
-                        onclick={removeGroup}
+                        onclick={() => (deleteConfirmOpen = true)}
                         title={$locales('meshcoreconfig.zones.settings_group_delete')}
                         aria-label={$locales('meshcoreconfig.zones.settings_group_delete')}
                         class="shrink-0 rounded px-1.5 py-1 text-xs text-gray-400 transition-colors hover:bg-gray-700 hover:text-red-300"
@@ -521,34 +577,43 @@
             </div>
         {/if}
 
-        <!-- Inline name prompt of the settings-group creation (RSR §3.8). -->
+        <!-- Inline name prompt of the settings-group creation (RSR §3.8).
+             Clone has no source picker: the source is the currently selected
+             group (user feedback 3.1). -->
         {#if namePromptMode}
-            <div class="mb-3 flex items-center gap-1">
-                <input
-                    type="text"
-                    value={newGroupName}
-                    oninput={(e) => (newGroupName = (e.currentTarget as HTMLInputElement).value)}
-                    onkeydown={onPromptKeydown}
-                    placeholder={$locales('meshcoreconfig.zones.settings_group_name_prompt')}
-                    use:fillHint
-                    class="min-w-0 flex-1 rounded-md border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
-                />
-                <button
-                    type="button"
-                    onclick={confirmNamePrompt}
-                    class="shrink-0 rounded bg-orange-600 px-2 py-1 text-xs text-white transition-colors hover:bg-orange-700"
-                >
-                    ✓
-                </button>
-                <button
-                    type="button"
-                    onclick={cancelNamePrompt}
-                    title={$locales('common.cancel')}
-                    aria-label={$locales('common.cancel')}
-                    class="shrink-0 rounded px-1.5 py-1 text-xs text-gray-400 transition-colors hover:bg-gray-700 hover:text-red-300"
-                >
-                    ✕
-                </button>
+            <div class="mb-3">
+                <div class="flex items-center gap-1">
+                    <input
+                        type="text"
+                        value={newGroupName}
+                        oninput={(e) =>
+                            (newGroupName = (e.currentTarget as HTMLInputElement).value)}
+                        onkeydown={onPromptKeydown}
+                        placeholder={$locales('meshcoreconfig.zones.settings_group_name_prompt')}
+                        use:fillHint
+                        class="min-w-0 flex-1 rounded-md border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
+                    />
+                    <button
+                        type="button"
+                        onclick={confirmNamePrompt}
+                        disabled={namePromptMode === 'clone' && newGroupName.trim() === ''}
+                        title={namePromptMode === 'clone'
+                            ? $locales('meshcoreconfig.zones.settings_group_name_required')
+                            : undefined}
+                        class="shrink-0 rounded bg-orange-600 px-2 py-1 text-xs text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        ✓
+                    </button>
+                    <button
+                        type="button"
+                        onclick={cancelNamePrompt}
+                        title={$locales('common.cancel')}
+                        aria-label={$locales('common.cancel')}
+                        class="shrink-0 rounded px-1.5 py-1 text-xs text-gray-400 transition-colors hover:bg-gray-700 hover:text-red-300"
+                    >
+                        ✕
+                    </button>
+                </div>
             </div>
         {/if}
 
@@ -832,4 +897,49 @@
             </div>
         {/if}
     </div>
+
+    <!-- Delete-group confirmation (user feedback 3.3): a real confirmation
+         window, same interaction pattern as BackupConfirmModal. A child of
+         the z-[80] overlay, so it layers above the settings card. -->
+    {#if deleteConfirmOpen}
+        <div
+            class="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4"
+            role="dialog"
+            aria-modal="true"
+            tabindex="-1"
+            onkeydown={(e) => e.key === 'Escape' && (deleteConfirmOpen = false)}
+        >
+            <div
+                class="w-full max-w-sm rounded-lg border border-orange-600 bg-gray-800 p-4 shadow-2xl"
+            >
+                <h3 class="mb-2 text-base font-semibold text-orange-200">
+                    {$locales('meshcoreconfig.zones.settings_group_delete')}
+                </h3>
+                <p class="mb-4 text-sm text-gray-300">
+                    {$locales('meshcoreconfig.zones.settings_group_delete_confirm', {
+                        values: { name: deleteTargetName }
+                    })}
+                </p>
+                <div class="flex items-center justify-end gap-3">
+                    <button
+                        type="button"
+                        onclick={() => (deleteConfirmOpen = false)}
+                        class="rounded-md bg-gray-700 px-4 py-2 text-sm text-white transition-colors hover:bg-gray-600"
+                    >
+                        {$locales('common.cancel')}
+                    </button>
+                    <button
+                        type="button"
+                        onclick={() => {
+                            deleteConfirmOpen = false;
+                            removeGroup();
+                        }}
+                        class="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
+                    >
+                        {$locales('meshcoreconfig.zones.settings_group_delete')}
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
 </div>

@@ -390,6 +390,7 @@
             "settings_group_name_prompt": "Имя группы настроек",
             "settings_group_default": "Настройки по умолчанию",
             "settings_group_delete": "Удалить группу",
+            "settings_group_delete_confirm": "Точно удалить группу настроек «{name}»?",
             "settings_group_name_required": "Укажите имя группы",
             "settings_group_name_taken": "Это имя уже занято",
             "result_groups_label": "Группа настроек",
@@ -404,8 +405,7 @@
             "upload": "Отправить на проверку",
             "upload_hint": "Отправить группы на проверку перед публикацией",
             "upload_done": "Отправлено на проверку (не опубликовано): {n}",
-            "upload_none": "Нечего отправлять: нужен doc URL (regions, если указан, должен быть корректным)",
-            "upload_no_docurl": "У группы «{name}» нет doc URL — добавьте его в настройках meshcore",
+            "upload_none": "Нечего отправлять: заполните обязательные поля групп (перечень проблем — выше)",
             "upload_failed": "Файл {file} отклонён: {reason}",
             "upload_err_file_too_large": "файл больше 1 МБ",
             "upload_err_quota_exceeded": "каталог ожидания заполнен (50 МБ)",
@@ -438,7 +438,15 @@
             "pending_name_conflict": "Файл с таким именем уже опубликован — при одобрении он будет заменён",
             "pending_confirm_overwrite": "Заменить опубликованный файл?",
             "pending_publish_failed": "Публикация не удалась: {reason}",
-            "pending_load_failed": "Не удалось загрузить очередь проверки"
+            "pending_load_failed": "Не удалось загрузить очередь проверки",
+            "upload_field_name": "имя группы",
+            "upload_field_doc_url": "URL документа",
+            "upload_field_zones": "нет зон",
+            "upload_issues_hint": "Не всё заполнено:",
+            "upload_unnamed_group": "(без имени)",
+            "settings_group_clone": "Клонировать группу настроек",
+            "catalog_refresh": "Обновить каталог зон",
+            "catalog_refresh_failed": "Не удалось обновить каталог зон — показаны последние загруженные данные"
         }
     },
     "customfirmware": {

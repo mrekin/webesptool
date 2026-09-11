@@ -31,6 +31,11 @@ export const ZONE_LEVELS = [1, 2, 3, 4, 5] as const;
 // Default level for zones/files that do not specify one (keeps legacy zones —
 // which were all mutually non-overlapping — behaving as before).
 export const ZONE_LEVEL_DEFAULT = 1;
+// Default level for a group created with the "+ new group" button (task 84):
+// level 2 ("region") is the typical working level. Deliberately SEPARATE from
+// ZONE_LEVEL_DEFAULT, which stays 1 for files without a level and for
+// homeless zones (legacy compatibility, task 72).
+export const ZONE_LEVEL_DEFAULT_NEW_GROUP = 2;
 
 // OSM raster tile layer (same source as CoordinateMapPicker).
 export const OSM_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';

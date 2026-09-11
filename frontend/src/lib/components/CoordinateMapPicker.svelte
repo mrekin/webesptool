@@ -6,7 +6,7 @@
     import GeocodeResponseModal from './GeocodeResponseModal.svelte';
     import ZoneEditor from './ZoneEditor.svelte';
     import { loadLeaflet } from '$lib/utils/leafletLoader';
-    import { fetchZoneCatalog } from '$lib/utils/zoneCatalog';
+    import { reloadZoneCatalog } from '$lib/utils/zoneCatalog';
     import { lookupZoneRegion } from '$lib/utils/zoneResolver';
     import { defaultPreset, sortedPresetsByName } from '$lib/utils/zoneSettingsPresets';
     import { unwrapAntimeridian } from '$lib/utils/zoneGeometry';
@@ -62,6 +62,28 @@
 
     // Authoritative zone catalog (lazy-loaded once; immutable for the session).
     let catalog = $state<ZoneCatalog | null>(null);
+
+    // Catalog refresh (task 84 П5): re-fetch the published zone catalog on
+    // demand. A click during a request is ignored; on a network failure the
+    // last good catalog stays and a transient notice is shown.
+    let catalogBusy = $state(false);
+    let catalogNotice = $state('');
+    let catalogNoticeTimer: ReturnType<typeof setTimeout> | undefined;
+
+    async function refreshCatalog(): Promise<void> {
+        if (catalogBusy) return; // guard: a click during a request is ignored
+        catalogBusy = true;
+        const { catalog: next, failed } = await reloadZoneCatalog();
+        catalogBusy = false;
+        if (failed && catalog) {
+            // network failure: keep the last good catalog + transient notice
+            catalogNotice = $locales('meshcoreconfig.zones.catalog_refresh_failed');
+            clearTimeout(catalogNoticeTimer);
+            catalogNoticeTimer = setTimeout(() => (catalogNotice = ''), 4000);
+            return;
+        }
+        catalog = next; // contours + region lookup update reactively ($effects)
+    }
 
     // Reverse-geocoding state. Triggered reactively whenever the marker moves.
     let geocodeResp = $state<GeocodeResponse | null>(null);
@@ -341,13 +363,15 @@
         // The container was laid out while hidden; force a recalculation.
         setTimeout(() => map?.invalidateSize(), 50);
 
-        // Load the zone catalog in the background (lookup degrades to "miss"/
-        // "unavailable" predictably if it is absent/empty).
-        fetchZoneCatalog().then((c) => (catalog = c));
+        // Load the zone catalog (lookup degrades to "miss"/"unavailable"
+        // predictably if it is absent/empty); the header refresh button
+        // re-runs the same path (task 84 П5).
+        void refreshCatalog();
     });
 
     onDestroy(() => {
         clearTimeout(shareTimer);
+        clearTimeout(catalogNoticeTimer);
         publishedLayer = null;
         if (map) {
             map.remove();
@@ -385,10 +409,31 @@
                     {shareMessage}
                 </span>
             {/if}
+            {#if catalogNotice}
+                <span class="ml-auto text-xs text-red-400" role="status" aria-live="polite">
+                    {catalogNotice}
+                </span>
+            {/if}
             <!-- Window controls cluster (task 78): share link left of the
                  close cross; the cross is identical to Cancel (both call
                  onclose). -->
             <div class="ml-auto flex items-center gap-1">
+                <button
+                    type="button"
+                    onclick={refreshCatalog}
+                    disabled={catalogBusy}
+                    title={$locales('meshcoreconfig.zones.catalog_refresh')}
+                    aria-label={$locales('meshcoreconfig.zones.catalog_refresh')}
+                    class="rounded bg-gray-700 px-2 py-1 text-sm text-orange-200 hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    {#if catalogBusy}
+                        <span
+                            class="inline-block h-3 w-3 animate-spin rounded-full border border-orange-200 border-t-transparent"
+                        ></span>
+                    {:else}
+                        ↻
+                    {/if}
+                </button>
                 <button
                     type="button"
                     onclick={shareLink}
