@@ -1806,6 +1806,36 @@
         void loadPending();
     }
 
+    // Delete confirmation (app rule: destructive actions always confirm).
+    // Names the exact target — a group (with all its zones) or a single zone.
+    let deleteConfirm = $state<{ kind: 'group' | 'zone'; id: string; name: string } | null>(
+        null
+    );
+
+    // Open the delete confirmation for a group (the ✕ on its card). The dialog
+    // names the group — its name or the localized "(unnamed)" placeholder.
+    function askRemoveGroup(g: ZoneGroup): void {
+        deleteConfirm = { kind: 'group', id: g.id, name: groupIssueLabel(g) };
+    }
+
+    // Same for one zone (the ✕ in its row; group zones and ungrouped alike).
+    function askRemoveZone(p: EditorPolygon): void {
+        deleteConfirm = {
+            kind: 'zone',
+            id: p.id,
+            name: (p.label ?? '').trim() || $locales('meshcoreconfig.zones.delete_zone_unnamed')
+        };
+    }
+
+    // Run the confirmed deletion. The underlying removers are unchanged — the
+    // dialog is a pure gate in front of them.
+    function confirmDelete(): void {
+        if (!deleteConfirm) return;
+        if (deleteConfirm.kind === 'group') removeGroup(deleteConfirm.id);
+        else removePolygon(deleteConfirm.id);
+        deleteConfirm = null;
+    }
+
     let uploadingGroupId = $state<string | null>(null);
 
     // Send ONE group from its row (task 85): the same uploadOne pipeline, a
@@ -2694,7 +2724,7 @@
                                         </button>
                                         <button
                                             type="button"
-                                            onclick={() => removeGroup(g.id)}
+                                            onclick={() => askRemoveGroup(g)}
                                             class="shrink-0 rounded bg-gray-700 px-1.5 py-0.5 text-xs text-gray-300 hover:bg-gray-600"
                                         >
                                             ✕
@@ -2844,7 +2874,7 @@
                                                 </select>
                                                 <button
                                                     type="button"
-                                                    onclick={() => removePolygon(p.id)}
+                                                    onclick={() => askRemoveZone(p)}
                                                     class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-gray-400 hover:bg-gray-600"
                                                     >✕</button
                                                 >
@@ -2903,7 +2933,7 @@
                                             </select>
                                             <button
                                                 type="button"
-                                                onclick={() => removePolygon(p.id)}
+                                                onclick={() => askRemoveZone(p)}
                                                 class="shrink-0 rounded bg-gray-700 px-1 py-0.5 text-[10px] text-gray-400 hover:bg-gray-600"
                                                 >✕</button
                                             >
@@ -3050,4 +3080,55 @@
         onsave={savePendingEdit}
         onclose={() => (pendingEditFile = null)}
     />
+{/if}
+
+<!-- Delete confirmation (app rule: destructive actions always confirm).
+     Interaction pattern of BackupConfirmModal: Escape/Cancel back out, the
+     action is the title, the exact target is named in the body text. -->
+{#if deleteConfirm}
+    <div
+        class="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4"
+        role="dialog"
+        aria-modal="true"
+        tabindex="-1"
+        onkeydown={(e) => e.key === 'Escape' && (deleteConfirm = null)}
+    >
+        <div class="w-full max-w-sm rounded-lg border border-orange-600 bg-gray-800 p-4 shadow-2xl">
+            <h3 class="mb-2 text-base font-semibold text-orange-200">
+                {$locales(
+                    deleteConfirm.kind === 'group'
+                        ? 'meshcoreconfig.zones.delete_group_title'
+                        : 'meshcoreconfig.zones.delete_zone_title'
+                )}
+            </h3>
+            <p class="mb-4 text-sm text-gray-300">
+                {$locales(
+                    deleteConfirm.kind === 'group'
+                        ? 'meshcoreconfig.zones.delete_group_text'
+                        : 'meshcoreconfig.zones.delete_zone_text',
+                    { values: { name: deleteConfirm.name } }
+                )}
+            </p>
+            <div class="flex items-center justify-end gap-3">
+                <button
+                    type="button"
+                    onclick={() => (deleteConfirm = null)}
+                    class="rounded-md bg-gray-700 px-4 py-2 text-sm text-white transition-colors hover:bg-gray-600"
+                >
+                    {$locales('common.cancel')}
+                </button>
+                <button
+                    type="button"
+                    onclick={confirmDelete}
+                    class="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
+                >
+                    {$locales(
+                        deleteConfirm.kind === 'group'
+                            ? 'meshcoreconfig.zones.delete_group_title'
+                            : 'meshcoreconfig.zones.delete_zone_title'
+                    )}
+                </button>
+            </div>
+        </div>
+    </div>
 {/if}
