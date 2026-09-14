@@ -28,6 +28,7 @@ import {
     parseZoneFeatures,
     readSettingsPresets
 } from '$lib/utils/zoneFeatures';
+import type { ZoneConflictInput } from '$lib/utils/zoneConflicts';
 import type { PendingFileInfo, ZoneFeature } from '$lib/types';
 
 // Hard limits (final PRD values; intentionally NOT env-overridable — minimal
@@ -232,6 +233,24 @@ export function readPendingFile(filename: string): unknown | null {
     }
 }
 
+// The 50 MB pending catalog quota condition (task 85): true when writing
+// sizeBytes under this filename would exceed the limit. The same-name file's
+// size is deducted so a replacement never double counts. Called explicitly by
+// the upload route BEFORE the conflict check (order per RSR-85) and again
+// inside writePendingFileAtomic (cheap re-check; also covers pending/update).
+export function pendingQuotaExceeded(filename: string, sizeBytes: number): boolean {
+    let existing = 0;
+    const p = pendingPath(filename);
+    if (p) {
+        try {
+            existing = statSync(p).size;
+        } catch {
+            /* no previous version */
+        }
+    }
+    return pendingStats().bytes - existing + sizeBytes > ZONES_PENDING_MAX_TOTAL_BYTES;
+}
+
 // Atomically write a pending file (idempotent replacement of an awaiting
 // version with the same name). Checks the 50 MB catalog quota first — the
 // existing same-name file's size is deducted so a replacement never double
@@ -244,13 +263,7 @@ export function writePendingFileAtomic(
     if (!p) return { ok: false, code: 'invalid_filename' }; // unreachable via the route (sanitized first)
     const data = JSON.stringify(fc);
     const sizeBytes = Buffer.byteLength(data);
-    let existing = 0;
-    try {
-        existing = statSync(p).size;
-    } catch {
-        /* no previous version */
-    }
-    if (pendingStats().bytes - existing + sizeBytes > ZONES_PENDING_MAX_TOTAL_BYTES) {
+    if (pendingQuotaExceeded(filename, sizeBytes)) {
         return { ok: false, code: 'quota_exceeded' };
     }
     const tmp = `${p}.tmp-${Date.now()}-${process.pid}`;
@@ -292,6 +305,30 @@ export function movePendingToGroups(
         rmSync(p);
     }
     return 'ok';
+}
+
+// Build the conflict-check input of a group file (task 85): the shared input
+// construction for BOTH pipeline points that run findZoneConflicts — the
+// upload route (task 85) and the authoritative approve check — so the same
+// rule sees the same view of a file on both stages. Mirrors the approve
+// route's assembly: the pending side is enriched from metadata in memory
+// (RSR-77 §3.12) — new-format files carry no settings/level on the polygons,
+// the conflict check needs the real level — same rule as
+// loadPublishedGroupEntries.
+export function pendingConflictInput(
+    fc: GeoJSON.FeatureCollection,
+    filename: string
+): ZoneConflictInput {
+    const withMeta = fc as GeoJSON.FeatureCollection & { metadata?: Record<string, unknown> };
+    const mc = detectGroupMeshcore(withMeta);
+    return {
+        file: filename,
+        level: mc?.level,
+        features: enrichFeaturesFromMetadata(
+            parseZoneFeatures(withMeta.features, mc?.regions ?? ''),
+            withMeta.metadata
+        )
+    };
 }
 
 // Read the published catalog entries for the approve-time conflict check — the
