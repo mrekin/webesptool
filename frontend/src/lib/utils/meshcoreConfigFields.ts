@@ -98,7 +98,7 @@ export function buildConfigFields(): {
     );
 
     const groups: MeshcoreConfigGroup[] = Object.entries(MESHCORE_CONFIG_METADATA.groups)
-        .map(([id, g]) => ({ id, labelKey: g.labelKey, order: g.order }))
+        .map(([id, g]) => ({ id, labelKey: g.labelKey, order: g.order, hintKey: g.hintKey }))
         .sort((a, b) => a.order - b.order);
 
     return { fields, groups };
@@ -161,7 +161,7 @@ export function buildCommandRows(): {
 
     // Unified groups from metadata (ordered).
     const groups: MeshcoreConfigGroup[] = Object.entries(MESHCORE_CONFIG_METADATA.groups)
-        .map(([id, g]) => ({ id, labelKey: g.labelKey, order: g.order }))
+        .map(([id, g]) => ({ id, labelKey: g.labelKey, order: g.order, hintKey: g.hintKey }))
         .sort((a, b) => a.order - b.order);
 
     // Sort rows: by group order, then config-before-action, then fieldOrder rank, then id.

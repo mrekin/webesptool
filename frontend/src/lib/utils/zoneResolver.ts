@@ -1,16 +1,24 @@
 // Pure point-in-polygon lookup for the meshcore zone catalog (task 72).
 // No Svelte, no fetch — only the catalog + point. Returns the `regions` value
-// (tokens) plus the optional preset (radio/pathHashMode/nameTemplate/docUrl) for
-// the zone containing the point, or nothing on miss/unavailable. A hit means the
-// point is inside a zone polygon — that zone may carry any subset of preset
-// fields (regions is optional, so tokens may be empty). Task 82: a feature may
-// carry named settings presets (attached at parse time from metadata) — the
-// result then reports them all plus the flat fields of the applied one.
+// (tokens) plus the optional preset (radio/pathHashMode/nameTemplate/docUrl)
+// merged over EVERY zone level containing the point (task 87: inheritance
+// chain, most specific wins), or nothing on miss/unavailable. A hit means the
+// point is inside at least one zone polygon — zones may carry any subset of
+// preset fields (regions is optional, so tokens may be empty). Task 82: a
+// feature may carry named settings presets (attached at parse time from
+// metadata) — the result then reports them all plus the flat fields of the
+// applied one.
 
 import { ZONE_LEVEL_DEFAULT } from '$lib/config/meshcoreZoneConfig';
 import { pointInGeometry } from '$lib/utils/zoneGeometry';
 import { defaultPreset } from '$lib/utils/zoneSettingsPresets';
-import type { ZoneCatalog, ZoneFeature, ZoneRegionResult } from '$lib/types';
+import type {
+    NamedMeshcoreSettings,
+    ZoneCatalog,
+    ZoneFeature,
+    ZoneRegionResult,
+    ZoneResultSource
+} from '$lib/types';
 
 // Cheap bbox containment prefilter: avoids the exact test for features whose
 // bbox the point is clearly outside.
@@ -61,41 +69,167 @@ function regionResultFromFeature(feature: ZoneFeature, level: number): ZoneRegio
     };
 }
 
-// Resolve the `regions` value for `point` ([lon, lat]) against the catalog.
+// One per-level contribution to a merged lookup result (task 87): a zone
+// whose polygon contains the point, its hierarchy level, and the per-zone
+// result extracted from the feature.
+export interface ZoneResolutionPart {
+    feature: ZoneFeature;
+    result: ZoneRegionResult;
+    level: number;
+}
+
+// Merge two same-named settings presets across hierarchy levels (task 87,
+// merge layer 2): the more specific field wins when defined, a missing one is
+// filled from the coarser preset; regions — the specific non-empty string,
+// else the coarser one; commands concatenate coarser -> specific (the same
+// rule as zone-level commands); isDefault: true of the specific wins, else
+// the coarser one stays. Returns a new object; the inputs are untouched.
+function mergeNamedPresets(
+    coarser: NamedMeshcoreSettings,
+    specific: NamedMeshcoreSettings
+): NamedMeshcoreSettings {
+    return {
+        ...coarser,
+        ...specific,
+        radio: specific.radio ?? coarser.radio,
+        pathHashMode: specific.pathHashMode ?? coarser.pathHashMode,
+        nameTemplate: specific.nameTemplate ?? coarser.nameTemplate,
+        docUrl: specific.docUrl ?? coarser.docUrl,
+        regions: specific.regions?.trim() ? specific.regions : coarser.regions,
+        commands: [...(coarser.commands ?? []), ...(specific.commands ?? [])],
+        isDefault: specific.isDefault ?? coarser.isDefault
+    };
+}
+
+// Merge the per-level parts of an inheritance chain into one result (task 87,
+// RSR §4.3.3). `parts` MUST be ordered from the largest (least specific) level
+// to the most specific one. Rules:
+//   - tokens: ordered union (largest first), deduplicated by exact match;
+//     `regions` = tokens joined with spaces;
+//   - radio/pathHashMode/nameTemplate/docUrl: the most specific part's defined
+//     (!== undefined) value wins;
+//   - commands: ordered concatenation (largest first), no deduplication —
+//     application resolves conflicts by "later wins", as when re-applying a
+//     preset;
+//   - settingPresets: same-named presets merged across levels (layer 2, see
+//     mergeNamedPresets); a preset without a same-named pair passes through
+//     from its own level;
+//   - level/zoneId/selectedPreset/status: from the most specific part;
+//   - sources/zoneKey: the chain itself, MOST SPECIFIC FIRST.
+// A single part reproduces today's per-zone result exactly (empty collections
+// stay undefined, scalar values unchanged).
+export function mergeZoneRegionResults(parts: ZoneResolutionPart[]): ZoneRegionResult {
+    if (parts.length === 0) return { tokens: [], status: 'miss' };
+    const mostSpecific = parts[parts.length - 1];
+
+    // Tokens: ordered union (largest first), deduplicated by exact match.
+    const tokens: string[] = [];
+    for (const part of parts) {
+        for (const token of part.result.tokens) {
+            if (!tokens.includes(token)) tokens.push(token);
+        }
+    }
+
+    // Commands: ordered concatenation (largest first), no deduplication.
+    const commands = parts.flatMap((p) => p.result.commands ?? []);
+
+    // Settings presets: merge same-named groups across levels, walking from
+    // the largest level to the most specific one. Insertion order (largest
+    // level's presets first) matches the single-zone array order for a single
+    // part; the picker sorts by name for display anyway.
+    const presetsByName = new Map<string, NamedMeshcoreSettings>();
+    for (const part of parts) {
+        for (const preset of part.result.settingPresets ?? []) {
+            const existing = presetsByName.get(preset.name);
+            presetsByName.set(preset.name, existing ? mergeNamedPresets(existing, preset) : preset);
+        }
+    }
+    const settingPresets = [...presetsByName.values()];
+
+    // Scalars: the most specific defined value wins (walk specific -> coarse).
+    const fromSpecific = <T>(get: (r: ZoneRegionResult) => T | undefined): T | undefined => {
+        for (let i = parts.length - 1; i >= 0; i--) {
+            const value = get(parts[i].result);
+            if (value !== undefined) return value;
+        }
+        return undefined;
+    };
+
+    // The chain itself, MOST SPECIFIC FIRST (panel display order). A zone's
+    // display name is its catalog group name, with fallbacks for files that
+    // lack one.
+    const ordered = [...parts].reverse();
+    const sources: ZoneResultSource[] = ordered.map((p) => {
+        // Names of the zone's own groups (they fed the same-name merge) — the
+        // picker derives per-source "(group)" annotations and the selector's
+        // zone coverage from these, based on the ACTIVE selection.
+        const presetNames = (p.result.settingPresets ?? []).map((preset) => preset.name);
+        return {
+            zoneId: p.result.zoneId ?? p.feature.id,
+            zoneName: p.feature.groupName ?? p.feature.group ?? p.feature.id,
+            level: p.level,
+            ...(presetNames.length > 0 ? { presetNames } : {})
+        };
+    });
+    const zoneKey = ordered.map((p) => p.result.zoneId ?? p.feature.id).join('|');
+
+    return {
+        tokens,
+        status: 'hit',
+        regions: tokens.join(' '),
+        zoneId: mostSpecific.result.zoneId,
+        radio: fromSpecific((r) => r.radio),
+        pathHashMode: fromSpecific((r) => r.pathHashMode),
+        nameTemplate: fromSpecific((r) => r.nameTemplate),
+        docUrl: fromSpecific((r) => r.docUrl),
+        level: mostSpecific.level,
+        ...(commands.length > 0 ? { commands } : {}),
+        ...(settingPresets.length > 0 ? { settingPresets } : {}),
+        // The applied group of the chain: the most specific zone that HAS one
+        // applied (task 82 auto-applies a zone's single/default group). With
+        // same-named groups at several levels the specific one wins — same
+        // priority as the scalar fields.
+        selectedPreset: fromSpecific((r) => r.selectedPreset),
+        sources,
+        zoneKey
+    };
+}
+
+// Resolve the settings of `point` ([lon, lat]) against the zone catalog.
 // - unavailable/empty catalog -> status 'unavailable' (reason set by the catalog)
-// - point inside a feature     -> status 'hit', tokens = regions.split(/\s+/)
+// - point inside feature(s)   -> status 'hit', merged chain result (task 87)
 // - point outside every feature -> status 'miss'
-// Zones may nest across hierarchy levels (a city zone over a country zone); the
-// point resolves to the MOST SPECIFIC containing zone — the highest `level`
-// (1=country … 5=city district). Zones at the same level never overlap, so the
-// max level is unique; a same-level double-hit is logged defensively. Never
+// Zones may nest across hierarchy levels (a city zone over a country zone);
+// ALL containing zones participate in the result — merged from the largest
+// level to the most specific one (mergeZoneRegionResults), one zone per level.
+// Zones at the same level never overlap, so a same-level double-hit is
+// impossible in a well-formed catalog — logged defensively and ignored. Never
 // throws: a failing feature is skipped with a warning.
 export function lookupZoneRegion(point: [number, number], catalog: ZoneCatalog): ZoneRegionResult {
     if (catalog.status !== 'ok' || catalog.features.length === 0) {
         return { tokens: [], status: 'unavailable', reason: catalog.reason ?? 'empty_catalog' };
     }
 
-    let best: { result: ZoneRegionResult; level: number } | null = null;
+    const parts: ZoneResolutionPart[] = [];
     for (const feature of catalog.features) {
         try {
             if (!withinBbox(point, feature.bbox)) continue;
             if (!pointInGeometry(point, feature.geometry)) continue;
             const level = feature.level ?? ZONE_LEVEL_DEFAULT;
-            if (best && level <= best.level) {
-                // Less specific (lower level) -> ignore; a same-level second hit
-                // is impossible in a well-formed catalog (same-level zones never
-                // overlap) — log defensively.
-                if (level === best.level) {
-                    console.warn('[meshcore-zone] overlap_in_catalog: same-level zones overlap');
-                }
+            if (parts.some((p) => p.level === level)) {
+                // A same-level second hit is impossible in a well-formed
+                // catalog (same-level zones never overlap) — log defensively.
+                console.warn('[meshcore-zone] overlap_in_catalog: same-level zones overlap');
                 continue;
             }
-            best = { level, result: regionResultFromFeature(feature, level) };
+            parts.push({ feature, level, result: regionResultFromFeature(feature, level) });
         } catch (err) {
             console.warn('[meshcore-zone] lookup feature error, skipped', err);
         }
     }
 
-    if (best) return best.result;
-    return { tokens: [], status: 'miss' };
+    if (parts.length === 0) return { tokens: [], status: 'miss' };
+    // Largest (least specific) level first — the merge order.
+    parts.sort((a, b) => a.level - b.level);
+    return mergeZoneRegionResults(parts);
 }

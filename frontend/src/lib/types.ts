@@ -790,6 +790,8 @@ export interface MeshcoreConfigGroup {
     /** i18n key suffix under 'meshcoreconfig.group_*'. */
     labelKey: string;
     order: number;
+    /** i18n key suffix under 'meshcoreconfig.group_hint_*' (info tooltip); absent = no hint icon. */
+    hintKey?: string;
 }
 
 // Unified descriptor of any configurator command: either a get<->set setting
@@ -994,6 +996,7 @@ export interface ZoneFeature {
     bbox: [number, number, number, number];
     regions: string; // value for `region def` (tokens separated by spaces); '' = not set
     group?: string; // cosmetic label for the editor/export only
+    groupName?: string; // display name of the owning catalog group, stamped at catalog build (task 87)
     radio?: RadioSpec; // per-zone radio preset (from properties.meshcore.radio)
     pathHashMode?: string; // per-zone path hash mode (from properties.meshcore.pathHashMode)
     nameTemplate?: string; // per-zone node-name template (from properties.meshcore.nameTemplate)
@@ -1046,6 +1049,17 @@ export interface BoundaryFile {
 
 export type ZoneLookupStatus = 'hit' | 'miss' | 'unavailable';
 
+// One applied source of a merged result (task 87): a zone whose polygon
+// contains the point. presetNames — names of the zone's OWN settings groups
+// (task 82) that participated in the merge; the ACTUALLY applied group is a
+// picker-level fact (the active selection), not a per-zone one.
+export interface ZoneResultSource {
+    zoneId: string;
+    zoneName: string; // display name of the zone (catalog group name), fallback: feature.group/id
+    level: number;
+    presetNames?: string[];
+}
+
 export interface ZoneRegionResult {
     tokens: string[]; // regions.split(/\s+/) on hit; [] otherwise
     status: ZoneLookupStatus;
@@ -1062,6 +1076,12 @@ export interface ZoneRegionResult {
     // empty when several presets exist without a default one.
     settingPresets?: NamedMeshcoreSettings[];
     selectedPreset?: string; // name of the applied preset, when one was applied
+    // Task 87: all zones of the inheritance chain, MOST SPECIFIC FIRST
+    // (display order of the result panel). Single hit — exactly one entry.
+    sources?: ZoneResultSource[];
+    // Stable composite key of the chain (source zoneIds, most specific first,
+    // joined '|') — identity of the zone set for selector reseeding and metrics.
+    zoneKey?: string;
     reason?: 'empty_catalog' | 'fetch_failed' | 'invalid'; // when unavailable
 }
 

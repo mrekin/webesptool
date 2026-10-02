@@ -245,7 +245,9 @@ export function fetchGroupFiles(): Promise<GroupFile[]> {
 // published directory is a normal 'empty_catalog', not a failure (task 84 П5).
 export async function reloadZoneCatalog(): Promise<{ catalog: ZoneCatalog; failed: boolean }> {
     const { files, listFailed } = await fetchGroupFilesReport();
-    const features = files.flatMap((g) => g.features);
+    // Stamp every feature with its owning group's display name (task 87) — the
+    // merged lookup result reports it as the applied source's zone name.
+    const features = files.flatMap((g) => g.features.map((f) => ({ ...f, groupName: g.name })));
     if (listFailed) {
         return {
             catalog: { status: 'unavailable', features: [], reason: 'fetch_failed' },

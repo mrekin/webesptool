@@ -46,6 +46,11 @@
         isCaret: boolean;
     };
     let lineDescriptions = $state<LineDescription[]>([]);
+    // Task 87 П.2: whether the caret's line is fully inside the textarea's
+    // visible area. The per-line ▶ button renders only while it is; the
+    // autocomplete ghost hides through the filtered lineDescriptions (the
+    // caret line simply has no overlay entry then).
+    let caretLineVisible = $state(true);
 
     // Recompute per-line descriptions on content/mode/flag changes — including
     // programmatic value changes (e.g. loading a command set), which do not
@@ -137,19 +142,26 @@
         const caretLineIndex = (
             value.slice(0, textareaElement.selectionStart ?? value.length).match(/\n/g) || []
         ).length;
+        // Task 87 П.2: visible-area height of the field — lines not fully
+        // inside it are skipped BEFORE the mirror measurement (their overlays
+        // would render outside the field bounds).
+        const clientH = textareaElement.clientHeight;
         const allLines = value.split('\n');
         const next: LineDescription[] = [];
         let lineOffset = 0;
         for (let i = 0; i < allLines.length; i++) {
             const lineText = allLines[i];
             const lineEndOffset = lineOffset + lineText.length;
+            lineOffset = lineEndOffset + 1; // +1 for '\n'
             const lineTop = paddingTop + borderTop + i * lineHeight - textareaElement.scrollTop;
+            // Skip lines not fully visible (~1px tolerance): they would put
+            // their overlay outside the field.
+            if (lineTop < 0 || lineTop + lineHeight > clientH + 1) continue;
             const lineLeft = getCaretCoordinates(textareaElement, lineEndOffset).left;
             const desc = showCommandShortDescriptions
                 ? getLineCommandDescription(lineText, mode)
                 : undefined;
             next.push({ top: lineTop, left: lineLeft, desc, isCaret: i === caretLineIndex });
-            lineOffset = lineEndOffset + 1; // +1 for '\n'
         }
         lineDescriptions = next;
     }
@@ -168,6 +180,12 @@
             lineMetrics = { lineHeight, paddingTop, borderTop };
             const lineIndex = (value.slice(0, caretPos).match(/\n/g) || []).length;
             const top = paddingTop + borderTop + lineIndex * lineHeight - textareaElement.scrollTop;
+            // Task 87 П.2: hide the caret line's overlays while its line is
+            // scrolled out of the field's visible area (~1px tolerance). The
+            // suggestion itself is still computed (keyboard logic owns it) —
+            // only the render is suppressed.
+            const clientH = textareaElement.clientHeight;
+            caretLineVisible = top >= 0 && top + lineHeight <= clientH + 1;
             // X (horizontal): the ghost is a COMPLETION of the current line, so it sits at the
             // END of the line's text (not at the caret) — matches the original <input> behavior
             // and keeps the suggestion still while the caret moves within the line.
@@ -196,7 +214,10 @@
         suggestion = newSuggestion;
     }
 
-    /** Cheap repositioning on scroll: only the Y offset depends on scrollTop (no mirror-div). */
+    /** Cheap repositioning on scroll: only the Y offset depends on scrollTop (no mirror-div).
+     *  Task 87 П.2: scrolling changes WHICH lines are visible, so the per-line
+     *  overlays are recomputed fully (positions are scroll-aware inside
+     *  recomputeLineDescriptions; only visible lines get mirror measurements). */
     function handleScroll(): void {
         if (!textareaElement) return;
         const lineIndex = (value.slice(0, caretPos).match(/\n/g) || []).length;
@@ -206,15 +227,10 @@
             lineIndex * lineMetrics.lineHeight -
             textareaElement.scrollTop;
         caretCoords = { ...caretCoords, top };
-        // Reposition per-line description overlays vertically (only top depends on scrollTop).
-        lineDescriptions = lineDescriptions.map((d, i) => ({
-            ...d,
-            top:
-                lineMetrics.paddingTop +
-                lineMetrics.borderTop +
-                i * lineMetrics.lineHeight -
-                textareaElement.scrollTop
-        }));
+        // Same visibility rule as updateOverlay, with the cached line metrics.
+        caretLineVisible =
+            top >= 0 && top + lineMetrics.lineHeight <= textareaElement.clientHeight + 1;
+        recomputeLineDescriptions();
     }
 
     function handleInput() {
@@ -452,7 +468,7 @@
 
         <!-- Floating per-line Send button: one button at the right edge of the caret's line.
              Follows the line being edited; click sends that line only (manual per-command, OQ-7). -->
-        {#if currentLine.trim()}
+        {#if currentLine.trim() && caretLineVisible}
             <button
                 type="button"
                 class="send-line-btn absolute right-2 flex items-center justify-center text-gray-500 transition-colors hover:text-green-400 disabled:cursor-not-allowed disabled:opacity-40"

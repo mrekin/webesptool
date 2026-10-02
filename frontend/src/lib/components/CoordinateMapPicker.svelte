@@ -2,7 +2,13 @@
     import { _ as locales } from 'svelte-i18n';
     import { onMount, onDestroy, untrack } from 'svelte';
     import { apiService } from '$lib/api';
-    import type { GeocodeResponse, PickerResult, ZoneCatalog, ZoneRegionResult } from '$lib/types';
+    import type {
+        GeocodeResponse,
+        PickerResult,
+        ZoneCatalog,
+        ZoneRegionResult,
+        ZoneResultSource
+    } from '$lib/types';
     import GeocodeResponseModal from './GeocodeResponseModal.svelte';
     import ZoneEditor from './ZoneEditor.svelte';
     import { loadLeaflet } from '$lib/utils/leafletLoader';
@@ -170,10 +176,14 @@
             : []
     );
 
-    // Identity of the currently resolved zone — the selector reseeds on ITS
-    // change only: dragging the marker inside the same zone keeps the choice.
-    const resolvedZoneId = $derived(
-        regionResult && regionResult.status === 'hit' ? regionResult.zoneId : undefined
+    // Identity of the currently resolved zone SET (task 87: composite key of
+    // the inheritance chain, fallback to the zone id for results without one) —
+    // the selector reseeds on ITS change only: dragging the marker inside the
+    // same set of zones keeps the choice.
+    const resolvedZoneKey = $derived(
+        regionResult && regionResult.status === 'hit'
+            ? (regionResult.zoneKey ?? regionResult.zoneId)
+            : undefined
     );
 
     // Selected settings-group name (null = nothing picked yet). Seeded from the
@@ -182,20 +192,27 @@
     // (PRD scenario 5).
     let selectedPresetName = $state<string | null>(null);
     // Reseed bookkeeping for the effect below (plain let, never rendered).
-    let seededZoneId: string | undefined;
+    let seededZoneKey: string | undefined;
 
-    // Reseed the selection when the resolved zone changes (RSR §3.4). Only the
-    // zone id is tracked; the presets are read untracked so unrelated lookup
-    // updates do not re-run the effect.
+    // Reseed the selection when the resolved zone set changes (RSR §3.4). Only
+    // the zone key is tracked; the presets are read untracked so unrelated
+    // lookup updates do not re-run the effect.
     $effect(() => {
-        const zoneId = resolvedZoneId;
-        if (zoneId === seededZoneId) return;
-        seededZoneId = zoneId;
+        const zoneKey = resolvedZoneKey;
+        if (zoneKey === seededZoneKey) return;
+        seededZoneKey = zoneKey;
         untrack(() => {
             const presets =
                 regionResult?.status === 'hit' ? (regionResult.settingPresets ?? []) : [];
+            // The resolved chain's own applied group FIRST (specificity-aware,
+            // task 87): the most specific zone's auto-applied single/default
+            // group (82) stays VISIBLE as the selection in a merged multi-group
+            // list. The default/single fallbacks keep single-zone results
+            // without one intact.
             selectedPresetName =
-                defaultPreset(presets)?.name ?? (presets.length === 1 ? presets[0].name : null);
+                (regionResult?.status === 'hit' ? (regionResult.selectedPreset ?? null) : null) ??
+                defaultPreset(presets)?.name ??
+                (presets.length === 1 ? presets[0].name : null);
         });
     });
 
@@ -226,6 +243,36 @@
     // What the panel shows and confirm() sends: the base result overlaid with
     // the selected settings group.
     const activeRegionResult = $derived(resultForPreset(selectedPresetName));
+
+    // Display label of one applied source: the zone wears "(X)" only when X is
+    // the ACTIVE applied group AND the zone has a same-named own group (i.e. it
+    // fed the merged X) — a group living at one level only must not tag the
+    // other levels of the chain.
+    function sourceLabel(s: ZoneResultSource, applied: string | undefined): string {
+        return applied && s.presetNames?.includes(applied)
+            ? `${s.zoneName} (${applied})`
+            : s.zoneName;
+    }
+
+    // Zone display names whose OWN settings groups include `name`, most
+    // specific first — the selector's coverage line (where the group exists).
+    function zonesForPreset(name: string): string[] {
+        return (activeRegionResult?.sources ?? [])
+            .filter((s) => s.presetNames?.includes(name))
+            .map((s) => s.zoneName);
+    }
+
+    // The APPLIED sources line: with an ACTIVE group only the zones feeding
+    // that merged group are applied sources (contract 82 — exactly the chosen
+    // group's fields get applied, a zone without it contributes nothing);
+    // without a group the whole chain applies (layer 1, zone-level fields).
+    const appliedSources = $derived.by(() => {
+        const all = activeRegionResult?.sources ?? [];
+        const applied = activeRegionResult?.selectedPreset;
+        if (!applied) return all;
+        const owners = all.filter((s) => s.presetNames?.includes(applied));
+        return owners.length > 0 ? owners : all;
+    });
 
     // Settings-group selection changed: remember the choice and push the result
     // through the same application path as confirm (coords null — only the zone
@@ -390,7 +437,8 @@
     >
         <div class="mb-3 flex shrink-0 items-center gap-2">
             <h3 class="text-lg font-semibold text-orange-200">
-                {$locales('meshcoreconfig.pick_on_map')}
+                <span class="hidden sm:inline">{$locales('meshcoreconfig.pick_on_map_full')}</span>
+                <span class="sm:hidden">{$locales('meshcoreconfig.pick_on_map_short')}</span>
             </h3>
             <button
                 type="button"
@@ -526,15 +574,27 @@
                                             class="rounded border border-gray-600 bg-gray-700 px-1.5 py-1 text-xs text-gray-100 outline-none focus:border-orange-500"
                                         >
                                             {#each sortedPresets as p (p.name)}
+                                                {@const zones = zonesForPreset(p.name)}
+                                                {@const multiZone = (activeRegionResult?.sources?.length ?? 0) > 1}
                                                 <option
                                                     value={p.name}
-                                                    title={p.isDefault
-                                                        ? $locales(
-                                                              'meshcoreconfig.zones.settings_group_default'
-                                                          )
-                                                        : undefined}
+                                                    title={[
+                                                        p.isDefault
+                                                            ? $locales(
+                                                                  'meshcoreconfig.zones.settings_group_default'
+                                                              )
+                                                            : '',
+                                                        multiZone && zones.length > 0
+                                                            ? zones.join(' → ')
+                                                            : ''
+                                                    ]
+                                                        .filter(Boolean)
+                                                        .join('\n') || undefined}
                                                 >
-                                                    {p.isDefault ? `★ ${p.name}` : p.name}
+                                                    {p.isDefault ? '★ ' : ''}{p.name}{multiZone &&
+                                                    zones.length > 0
+                                                        ? ` · ${zones.join(' → ')}`
+                                                        : ''}
                                                 </option>
                                             {/each}
                                         </select>
@@ -556,6 +616,26 @@
                                         L{activeRegionResult.level} · {$locales(
                                             `meshcoreconfig.zones.zone_level_${activeRegionResult.level}`
                                         )}
+                                    </span>
+                                {/if}
+                                <!-- Applied settings sources (task 87): with an active group —
+                                     only the zones feeding it ("Зона (группа)"); without one — the
+                                     whole inheritance chain, most specific first (config values —
+                                     never localized). -->
+                                {#if appliedSources.length}
+                                    <span
+                                        class="text-[11px] text-gray-500"
+                                        title={appliedSources
+                                            .map((s) =>
+                                                sourceLabel(s, activeRegionResult.selectedPreset)
+                                            )
+                                            .join(' → ')}
+                                    >
+                                        {appliedSources
+                                            .map((s) =>
+                                                sourceLabel(s, activeRegionResult.selectedPreset)
+                                            )
+                                            .join(' → ')}
                                     </span>
                                 {/if}
                                 {#if activeRegionResult.radio}

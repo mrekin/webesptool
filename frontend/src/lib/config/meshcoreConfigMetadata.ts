@@ -51,16 +51,18 @@ export const MESHCORE_CONFIG_METADATA = {
     } as Record<string, string>,
     // Groups (id -> i18n key suffix + display order). User-facing groups first.
     // Shared taxonomy for both config (get<->set) and action commands.
+    // hintKey — i18n key suffix under 'meshcoreconfig.group_hint_*' (info
+    // tooltip at the group header); absent = no hint icon.
     groups: {
-        location: { labelKey: 'location', order: 1 },
-        identity: { labelKey: 'identity', order: 2 },
-        radio: { labelKey: 'radio', order: 3 },
-        bridge: { labelKey: 'bridge', order: 4 },
-        flood: { labelKey: 'flood', order: 5 },
-        region: { labelKey: 'region', order: 6 },
-        system: { labelKey: 'system', order: 7 },
-        advanced: { labelKey: 'advanced', order: 99 }
-    } as Record<string, { labelKey: string; order: number }>,
+        location: { labelKey: 'location', order: 1, hintKey: 'location' },
+        identity: { labelKey: 'identity', order: 2, hintKey: 'identity' },
+        radio: { labelKey: 'radio', order: 3, hintKey: 'radio' },
+        bridge: { labelKey: 'bridge', order: 4, hintKey: 'bridge' },
+        flood: { labelKey: 'flood', order: 5, hintKey: 'flood' },
+        region: { labelKey: 'region', order: 6, hintKey: 'region' },
+        system: { labelKey: 'system', order: 7, hintKey: 'system' },
+        advanced: { labelKey: 'advanced', order: 99, hintKey: 'advanced' }
+    } as Record<string, { labelKey: string; order: number; hintKey?: string }>,
     // Explicit within-group display order (primary fields first). Fields not listed
     // sort to the end of their group, then alphabetically by key.
     fieldOrder: [

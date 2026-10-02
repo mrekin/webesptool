@@ -102,7 +102,7 @@
     // truth for the command list, card dirty state and group badges. File-load
     // appends in file order (order never changes); manual edits/arm append at the
     // end. Each entry optionally tracks its row (for badges / Discard revert).
-    type QueueEntry = { line: string; rowId?: string };
+    type QueueEntry = { line: string; rowId?: string; fromZone?: boolean };
     let commandQueue = $state<QueueEntry[]>([]);
 
     // Output line ending for the copy buffer.
@@ -935,7 +935,11 @@
     // first; a later value wins). Known rows fill their card via setRowValue
     // (queue entry updated in place / created); 0-param non-urgent actions arm
     // and time/urgent/unknown lines go in as raw verbatim entries.
+    // Task 87: the zone's verbatim/arm contribution REPLACES its previous one
+    // (entries marked fromZone) — re-applying a picker result must not stack
+    // duplicates in the queue. Manually queued entries are never touched.
     function applyZoneCommands(commands: string[]): void {
+        commandQueue = commandQueue.filter((e) => !e.fromZone);
         for (const line of commands) {
             const c = classifyCommandLine(line, rows);
             if (c.kind === 'skip') continue;
@@ -959,9 +963,12 @@
                     }
                 }
             } else if (c.kind === 'arm') {
-                commandQueue = [...commandQueue, { line: line.trim(), rowId: c.row.id }];
+                commandQueue = [
+                    ...commandQueue,
+                    { line: line.trim(), rowId: c.row.id, fromZone: true }
+                ];
             } else {
-                commandQueue = [...commandQueue, { line: line.trim() }];
+                commandQueue = [...commandQueue, { line: line.trim(), fromZone: true }];
             }
         }
     }
@@ -1023,10 +1030,14 @@
                 if (!r.selectedPreset) {
                     logZoneMetric('zones_presets_default_missing');
                 } else {
-                    const prev = lastPresetByZone.get(r.zoneId ?? '');
+                    // Task 87: the key is the composite zone-chain key when
+                    // present (fallback to the single zone id) — the metric
+                    // tracks preset switches per resolved zone set.
+                    const zoneKey = r.zoneKey ?? r.zoneId ?? '';
+                    const prev = lastPresetByZone.get(zoneKey);
                     if (prev && prev !== r.selectedPreset) logZoneMetric('zones_preset_switched');
                     logZoneMetric(`zones_preset_applied:${r.selectedPreset}`);
-                    lastPresetByZone.set(r.zoneId ?? '', r.selectedPreset);
+                    lastPresetByZone.set(zoneKey, r.selectedPreset);
                 }
             }
         } else if (res.region && res.region.status === 'miss') {
@@ -1321,6 +1332,24 @@
                                                             📍
                                                         </button>
                                                     </div>
+                                                {/if}
+                                                <!-- Group info icon (task 87 П.4): a SIBLING of the
+                                                     toggle button (no nested interactive button), ALWAYS
+                                                     the rightmost element of the header row (after the
+                                                     region 📍 cluster); native title tooltip, focusable
+                                                     (role="button" keeps tabindex a11y-clean). -->
+                                                {#if group.hintKey}
+                                                    <span
+                                                        role="button"
+                                                        class="mr-2 shrink-0 cursor-help self-center text-sm"
+                                                        title={$locales(
+                                                            `meshcoreconfig.group_hint_${group.hintKey}`
+                                                        )}
+                                                        aria-label={$locales(
+                                                            `meshcoreconfig.group_hint_${group.hintKey}`
+                                                        )}
+                                                        tabindex="0"
+                                                    >ℹ️</span>
                                                 {/if}
                                             </div>
                                             {#if !collapsedGroups.has(group.id)}
