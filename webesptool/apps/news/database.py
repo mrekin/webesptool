@@ -280,7 +280,8 @@ async def get_all_news_admin(offset: int = 0, limit: int = 100) -> List[Dict]:
     Returns:
         List of all news items with full content and is_active flag
     """
-    now = datetime.utcnow().isoformat()
+    # Date-only comparison: a news item ending today is still active
+    now = datetime.utcnow().date().isoformat()
 
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
@@ -317,6 +318,85 @@ async def get_all_news_admin(offset: int = 0, limit: int = 100) -> List[Dict]:
             })
 
         return result
+
+
+async def get_news_page_admin(
+    offset: int = 0,
+    limit: int = 50,
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Paged admin list: {items, total, offset, limit}.
+
+    Args:
+        offset: Pagination offset
+        limit: Page size
+        search: Case-insensitive substring to match against id and all
+            language titles/bodies (None = no filtering)
+        status: Filter by status, 'show' or 'hide' (None = all)
+
+    Returns:
+        Dict with the page items, total count after filtering, offset and limit
+
+    Search is done in Python: news JSON content is a single TEXT column, so
+    SQL LIKE would be ASCII-only (Cyrillic would not match) — the archive is
+    news-sized (hundreds), full scan per request is fine.
+    """
+    # Date-only comparison, same as get_all_news_admin
+    now = datetime.utcnow().date().isoformat()
+
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        # Full scan: no LIMIT/OFFSET in SQL, filtering and paging happen below
+        cursor = await db.execute("""
+            SELECT id, start_date, seq_id, end_date, status, content, is_pinned, pin_order, created_at
+            FROM news
+            ORDER BY start_date DESC, seq_id DESC
+        """)
+
+        rows = await cursor.fetchall()
+
+    search_lower = search.lower() if search else None
+
+    filtered = []
+    for row in rows:
+        if status is not None and row["status"] != status:
+            continue
+
+        item = {
+            "id": row["id"],
+            "start_date": row["start_date"],
+            "seq_id": row["seq_id"],
+            "end_date": row["end_date"],
+            "status": row["status"],
+            "content": json.loads(row["content"]),
+            "is_pinned": bool(row["is_pinned"]),
+            "pin_order": row["pin_order"],
+            "created_at": row["created_at"],
+            # Active means: status='show' AND start_date <= now AND (end_date IS NULL OR end_date >= now)
+            "is_active": (
+                row["status"] == "show" and
+                row["start_date"] <= now and
+                (row["end_date"] is None or row["end_date"] >= now)
+            )
+        }
+
+        if search_lower is not None:
+            # Case-insensitive substring match over id and every language value
+            haystacks = [str(item["id"])]
+            for lang_content in item["content"].values():
+                if isinstance(lang_content, dict):
+                    haystacks.extend(str(v) for v in lang_content.values() if v is not None)
+                elif lang_content is not None:
+                    haystacks.append(str(lang_content))
+            if not any(search_lower in h.lower() for h in haystacks):
+                continue
+
+        filtered.append(item)
+
+    total = len(filtered)
+    page = filtered[offset:offset + limit]
+    return {"items": page, "total": total, "offset": offset, "limit": limit}
 
 
 async def get_news_by_id(news_id: int) -> Optional[Dict]:
@@ -362,6 +442,9 @@ async def update_news(news_id: int, data: Dict[str, Any]) -> bool:
     updates = []
     params = []
 
+    # Explicit end_date applies unless it was just recalculated from duration_days
+    duration_calculated = False
+
     # Handle start_date update
     if "start_date" in data:
         start_date_str = data["start_date"]
@@ -378,11 +461,13 @@ async def update_news(news_id: int, data: Dict[str, Any]) -> bool:
                     end_date_dt = start_date.fromordinal(start_date.toordinal() + int(duration_days))
                     updates.append("end_date = ?")
                     params.append(end_date_dt.date().isoformat())
+                    duration_calculated = True
                 except (ValueError, TypeError):
                     pass
 
-    # Handle end_date direct update (if not calculated from duration_days)
-    if "end_date" in data and "start_date" not in data:
+    # Handle end_date direct update (unless it was just calculated from duration_days);
+    # may be None to clear the date
+    if "end_date" in data and not duration_calculated:
         updates.append("end_date = ?")
         params.append(data["end_date"])
 

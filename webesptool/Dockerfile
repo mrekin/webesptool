@@ -38,6 +38,7 @@ ADD utils ${dir}/utils
 ADD config ${dir}/config
 ADD apps ${dir}/apps
 ADD templates/admin ${dir}/templates/admin
+ADD static ${dir}/static
 ADD bin ${dir}/bin
 
 WORKDIR ${dir}

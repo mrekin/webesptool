@@ -338,14 +338,14 @@
                                         {$locales('notes.report_issue')}
                                     </a>
                                     <a
-                                        href="https://meshtastic.org/docs/"
+                                        href="https://t.me/flashmesh_ru"
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         class="ml-2 inline-flex items-center rounded-md bg-gray-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700"
                                         style="color: white !important;"
                                     >
                                         <span class="mr-2">📚</span>
-                                        {$locales('notes.documentation')}
+                                        {$locales('notes.tg_group')}
                                     </a>
                                 </div>
                             </div>

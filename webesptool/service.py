@@ -21,6 +21,7 @@ from fastapi import APIRouter
 from fastapi import Request
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 
 import aiofiles
 import yaml
@@ -811,6 +812,10 @@ app.include_router(news_router, tags=["news"])
 app.include_router(stats_router, tags=["stats"])
 
 templates = Jinja2Templates(directory="templates")
+
+# Static files (admin assets, vendored libraries) - mounted after the routers
+# so API and page routes match before the /static catch-all
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 # Favicon handler - returns 204 No Content to prevent 404 errors
