@@ -20,9 +20,9 @@
             description: $locales('footer.meshcore_desc')
         },
         {
-            name: $locales('footer.documentation_name'),
-            href: EXTERNAL_LINKS.MESHTASTIC.DOCS,
-            description: $locales('footer.documentation_desc')
+            name: $locales('footer.tg_group_name'),
+            href: EXTERNAL_LINKS.OTHER.TELEGRAM_GROUP,
+            description: $locales('footer.tg_group_desc')
         },
         {
             name: $locales('footer.community_name'),

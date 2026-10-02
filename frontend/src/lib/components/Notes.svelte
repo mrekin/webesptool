@@ -338,7 +338,7 @@
                                         {$locales('notes.report_issue')}
                                     </a>
                                     <a
-                                        href="https://t.me/flashmesh_ru"
+                                        href={EXTERNAL_LINKS.OTHER.TELEGRAM_GROUP}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         class="ml-2 inline-flex items-center rounded-md bg-gray-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700"

@@ -22,7 +22,8 @@ export const EXTERNAL_LINKS = {
         MIRROR: 'https://flashmesh.mooo.com'
     },
     OTHER: {
-        MESHCORE: 'https://meshcore.co.uk'
+        MESHCORE: 'https://meshcore.co.uk',
+        TELEGRAM_GROUP: 'https://t.me/flashmesh_ru'
     },
     USEFUL_LINKS: {
         MALLA_MESHWORKS: 'https://malla.meshworks.ru',
