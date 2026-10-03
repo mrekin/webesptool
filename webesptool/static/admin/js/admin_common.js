@@ -139,36 +139,3 @@ function unsavedChangesDialog(label) {
         document.getElementById('unsaved-discard').onclick = function () { finish('discard'); };
     });
 }
-
-// --- AI prompt fallback modal ----------------------------------------------
-
-// Guaranteed path to get the AI prompt when clipboard write is unavailable
-// or denied: readonly textarea + Select all. Resolves when closed.
-function promptFallbackModal({ title, text }) {
-    return new Promise(function (resolve) {
-        const overlay = document.getElementById('prompt-modal');
-        document.getElementById('prompt-modal-title').textContent = title || 'AI prompt';
-        const textarea = document.getElementById('prompt-modal-text');
-        textarea.value = text || '';
-
-        function finish() {
-            document.getElementById('prompt-modal-select').onclick = null;
-            document.getElementById('prompt-modal-close').onclick = null;
-            closeDialog();
-            resolve();
-        }
-
-        openDialog('prompt-modal', {
-            overlay: overlay,
-            focusId: 'prompt-modal-text',
-            onEscape: finish,
-            // No Enter action: the textarea legitimately needs newlines
-            onEnter: null
-        });
-        document.getElementById('prompt-modal-select').onclick = function () {
-            textarea.focus();
-            textarea.select();
-        };
-        document.getElementById('prompt-modal-close').onclick = finish;
-    });
-}

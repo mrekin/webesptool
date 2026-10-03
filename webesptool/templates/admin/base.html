@@ -60,18 +60,6 @@
         </div>
     </div>
 
-    <!-- AI prompt fallback: shown when clipboard write is unavailable or denied -->
-    <div class="modal-overlay" id="prompt-modal" role="dialog" aria-modal="true" aria-labelledby="prompt-modal-title">
-        <div class="modal-dialog">
-            <h6 class="modal-title" id="prompt-modal-title">AI prompt</h6>
-            <textarea class="form-control json-editor" id="prompt-modal-text" rows="12" readonly></textarea>
-            <div class="modal-buttons">
-                <button type="button" class="btn btn-secondary" id="prompt-modal-select">Select all</button>
-                <button type="button" class="btn btn-primary" id="prompt-modal-close">Close</button>
-            </div>
-        </div>
-    </div>
-
     {% block scripts %}{% endblock %}
 </body>
 </html>

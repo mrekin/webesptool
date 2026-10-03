@@ -9,14 +9,10 @@
         buildCommand,
         classifyCommandLine
     } from '$lib/utils/meshcoreConfigState.js';
-    import {
-        splitIntoCommandLines,
-        isModeSwitchLine,
-        trimTrailingEmptyLine
-    } from '$lib/utils/multilineCommands.js';
+    import { splitIntoCommandLines, isModeSwitchLine } from '$lib/utils/multilineCommands.js';
     import { createMeshcoreCliManager, type MeshcoreCliStatus } from '$lib/utils/meshcoreCli.js';
     import { attachTerminalCopy } from '$lib/utils/terminalClipboard.js';
-    import { setTerminalMode, resetTerminalMode, uiState } from '$lib/stores.js';
+    import { setTerminalMode, resetTerminalMode } from '$lib/stores.js';
     import { TERMINAL_CONFIG } from '$lib/config/terminalConfig.js';
     import { ResponseDetector } from '$lib/utils/responseDetector.js';
     import {
@@ -27,7 +23,6 @@
         type DelayCountdownHandle,
         type DelayCountdownOutcome
     } from '$lib/utils/commandDelay.js';
-    import McCommandSetPicker from './McCommandSetPicker.svelte';
     import MeshcoreConfigRow from './MeshcoreConfigRow.svelte';
     import MeshcoreConfigCommandList from './MeshcoreConfigCommandList.svelte';
     import CommandInput from './CommandInput.svelte';
@@ -272,9 +267,6 @@
 
     let isConnected = $derived(status === 'connected');
     let isConnecting = $derived(status === 'connecting');
-
-    // Load Command Set is gated behind the Experimental Features toggle.
-    let experimentalFeatures = $derived($uiState.experimentalFeatures);
 
     let statusText = $derived(
         isConnecting
@@ -672,35 +664,6 @@
         } finally {
             busy = false;
         }
-    }
-
-    // Command-line classification (longest base match, skip rules, queueable /
-    // arm / raw) lives in meshcoreConfigState.classifyCommandLine — shared with
-    // applyZoneCommands so the file load and the zone commands evolve together.
-
-    function handleSetSelected(content: string): void {
-        // Load the file into the queue IN FILE ORDER: every command line becomes
-        // one queue entry (verbatim). Config/param rows also fill their card;
-        // non-urgent 0-param actions arm; 'time', urgent actions and unknown lines
-        // stay raw. No reordering, no validation — the list mirrors the file.
-        const lines = trimTrailingEmptyLine(splitIntoCommandLines(content));
-        const queue: QueueEntry[] = [];
-        for (const line of lines) {
-            const c = classifyCommandLine(line, rows);
-            if (c.kind === 'skip') continue;
-            const t = line.trim();
-            if (c.kind === 'value') {
-                rowValues[c.row.id] = c.value;
-                queue.push({ line: t, rowId: c.row.id });
-            } else if (c.kind === 'arm') {
-                queue.push({ line: t, rowId: c.row.id });
-            } else {
-                queue.push({ line: t });
-            }
-        }
-        commandQueue = queue;
-        errorMessage = '';
-        statusMessage = '';
     }
 
     function applyAll(): void {
@@ -1138,7 +1101,7 @@
                     <div
                         class={`h-full space-y-5 overflow-y-auto pr-1 ${activeTab === 'settings' ? '' : 'hidden'}`}
                     >
-                        <!-- Toolbar: Request settings, load command set, single Apply, EOL -->
+                        <!-- Toolbar: Request settings, single Apply, EOL -->
                         <div class="flex flex-wrap items-center gap-3">
                             <button
                                 type="button"
@@ -1148,14 +1111,6 @@
                             >
                                 {$locales('meshcoreconfig.request_settings')}
                             </button>
-
-                            {#if experimentalFeatures}
-                                <McCommandSetPicker
-                                    onselect={handleSetSelected}
-                                    label={$locales('meshcoreconfig.load_command_set')}
-                                    dropup={false}
-                                />
-                            {/if}
 
                             <!-- Single Apply for the whole assembled queue (config + actions). -->
                             <button

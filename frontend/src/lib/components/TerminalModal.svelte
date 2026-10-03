@@ -151,6 +151,23 @@
         prevIsOpen = open;
     });
 
+    // Task 88 П4: the direct link (?m=terminal) mounts the component ALREADY open
+    // (fixed isOpen=true), so the {#if isOpen} subtree would be created in the same
+    // pass as the component itself. The firmware-modal path always opens the
+    // content by a later false->true flip over a mounted component. Defer the
+    // content by one frame so BOTH paths share the same lifecycle: the subtree is
+    // created by a reactive update against an attached, laid-out modal (CommandInput
+    // measures the field, Xterm sizes its host).
+    let contentShown = $state(false);
+    $effect(() => {
+        if (!isOpen) {
+            contentShown = false;
+            return;
+        }
+        const raf = requestAnimationFrame(() => (contentShown = true));
+        return () => cancelAnimationFrame(raf);
+    });
+
     // Terminal options
     const options = {
         fontSize: 14,
@@ -723,7 +740,7 @@
     });
 </script>
 
-{#if isOpen}
+{#if isOpen && contentShown}
     <div
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
         role="dialog"
@@ -762,7 +779,7 @@
                         <div
                             class="relative h-full w-full overflow-hidden rounded-lg border border-gray-700 bg-gray-950"
                         >
-                            <Xterm {options} {onLoad} />
+                            <Xterm {options} {onLoad} class="h-full w-full" />
                         </div>
                     </div>
                 </div>

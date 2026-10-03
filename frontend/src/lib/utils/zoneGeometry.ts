@@ -175,7 +175,9 @@ export function validateGeometry(geom: ZoneGeometry): GeometryValidation {
 // operation produced nothing usable.
 export type GeometryResult =
     | { ok: true; geometry: ZoneGeometry }
-    | { ok: false; reason: 'covered' | 'invalid' };
+    // `coveredBy` (task 88): index into the `existing` array of the obstacle
+    // whose subtraction emptied the remainder ('covered' only).
+    | { ok: false; reason: 'covered' | 'invalid'; coveredBy?: number };
 
 function diff(
     target: Feature<Polygon | MultiPolygon>,
@@ -187,12 +189,15 @@ function diff(
 
 // Subtract all `existing` geometries from `newGeom` (no-overlap on commit).
 // Returns ok:false with 'covered' when the new polygon is fully inside an
-// existing zone, or 'invalid' when the result fails validation.
+// existing zone (with `coveredBy` — the index of the obstacle whose
+// subtraction emptied the remainder), or 'invalid' when the result fails
+// validation.
 export function subtractExisting(newGeom: ZoneGeometry, existing: ZoneGeometry[]): GeometryResult {
     let current: Feature<Polygon | MultiPolygon> | null = toTurfFeature(newGeom);
-    for (const ex of existing) {
+    for (let i = 0; i < existing.length; i++) {
         if (!current) break;
-        current = diff(current, toTurfFeature(ex));
+        current = diff(current, toTurfFeature(existing[i]));
+        if (!current) return { ok: false, reason: 'covered', coveredBy: i };
     }
     if (!current) return { ok: false, reason: 'covered' };
     const result = fromTurfFeature(current);

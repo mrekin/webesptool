@@ -417,38 +417,75 @@
         console.info('[meshcore-zone]', 'undo', undoStack.length);
     }
 
-    // All geometries a new/edited zone must NOT overlap: every published group
+    // One obstacle for the overlap check: geometry plus the display names the
+    // discard notice names (group always, zone when known).
+    interface OverlapObstacle {
+        geometry: ZoneGeometry;
+        groupName: string;
+        zoneName?: string;
+    }
+
+    // All obstacles a new/edited zone must NOT overlap: every published group
     // except the one being edited, plus every in-session zone (optionally
-    // excluding one being extended). A published group that is currently shown
-    // (selected) blocks at ANY level — so a zone can be drawn to fit between
-    // selected groups without overlapping them, mirroring homeless reference
-    // zones from base boundaries. A hidden group blocks only at its own level.
-    // Enforces "groups never overlap".
-    function overlapGeometries(opts?: {
+    // excluding one being extended). Enforces "groups never overlap" with the
+    // single level rule (task 88 П3): a published group — shown or hidden — is
+    // an obstacle only when its level conflicts with the target level, the same
+    // rule the moderation engine applies.
+    function overlapObstacles(opts?: {
         level?: number | null; // null = wildcard (a homeless zone conflicts with any level)
         excludeOriginUrl?: string;
         excludePolygonId?: string;
-    }): ZoneGeometry[] {
+    }): OverlapObstacle[] {
         // Two zones conflict (may not overlap) when they share a level, OR when
         // either is a wildcard (no group/level) — a homeless zone collides with
         // every level. Zones at different concrete levels may nest freely (a city
         // over a region/country).
         const lvl: number | null = opts?.level === undefined ? ZONE_LEVEL_DEFAULT : opts.level;
-        const out: ZoneGeometry[] = [];
+        const out: OverlapObstacle[] = [];
         for (const gf of groupFiles) {
             if (gf.url === opts?.excludeOriginUrl) continue;
             const gfLvl = gf.level ?? ZONE_LEVEL_DEFAULT;
-            // A shown (selected) published group is an obstacle at any level;
-            // a hidden one blocks only on a same-level conflict.
-            if (!shownGroups.has(gf.url) && !levelsConflict(lvl, gfLvl)) continue;
-            for (const f of gf.features) out.push(f.geometry);
+            if (!levelsConflict(lvl, gfLvl)) continue;
+            for (const f of gf.features) {
+                out.push({
+                    geometry: f.geometry,
+                    groupName: gf.name,
+                    zoneName: (f.properties?.name as string) || undefined
+                });
+            }
         }
         for (const p of polygons) {
             if (p.id === opts?.excludePolygonId) continue;
             if (!levelsConflict(lvl, groupLevel(p.groupId))) continue;
-            out.push(p.geom as ZoneGeometry);
+            const g = groups.find((gr) => gr.id === p.groupId);
+            out.push({
+                geometry: p.geom as ZoneGeometry,
+                groupName: g?.name.trim() || $locales('meshcoreconfig.zones.no_group'),
+                zoneName: p.label?.trim() || undefined
+            });
         }
         return out;
+    }
+
+    // Localized discard notice: names the obstacle when subtractExisting reported
+    // it; the generic text stays as the fallback for 'invalid'/unknown cases.
+    function overlapNotice(
+        result: { ok: false; reason: 'covered' | 'invalid'; coveredBy?: number },
+        obstacles: OverlapObstacle[]
+    ): string {
+        const o = result.coveredBy === undefined ? undefined : obstacles[result.coveredBy];
+        if (o?.zoneName) {
+            return $locales('meshcoreconfig.zones.overlap_conflict_zone')
+                .replace('{group}', o.groupName)
+                .replace('{zone}', o.zoneName);
+        }
+        if (o) {
+            return $locales('meshcoreconfig.zones.overlap_conflict_group').replace(
+                '{group}',
+                o.groupName
+            );
+        }
+        return $locales('meshcoreconfig.zones.overlap_discarded');
     }
 
     function activeOriginUrl(): string | undefined {
@@ -527,16 +564,18 @@
     }
 
     function commitZone(kind: 'polygon' | 'circle', geom: ZoneGeometry, label?: string): void {
+        const obstacles = overlapObstacles({
+            excludeOriginUrl: activeOriginUrl(),
+            level: groupLevel(activeGroupId)
+        });
         const result = subtractExisting(
             geom,
-            overlapGeometries({
-                excludeOriginUrl: activeOriginUrl(),
-                level: groupLevel(activeGroupId)
-            })
+            obstacles.map((o) => o.geometry)
         );
         if (!result.ok) {
-            console.info('[meshcore-zone]', 'overlap_discarded', result.reason);
-            showNotice($locales('meshcoreconfig.zones.overlap_discarded'), 'warn');
+            const notice = overlapNotice(result, obstacles);
+            console.info('[meshcore-zone]', 'overlap_discarded', result.reason, notice);
+            showNotice(notice, 'warn');
             return;
         }
         pushHistory();
@@ -691,15 +730,19 @@
         }
         const originUrl = target ? groupOriginUrl(target.groupId) : groupOriginUrl(activeGroupId);
         const paintLvl = target ? groupLevel(target.groupId) : groupLevel(activeGroupId);
-        const overlap = overlapGeometries({
+        const obstacles = overlapObstacles({
             excludeOriginUrl: originUrl,
             excludePolygonId: target?.id,
             level: paintLvl
         });
-        const free = subtractExisting(painted, overlap);
+        const free = subtractExisting(
+            painted,
+            obstacles.map((o) => o.geometry)
+        );
         if (!free.ok) {
-            console.info('[meshcore-zone]', 'brush_overlap_discarded', free.reason);
-            showNotice($locales('meshcoreconfig.zones.overlap_discarded'), 'warn');
+            const notice = overlapNotice(free, obstacles);
+            console.info('[meshcore-zone]', 'brush_overlap_discarded', free.reason, notice);
+            showNotice(notice, 'warn');
             return;
         }
         pushHistory();
@@ -1406,6 +1449,28 @@
         if (activeGroupId === id) activeGroupId = null;
         uploadBaselines.delete(id); // per-group upload baseline (task 85)
     }
+
+    // Remove a successfully uploaded group from the session (PRD 88 П2). Unlike
+    // removeGroup this is NOT an undoable edit: no history entry is pushed and the
+    // group is scrubbed from every existing undo snapshot, so undo can never bring
+    // the sent copy back (PRD scenario 8). A published original hidden for editing
+    // (editGroup) becomes visible again (PRD scenario 7).
+    function purgeUploadedGroup(id: string, originUrl?: string): void {
+        groups = groups.filter((g) => g.id !== id);
+        polygons = polygons.filter((p) => p.groupId !== id);
+        if (activeGroupId === id) activeGroupId = null;
+        uploadBaselines.delete(id); // per-group upload baseline (task 85)
+        undoStack = undoStack.map((snap) => ({
+            groups: snap.groups.filter((g) => g.id !== id),
+            polygons: snap.polygons.filter((p) => p.groupId !== id),
+            activeGroupId: snap.activeGroupId === id ? null : snap.activeGroupId
+        }));
+        // Restore the visibility editGroup took away; a manually re-checked
+        // original (already in shownGroups) stays as the user set it.
+        if (originUrl && !shownGroups.has(originUrl)) {
+            shownGroups = toggleSet(shownGroups, originUrl);
+        }
+    }
     // Make a group the target for newly created zones. One-way (clicking another
     // group switches the target). Guarded so a click that removes the group (the
     // ✕ button bubbles to the card) does not leave a dangling activeGroupId.
@@ -1805,14 +1870,18 @@
         }
         uploadBusy = true;
         let okCount = 0;
+        // Freeze the queue before the loop (task 88 П2): purgeUploadedGroup
+        // mutates `groups`, and uploadableGroups is a derived that recomputes on
+        // that mutation — iterating the live derived list would skip groups.
+        const queue = [...uploadableGroups];
         // Sequential with a pause, same pacing as the multi-file export.
-        for (let i = 0; i < uploadableGroups.length; i++) {
-            const g = uploadableGroups[i];
+        for (let i = 0; i < queue.length; i++) {
+            const g = queue[i];
             if (await uploadOne(g)) {
                 okCount++;
-                uploadBaselines.set(g.id, groupFingerprint(g));
+                purgeUploadedGroup(g.id, g.originUrl);
             }
-            if (i < uploadableGroups.length - 1) {
+            if (i < queue.length - 1) {
                 await new Promise((resolve) => setTimeout(resolve, 350));
             }
         }
@@ -1884,7 +1953,7 @@
         uploadBusy = false;
         uploadingGroupId = null;
         if (ok) {
-            uploadBaselines.set(g.id, groupFingerprint(g));
+            purgeUploadedGroup(g.id, g.originUrl);
             refreshOwnPending(); // same queue refresh as a mass upload (moderator case)
             showNotice($locales('meshcoreconfig.zones.upload_done').replace('{n}', '1'));
         }

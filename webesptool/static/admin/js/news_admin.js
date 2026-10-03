@@ -673,6 +673,10 @@ function setJsonMode(enabled) {
         syncJsonEditor();
         document.getElementById('lang-editor-mode').style.display = 'none';
         document.getElementById('json-editor-mode').style.display = 'block';
+        // Task 88 П7: re-measure AFTER the field is visible — while hidden its
+        // scrollHeight is 0, so the pre-show measurement collapses it. One rAF
+        // covers every enable path (toggle switch, AI prompt auto-switch).
+        requestAnimationFrame(autoResizeJsonEditor);
     } else {
         if (!applyJsonToForm()) {
             // Invalid JSON: stay in JSON mode
@@ -754,27 +758,50 @@ async function generateAIPrompt() {
         .replace('{max_title_length}', BOOTSTRAP.maxTitleLength)
         .replace('{max_body_length}', BOOTSTRAP.maxBodyLength);
 
-    // Clipboard first; guaranteed fallback modal when unavailable or denied
-    let copied = false;
-    try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(prompt);
-            copied = true;
-        }
-    } catch (e) {
-        copied = false;
-    }
-
+    const copied = await copyTextToClipboard(prompt);
     if (copied) {
         showAlert('Prompt copied to clipboard', 'success');
     } else {
-        await promptFallbackModal({ title: 'AI prompt', text: prompt });
+        showAlert('Could not copy the prompt to clipboard', 'danger');
     }
 
     // Existing behavior: switch to JSON mode after generating the prompt
     if (!isJsonMode) {
         setJsonMode(true);
     }
+}
+
+// Legacy clipboard write for non-secure origins / denied permission: a hidden
+// textarea + execCommand inside the same user gesture (the historical path).
+function legacyCopyText(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    let ok = false;
+    try {
+        ok = document.execCommand('copy');
+    } catch (e) {
+        ok = false;
+    }
+    document.body.removeChild(ta);
+    return ok;
+}
+
+// Copy via the async Clipboard API; any failure (unavailable, non-secure
+// origin, denied) falls back to the legacy path. Resolves true on success.
+function copyTextToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text).then(
+            function () { return true; },
+            function () { return legacyCopyText(text); }
+        );
+    }
+    return Promise.resolve(legacyCopyText(text));
 }
 
 // --- Column resizers (desktop, Pointer Events) ------------------------------------
@@ -789,15 +816,12 @@ function initResizers() {
         let startPrevWidth = 0;
         let startNextWidth = 0;
 
-        // Per-column clamps
-        function clampWidth(column, width) {
-            let min = 300;
-            let max = Infinity;
-            if (column.classList.contains('col-news-list')) {
-                min = 280;
-                max = 700;
+        // Per-column limits (mirror the CSS min/max-width of the columns).
+        function columnLimits(column) {
+            if (column && column.classList.contains('col-news-list')) {
+                return { min: 280, max: 700 };
             }
-            return Math.max(min, Math.min(max, width));
+            return { min: 300, max: Infinity };
         }
 
         resizer.addEventListener('pointerdown', function (e) {
@@ -813,15 +837,26 @@ function initResizers() {
         resizer.addEventListener('pointermove', function (e) {
             if (!resizer.classList.contains('active')) return;
             const delta = e.clientX - startX;
-
+            // ONE shared clamp for the pair (task 88 П5): the boundary stops at the first
+            // limit either of ITS two columns hits — the freed space must not leak into
+            // the flexible third column.
+            const prevLim = columnLimits(prevColumn);
+            const nextLim = columnLimits(nextColumn);
+            const maxDelta = Math.min(
+                prevLim.max - startPrevWidth,
+                nextColumn ? startNextWidth - nextLim.min : Infinity
+            );
+            const minDelta = Math.max(
+                prevLim.min - startPrevWidth,
+                nextColumn ? startNextWidth - nextLim.max : -Infinity
+            );
+            const d = Math.min(maxDelta, Math.max(minDelta, delta));
             if (prevColumn) {
-                prevColumn.style.flexBasis =
-                    clampWidth(prevColumn, startPrevWidth + delta) + 'px';
+                prevColumn.style.flexBasis = (startPrevWidth + d) + 'px';
                 prevColumn.style.flexGrow = '0';
             }
             if (nextColumn) {
-                nextColumn.style.flexBasis =
-                    clampWidth(nextColumn, startNextWidth - delta) + 'px';
+                nextColumn.style.flexBasis = (startNextWidth - d) + 'px';
                 nextColumn.style.flexGrow = '0';
             }
         });
