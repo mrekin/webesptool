@@ -988,6 +988,12 @@ export interface ZoneGroupSettings extends MeshcoreZoneSettings {
     settingsPresets?: NamedMeshcoreSettings[];
 }
 
+// metadata.meshcore of a serialized group file: the group settings payload
+// (flat XOR presets — contract 82) plus the group-level `inherit` flag
+// (task 87) — an attribute of the whole group like `level`, never a preset
+// field. Stored verbatim when set; absence = not configured.
+export type ZoneGroupFileSettings = ZoneGroupSettings & { inherit?: boolean };
+
 // One normalized catalog feature. `bbox` is precomputed at parse time for the
 // lookup prefilter ([minLon, minLat, maxLon, maxLat]).
 export interface ZoneFeature {
@@ -1002,6 +1008,10 @@ export interface ZoneFeature {
     nameTemplate?: string; // per-zone node-name template (from properties.meshcore.nameTemplate)
     docUrl?: string; // per-zone settings-document link (from properties.meshcore.docUrl)
     level?: number; // zone hierarchy level 1-5 (default 1; 1=country, 5=city district)
+    // Group-level inheritance flag (task 87): stamped from the owning group's
+    // metadata — only an explicit `true` pulls in the coarser zones containing
+    // this zone; false/absent = no inheritance.
+    inherit?: boolean;
     commands?: string[]; // extra meshcore command lines (from properties.meshcore.commands)
     // Named settings presets of the owning group (task 82), attached at parse
     // time from `metadata.meshcore.settingsPresets` — memory-only, never
@@ -1031,6 +1041,9 @@ export interface GroupFile {
     nameTemplate?: string; // group node-name template (from metadata.meshcore.nameTemplate)
     docUrl?: string; // group settings-document link (from metadata.meshcore.docUrl)
     level?: number; // group zone hierarchy level 1-5 (default 1)
+    // Task 87 addition: stored value — false = the group cuts the inheritance
+    // chain (nothing coarser participates); absent/true = inherits.
+    inherit?: boolean;
     commands?: string[]; // extra meshcore command lines (from metadata.meshcore.commands)
     // Named settings presets (task 82); when present, the flat settings fields
     // above are not filled from metadata (presets take priority, RSR §3.7).
@@ -1136,6 +1149,10 @@ export interface ZoneGroup {
     nameTemplate?: string; // group node-name template
     docUrl?: string; // group settings-document link
     level?: number; // group zone hierarchy level 1-5 (default 1)
+    // Task 87 addition: stored value — false = does not inherit (chain cut),
+    // true = inherits explicitly, absent = not configured (inherits by
+    // default). The editor checkbox mirrors this value.
+    inherit?: boolean;
     commands?: string[]; // extra meshcore command lines (task 79)
     // Named settings presets (task 82) — mutually exclusive with the flat
     // settings fields above (enforced by zoneSettingsPresets.applySettingsPresets).

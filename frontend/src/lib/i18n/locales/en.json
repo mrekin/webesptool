@@ -318,6 +318,7 @@
             "no_catalog": "Zone catalog not loaded",
             "apply_zone": "Apply zone",
             "editor_title": "Zone drawing tool",
+            "editor_inherit_settings": "Inherits settings from lower levels",
             "tool_polygon": "Polygon",
             "tool_circle": "Circle",
             "tool_erase": "Erase",

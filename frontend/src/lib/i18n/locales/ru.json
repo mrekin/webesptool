@@ -318,6 +318,7 @@
             "no_catalog": "Каталог зон не загружен",
             "apply_zone": "Применить зону",
             "editor_title": "Инструмент рисования зон",
+            "editor_inherit_settings": "Наследует настройки с уровней ниже",
             "tool_polygon": "Полигон",
             "tool_circle": "Круг",
             "tool_erase": "Стереть",

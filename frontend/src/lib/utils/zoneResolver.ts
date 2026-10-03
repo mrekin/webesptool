@@ -1,13 +1,14 @@
 // Pure point-in-polygon lookup for the meshcore zone catalog (task 72).
 // No Svelte, no fetch — only the catalog + point. Returns the `regions` value
 // (tokens) plus the optional preset (radio/pathHashMode/nameTemplate/docUrl)
-// merged over EVERY zone level containing the point (task 87: inheritance
-// chain, most specific wins), or nothing on miss/unavailable. A hit means the
-// point is inside at least one zone polygon — zones may carry any subset of
-// preset fields (regions is optional, so tokens may be empty). Task 82: a
-// feature may carry named settings presets (attached at parse time from
-// metadata) — the result then reports them all plus the flat fields of the
-// applied one.
+// merged over the zone levels containing the point (task 87: inheritance
+// chain, most specific wins; only an explicit `inherit: true` continues the
+// chain toward coarser zones), or nothing on miss/unavailable. A hit
+// means the point is inside at least one zone polygon — zones may carry any
+// subset of preset fields (regions is optional, so tokens may be empty).
+// Task 82: a feature may carry named settings presets (attached at parse time
+// from metadata) — the result then reports them all plus the flat fields of
+// the applied one.
 
 import { ZONE_LEVEL_DEFAULT } from '$lib/config/meshcoreZoneConfig';
 import { pointInGeometry } from '$lib/utils/zoneGeometry';
@@ -200,11 +201,12 @@ export function mergeZoneRegionResults(parts: ZoneResolutionPart[]): ZoneRegionR
 // - point inside feature(s)   -> status 'hit', merged chain result (task 87)
 // - point outside every feature -> status 'miss'
 // Zones may nest across hierarchy levels (a city zone over a country zone);
-// ALL containing zones participate in the result — merged from the largest
-// level to the most specific one (mergeZoneRegionResults), one zone per level.
-// Zones at the same level never overlap, so a same-level double-hit is
-// impossible in a well-formed catalog — logged defensively and ignored. Never
-// throws: a failing feature is skipped with a warning.
+// the chain is merged from the largest level to the most specific one
+// (mergeZoneRegionResults), one zone per level — but only while walking up
+// from the most specific zone over zones with an explicit `inherit: true`.
+// Zones at the same level never overlap, so a same-level
+// double-hit is impossible in a well-formed catalog — logged defensively and
+// ignored. Never throws: a failing feature is skipped with a warning.
 export function lookupZoneRegion(point: [number, number], catalog: ZoneCatalog): ZoneRegionResult {
     if (catalog.status !== 'ok' || catalog.features.length === 0) {
         return { tokens: [], status: 'unavailable', reason: catalog.reason ?? 'empty_catalog' };
@@ -231,5 +233,9 @@ export function lookupZoneRegion(point: [number, number], catalog: ZoneCatalog):
     if (parts.length === 0) return { tokens: [], status: 'miss' };
     // Largest (least specific) level first — the merge order.
     parts.sort((a, b) => a.level - b.level);
-    return mergeZoneRegionResults(parts);
+    // Inheritance cut (task 87): only an explicit `inherit: true` continues
+    // the walk toward coarser zones — false/absent stop it.
+    let start = parts.length - 1;
+    while (start > 0 && parts[start].feature.inherit === true) start--;
+    return mergeZoneRegionResults(parts.slice(start));
 }

@@ -9,6 +9,7 @@ import type {
     ExportZone,
     MeshcoreZoneSettings,
     NamedMeshcoreSettings,
+    ZoneGroupFileSettings,
     ZoneGroupSettings
 } from '$lib/types';
 
@@ -26,7 +27,9 @@ export type ZoneCatalogJson = GeoJSON.FeatureCollection & {
         // Mutually exclusive forms (RSR §3.0): either the flat preset fields
         // (incl. `level`) or `level` + `settingsPresets` — never both; written
         // that way by serializeGroup, read metadata-first by zoneFeatures.
-        meshcore?: ZoneGroupSettings;
+        // ZoneGroupFileSettings adds the optional group-level `inherit` flag
+        // (task 87 addition; only `false` is ever written).
+        meshcore?: ZoneGroupFileSettings;
     };
 };
 
@@ -95,30 +98,37 @@ function buildPresetBlock(p: NamedMeshcoreSettings): NamedMeshcoreSettings {
 // (no settingsPresets) writes the flat preset incl. `level` — the same block
 // composition as before; grouped state writes ONLY `level` +
 // `settingsPresets` (flat settings fields are deliberately omitted — the two
-// forms are mutually exclusive, RSR §3.0). Features carry no `properties.meshcore`
-// at all: settings and level are enriched back in memory at parse time
-// (zoneFeatures.enrichFeaturesFromMetadata), which also makes new files
-// noticeably smaller than the old per-polygon duplication. `author` is
-// metadata-only — not firmware config, not duplicated into features.
+// forms are mutually exclusive, RSR §3.0). `inherit` (task 87 addition) is a
+// group-level attribute next to `level`, written verbatim when set. Features
+// carry no `properties.meshcore` at all: settings and level are enriched back
+// in memory at parse time (zoneFeatures.enrichFeaturesFromMetadata), which
+// also makes new files noticeably smaller than the old per-polygon
+// duplication. `author` is metadata-only — not firmware config, not
+// duplicated into features.
 export function serializeGroup(
     name: string,
     settings: ZoneGroupSettings,
     zones: ExportZone[],
-    author?: string
+    author?: string,
+    inherit?: boolean
 ): ZoneCatalogJson {
     const metadata: ZoneCatalogJson['metadata'] = {
         schema: ZONE_CATALOG_SCHEMA,
         group: name
     };
     if (author && author.trim()) metadata.author = author.trim();
+    const inheritField = inherit === undefined ? {} : { inherit };
     if (settings.settingsPresets && settings.settingsPresets.length > 0) {
         metadata.meshcore = {
             ...(settings.level != null ? { level: settings.level } : {}),
+            ...inheritField,
             settingsPresets: settings.settingsPresets.map(buildPresetBlock)
         };
     } else {
         const metaBlock = buildMeshcoreBlock(settings);
-        if (metaBlock) metadata.meshcore = metaBlock;
+        if (metaBlock || inherit !== undefined) {
+            metadata.meshcore = { ...(metaBlock ?? {}), ...inheritField };
+        }
     }
     return {
         type: 'FeatureCollection',

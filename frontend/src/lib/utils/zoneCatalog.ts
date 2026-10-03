@@ -182,6 +182,8 @@ export function parseGroupFile(url: string, json: unknown): GroupFile | null {
             nameTemplate: presets ? undefined : metaMc.nameTemplate,
             docUrl: presets ? undefined : metaMc.docUrl,
             level,
+            // Group-level inheritance flag (task 87 addition) — stored value.
+            inherit: typeof metaMc.inherit === 'boolean' ? metaMc.inherit : undefined,
             commands: presets ? undefined : metaMc.commands,
             settingsPresets: presets ?? undefined,
             author:

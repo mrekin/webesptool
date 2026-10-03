@@ -36,7 +36,8 @@ function parseRadio(raw: unknown): RadioSpec | null {
 // resolved regions (possibly '') and the optional preset fields. `level` is the
 // zone hierarchy level (1-5); undefined when not specified (coalesced to the
 // default at use sites — resolver/overlap — so "unspecified" stays
-// distinguishable from an explicit 1 during group detection/merge).
+// distinguishable from an explicit 1 during group detection/merge). `inherit`
+// (task 87) is the group-level flag; only an exact boolean is accepted.
 export function readMeshcore(
     props: Record<string, unknown> | null | undefined,
     fallbackRegions = ''
@@ -48,6 +49,7 @@ export function readMeshcore(
     docUrl?: string;
     level?: number; // 1-5; undefined when not specified
     commands?: string[]; // trimmed non-empty strings; undefined when none survive
+    inherit?: boolean; // group inheritance flag (task 87); exact boolean only
 } {
     const mcRaw = props?.meshcore;
     const mc =
@@ -60,6 +62,7 @@ export function readMeshcore(
                   docUrl?: unknown;
                   level?: unknown;
                   commands?: unknown;
+                  inherit?: unknown;
               })
             : null;
     const regions =
@@ -92,7 +95,8 @@ export function readMeshcore(
         nameTemplate: mc ? optStr(mc.nameTemplate) : undefined,
         docUrl: mc ? optStr(mc.docUrl) : undefined,
         level: mc ? optLevel(mc.level) : undefined,
-        commands: mc ? optCommands(mc.commands) : undefined
+        commands: mc ? optCommands(mc.commands) : undefined,
+        inherit: mc && typeof mc.inherit === 'boolean' ? mc.inherit : undefined
     };
 }
 
@@ -103,7 +107,9 @@ export function readMeshcore(
 // it is an object with a non-empty (after trim) string `name`. Element fields
 // are coerced by the very same `readMeshcore` rules (the element is wrapped as
 // the nested `meshcore` block), with `level` deliberately DROPPED — a preset
-// does not carry it (level is a zone-group attribute, RSR §3.6). `isDefault`
+// does not carry it (level is a zone-group attribute, RSR §3.6); the group
+// `inherit` flag (task 87 addition) is dropped the same way for the same
+// reason. `isDefault`
 // counts only for the FIRST element with `isDefault === true`; the flag is
 // discarded on the rest (a hand-made file cannot smuggle in two defaults).
 // The argument is the raw `metadata.meshcore` value (the whole block — what
@@ -269,9 +275,11 @@ export function detectGroupMeshcore(fc: GeoJSON.FeatureCollection): MeshcoreZone
 // feature, each non-empty metadata field OVERWRITES the feature's field
 // (regions — only when a non-empty string; radio/pathHashMode/nameTemplate/
 // docUrl/commands — when defined; level = metaMc.level ?? feature.level), and
-// `settingPresets` is attached when metadata carries presets. When metadata
-// yields neither a single field nor presets the features are returned as-is
-// (the fallback stays in force). Input objects are never mutated (map+spread).
+// `settingPresets` is attached when metadata carries presets. The group
+// `inherit` flag is stamped onto every feature when exactly `false` (task 87).
+// When metadata yields neither a single field nor presets the
+// features are returned as-is (the fallback stays in force). Input objects
+// are never mutated (map+spread).
 export function enrichFeaturesFromMetadata(
     features: ZoneFeature[],
     meta: Record<string, unknown> | null | undefined
@@ -286,6 +294,7 @@ export function enrichFeaturesFromMetadata(
         metaMc.docUrl ||
         metaMc.commands ||
         metaMc.level != null ||
+        metaMc.inherit !== undefined ||
         presets
     );
     if (!hasAnyField) return features;
@@ -298,6 +307,7 @@ export function enrichFeaturesFromMetadata(
         docUrl: metaMc.docUrl ?? f.docUrl,
         commands: metaMc.commands ?? f.commands,
         level: metaMc.level ?? f.level,
+        ...(typeof metaMc.inherit === 'boolean' ? { inherit: metaMc.inherit } : {}),
         settingPresets: presets ?? f.settingPresets
     }));
 }

@@ -318,6 +318,7 @@
             "no_catalog": "Katalog stref niezaładowany",
             "apply_zone": "Zastosuj strefę",
             "editor_title": "Narzędzie rysowania stref",
+            "editor_inherit_settings": "Dziedziczy ustawienia z niższych poziomów",
             "tool_polygon": "Poligon",
             "tool_circle": "Okrąg",
             "tool_erase": "Wymaż",

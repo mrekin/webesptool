@@ -29,7 +29,7 @@
         fetchGroupFiles,
         parseZoneFeatures
     } from '$lib/utils/zoneCatalog';
-    import { readSettingsPresets } from '$lib/utils/zoneFeatures';
+    import { readMeshcore, readSettingsPresets } from '$lib/utils/zoneFeatures';
     import { applySettingsPresets } from '$lib/utils/zoneSettingsPresets';
     import {
         bufferTrail,
@@ -227,11 +227,15 @@
 
     // Fingerprint of exactly what an upload would serialize (same sources as
     // uploadOne) — unrelated groups' edits never change this group's print.
+    // `inherit` (task 87 addition) rides next to the settings: serializeGroup
+    // writes it from the group verbatim (true/false; undefined is dropped by
+    // JSON.stringify exactly like the omitted file field), NOT from the payload.
     function groupFingerprint(g: ZoneGroup): string {
         return JSON.stringify({
             name: g.name.trim(),
             author: g.author ?? '',
             settings: groupSettingsPayload(g),
+            inherit: g.inherit,
             zones: groupExportZones(g)
         });
     }
@@ -1241,7 +1245,12 @@
     function addGroup(): void {
         pushHistory();
         const id = genId('g');
-        groups = [...groups, { id, name: '', regions: '', level: ZONE_LEVEL_DEFAULT_NEW_GROUP }];
+        // A NEW group starts with inheritance explicitly ON (task 87 addition)
+        // — serialized as `inherit: true`, so the stored value round-trips.
+        groups = [
+            ...groups,
+            { id, name: '', regions: '', level: ZONE_LEVEL_DEFAULT_NEW_GROUP, inherit: true }
+        ];
         activeGroupId = id;
     }
 
@@ -1280,6 +1289,10 @@
                 nameTemplate: gf.nameTemplate,
                 docUrl: gf.docUrl,
                 level: gf.level,
+                // Group-level inheritance flag (task 87 addition): the STORED
+                // value verbatim (true/false; absent = not configured — the
+                // checkbox shows OFF, the resolver still inherits by default).
+                inherit: gf.inherit,
                 commands: gf.commands,
                 settingsPresets: gf.settingsPresets,
                 author: gf.author,
@@ -1316,6 +1329,7 @@
                 nameTemplate: gf.nameTemplate,
                 docUrl: gf.docUrl,
                 level: gf.level,
+                inherit: gf.inherit,
                 commands: gf.commands,
                 settingsPresets: gf.settingsPresets,
                 author: gf.author
@@ -1345,6 +1359,7 @@
                 nameTemplate: src.nameTemplate,
                 docUrl: src.docUrl,
                 level: src.level,
+                inherit: src.inherit,
                 commands: src.commands,
                 settingsPresets: src.settingsPresets,
                 author: src.author
@@ -1363,6 +1378,16 @@
         groups = groups.map((g) =>
             g.id === id ? { ...g, author: author.trim() || undefined } : g
         );
+    }
+    // Toggle the group-level inheritance flag (task 87 addition). The checkbox
+    // mirrors the STORED value (no setting = OFF): checked writes an explicit
+    // `inherit: true`, unchecked writes `inherit: false` — both survive the
+    // file round-trip. (The resolver's behavioral default for an ABSENT flag —
+    // old files keep inheriting — lives in the resolver, never in this state.)
+    // No pushHistory: a checkbox flip is not a geometric/structural change,
+    // same as the group name/author edits.
+    function updateGroupInherit(id: string, inherits: boolean): void {
+        groups = groups.map((g) => (g.id === id ? { ...g, inherit: inherits } : g));
     }
     // Update a group's full meshcore settings from the settings modal: either a
     // flat preset or named settings presets (task 82) — applySettingsPresets
@@ -1538,6 +1563,9 @@
             (typeof meta.group === 'string' && meta.group) ||
             (typeof meta.name === 'string' && meta.name) ||
             stripGeoExt(filename);
+        // Group-level inheritance flag (task 87 addition) — stored value, kept
+        // out of the settings payload (contract 82) so re-export keeps it.
+        const inherit = readMeshcore(meta as Record<string, unknown>).inherit;
         const features = parseZoneFeatures(fc.features, meshcore.regions);
         if (features.length === 0) {
             showNotice($locales('meshcoreconfig.zones.load_file_invalid'), 'warn');
@@ -1563,6 +1591,7 @@
                 nameTemplate: meshcore.nameTemplate,
                 docUrl: meshcore.docUrl,
                 level: meshcore.level ?? ZONE_LEVEL_DEFAULT,
+                ...(inherit !== undefined ? { inherit } : {}),
                 commands: meshcore.commands,
                 // Grouped file (task 82): the presets ride along; the flat
                 // fields above stay empty by the mutual-exclusivity invariant.
@@ -1648,7 +1677,9 @@
             return;
         }
         downloadCatalog(
-            serializeGroup(g.name, groupSettings(g), zones, g.author),
+            // `inherit` (task 87 addition) is a group-level attribute passed
+            // next to the settings payload — only `false` reaches the file.
+            serializeGroup(g.name, groupSettings(g), zones, g.author, g.inherit),
             groupFileName(g.name, g.regions, g.id)
         );
     }
@@ -1746,7 +1777,9 @@
         }
         const res = await uploadZoneFile(
             groupFileName(g.name, g.regions, g.id),
-            serializeGroup(g.name, groupSettings(g), zones, g.author)
+            // Same serialization as the export download (incl. `inherit`,
+            // task 87 addition) so a re-upload replaces the awaiting version.
+            serializeGroup(g.name, groupSettings(g), zones, g.author, g.inherit)
         );
         if (!res.ok) {
             uploadProblems = [
@@ -2765,6 +2798,31 @@
                                             title={$locales('meshcoreconfig.zones.zone_level')}
                                             >L{g.level ?? 1}</span
                                         >
+                                        <!-- Inheritance flag (task 87): mirrors the
+                                             stored value — no setting = unchecked. -->
+                                        <label
+                                            class="flex items-center gap-1 text-gray-400"
+                                            title={$locales(
+                                                'meshcoreconfig.zones.editor_inherit_settings'
+                                            )}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                class="h-3 w-3"
+                                                checked={g.inherit === true}
+                                                onchange={(e) =>
+                                                    updateGroupInherit(
+                                                        g.id,
+                                                        (e.currentTarget as HTMLInputElement)
+                                                            .checked
+                                                    )}
+                                            />
+                                            <span class="min-w-0"
+                                                >{$locales(
+                                                    'meshcoreconfig.zones.editor_inherit_settings'
+                                                )}</span
+                                            >
+                                        </label>
                                         {#if isGroupDirty(g)}
                                             <span
                                                 class="rounded bg-gray-700 px-1 text-orange-300"
