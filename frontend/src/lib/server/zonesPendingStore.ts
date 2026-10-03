@@ -21,6 +21,7 @@ import {
     writeFileSync
 } from 'node:fs';
 import path from 'node:path';
+import { env } from '$env/dynamic/private';
 import { ZONE_CATALOG_SCHEMA } from '$lib/config/meshcoreZoneConfig';
 import {
     detectGroupMeshcore,
@@ -31,10 +32,26 @@ import {
 import type { ZoneConflictInput } from '$lib/utils/zoneConflicts';
 import type { PendingFileInfo, ZoneFeature } from '$lib/types';
 
-// Hard limits (final PRD values; intentionally NOT env-overridable — minimal
-// configuration surface).
-export const ZONES_UPLOAD_MAX_FILE_BYTES = 1_048_576; // 1 MB per file
+// ZONES_UPLOAD_MAX_FILE_BYTES is THE admin-facing size knob of the zones
+// upload pipeline: the per-file cap in bytes, set via the env variable of the
+// SAME name (K/M/G suffix or plain bytes; default 1 MB). It is never derived
+// from other variables — the values that must follow it (the adapter-node
+// HTTP body limit, computed from this setting by start.mjs) are derived FROM
+// it, so they can never drift apart.
+function parseSizeBytes(raw: string | undefined): number | null {
+    if (!raw) return null;
+    const mult = { K: 1024, M: 1024 ** 2, G: 1024 ** 3 }[raw.slice(-1).toUpperCase()] ?? 1;
+    const n = Number(mult !== 1 ? raw.slice(0, -1) : raw);
+    return Number.isFinite(n) && n > 0 ? n * mult : null;
+}
+export const ZONES_UPLOAD_MAX_FILE_BYTES =
+    parseSizeBytes(env.ZONES_UPLOAD_MAX_FILE_BYTES) ?? 1_048_576; // 1 MB per file
 export const ZONES_PENDING_MAX_TOTAL_BYTES = 52_428_800; // 50 MB per pending catalog
+
+// Allowance over the file cap for the JSON envelope wrapper + escaping. Both
+// consumers of the cap live off this one constant: the upload route's early
+// content-length check and the start.mjs derivation of the adapter body limit.
+export const ENVELOPE_OVERHEAD_BYTES = 1024;
 
 const MAX_BASENAME_LEN = 100;
 

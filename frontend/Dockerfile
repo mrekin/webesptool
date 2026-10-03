@@ -56,6 +56,10 @@ COPY --from=builder /app/pnpm-lock.yaml ./
 COPY --from=builder /app/.npmrc ./
 COPY --from=builder /app/pnpm-workspace.yaml ./
 COPY --from=builder /app/build ./build/
+# Container entry (start.mjs): derives the adapter-node BODY_SIZE_LIMIT from
+# the single admin knob ZONES_UPLOAD_MAX_FILE_BYTES (mirrored in
+# zonesPendingStore.ts) before booting the server.
+COPY --from=builder /app/start.mjs ./
 COPY --from=builder /app/.svelte-kit/output/server ./server/
 COPY --from=builder /app/local-packages ./local-packages/
 
@@ -75,5 +79,6 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
-# Command to run the Svelte application
-CMD ["node", "build/index.js"]
+# Command to run the Svelte application (start.mjs sets the derived
+# BODY_SIZE_LIMIT, then boots build/index.js)
+CMD ["node", "start.mjs"]

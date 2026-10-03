@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { checkUploadRateLimit } from '$lib/server/zonesModeration';
 import { notifyPendingUpload } from '$lib/server/zonesWebhook';
 import {
+    ENVELOPE_OVERHEAD_BYTES,
     loadPublishedGroupEntries,
     pendingConflictInput,
     pendingQuotaExceeded,
@@ -22,11 +23,6 @@ import { findZoneConflicts } from '$lib/utils/zoneConflicts';
 // envelope parse -> filename sanitize -> exact size -> format+docUrl -> quota
 // -> conflicts -> atomic write -> webhook (fire-and-forget). Every rejection
 // is logged with its machine code.
-
-// Allowance over the file limit for the JSON envelope wrapper + escaping when
-// rejecting early by the content-length header (the exact byteLength check
-// below stays authoritative).
-const ENVELOPE_OVERHEAD_BYTES = 1024;
 
 function reject(
     code: string,
@@ -54,11 +50,17 @@ export const POST: RequestHandler = async (event) => {
         return reject('file_too_large', 413);
     }
 
-    // 3. Envelope: { filename: string, content: FeatureCollection }.
+    // 3. Envelope: { filename: string, content: FeatureCollection }. A body
+    // rejected by the adapter's size limit (derived from
+    // ZONES_UPLOAD_MAX_FILE_BYTES by start.mjs) must not masquerade as broken
+    // JSON — it gets the same honest code as the route's own size checks.
     let body: unknown;
     try {
         body = await event.request.json();
-    } catch {
+    } catch (err) {
+        if ((err as { status?: unknown })?.status === 413) {
+            return reject('file_too_large', 413);
+        }
         return reject('invalid_json', 400);
     }
     const envelope = body as { filename?: unknown; content?: unknown };
