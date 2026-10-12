@@ -14,6 +14,7 @@
     import { browser } from '$app/environment';
     import { DeviceType, RepositoryType } from '$lib/types.js';
     import { DEVICE_GROUP_LABELS } from '$lib/utils/deviceTypeUtils.js';
+    import { meshcoreVersionGroupStarts } from '$lib/utils/meshcoreVersion.js';
     import type { DeviceCategoryType } from '$lib/types.ts';
     import { _ as locales } from 'svelte-i18n';
 
@@ -82,6 +83,13 @@
             (d: { device: string; category: string }) => d.category === 'rp2040'
         )
     }));
+
+    // Meshcore build groups: a separator line is rendered before each start
+    // index. Empty for non-meshcore sources (and while the source is unresolved).
+    const versionGroupStarts = $derived.by(() => {
+        if ($currentSource?.type !== RepositoryType.MESHCORE) return new Set<number>();
+        return meshcoreVersionGroupStarts($versionsData.versions);
+    });
 
     // Auto-select latest version when versions are loaded for selected device
     $effect(() => {
@@ -554,6 +562,13 @@
                             class="dropdown-list absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-orange-600 bg-gray-800 shadow-lg"
                         >
                             {#each $versionsData.versions as version, i (version)}
+                                {#if versionGroupStarts.has(i)}
+                                    <!-- Build group separator: plain non-interactive line -->
+                                    <div
+                                        class="pointer-events-none my-1 border-t border-gray-600"
+                                        aria-hidden="true"
+                                    ></div>
+                                {/if}
                                 <button
                                     type="button"
                                     class="w-full px-4 py-2 text-left text-sm hover:bg-gray-700 {selectedVersionIndex ===
