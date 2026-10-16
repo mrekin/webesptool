@@ -5,6 +5,9 @@
 // identity / location / radio / flood / region / system. Read-only queries
 // (ver, stats-*, neighbors, log print, get *, discover.neighbors, board, clock,
 // view-forms of dual commands) are intentionally excluded — they don't set state.
+// Exception (owner decision, PRD 92 goal 6): the read-only exclusion does not
+// apply to 'power' and 'gps diag' — read-only status queries included as
+// run-now "show the answer" actions.
 
 export interface MeshcoreAction {
     /** Full command string as in meshcoreCommandData (used to look up params/label). */
@@ -29,6 +32,8 @@ export const MESHCORE_ACTIONS: MeshcoreAction[] = [
     { command: 'gps advert {none|share|prefs}', groupId: 'location' },
     { command: 'gps sync', groupId: 'location' },
     { command: 'gps setloc', groupId: 'location' },
+    // Read-only GPS diagnostics (owner decision, PRD 92 goal 6).
+    { command: 'gps diag', groupId: 'location', urgent: true },
 
     // Radio (power saving)
     { command: 'powersaving on', groupId: 'radio' },
@@ -58,5 +63,11 @@ export const MESHCORE_ACTIONS: MeshcoreAction[] = [
     { command: 'clear stats', groupId: 'system', urgent: true },
     { command: 'log start', groupId: 'system', urgent: true },
     { command: 'log stop', groupId: 'system', urgent: true },
-    { command: 'log erase', groupId: 'system', urgent: true }
+    { command: 'log erase', groupId: 'system', urgent: true },
+    // companion 1.18.0: power-off twins of reboot; 'power' is a read-only status
+    // query kept here by owner decision (PRD 92 goal 6) despite the read-only
+    // exclusion above.
+    { command: 'poweroff', groupId: 'system', danger: true, urgent: true },
+    { command: 'shutdown', groupId: 'system', danger: true, urgent: true },
+    { command: 'power', groupId: 'system', urgent: true }
 ];

@@ -1,6 +1,6 @@
 {
     "name": "frontend",
-    "version": "0.20.3",
+    "version": "0.21.0",
     "scripts": {
         "dev": "vite dev",
         "build": "svelte-kit sync && vite build",

@@ -250,6 +250,42 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
     },
     { command: 'get tx', params: [], separator: null, shortDescription: 'View transmit power' },
     {
+        command: 'get tz.offset',
+        params: [],
+        separator: null,
+        shortDescription: 'View timezone offset'
+    },
+    {
+        command: 'get wifi.enabled',
+        params: [],
+        separator: null,
+        shortDescription: 'View WiFi enabled state'
+    },
+    {
+        command: 'get wifi.ip',
+        params: [],
+        separator: null,
+        shortDescription: 'View WiFi IP address'
+    },
+    {
+        command: 'get wifi.pwd',
+        params: [],
+        separator: null,
+        shortDescription: 'View WiFi password'
+    },
+    {
+        command: 'get wifi.ssid',
+        params: [],
+        separator: null,
+        shortDescription: 'View WiFi SSID'
+    },
+    {
+        command: 'get wifi.status',
+        params: [],
+        separator: null,
+        shortDescription: 'View WiFi connection status'
+    },
+    {
         command: 'gps {on|off}',
         params: [{ name: 'state', type: 'enum', options: ['on', 'off'] }],
         separator: 'space',
@@ -260,6 +296,12 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         params: [{ name: 'policy', type: 'enum', options: ['none', 'share', 'prefs'] }],
         separator: 'space',
         shortDescription: 'View or change GPS advert policy'
+    },
+    {
+        command: 'gps diag',
+        params: [],
+        separator: null,
+        shortDescription: 'Show GPS receiver diagnostics'
     },
     {
         command: 'gps setloc',
@@ -289,6 +331,12 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         params: [{ name: 'new_password', type: 'string' }],
         separator: 'space',
         shortDescription: 'Change admin password'
+    },
+    {
+        command: 'power',
+        params: [],
+        separator: null,
+        shortDescription: 'Show power and charging status'
     },
     {
         command: 'powersaving',
@@ -641,6 +689,36 @@ export const meshcoreCommandData: MeshcoreCommand[] = [
         params: [{ name: 'dbm', type: 'number' }],
         separator: 'space',
         shortDescription: 'Set transmit power'
+    },
+    {
+        command: 'set tz.offset {offset}',
+        params: [{ name: 'offset', type: 'number' }],
+        separator: 'space',
+        shortDescription: 'Set timezone offset (-12..+14)'
+    },
+    {
+        command: 'set wifi.clear',
+        params: [],
+        separator: null,
+        shortDescription: 'Clear WiFi SSID and password (reboot to apply)'
+    },
+    {
+        command: 'set wifi.enabled {state}',
+        params: [{ name: 'state', type: 'enum', options: ['0', '1'] }],
+        separator: 'space',
+        shortDescription: 'Set WiFi enabled state (reboot to apply)'
+    },
+    {
+        command: 'set wifi.pwd {password}',
+        params: [{ name: 'password', type: 'string', maxLength: 63 }],
+        separator: 'space',
+        shortDescription: 'Set WiFi password (empty clears, reboot to apply)'
+    },
+    {
+        command: 'set wifi.ssid {ssid}',
+        params: [{ name: 'ssid', type: 'string', maxLength: 32 }],
+        separator: 'space',
+        shortDescription: 'Set WiFi SSID (empty clears, reboot to apply)'
     },
     {
         command: 'setperm {pubkey} {0|1|2|3}',

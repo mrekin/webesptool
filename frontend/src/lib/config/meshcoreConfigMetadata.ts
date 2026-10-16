@@ -27,6 +27,11 @@ export const MESHCORE_CONFIG_METADATA = {
         'bridge.enabled': 'bridge',
         // Flood (core only)
         'flood.max': 'flood',
+        // System (companion firmware 1.18.0)
+        'tz.offset': 'system',
+        'wifi.enabled': 'system',
+        'wifi.ssid': 'system',
+        'wifi.pwd': 'system',
         // Advanced: deprecated / obscure params explicitly grouped.
         cad: 'advanced',
         af: 'advanced',
@@ -107,15 +112,26 @@ export const MESHCORE_CONFIG_METADATA = {
         'multi.acks',
         'path.hash.mode',
         'rxdelay',
-        'txdelay'
+        'txdelay',
+        // system (companion 1.18 group fields; group actions sort after, alphabetically)
+        'wifi.enabled',
+        'wifi.ssid',
+        'wifi.pwd',
+        'tz.offset'
     ] as string[],
     // Fields whose change requires a reboot (seed from reference config.meshcore.io).
-    rebootKeys: ['radio', 'prv.key'] as string[],
+    // wifi.* (companion 1.18.0) answers explicitly require reboot to apply.
+    rebootKeys: ['radio', 'prv.key', 'wifi.enabled', 'wifi.ssid', 'wifi.pwd'] as string[],
     // Min firmware version per field (seed from reference varMinVersion).
     minVersion: {
         'owner.info': [1, 12, 0],
         'path.hash.mode': [1, 14, 0],
-        'loop.detect': [1, 14, 0]
+        'loop.detect': [1, 14, 0],
+        // Commands introduced in companion firmware 1.18.0 (reference data, no UI gating).
+        'tz.offset': [1, 18, 0],
+        'wifi.enabled': [1, 18, 0],
+        'wifi.ssid': [1, 18, 0],
+        'wifi.pwd': [1, 18, 0]
     } as Record<string, [number, number, number]>,
     // Value prefix of a get-response line (assumption from reference).
     responseValuePrefix: '> '
