@@ -14,12 +14,14 @@
         "language": "Language"
     },
     "page": {
-        "main_title": "Custom Meshtastic builds web installer",
-        "meta_description": "Custom Meshtastic firmware builds web installer",
+        "main_title": "Custom Meshtastic and MeshCore builds web installer",
+        "meta_description": "Custom Meshtastic and MeshCore firmware builds web installer",
         "main_description": "Install custom Meshtastic and Meshcore firmware on your devices using web tools.",
         "error": "Error",
         "reload_page": "Reload Page",
         "source_repository": "Source repository:",
+        "source_group_meshtastic": "Meshtastic",
+        "source_group_meshcore": "MeshCore",
         "device_selection": "Device Selection",
         "download_options": "Download Options",
         "firmware_information": "Firmware Information",
@@ -185,7 +187,7 @@
         "title": "⚠️ Important Notice",
         "close_notice": "Close notice",
         "expand_notice": "Expand notice",
-        "unofficial_builds": "These are unofficial builds of Meshtastic firmware, provided for testing and development purposes. They may contain experimental features and are not officially supported by the Meshtastic project.",
+        "unofficial_builds": "These are unofficial builds of Meshtastic and MeshCore firmware, provided for testing and development purposes. They may contain experimental features and are not officially supported by the Meshtastic and MeshCore projects.",
         "backup_before_flashing": "Always backup your device configuration before flashing firmware.",
         "old_flasher_available": "⚠️ The old flasher version will be available at https://mrekin.duckdns.org/oldflasher/ until 01.02.2026"
     },

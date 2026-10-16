@@ -32,7 +32,8 @@
     import ModalWindowControls from '$lib/components/ModalWindowControls.svelte';
     import ModalShareFallback from '$lib/components/ModalShareFallback.svelte';
     import { createFlashLogger } from '$lib/utils/flashLog.js';
-    import { selectionState, availableSources } from '$lib/stores.js';
+    import { selectionState, availableSources, versionsData } from '$lib/stores.js';
+    import { recordFlashed } from '$lib/utils/lastFlashed.js';
     import { RepositoryType } from '$lib/types.js';
     import { EXTERNAL_LINKS } from '$lib/utils/externalLinks.js';
     import { getRepositoryType } from '$lib/utils/repository.js';
@@ -984,6 +985,20 @@
                     ? $locales('customfirmware.log_erase_success')
                     : $locales('customfirmware.log_flash_complete')
             );
+
+            // T-153: remember the flashed version per repository. The version/date come
+            // from the current selector state (the manifest being flashed belongs to it).
+            // Erase-only runs and unknown version/date create no record (PRD 7, 10).
+            if (!isEraseOnly) {
+                const repo = $selectionState.repository;
+                const flashedVersion = $selectionState.version;
+                const flashedDate = flashedVersion
+                    ? $versionsData.dates[flashedVersion]
+                    : undefined;
+                if (repo && flashedVersion && flashedDate) {
+                    recordFlashed(repo, flashedVersion, flashedDate);
+                }
+            }
         } catch (error) {
             console.error('Flash error:', error);
             flashError = error instanceof Error ? error.message : String(error);
@@ -1956,7 +1971,7 @@
                      the cross keeps the flashing guard of handleClose. -->
                 <ModalWindowControls
                     shareId="custom-firmware"
-                    bind:shareFallbackUrl={shareFallbackUrl}
+                    bind:shareFallbackUrl
                     onclose={handleClose}
                     closeDisabled={isFlashing}
                 />

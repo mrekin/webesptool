@@ -1,6 +1,7 @@
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
 import { browser } from '$app/environment';
 import { getCookie, setCookie } from '$lib/utils/cookies.js';
+import { recordFlashed } from '$lib/utils/lastFlashed.js';
 import type {
     DeviceSelection,
     LoadingState,
@@ -845,6 +846,13 @@ export const apiActions = {
 
             const response = await apiService.downloadFirmware(request);
             apiService.triggerDownload(response.blob, response.filename);
+
+            // T-153: downloading the selected version's firmware file (UF2/OTA/ZIP) counts
+            // as intent to flash it. Service downloads (erase UF2, external links, repo
+            // archives) never reach this function (PRD scenario 9).
+            if (version && source) {
+                recordFlashed(source, version, get(versionsData).dates[version] ?? '');
+            }
 
             // Record successful download
             downloadHistory.update((history) => [

@@ -233,9 +233,7 @@
 
     $effect(() => {
         if (directTerminalOpen && !TerminalModal) {
-            import('$lib/components/TerminalModal.svelte').then(
-                (m) => (TerminalModal = m.default)
-            );
+            import('$lib/components/TerminalModal.svelte').then((m) => (TerminalModal = m.default));
         }
     });
 
@@ -381,16 +379,6 @@
 
             <!-- Source Repository -->
             <div class="rounded-lg border border-orange-600 bg-gray-800 p-6">
-                <h2 class="mb-6 flex items-center text-xl font-bold text-orange-200">
-                    <span class="mr-3">
-                        {#if $loadingState.isLoadingAvailable}
-                            <span class="inline-block animate-spin">🌐</span>
-                        {:else}
-                            🌐
-                        {/if}
-                    </span>
-                    {$locales('page.source_repository')}
-                </h2>
                 <RepositorySelector onOpenStats={openStatsModal} />
             </div>
 
@@ -480,24 +468,7 @@
                             <div
                                 class="bg-opacity-90 rounded-lg border border-orange-600 bg-gray-800 p-4"
                             >
-                                <div class="flex flex-wrap items-center justify-between gap-4">
-                                    <div class="flex flex-1 items-center space-x-3">
-                                        <span class="flex items-center font-medium text-orange-200">
-                                            <span class="mr-2 inline-block w-5 text-center">
-                                                {#if $loadingState.isLoadingAvailable}
-                                                    <!-- Spinning globe emoji during loading -->
-                                                    <span class="inline-block animate-spin">🌐</span
-                                                    >
-                                                {:else}
-                                                    <!-- Static globe emoji when not loading -->
-                                                    🌐
-                                                {/if}
-                                            </span>
-                                            {$locales('page.source_repository')}
-                                        </span>
-                                        <RepositorySelector onOpenStats={openStatsModal} />
-                                    </div>
-                                </div>
+                                <RepositorySelector onOpenStats={openStatsModal} />
                             </div>
                         </div>
                     </div>
@@ -669,7 +640,9 @@
         viewOnly={true}
         publishedGroupFilename={directZoneGroup === 'missing' ? null : directZoneGroup.filename}
         preset={directZoneGroup === 'missing' ? {} : toPreset(directZoneGroup)}
-        settingsPresets={directZoneGroup === 'missing' ? undefined : directZoneGroup.settingsPresets}
+        settingsPresets={directZoneGroup === 'missing'
+            ? undefined
+            : directZoneGroup.settingsPresets}
         onclose={closeAddressableModal}
     />
 {/if}

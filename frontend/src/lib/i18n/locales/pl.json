@@ -14,12 +14,14 @@
         "language": "Język"
     },
     "page": {
-        "main_title": "Webowy instalator niestandardowych firmware'ów Meshtastic",
-        "meta_description": "Webowy instalator niestandardowych firmware'ów Meshtastic",
+        "main_title": "Webowy instalator niestandardowych firmware'ów Meshtastic i MeshCore",
+        "meta_description": "Webowy instalator niestandardowych firmware'ów Meshtastic i MeshCore",
         "main_description": "Instaluj niestandardowe firmware Meshtastic i Meshcore na swoich urządzeniach za pomocą narzędzi webowych.",
         "error": "Błąd",
         "reload_page": "Przeładuj stronę",
         "source_repository": "Repozytorium źródłowe:",
+        "source_group_meshtastic": "Meshtastic",
+        "source_group_meshcore": "MeshCore",
         "device_selection": "Wybór urządzenia",
         "download_options": "Opcje pobierania",
         "firmware_information": "Informacje o firmware",
@@ -185,7 +187,7 @@
         "title": "⚠️ Ważne uwagi",
         "close_notice": "Zamknij uwagi",
         "expand_notice": "Rozwiń uwagi",
-        "unofficial_builds": "To są nieoficjalne buildy firmware Meshtastic, dostarczone do testowania i celów deweloperskich. Mogą zawierać eksperymentalne funkcje i nie są oficjalnie wspierane przez projekt Meshtastic.",
+        "unofficial_builds": "To są nieoficjalne buildy firmware Meshtastic i MeshCore, dostarczone do testowania i celów deweloperskich. Mogą zawierać eksperymentalne funkcje i nie są oficjalnie wspierane przez projekty Meshtastic i MeshCore.",
         "backup_before_flashing": "Zawsze wykonuj kopię zapasową konfiguracji urządzenia przed flashowaniem firmware.",
         "old_flasher_available": "⚠️ Stara wersja flashera będzie dostępna pod linkiem https://mrekin.duckdns.org/oldflasher/ do 01.02.2026"
     },

@@ -14,12 +14,14 @@
         "language": "Язык"
     },
     "page": {
-        "main_title": "Веб-установщик кастомных прошивок Meshtastic",
-        "meta_description": "Веб-установщик кастомных прошивок Meshtastic",
+        "main_title": "Веб-установщик кастомных прошивок Meshtastic и MeshCore",
+        "meta_description": "Веб-установщик кастомных прошивок Meshtastic и MeshCore",
         "main_description": "Устанавливайте кастомные прошивки Meshtastic и Meshcore на ваши устройства с помощью Web инструментов.",
         "error": "Ошибка",
         "reload_page": "Перезагрузить страницу",
         "source_repository": "Репозиторий исходного кода:",
+        "source_group_meshtastic": "Meshtastic",
+        "source_group_meshcore": "MeshCore",
         "device_selection": "Выбор устройства",
         "download_options": "Опции загрузки",
         "firmware_information": "Информация",
@@ -185,7 +187,7 @@
         "title": "⚠️ Важное уведомление",
         "close_notice": "Закрыть уведомление",
         "expand_notice": "Развернуть уведомление",
-        "unofficial_builds": "Это неофициальные сборки прошивки Meshtastic, предоставленные для тестирования и разработки. Они могут содержать экспериментальные функции и не официально поддерживаются проектом Meshtastic.",
+        "unofficial_builds": "Это неофициальные сборки прошивок Meshtastic и MeshCore, предоставленные для тестирования и разработки. Они могут содержать экспериментальные функции и не поддерживаются официально проектами Meshtastic и MeshCore.",
         "backup_before_flashing": "Всегда создавайте резервную копию конфигурации устройства перед прошивкой.",
         "old_flasher_available": "⚠️ Старая версия флешера будет доступна по ссылке https://mrekin.duckdns.org/oldflasher/ до 01.02.2026"
     },

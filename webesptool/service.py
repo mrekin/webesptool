@@ -365,6 +365,58 @@ async def buildVersions(t:str = None, src:str = None):
 
     return data
 
+async def readVerInfo(path: str):
+    """Read and parse ver.info; None on any failure (missing/empty/invalid JSON)."""
+    try:
+        async with aiofiles.open(path, 'r') as f:
+            content = await f.read()
+        return json.loads(content) if content else None
+    except Exception:
+        return None
+
+def parseFwDate(value):
+    """Parse ver.info date ('YYYY-MM-DD HH:MM:SS' or 'YYYY-MM-DD'); None if unknown."""
+    if not isinstance(value, str):
+        return None
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(value.strip(), fmt)
+        except ValueError:
+            continue
+    return None
+
+async def getRepoLatestVersion(path: str):
+    """Freshest version across all device folders of a repository.
+
+    Returns {'version': str, 'date': str} or None when nothing is recognized.
+    """
+    best_key = None      # (datetime, CustomLooseVersion)
+    best_payload = None
+    try:
+        device_entries = await aiofiles.os.scandir(path)
+        devices = [e for e in device_entries
+                   if e.is_dir(follow_symlinks=False) and not hidden_regex.match(e.name)]
+    except Exception:
+        return None
+    for device in devices:
+        try:
+            version_entries = await aiofiles.os.scandir(device.path)
+            version_dirs = [e for e in version_entries
+                            if e.is_dir(follow_symlinks=False) and not hidden_regex.match(e.name)]
+        except Exception:
+            continue
+        for vdir in version_dirs:
+            info = await readVerInfo(os.path.join(vdir.path, 'ver.info'))
+            if not info:
+                continue
+            version, date = info.get('version'), parseFwDate(info.get('date'))
+            if not version or not isinstance(version, str) or not date:
+                continue
+            key = (date, CustomLooseVersion(version))
+            if best_key is None or key > best_key:
+                best_key, best_payload = key, {'version': version, 'date': info.get('date')}
+    return best_payload
+
 async def loadInfo(t = None, v = None, rootFolder = None):
     jver = {}
     #rootFolder = None
@@ -414,11 +466,18 @@ async def getSrcs():
     srcs = []
     for rf in config['fwDirs']:
         if isinstance(rf, dict):
-            srcs.append({
+            entry = {
                 'src': rf.get('src', None),
                 'desc': rf.get('desc', ''),
                 'type': rf.get('type', FirmwareType.MESHTASTIC.value)
-            })
+            }
+            repo_path = rf.get('path', None)
+            if repo_path:
+                latest = await getRepoLatestVersion(repo_path)   # never raises
+                if latest:
+                    entry['version'] = latest['version']
+                    entry['date'] = latest['date']
+            srcs.append(entry)
         else:
             # For string entries (legacy), provide default values
             srcs.append({

@@ -94,6 +94,10 @@ export interface SourceInfo {
     src: string;
     desc: string;
     type: RepositoryType;
+    /** Latest version string from ver.info (optional — absent when unknown). */
+    version?: string;
+    /** Build date of `version` from ver.info (optional — absent when unknown). */
+    date?: string;
 }
 
 export interface AvailableFirmwares {
