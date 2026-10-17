@@ -21,6 +21,8 @@
         "reload_page": "Reload Page",
         "source_repository": "Source repository:",
         "source_group_meshtastic": "Meshtastic",
+        "source_scroll_left": "Scroll left",
+        "source_scroll_right": "Scroll right",
         "source_group_meshcore": "MeshCore",
         "device_selection": "Device Selection",
         "download_options": "Download Options",

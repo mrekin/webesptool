@@ -10,7 +10,7 @@
     import { RepositoryType } from '$lib/types.js';
     import type { SourceInfo } from '$lib/types.js';
     import MarkdownRenderer from '$lib/components/MarkdownRenderer.svelte';
-    import { lastFlashed, isNewerBuild } from '$lib/utils/lastFlashed.js';
+    import { lastFlashed, compareVersions } from '$lib/utils/lastFlashed.js';
 
     interface Props {
         onOpenStats?: () => void;
@@ -50,18 +50,23 @@
         $uiState.statsEnabled && $uiState.experimentalFeatures && onOpenStats !== undefined
     );
 
-    // T-153: repositories whose latest build is STRICTLY newer than the user's
-    // last flashed one (build-date comparison). Shown only with experimental
-    // features on; missing/broken data → no marker (PRD goals 1–3).
+    // T-153: repositories whose latest BASE version is strictly greater than
+    // the flashed one (loose order, same as the version selector). Dates are
+    // never compared (prod decision 2026-10-17): rebuilding an old version
+    // does not make it newer, and the same commit built for another device
+    // role is the same version. Shown only with experimental features on;
+    // missing data → no marker (PRD goals 1–3).
     const newVersionSources = $derived.by(() => {
         const marked = new Set<string>();
         if (!$uiState.experimentalFeatures) return marked;
         const flashed = $lastFlashed;
         for (const source of $availableSources) {
-            if (!source.date) continue;
+            if (!source.last_version) continue;
             const entry = flashed[source.src];
             if (!entry) continue;
-            if (isNewerBuild(source.date, entry.date)) marked.add(source.src);
+            if (compareVersions(formatVersion(source.last_version), formatVersion(entry.version)) > 0) {
+                marked.add(source.src);
+            }
         }
         return marked;
     });
@@ -83,6 +88,71 @@
         const m = version.match(/^[vV]?\d+(?:\.\d+){1,2}[a-zA-Z0-9]*/);
         return m ? m[0] : version;
     }
+
+    // Horizontal scroll affordances (prod feedback 2026-10-17): the scrollbar
+    // is hidden by design, so rows show compact edge arrows only while the row
+    // can actually scroll that way, and the mouse wheel scrolls the row.
+    let rowEls: Partial<Record<RepositoryType, HTMLElement>> = {};
+    let scrollState = $state<Record<string, { left: boolean; right: boolean }>>({});
+
+    function updateScrollState(type: RepositoryType): void {
+        const el = rowEls[type];
+        if (!el) return;
+        const max = el.scrollWidth - el.clientWidth;
+        scrollState[type] = {
+            left: max > 1 && el.scrollLeft > 1,
+            right: max > 1 && el.scrollLeft < max - 1
+        };
+    }
+
+    function updateAllScrollStates(): void {
+        for (const type of Object.keys(rowEls) as RepositoryType[]) {
+            updateScrollState(type);
+        }
+    }
+
+    function scrollRow(type: RepositoryType, dir: number): void {
+        rowEls[type]?.scrollBy({ left: dir * 240, behavior: 'smooth' });
+    }
+
+    // Mouse wheel over a row scrolls it horizontally (vertical delta is
+    // translated); preventDefault only while the row consumes the delta, so
+    // the page keeps scrolling once the row reaches its edge. The action also
+    // registers the element: bind:this onto a computed member expression
+    // (rowEls[group.type]) did not assign at runtime, scrollRow was a no-op.
+    function registerRow(el: HTMLElement, type: RepositoryType) {
+        rowEls[type] = el;
+        const onWheel = (e: WheelEvent) => {
+            const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+            if (!delta) return;
+            const before = el.scrollLeft;
+            el.scrollLeft += delta;
+            if (el.scrollLeft !== before) e.preventDefault();
+        };
+        el.addEventListener('wheel', onWheel, { passive: false });
+        return {
+            destroy: () => {
+                el.removeEventListener('wheel', onWheel);
+                if (rowEls[type] === el) delete rowEls[type];
+            }
+        };
+    }
+
+    // Refresh arrow availability on source changes, resizes and reflows.
+    $effect(() => {
+        $availableSources;
+        updateAllScrollStates();
+        const observer = new ResizeObserver(updateAllScrollStates);
+        for (const type of Object.keys(rowEls) as RepositoryType[]) {
+            const el = rowEls[type];
+            if (el) observer.observe(el);
+        }
+        window.addEventListener('resize', updateAllScrollStates);
+        return () => {
+            observer.disconnect();
+            window.removeEventListener('resize', updateAllScrollStates);
+        };
+    });
 </script>
 
 <!-- Compact Source Repository Selection -->
@@ -118,10 +188,14 @@
                     >
                         {$locales(group.titleKey)}
                     </span>
-                    <!-- One row per group: never wraps, scrolls horizontally -->
-                    <div
-                        class="repo-row flex min-w-0 flex-1 flex-nowrap items-center gap-2 overflow-x-auto"
-                    >
+                    <!-- One row per group: never wraps, scrolls horizontally; compact
+                         edge arrows appear only while the row can scroll that way -->
+                    <div class="relative min-w-0 flex-1">
+                        <div
+                            class="repo-row flex flex-nowrap items-center gap-2 overflow-x-auto"
+                            onscroll={() => updateScrollState(group.type)}
+                            use:registerRow={group.type}
+                        >
                         {#each group.sources as source (source.src)}
                             <button
                                 type="button"
@@ -146,6 +220,45 @@
                                 {/if}
                             </button>
                         {/each}
+                        </div>
+                        {#if scrollState[group.type]?.left}
+                            <button
+                                type="button"
+                                class="scroll-arrow scroll-arrow-left"
+                                aria-label={$locales('page.source_scroll_left')}
+                                onclick={() => scrollRow(group.type, -1)}
+                            >
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2.5"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <path d="M15 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+                        {/if}
+                        {#if scrollState[group.type]?.right}
+                            <button
+                                type="button"
+                                class="scroll-arrow scroll-arrow-right"
+                                aria-label={$locales('page.source_scroll_right')}
+                                onclick={() => scrollRow(group.type, 1)}
+                            >
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2.5"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <path d="M9 5l7 7-7 7" />
+                                </svg>
+                            </button>
+                        {/if}
                     </div>
                     <!-- Stats button: right end of the last group row -->
                     {#if groupIndex === sourceGroups.length - 1 && showStatsButton}
@@ -254,6 +367,45 @@
 
     .repo-row::-webkit-scrollbar {
         display: none;
+    }
+
+    /* Edge scroll arrows: compact, shown only while the row can scroll that
+       way (hidden scrollbar made overflow non-obvious). Centered via top calc,
+       NOT transform — the generic hover lift (translateY(-1px)) would otherwise
+       override the centering and throw the arrow half its height down. */
+    .scroll-arrow {
+        position: absolute;
+        top: calc(50% - 15px); /* half of height (30px) */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 30px;
+        padding: 0;
+        border: 1px solid #4b5563;
+        border-radius: 6px;
+        background: rgba(31, 41, 55, 0.92);
+        color: #d1d5db;
+        cursor: pointer;
+        z-index: 5;
+    }
+
+    .scroll-arrow:hover {
+        color: #fb923c;
+        border-color: #6b7280;
+    }
+
+    .scroll-arrow-left {
+        left: 0;
+    }
+
+    .scroll-arrow-right {
+        right: 0;
+    }
+
+    .scroll-arrow svg {
+        width: 12px;
+        height: 12px;
     }
 
     /* Loading state improvements */

@@ -6,7 +6,7 @@ export const LAST_FLASHED_STORAGE_KEY = 'meshtastic-last-flashed';
 
 export interface LastFlashedEntry {
     version: string;
-    date: string; // ver.info date string, as recorded at flash/download time
+    date: string; // ver.info date string, kept for the record only — never compared
 }
 
 type LastFlashedMap = Record<string, LastFlashedEntry>;
@@ -50,25 +50,36 @@ export function recordFlashed(repository: string, version: string, date: string)
     });
 }
 
-// Parse a ver.info date string ('YYYY-MM-DD HH:MM:SS' / 'YYYY-MM-DD'); null if unknown.
-export function parseFirmwareDate(value: string | undefined | null): Date | null {
-    if (!value) return null;
-    const m = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/);
-    if (!m) return null;
-    const d = new Date(
-        Number(m[1]),
-        Number(m[2]) - 1,
-        Number(m[3]),
-        Number(m[4] ?? 0),
-        Number(m[5] ?? 0),
-        Number(m[6] ?? 0)
-    );
-    return Number.isNaN(d.getTime()) ? null : d;
+// Loose version comparison for base versions, mirroring the backend's
+// CustomLooseVersion order (the same order the version selector uses):
+// digit runs compare numerically, alpha runs lexically, and a longer
+// equal-prefix version sorts higher (v1.18.0b1 > v1.18.0).
+function versionTokens(version: string): (number | string)[] {
+    return version.replace(/^[vV]/, '').match(/\d+|[a-zA-Z]+/g) ?? [];
 }
 
-// Strictly-newer check by build date; anything unknown → false (PRD restriction 4).
-export function isNewerBuild(latestDate?: string | null, flashedDate?: string | null): boolean {
-    const a = parseFirmwareDate(latestDate);
-    const b = parseFirmwareDate(flashedDate);
-    return a !== null && b !== null && a.getTime() > b.getTime();
+// Strictly-greater check (prod decision 2026-10-17): versions only — build
+// dates never participate. Rebuilding an old version does not make it newer,
+// and the same commit built for another device role is the same version;
+// both cases collapse to equal base versions → no highlight.
+export function compareVersions(a: string, b: string): number {
+    const ta = versionTokens(a);
+    const tb = versionTokens(b);
+    const len = Math.max(ta.length, tb.length);
+    for (let i = 0; i < len; i++) {
+        const x = ta[i];
+        const y = tb[i];
+        if (x === undefined) return -1; // shorter equal prefix sorts lower
+        if (y === undefined) return 1;
+        const xNum = typeof x === 'number';
+        const yNum = typeof y === 'number';
+        if (xNum && yNum) {
+            if (x !== y) return (x as number) < (y as number) ? -1 : 1;
+        } else if (xNum !== yNum) {
+            return xNum ? 1 : -1; // numeric runs beat alpha runs
+        } else if (x !== y) {
+            return String(x) < String(y) ? -1 : 1;
+        }
+    }
+    return 0;
 }
