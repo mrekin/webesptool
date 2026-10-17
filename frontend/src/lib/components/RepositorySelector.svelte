@@ -75,6 +75,14 @@
     function handleSourceChange(source: string) {
         deviceActions.setSource(source);
     }
+
+    // Badge shows the base version only (variant-a4 mockups): v1.12.0.e738a74
+    // .room-server → v1.12.0, v2.7.15.80e676a59.daily → v2.7.15, v1.18.0b2 stays
+    // v1.18.0b2. Unknown formats fall through untouched.
+    function formatVersion(version: string): string {
+        const m = version.match(/^[vV]?\d+(?:\.\d+){1,2}[a-zA-Z0-9]*/);
+        return m ? m[0] : version;
+    }
 </script>
 
 <!-- Compact Source Repository Selection -->
@@ -84,10 +92,10 @@
     <div class="flex flex-col gap-4 @2xl:flex-row @2xl:items-center">
         <!-- Label: heading above the rows (narrow) / left column (wide) -->
         <h2
-            class="flex shrink-0 items-center gap-2 text-lg font-bold text-orange-200
+            class="flex shrink-0 items-center gap-2 text-lg font-semibold text-orange-200
                    @xl:text-xl
-                   @2xl:w-[102px] @2xl:gap-1 @2xl:text-xs @2xl:leading-tight
-                   @4xl:w-[150px] @4xl:gap-1.5 @4xl:text-sm"
+                   @2xl:w-[102px] @2xl:gap-1 @2xl:text-[0.68rem] @2xl:leading-tight
+                   @4xl:w-[150px] @4xl:gap-1.5 @4xl:text-[0.8rem]"
         >
             <span class="shrink-0" class:animate-spin={$loadingState.isLoadingAvailable}>🌐</span>
             <span class="@2xl:flex-1 @2xl:text-center">
@@ -120,7 +128,7 @@
                                 onclick={() => handleSourceChange(source.src)}
                                 class:selected={$deviceSelection.source === source.src}
                                 class:hasnew={newVersionSources.has(source.src)}
-                                class="shrink-0 rounded-md px-3 py-1.5 text-sm transition-colors
+                                class="shrink-0 rounded-md px-3 @4xl:px-1.5 @6xl:px-3 py-1.5 text-sm transition-colors
                                        {$deviceSelection.source === source.src
                                     ? 'border-orange-500 bg-orange-600 text-white shadow-sm'
                                     : 'border-gray-600 bg-gray-700 text-orange-300 hover:bg-gray-600 hover:text-orange-200'}
@@ -128,12 +136,12 @@
                             >
                                 {source.src}{#if newVersionSources.has(source.src)}
                                     <span class="repo-dot" aria-hidden="true"></span>
-                                {/if}{#if source.version}
+                                {/if}{#if source.last_version}
                                     <span
                                         class="ver hidden @2xl:inline {$deviceSelection.source ===
                                         source.src
                                             ? 'opacity-90'
-                                            : 'opacity-75'}">· {source.version}</span
+                                            : 'opacity-75'}">· {formatVersion(source.last_version)}</span
                                     >
                                 {/if}
                             </button>
@@ -168,7 +176,8 @@
 
             <!-- Repository Description -->
             {#if currentRepoDesc}
-                <div class="max-w-md text-left text-xs text-orange-300">
+                <!-- ml aligns with repo buttons: group subtitle w-28 (7rem) + gap-2 -->
+                <div class="ml-[7.5rem] max-w-md text-left text-xs text-orange-300">
                     <MarkdownRenderer source={currentRepoDesc} wrapperClass="" />
                 </div>
             {/if}
@@ -240,17 +249,11 @@
 
     /* Group row: horizontal scroll fallback (rows never wrap to a second line) */
     .repo-row {
-        scrollbar-width: thin;
-        scrollbar-color: #4b5563 transparent;
+        scrollbar-width: none;
     }
 
     .repo-row::-webkit-scrollbar {
-        height: 6px;
-    }
-
-    .repo-row::-webkit-scrollbar-thumb {
-        background: #4b5563;
-        border-radius: 3px;
+        display: none;
     }
 
     /* Loading state improvements */

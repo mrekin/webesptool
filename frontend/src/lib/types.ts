@@ -95,8 +95,8 @@ export interface SourceInfo {
     desc: string;
     type: RepositoryType;
     /** Latest version string from ver.info (optional — absent when unknown). */
-    version?: string;
-    /** Build date of `version` from ver.info (optional — absent when unknown). */
+    last_version?: string;
+    /** Build date of `last_version` from ver.info (optional — absent when unknown). */
     date?: string;
 }
 

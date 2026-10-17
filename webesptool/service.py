@@ -1,5 +1,6 @@
 import asyncio
 import json
+import time
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
@@ -19,7 +20,7 @@ import uvicorn
 from threading import Thread
 from fastapi import APIRouter
 from fastapi import Request
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 
@@ -32,6 +33,9 @@ from apps.news.routes import router as news_router
 
 # Stats module
 from apps.stats.routes import router as stats_router
+
+# Version cache module (repo latest versions for /api/srcs badges)
+from apps.version_cache import storage as version_cache
 
 import aiofiles.ospath
 import aiofiles.os
@@ -114,6 +118,11 @@ log = utils.logger.getLogger()
 DEBUG2 =5
 
 config = {}
+
+# Version cache state: single-flight rebuild + backoff between miss-kicks
+_version_cache_lock = asyncio.Lock()
+_version_cache_last_attempt = 0.0
+_VERSION_CACHE_BACKOFF_SECONDS = 300
 
 aiofiles.os.walk = aiofiles.os.wrap(os.walk)
 
@@ -389,9 +398,13 @@ async def getRepoLatestVersion(path: str):
     """Freshest version across all device folders of a repository.
 
     Returns {'version': str, 'date': str} or None when nothing is recognized.
+    Prefers non-daily builds; falls back to dailies when a repository has
+    nothing else (prod-feedback decision, 2026-10-16).
     """
     best_key = None      # (datetime, CustomLooseVersion)
     best_payload = None
+    best_stable_key = None
+    best_stable_payload = None
     try:
         device_entries = await aiofiles.os.scandir(path)
         devices = [e for e in device_entries
@@ -413,9 +426,47 @@ async def getRepoLatestVersion(path: str):
             if not version or not isinstance(version, str) or not date:
                 continue
             key = (date, CustomLooseVersion(version))
+            payload = {'version': version, 'date': info.get('date')}
             if best_key is None or key > best_key:
-                best_key, best_payload = key, {'version': version, 'date': info.get('date')}
-    return best_payload
+                best_key, best_payload = key, payload
+            if 'daily' not in version.lower() and (
+                best_stable_key is None or key > best_stable_key
+            ):
+                best_stable_key, best_stable_payload = key, payload
+    return best_stable_payload if best_stable_payload is not None else best_payload
+
+
+async def rebuild_versions_cache():
+    """Rebuild the repo latest-version snapshot (valkey + memory fallback).
+
+    Single-flight: concurrent callers share one pass. Triggered at startup
+    (background task), by the admin API and as a miss-kick from getSrcs —
+    never periodically and never on the request hot path (prod decision
+    2026-10-16).
+    """
+    async with _version_cache_lock:
+        ttl_hours = int(config.get('version_cache', {}).get('ttl_hours', 24))
+        snapshot = {}
+        for rf in config['fwDirs']:
+            if isinstance(rf, dict) and rf.get('path'):
+                latest = await getRepoLatestVersion(rf['path'])
+                if latest:
+                    snapshot[rf['path']] = latest
+        await version_cache.save_snapshot(snapshot, ttl_hours * 3600)
+        log.info(f"Version cache rebuilt: {len(snapshot)} repositories")
+        return snapshot
+
+
+def schedule_version_cache_rebuild():
+    """Fire-and-forget rebuild kick: single-flight, min 5 min between tries."""
+    global _version_cache_last_attempt
+    now = time.monotonic()
+    if _version_cache_lock.locked():
+        return
+    if now - _version_cache_last_attempt < _VERSION_CACHE_BACKOFF_SECONDS:
+        return
+    _version_cache_last_attempt = now
+    asyncio.get_running_loop().create_task(rebuild_versions_cache())
 
 async def loadInfo(t = None, v = None, rootFolder = None):
     jver = {}
@@ -464,6 +515,14 @@ async def generate_zip(folder_path, json_data:str = None):
 
 async def getSrcs():
     srcs = []
+    # Latest-version snapshot (valkey → in-memory fallback). None = no data
+    # yet (clean start with Valkey down, TTL expired): repositories are still
+    # shown, just without badges — repos are the primary content, versions
+    # are a bonus (prod decision 2026-10-16). A miss also kicks a background
+    # rebuild (single-flight, backoff).
+    snapshot = await version_cache.get_snapshot()
+    if snapshot is None:
+        schedule_version_cache_rebuild()
     for rf in config['fwDirs']:
         if isinstance(rf, dict):
             entry = {
@@ -473,10 +532,18 @@ async def getSrcs():
             }
             repo_path = rf.get('path', None)
             if repo_path:
-                latest = await getRepoLatestVersion(repo_path)   # never raises
+                latest = snapshot.get(repo_path) if snapshot is not None else None
                 if latest:
-                    entry['version'] = latest['version']
+                    # "last_version" (not "version"): the repository's latest
+                    # build, not a selected/flashable version.
+                    entry['last_version'] = latest['version']
                     entry['date'] = latest['date']
+                elif snapshot is not None:
+                    # Snapshot is live but this repository has no recognized
+                    # ver.info anywhere: nothing to flash from it — hide it
+                    # entirely (prod feedback). With no snapshot at all we
+                    # cannot tell "empty" from "unknown" — repo stays visible.
+                    continue
             srcs.append(entry)
         else:
             # For string entries (legacy), provide default values
@@ -852,6 +919,20 @@ async def lifespan(app: FastAPI):
             log.info("Stats module initialized, aggregates verified")
     except Exception as e:
         log.warning(f"Stats module failed to initialize: {e}")
+    # Version cache: init Valkey (config URL, falls back to stats URL) and
+    # rebuild in a background task — startup readiness is not blocked
+    # (prod decision 2026-10-16).
+    try:
+        valkey_url = (config.get('version_cache', {}).get('valkey_url')
+                      or config.get('stats', {}).get('valkey_url'))
+        if valkey_url:
+            try:
+                await version_cache.init_valkey(valkey_url)
+            except Exception as e:
+                log.warning(f"Version cache Valkey unavailable: {e}")
+        asyncio.create_task(rebuild_versions_cache())
+    except Exception as e:
+        log.warning(f"Version cache init failed: {e}")
     yield
     # Shutdown: close Valkey connection
     try:
@@ -882,6 +963,57 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 async def favicon():
     """Handle favicon requests - return no content"""
     return None
+
+
+# --- Server management (admin, network-restricted like the rest of /api/admin) ---
+
+@app.get("/admin/server", response_class=HTMLResponse)
+async def admin_server_page(request: Request):
+    """Admin page: server management (version cache rebuild button)."""
+    return templates.TemplateResponse("admin/server.html", {"request": request})
+
+
+@app.post("/api/admin/cache/rebuild", status_code=200)
+async def admin_cache_rebuild():
+    """Rebuild the repo latest-version snapshot on demand (admin button,
+    firmware pipeline hook). Rebuild-then-swap; concurrent calls share one pass."""
+    try:
+        snapshot = await rebuild_versions_cache()
+        # Repository records (dict entries with path); folders shared by
+        # several src names are scanned once and reported separately as paths.
+        repos = sum(1 for rf in config['fwDirs'] if isinstance(rf, dict) and rf.get('path'))
+        return {"status": "ok", "repos": repos, "paths": len(snapshot)}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "detail": str(e)})
+
+
+@app.get("/api/admin/cache/info", status_code=200)
+async def admin_cache_info():
+    """Snapshot state for the admin page: source, built_at, TTL and the
+    cached folders grouped with the src names they serve."""
+    info = await version_cache.get_snapshot_info()
+    versions = info.get('versions') or {}
+    folders = []
+    legacy = 0
+    for rf in config['fwDirs']:
+        if isinstance(rf, dict) and rf.get('path'):
+            entry = next((f for f in folders if f['path'] == rf['path']), None)
+            if entry is None:
+                latest = versions.get(rf['path']) or {}
+                entry = {'path': rf['path'], 'srcs': [],
+                         'version': latest.get('version'), 'date': latest.get('date')}
+                folders.append(entry)
+            entry['srcs'].append(rf.get('src'))
+        else:
+            legacy += 1
+    return {
+        'source': info.get('source'),
+        'built_at': info.get('built_at'),
+        'ttl_seconds_left': info.get('ttl_seconds_left'),
+        'key': version_cache.SNAPSHOT_KEY,
+        'folders': folders,
+        'legacy_sources': legacy,
+    }
 
 
 # availableSRCs

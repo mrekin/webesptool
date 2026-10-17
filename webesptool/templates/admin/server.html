@@ -1,0 +1,27 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Server Admin{% endblock %}
+
+{% block content %}
+<!-- Version cache management (behavior in server_admin.js) -->
+<div class="editor-section">
+    <div class="editor-section-title">🖥️ Server</div>
+    <div class="field-block">
+        <div class="form-text">
+            Rebuilds the repository latest-version cache (scans ver.info files, TTL 24h).
+            Called automatically at startup and after firmware uploads; use this button
+            for manual refresh.
+        </div>
+    </div>
+    <div class="field-block">
+        <div id="cache-info" class="cache-panel"><p class="form-text">Loading cache info…</p></div>
+    </div>
+    <div class="field-block">
+        <button type="button" id="rebuild-cache-btn" class="btn btn-warning">Rebuild version cache</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/admin/js/server_admin.js"></script>
+{% endblock %}

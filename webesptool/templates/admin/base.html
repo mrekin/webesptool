@@ -9,7 +9,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}News Admin{% endblock %}</title>
-    <link rel="stylesheet" href="/static/admin/css/admin.css">
+    <link rel="stylesheet" href="/static/admin/css/admin.css?v=3">
     <!-- marked must load before the page scripts that use it (offline vendor copy) -->
     <script src="/static/vendor/marked/marked.min.js"></script>
     <script src="/static/admin/js/admin_common.js"></script>
@@ -20,6 +20,7 @@
         <a class="navbar-brand" href="/admin/news">📰 News Admin</a>
         <div class="navbar-nav">
             <a class="nav-link" href="/admin/news">News List</a>
+            <a class="nav-link" href="/admin/server">Server</a>
         </div>
     </nav>
 
